@@ -51,7 +51,7 @@ def get_db_connection():
 
 def _sql_fecha_expr() -> str:
     """Convierte fecha texto a DATE"""
-    return "COALESCE(STR_TO_DATE(fecha, '%%Y-%%m-%%d'), STR_TO_DATE(fecha, '%%d/%%m/%%Y'))"
+    return "COALESCE(TO_DATE(fecha, 'YYYY-MM-DD'), TO_DATE(fecha, 'DD/MM/YYYY'))"
 
 
 def _sql_mes_col() -> str:
@@ -74,7 +74,7 @@ def _sql_total_num_expr() -> str:
                 ')', ''
             ),
             '$', ''
-        ) AS DECIMAL(15,2)
+        ) AS NUMERIC(15,2)
     )"""
 
 
@@ -96,7 +96,7 @@ def _sql_total_num_expr_usd() -> str:
                 ')', ''
             ),
             '$', ''
-        ) AS DECIMAL(15,2)
+        ) AS NUMERIC(15,2)
     )"""
 
 
@@ -124,7 +124,7 @@ def _sql_total_num_expr_general() -> str:
                 ')', ''
             ),
             ' ', ''
-        ) AS DECIMAL(15,2)
+        ) AS NUMERIC(15,2)
     )"""
 
 
@@ -135,10 +135,10 @@ def _sql_moneda_norm_expr() -> str:
 
 def _sql_cantidad_num_expr() -> str:
     """Convierte cantidad a número"""
-    return "CAST(REPLACE(TRIM(cantidad), ',', '.') AS DECIMAL(15,2))"
+    return "CAST(REPLACE(TRIM(cantidad), ',', '.') AS NUMERIC(15,2))"
 
 
-def _escape_percent_para_pymysql(query: str) -> str:
+def _escape_percent_DEPRECADO(query: str) -> str:
     """Escapa % literales para PyMySQL"""
     if not query or "%" not in query:
         return query
@@ -275,14 +275,14 @@ def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
 def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
     query = """
         SELECT
-            `N Factura` AS nro_factura,
+            nro_comprobante AS nro_factura,
             Proveedor,
             Articulo,
             cantidad,
             Total
         FROM chatbot
-        WHERE `N Factura` = %s
-          AND `N Factura` <> 'A0000000'
+        WHERE nro_comprobante = %s
+          AND nro_comprobante <> 'A0000000'
           AND (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%')
         ORDER BY Articulo
     """
@@ -302,7 +302,7 @@ def get_ultima_factura_de_articulo(patron_articulo: str) -> pd.DataFrame:
             Proveedor,
             Articulo,
             cantidad,
-            `N Factura` AS nro_factura,
+            nro_comprobante AS nro_factura,
             {total_expr} AS total_linea,
             fecha
         FROM chatbot
@@ -317,7 +317,7 @@ def get_ultima_factura_numero_de_articulo(patron_articulo: str) -> Optional[str]
     """Obtiene el número de la última factura de un artículo"""
     fecha_expr = _sql_fecha_expr()
     query = f"""
-        SELECT `N Factura` AS nro_factura
+        SELECT nro_comprobante AS nro_factura
         FROM chatbot
         WHERE LOWER(Articulo) LIKE %s
         ORDER BY {fecha_expr} DESC
@@ -343,8 +343,8 @@ def get_facturas_de_articulo(patron_articulo: str, solo_ultima: bool = False) ->
         SELECT
             Proveedor,
             Articulo,
-            `N Factura` AS Nro_Factura,
-            DATE_FORMAT({fecha_expr}, '%%d/%%m/%%Y') AS Fecha,
+            nro_comprobante AS Nro_Factura,
+            TO_CHAR({fecha_expr}, 'DD/MM/YYYY') AS Fecha,
             cantidad AS Cantidad,
             {total_expr} AS Total
         FROM chatbot
@@ -628,11 +628,11 @@ def get_comparacion_proveedor_anios_monedas(anios: List[int], proveedores: List[
     cols = []
     for y in anios:
         cols.append(
-            f"""SUM(CASE WHEN YEAR({fecha_expr}) = {y} AND {mon_expr} = '$'
+            f"""SUM(CASE WHEN EXTRACT(YEAR FROM {fecha_expr}) = {y} AND {mon_expr} = '$'
                  THEN {total_pesos} ELSE 0 END) AS {y}_$"""
         )
         cols.append(
-            f"""SUM(CASE WHEN YEAR({fecha_expr}) = {y} AND {mon_expr} = 'U$S'
+            f"""SUM(CASE WHEN EXTRACT(YEAR FROM {fecha_expr}) = {y} AND {mon_expr} = 'U$S'
                  THEN {total_usd} ELSE 0 END) AS {y}_USD"""
         )
 
@@ -647,7 +647,7 @@ def get_comparacion_proveedor_anios_monedas(anios: List[int], proveedores: List[
         FROM chatbot
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-            AND YEAR({fecha_expr}) IN ({", ".join(str(y) for y in anios)})
+            AND EXTRACT(YEAR FROM {fecha_expr}) IN ({", ".join(str(y) for y in anios)})
             {prov_where}
         GROUP BY Proveedor
         ORDER BY {order_sql}
@@ -682,8 +682,8 @@ def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int, moneda: s
         SELECT
             Proveedor,
             Articulo,
-            `N Factura` AS Nro_Factura,
-            DATE_FORMAT({fecha_expr}, '%%d/%%m/%%Y') AS Fecha,
+            nro_comprobante AS Nro_Factura,
+            TO_CHAR({fecha_expr}, 'DD/MM/YYYY') AS Fecha,
             cantidad AS Cantidad,
             Moneda,
             {total_expr} AS Total
@@ -691,7 +691,7 @@ def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int, moneda: s
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
             AND LOWER(Proveedor) LIKE %s
-            AND YEAR({fecha_expr}) = %s
+            AND EXTRACT(YEAR FROM {fecha_expr}) = %s
             {moneda_sql}
         ORDER BY {fecha_expr} DESC
     """
@@ -720,11 +720,11 @@ def get_comparacion_articulo_anios_monedas(anios: List[int], articulos: List[str
     cols = []
     for y in anios:
         cols.append(
-            f"""SUM(CASE WHEN YEAR({fecha_expr}) = {y} AND {mon_expr} = '$'
+            f"""SUM(CASE WHEN EXTRACT(YEAR FROM {fecha_expr}) = {y} AND {mon_expr} = '$'
                  THEN {total_pesos} ELSE 0 END) AS {y}_$"""
         )
         cols.append(
-            f"""SUM(CASE WHEN YEAR({fecha_expr}) = {y} AND {mon_expr} = 'U$S'
+            f"""SUM(CASE WHEN EXTRACT(YEAR FROM {fecha_expr}) = {y} AND {mon_expr} = 'U$S'
                  THEN {total_usd} ELSE 0 END) AS {y}_USD"""
         )
 
@@ -739,7 +739,7 @@ def get_comparacion_articulo_anios_monedas(anios: List[int], articulos: List[str
         FROM chatbot
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-            AND YEAR({fecha_expr}) IN ({", ".join(str(y) for y in anios)})
+            AND EXTRACT(YEAR FROM {fecha_expr}) IN ({", ".join(str(y) for y in anios)})
             {art_where}
         GROUP BY Articulo
         ORDER BY {order_sql}
@@ -758,18 +758,18 @@ def get_compras_por_mes_excel(mes_key: str) -> pd.DataFrame:
     query = f"""
         SELECT
             tipo_comprobante AS Tipo_Comprobante,
-            `N Factura` AS Nro_Comprobante,
+            nro_comprobante AS Nro_Comprobante,
             Proveedor AS Cliente_Proveedor,
             Familia,
             Tipo Articulo AS Tipo_Articulo,
             Articulo,
-            DATE_FORMAT(COALESCE(STR_TO_DATE(fecha, '%%Y-%%m-%%d'), STR_TO_DATE(fecha, '%%d/%%m/%%Y')), '%%d/%%m/%%Y') AS Fecha,
+            TO_CHAR(COALESCE(TO_DATE(fecha, 'YYYY-MM-DD'), TO_DATE(fecha, 'DD/MM/YYYY')), 'DD/MM/YYYY') AS Fecha,
             cantidad AS Cantidad,
             {total_expr} AS Monto_Neto
         FROM chatbot
         WHERE TRIM(Mes) = %s
         ORDER BY
-            COALESCE(STR_TO_DATE(fecha, '%%Y-%%m-%%d'), STR_TO_DATE(fecha, '%%d/%%m/%%Y')) DESC,
+            COALESCE(TO_DATE(fecha, 'YYYY-MM-DD'), TO_DATE(fecha, 'DD/MM/YYYY')) DESC,
             Proveedor,
             Articulo
     """
@@ -785,8 +785,8 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
         SELECT
             Proveedor,
             Articulo,
-            `N Factura` AS Nro_Factura,
-            DATE_FORMAT({fecha_expr}, '%%d/%%m/%%Y') AS Fecha,
+            nro_comprobante AS Nro_Factura,
+            TO_CHAR({fecha_expr}, 'DD/MM/YYYY') AS Fecha,
             cantidad AS Cantidad,
             {total_expr} AS Total
         FROM chatbot
@@ -809,8 +809,8 @@ def get_detalle_compras_articulo_mes(articulo_like: str, mes_key: str) -> pd.Dat
         SELECT
             Proveedor,
             Articulo,
-            `N Factura` AS Nro_Factura,
-            DATE_FORMAT({fecha_expr}, '%%d/%%m/%%Y') AS Fecha,
+            nro_comprobante AS Nro_Factura,
+            TO_CHAR({fecha_expr}, 'DD/MM/YYYY') AS Fecha,
             cantidad AS Cantidad,
             Moneda,
             {total_expr} AS Total
@@ -839,17 +839,17 @@ def get_comparacion_articulo_anios(anios: List[int], articulo_like: str) -> pd.D
     cols = []
     for y in anios:
         cols.append(
-            f"""SUM(CASE WHEN YEAR({fecha_expr}) = {y} AND {mon_expr} = '$'
-                 THEN {total_pesos} ELSE 0 END) AS `{y}_$`"""
+            f"""SUM(CASE WHEN EXTRACT(YEAR FROM {fecha_expr}) = {y} AND {mon_expr} = '$'
+                 THEN {total_pesos} ELSE 0 END) AS {y}_$"""
         )
         cols.append(
-            f"""SUM(CASE WHEN YEAR({fecha_expr}) = {y} AND {mon_expr} = 'U$S'
-                 THEN {total_usd} ELSE 0 END) AS `{y}_USD`"""
+            f"""SUM(CASE WHEN EXTRACT(YEAR FROM {fecha_expr}) = {y} AND {mon_expr} = 'U$S'
+                 THEN {total_usd} ELSE 0 END) AS {y}_USD"""
         )
 
     cols_sql = ",\n            ".join(cols)
     y_last = anios[-1]
-    order_sql = f"`{y_last}_$` DESC, `{y_last}_USD` DESC"
+    order_sql = f"{y_last}_$ DESC, {y_last}_USD DESC"
 
     query = f"""
         SELECT
@@ -858,7 +858,7 @@ def get_comparacion_articulo_anios(anios: List[int], articulo_like: str) -> pd.D
         FROM chatbot
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-            AND YEAR({fecha_expr}) IN ({", ".join(str(y) for y in anios)})
+            AND EXTRACT(YEAR FROM {fecha_expr}) IN ({", ".join(str(y) for y in anios)})
             AND LOWER(Articulo) LIKE %s
         GROUP BY Articulo
         ORDER BY {order_sql}
@@ -877,15 +877,15 @@ def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int) -> pd.Dat
         SELECT
             Proveedor,
             Articulo,
-            `N Factura` AS Nro_Factura,
-            DATE_FORMAT({fecha_expr}, '%%d/%%m/%%Y') AS Fecha,
+            nro_comprobante AS Nro_Factura,
+            TO_CHAR({fecha_expr}, 'DD/MM/YYYY') AS Fecha,
             cantidad AS Cantidad,
             {total_expr} AS Total
         FROM chatbot
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
             AND LOWER(Proveedor) LIKE %s
-            AND YEAR({fecha_expr}) = %s
+            AND EXTRACT(YEAR FROM {fecha_expr}) = %s
         ORDER BY {fecha_expr} DESC
         LIMIT 2000
     """
@@ -917,17 +917,17 @@ def get_detalle_compras_proveedor_anios(anios: List[int], proveedores: List[str]
     query = f"""
         SELECT
             Proveedor,
-            YEAR({fecha_expr}) AS Anio,
+            EXTRACT(YEAR FROM {fecha_expr}) AS Anio,
             {mon_expr} AS Moneda,
             Articulo,
-            `N Factura` AS Nro_Factura,
-            DATE_FORMAT({fecha_expr}, '%%d/%%m/%%Y') AS Fecha,
+            nro_comprobante AS Nro_Factura,
+            TO_CHAR({fecha_expr}, 'DD/MM/YYYY') AS Fecha,
             cantidad AS Cantidad,
             {total_expr} AS Total
         FROM chatbot
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-            AND YEAR({fecha_expr}) IN ({anios_ph})
+            AND EXTRACT(YEAR FROM {fecha_expr}) IN ({anios_ph})
             {prov_where}
         ORDER BY {fecha_expr} DESC
         LIMIT 500
@@ -948,7 +948,7 @@ def get_total_compras_proveedor_anio(proveedor_like: str, anio: int) -> dict:
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
             AND LOWER(Proveedor) LIKE %s
-            AND YEAR({fecha_expr}) = %s
+            AND EXTRACT(YEAR FROM {fecha_expr}) = %s
     """
     df = ejecutar_consulta(query, (f"%{proveedor_like.lower()}%", anio))
     if df is not None and not df.empty:
@@ -1015,7 +1015,7 @@ def get_gastos_secciones_detalle(familias, mes_key):
                             '(', '-'),
                         ')', ''),
                     '$', '')
-                AS DECIMAL(15,2))
+                AS NUMERIC(15,2))
             ) AS Total
         FROM chatbot
         WHERE
@@ -1065,8 +1065,8 @@ def get_gastos_secciones_detalle_completo(familias, mes_key):
         SELECT
             Articulo,
             Familia,
-            `Tipo Articulo` AS Tipo_Articulo,
-            `N Factura` AS Nro_Comprobante,
+            Tipo Articulo AS Tipo_Articulo,
+            nro_comprobante AS Nro_Comprobante,
             cantidad AS Cantidad,
             {total_expr} AS Monto
         FROM chatbot
@@ -1181,7 +1181,7 @@ def get_gastos_todas_familias_anio(anio: int) -> pd.DataFrame:
             SUM(CASE WHEN {mon_expr} = '$' THEN {total_pesos} ELSE 0 END) as Total_Pesos,
             SUM(CASE WHEN {mon_expr} = 'U$S' THEN {total_usd} ELSE 0 END) as Total_USD
         FROM chatbot
-        WHERE YEAR({fecha_expr}) = %s
+        WHERE EXTRACT(YEAR FROM {fecha_expr}) = %s
           AND (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
           AND (
               LOWER(TRIM(COALESCE(Familia, ''))) IN ('servicio citometro', 'servicio citómetro')
@@ -1245,7 +1245,7 @@ def get_detalle_compras(where_clause: str, params: tuple) -> pd.DataFrame:
             Proveedor,
             Familia,
             Articulo,
-            `N Factura` as NumFactura,
+            nro_comprobante as NumFactura,
             fecha as Fecha,
             cantidad as Cantidad,
             Total
@@ -1283,7 +1283,7 @@ def get_ultima_factura_inteligente(patron: str) -> pd.DataFrame:
             Proveedor,
             Articulo,
             cantidad,
-            `N Factura` AS nro_factura,
+            nro_comprobante AS nro_factura,
             {total_expr} AS total_linea,
             fecha
         FROM chatbot
@@ -1318,11 +1318,11 @@ def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] 
     cols = []
     for y in anios:
         cols.append(
-            f"""SUM(CASE WHEN YEAR({fecha_expr}) = {y} AND {mon_expr} = '$'
+            f"""SUM(CASE WHEN EXTRACT(YEAR FROM {fecha_expr}) = {y} AND {mon_expr} = '$'
                  THEN {total_pesos} ELSE 0 END) AS {y}_$"""
         )
         cols.append(
-            f"""SUM(CASE WHEN YEAR({fecha_expr}) = {y} AND {mon_expr} = 'U$S'
+            f"""SUM(CASE WHEN EXTRACT(YEAR FROM {fecha_expr}) = {y} AND {mon_expr} = 'U$S'
                  THEN {total_usd} ELSE 0 END) AS {y}_USD"""
         )
 
@@ -1337,7 +1337,7 @@ def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] 
         FROM chatbot
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-            AND YEAR({fecha_expr}) IN ({", ".join(str(y) for y in anios)})
+            AND EXTRACT(YEAR FROM {fecha_expr}) IN ({", ".join(str(y) for y in anios)})
             AND (
                 LOWER(TRIM(COALESCE(Familia, ''))) IN ('servicio citometro', 'servicio citómetro')
                 OR (
@@ -1432,8 +1432,8 @@ def buscar_comprobantes(proveedor=None, tipo_comprobante=None, articulo=None,
     sql = f"""
         SELECT 
             tipo_comprobante AS Tipo,
-            `N Factura` AS Nro_Factura,
-            DATE_FORMAT({fecha_expr}, '%%d/%%m/%%Y') AS Fecha,
+            nro_comprobante AS Nro_Factura,
+            TO_CHAR({fecha_expr}, 'DD/MM/YYYY') AS Fecha,
             Proveedor,
             Articulo,
             Familia,
@@ -1477,7 +1477,7 @@ def buscar_comprobantes(proveedor=None, tipo_comprobante=None, articulo=None,
     # Búsqueda por texto libre
     if texto_busqueda and texto_busqueda.strip():
         sql += """ AND (
-            `N Factura` LIKE %s 
+            nro_comprobante LIKE %s 
             OR LOWER(Articulo) LIKE LOWER(%s)
             OR LOWER(Proveedor) LIKE LOWER(%s)
         )"""
@@ -1611,7 +1611,7 @@ def buscar_stock_por_lote(articulo=None, lote=None, familia=None, deposito=None,
         texto = f"%{texto_busqueda.strip()}%"
         params.extend([texto, texto, texto])
     
-    sql += " ORDER BY STR_TO_DATE(VENCIMIENTO, '%d/%m/%Y') ASC LIMIT 200"
+    sql += " ORDER BY TO_DATE(VENCIMIENTO, '%d/%m/%Y') ASC LIMIT 200"
     
     # DEBUG
     print(f"DEBUG SQL STOCK: {sql}")
@@ -1644,7 +1644,7 @@ def get_stock_total():
     sql = f"""
         SELECT 
             COUNT(*) AS Registros,
-            SUM(CAST(REPLACE(STOCK, ',', '.') AS DECIMAL(15,2))) AS Stock_Total
+            SUM(CAST(REPLACE(STOCK, ',', '.') AS NUMERIC(15,2))) AS Stock_Total
         FROM stock
         WHERE {filtro}
     """
@@ -1658,7 +1658,7 @@ def get_stock_por_familia():
         SELECT 
             FAMILIA,
             COUNT(*) AS Articulos,
-            SUM(CAST(REPLACE(STOCK, ',', '.') AS DECIMAL(15,2))) AS Stock_Total
+            SUM(CAST(REPLACE(STOCK, ',', '.') AS NUMERIC(15,2))) AS Stock_Total
         FROM stock
         WHERE {filtro}
         GROUP BY FAMILIA
@@ -1674,7 +1674,7 @@ def get_stock_por_deposito():
         SELECT 
             DEPOSITO,
             COUNT(*) AS Articulos,
-            SUM(CAST(REPLACE(STOCK, ',', '.') AS DECIMAL(15,2))) AS Stock_Total
+            SUM(CAST(REPLACE(STOCK, ',', '.') AS NUMERIC(15,2))) AS Stock_Total
         FROM stock
         WHERE {filtro}
         GROUP BY DEPOSITO
@@ -1698,7 +1698,7 @@ def get_stock_articulo(patron_articulo: str):
         FROM stock
         WHERE {filtro}
           AND LOWER(ARTICULO) LIKE LOWER(%s)
-        ORDER BY STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') ASC
+        ORDER BY TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') ASC
         LIMIT 50
     """
     return ejecutar_consulta(sql, (f"%{patron_articulo}%",))
@@ -1716,13 +1716,13 @@ def get_lotes_por_vencer(dias: int = 90):
             LOTE,
             VENCIMIENTO,
             STOCK,
-            DATEDIFF(STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y'), CURDATE()) AS Dias_Para_Vencer
+            DATEDIFF(TO_DATE(VENCIMIENTO, 'DD/MM/YYYY'), CURDATE()) AS Dias_Para_Vencer
         FROM stock
         WHERE {filtro}
-          AND STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') IS NOT NULL
-          AND STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') >= CURDATE()
-          AND STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') <= DATE_ADD(CURDATE(), INTERVAL %s DAY)
-        ORDER BY STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') ASC
+          AND TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') IS NOT NULL
+          AND TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') >= CURDATE()
+          AND TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') <= DATE_ADD(CURDATE(), INTERVAL %s DAY)
+        ORDER BY TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') ASC
         LIMIT 100
     """
     return ejecutar_consulta(sql, (dias,))
@@ -1737,13 +1737,13 @@ def get_alerta_proximo_vencimiento():
             LOTE,
             VENCIMIENTO,
             STOCK,
-            DATEDIFF(STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y'), CURDATE()) AS Dias_Para_Vencer
+            DATEDIFF(TO_DATE(VENCIMIENTO, 'DD/MM/YYYY'), CURDATE()) AS Dias_Para_Vencer
         FROM stock
         WHERE {filtro}
-          AND STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') IS NOT NULL
-          AND STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') >= CURDATE()
-          AND CAST(REPLACE(STOCK, ',', '.') AS DECIMAL(15,2)) > 0
-        ORDER BY STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') ASC
+          AND TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') IS NOT NULL
+          AND TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') >= CURDATE()
+          AND CAST(REPLACE(STOCK, ',', '.') AS NUMERIC(15,2)) > 0
+        ORDER BY TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') ASC
         LIMIT 1
     """
     df = ejecutar_consulta(sql)
@@ -1768,14 +1768,14 @@ def get_alertas_vencimiento_multiple(limite: int = 10):
             LOTE,
             VENCIMIENTO,
             STOCK,
-            DATEDIFF(STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y'), CURDATE()) AS Dias_Para_Vencer
+            DATEDIFF(TO_DATE(VENCIMIENTO, 'DD/MM/YYYY'), CURDATE()) AS Dias_Para_Vencer
         FROM stock
         WHERE {filtro}
-          AND STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') IS NOT NULL
-          AND STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') >= CURDATE()
-          AND STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') <= DATE_ADD(CURDATE(), INTERVAL 60 DAY)
-          AND CAST(REPLACE(STOCK, ',', '.') AS DECIMAL(15,2)) > 0
-        ORDER BY STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') ASC
+          AND TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') IS NOT NULL
+          AND TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') >= CURDATE()
+          AND TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') <= DATE_ADD(CURDATE(), INTERVAL 60 DAY)
+          AND CAST(REPLACE(STOCK, ',', '.') AS NUMERIC(15,2)) > 0
+        ORDER BY TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') ASC
         LIMIT %s
     """
     df = ejecutar_consulta(sql, (limite,))
@@ -1804,12 +1804,12 @@ def get_lotes_vencidos():
             LOTE,
             VENCIMIENTO,
             STOCK,
-            DATEDIFF(CURDATE(), STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y')) AS Dias_Vencido
+            DATEDIFF(CURDATE(), TO_DATE(VENCIMIENTO, 'DD/MM/YYYY')) AS Dias_Vencido
         FROM stock
         WHERE {filtro}
-          AND STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') IS NOT NULL
-          AND STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') < CURDATE()
-        ORDER BY STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') DESC
+          AND TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') IS NOT NULL
+          AND TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') < CURDATE()
+        ORDER BY TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') DESC
         LIMIT 100
     """
     return ejecutar_consulta(sql)
@@ -1829,9 +1829,9 @@ def get_stock_bajo(limite: int = 10):
             STOCK
         FROM stock
         WHERE {filtro}
-          AND CAST(REPLACE(STOCK, ',', '.') AS DECIMAL(15,2)) <= %s
-          AND CAST(REPLACE(STOCK, ',', '.') AS DECIMAL(15,2)) > 0
-        ORDER BY CAST(REPLACE(STOCK, ',', '.') AS DECIMAL(15,2)) ASC
+          AND CAST(REPLACE(STOCK, ',', '.') AS NUMERIC(15,2)) <= %s
+          AND CAST(REPLACE(STOCK, ',', '.') AS NUMERIC(15,2)) > 0
+        ORDER BY CAST(REPLACE(STOCK, ',', '.') AS NUMERIC(15,2)) ASC
         LIMIT 100
     """
     return ejecutar_consulta(sql, (limite,))
@@ -1852,7 +1852,7 @@ def get_stock_lote_especifico(lote: str):
         FROM stock
         WHERE {filtro}
           AND TRIM(LOTE) LIKE %s
-        ORDER BY STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') ASC
+        ORDER BY TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') ASC
     """
     return ejecutar_consulta(sql, (f"%{lote}%",))
 
@@ -1872,7 +1872,7 @@ def get_stock_familia(familia: str):
         FROM stock
         WHERE {filtro}
           AND UPPER(TRIM(FAMILIA)) = UPPER(%s)
-        ORDER BY ARTICULO, STR_TO_DATE(VENCIMIENTO, '%%d/%%m/%%Y') ASC
+        ORDER BY ARTICULO, TO_DATE(VENCIMIENTO, 'DD/MM/YYYY') ASC
         LIMIT 100
     """
     return ejecutar_consulta(sql, (familia,))
@@ -1889,8 +1889,8 @@ def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
     
     query = f"""
         SELECT 
-            MONTH({fecha_expr}) AS Mes_Num,
-            CASE MONTH({fecha_expr})
+            EXTRACT(MONTH FROM {fecha_expr}) AS Mes_Num,
+            CASE EXTRACT(MONTH FROM {fecha_expr})
                 WHEN 1 THEN 'Ene'
                 WHEN 2 THEN 'Feb'
                 WHEN 3 THEN 'Mar'
@@ -1906,10 +1906,10 @@ def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
             END AS Mes,
             SUM({total_expr}) AS Total
         FROM chatbot
-        WHERE YEAR({fecha_expr}) = %s
+        WHERE EXTRACT(YEAR FROM {fecha_expr}) = %s
           AND (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-        GROUP BY MONTH({fecha_expr})
-        ORDER BY MONTH({fecha_expr})
+        GROUP BY EXTRACT(MONTH FROM {fecha_expr})
+        ORDER BY EXTRACT(MONTH FROM {fecha_expr})
     """
     return ejecutar_consulta(query, (anio,))
 
@@ -1926,12 +1926,12 @@ def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: st
 
     # --- FILTRO AÑO ---
     if anio:
-        where_fecha += f" AND YEAR({fecha_expr}) = %s"
+        where_fecha += f" AND EXTRACT(YEAR FROM {fecha_expr}) = %s"
         params.append(anio)
 
     # --- FILTRO MES (YYYY-MM) ---
     if mes:
-        where_fecha += f" AND DATE_FORMAT({fecha_expr}, '%%Y-%%m') = %s"
+        where_fecha += f" AND TO_CHAR({fecha_expr}, 'YYYY-MM') = %s"
         params.append(mes)
 
     # =========================
@@ -1945,7 +1945,7 @@ def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: st
                 Proveedor,
                 '$' AS Moneda,
                 SUM({total_expr}) AS Total,
-                COUNT(DISTINCT `N Factura`) AS Facturas
+                COUNT(DISTINCT nro_comprobante) AS Facturas
             FROM chatbot
             WHERE
                 (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
@@ -1969,7 +1969,7 @@ def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: st
                 Proveedor,
                 'U$S' AS Moneda,
                 SUM({total_expr}) AS Total,
-                COUNT(DISTINCT `N Factura`) AS Facturas
+                COUNT(DISTINCT nro_comprobante) AS Facturas
             FROM chatbot
             WHERE
                 (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
@@ -1999,7 +1999,7 @@ def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: st
                     ELSE 0
                 END
             ) AS Total,
-            COUNT(DISTINCT `N Factura`) AS Facturas
+            COUNT(DISTINCT nro_comprobante) AS Facturas
         FROM chatbot
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
@@ -2037,9 +2037,9 @@ def get_dashboard_top_proveedores(anio: int, limite: int = 10, moneda: str = "$"
             Proveedor,
             '{label_m}' AS Moneda,
             SUM({total_expr}) AS Total,
-            COUNT(DISTINCT `N Factura`) AS Cantidad_Facturas
+            COUNT(DISTINCT nro_comprobante) AS Cantidad_Facturas
         FROM chatbot
-        WHERE YEAR({fecha_expr}) = %s
+        WHERE EXTRACT(YEAR FROM {fecha_expr}) = %s
           AND (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
           AND Proveedor IS NOT NULL
           AND {moneda_where}
@@ -2060,7 +2060,7 @@ def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
             COALESCE(Familia, 'SIN FAMILIA') AS Familia,
             SUM({total_expr}) AS Total
         FROM chatbot
-        WHERE YEAR({fecha_expr}) = %s
+        WHERE EXTRACT(YEAR FROM {fecha_expr}) = %s
           AND (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
         GROUP BY Familia
         HAVING SUM({total_expr}) > 0
@@ -2082,9 +2082,9 @@ def get_dashboard_totales(anio: int) -> dict:
             SUM(CASE WHEN {mon_expr} = '$' THEN {total_pesos} ELSE 0 END) AS Total_Pesos,
             SUM(CASE WHEN {mon_expr} = 'U$S' THEN {total_usd} ELSE 0 END) AS Total_USD,
             COUNT(DISTINCT Proveedor) AS Proveedores,
-            COUNT(DISTINCT `N Factura`) AS Facturas
+            COUNT(DISTINCT nro_comprobante) AS Facturas
         FROM chatbot
-        WHERE YEAR({fecha_expr}) = %s
+        WHERE EXTRACT(YEAR FROM {fecha_expr}) = %s
           AND (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
     """
     df = ejecutar_consulta(query, (anio,))
@@ -2106,7 +2106,7 @@ def get_dashboard_ultimas_compras(limite: int = 5) -> pd.DataFrame:
     
     query = f"""
         SELECT 
-            DATE_FORMAT({fecha_expr}, '%%d/%%m/%%Y') AS Fecha,
+            TO_CHAR({fecha_expr}, 'DD/MM/YYYY') AS Fecha,
             Proveedor,
             Articulo,
             {total_expr} AS Total
@@ -2134,15 +2134,15 @@ def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: int
         SELECT
             Proveedor,
             Articulo,
-            `N Factura` AS Nro_Factura,
-            DATE_FORMAT({fecha_expr}, '%%d/%%m/%%Y') AS Fecha,
+            nro_comprobante AS Nro_Factura,
+            TO_CHAR({fecha_expr}, 'DD/MM/YYYY') AS Fecha,
             cantidad AS Cantidad,
             Moneda,
             {total_expr} AS Total
         FROM chatbot
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-            AND YEAR({fecha_expr}) = %s
+            AND EXTRACT(YEAR FROM {fecha_expr}) = %s
             AND LOWER(Articulo) LIKE %s
         ORDER BY {fecha_expr} DESC
         LIMIT {int(limite)}
@@ -2178,7 +2178,7 @@ def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
         FROM chatbot
         WHERE
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-            AND YEAR({fecha_expr}) = %s
+            AND EXTRACT(YEAR FROM {fecha_expr}) = %s
             AND LOWER(Articulo) LIKE %s
     """
 
