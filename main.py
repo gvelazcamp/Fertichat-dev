@@ -11,6 +11,21 @@ import io
 import plotly.express as px
 import plotly.graph_objects as go
 
+import os
+from supabase import create_client
+
+url = os.getenv("SUPABASE_URL")
+key = os.getenv("SUPABASE_KEY")
+
+print("URL:", url)
+print("KEY CARGADA:", key is not None)
+
+supabase = create_client(url, key)
+
+# PRUEBA: cambiá "tu_tabla" por una tabla real que exista en Supabase
+resp = supabase.table("tu_tabla").select("*").limit(1).execute()
+print(resp.data)
+
 # =====================================================================
 # 🔐 SISTEMA DE AUTENTICACIÓN
 # =====================================================================
