@@ -1,6 +1,8 @@
 # =========================
 # SQL QUERIES - SOLO CONSULTAS
 # =========================
+import os
+import psycopg2
 import pymysql
 import pandas as pd
 from typing import List, Tuple, Optional
