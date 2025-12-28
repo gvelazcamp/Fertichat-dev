@@ -2924,6 +2924,17 @@ def main():
     )
 
     # =========================
+    # DEBUG VISIBLE - QUÉ BUSCÓ LA APP
+    # =========================
+    with st.sidebar:
+        st.markdown("### 🐞 Debug – Última búsqueda")
+
+        if "debug" in st.session_state:
+            st.json(st.session_state.debug)
+        else:
+            st.info("Todavía no se ejecutó ninguna búsqueda")
+
+    # =========================
     # TARJETAS SEGÚN MENÚ (SE RENDERIZAN ARRIBA)
     # =========================
     if menu == "🛒 Compras IA":
