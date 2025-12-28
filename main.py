@@ -2689,13 +2689,14 @@ def _get_totales_anio(anio: int) -> dict:
     # DEBUG - ÚLTIMA CONSULTA
     # =========================
     st.session_state.debug = {
-        "pregunta": pregunta,
+        "pregunta": "total compras por año",
         "proveedor": None,
         "mes": None,
         "anio": anio,
         "sql": query,
         "params": (anio,)
     }
+
 
     df = ejecutar_consulta(query, (anio,))
     if df is None or df.empty:
