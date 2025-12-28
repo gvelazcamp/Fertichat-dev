@@ -1562,3 +1562,11 @@ def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
             "total": float(tot) if pd.notna(tot) else 0.0
         }
     return {"registros": 0, "total": 0.0}
+
+# =========================
+# ALIASES / COMPATIBILIDAD
+# =========================
+# Ejemplo: si main importa get_stock_familia pero en sql_queries quedó como get_stock_por_familia
+def get_stock_familia(*args, **kwargs):
+    return get_stock_por_familia(*args, **kwargs)
+
