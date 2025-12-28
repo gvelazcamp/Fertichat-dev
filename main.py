@@ -42,8 +42,7 @@ from intent_detector import (
 
 # OpenAI
 from openai import OpenAI
- OpenAI
-
+ 
 
 # =====================================================================
 # HELPER PARA EXPORTAR A EXCEL
