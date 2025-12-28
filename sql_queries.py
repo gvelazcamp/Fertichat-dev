@@ -268,8 +268,9 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
     """Detalle de compras de un proveedor en un mes específico."""
     
     proveedor_like = (proveedor_like or "").strip().lower()
+    total_expr = _sql_total_num_expr_general()
     
-    sql = """
+    sql = f"""
         SELECT 
             TRIM("Cliente / Proveedor") AS Proveedor,
             TRIM("Articulo") AS Articulo,
@@ -277,30 +278,16 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
             "Fecha",
             "Cantidad",
             "Moneda",
-            "Monto Neto" AS Total
+            {total_expr} AS Total
         FROM chatbot_raw 
         WHERE LOWER("Cliente / Proveedor") LIKE %s
           AND "Mes" = %s
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT 200
+        LIMIT 100
     """
     
-    params = (f"%{proveedor_like}%", mes_key)
-    
-    # Usar pd.read_sql_query directamente (como cuando funcionó)
-    try:
-        conn = get_db_connection()
-        if conn is None:
-            return pd.DataFrame()
-        
-        df = pd.read_sql_query(sql, conn, params=params)
-        conn.close()
-        return df
-        
-    except Exception as e:
-        print(f"Error: {e}")
-        return pd.DataFrame()
+    return ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
 
 
 # =====================================================================
