@@ -2685,6 +2685,23 @@ def _get_totales_anio(anio: int) -> dict:
             (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
             AND YEAR({fecha_expr}) = %s
     """
+    # =========================
+    # DEBUG - ÚLTIMA CONSULTA
+    # =========================
+    st.session_state.debug = {
+        "pregunta": pregunta,
+        "proveedor": None,
+        "mes": None,
+        "anio": anio,
+        "sql": query,
+        "params": (anio,)
+    }
+
+    df = ejecutar_consulta(query, (anio,))
+    if df is None or df.empty:
+        return {"pesos": 0.0, "usd": 0.0}
+
+    
     df = ejecutar_consulta(query, (anio,))
     if df is None or df.empty:
         return {"pesos": 0.0, "usd": 0.0}
