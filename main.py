@@ -39,6 +39,7 @@ from sql_queries import (
     get_facturas_de_articulo,
     get_total_compras_articulo_anio,
     get_detalle_compras_articulo_anio,
+    get_detalle_compras_proveedor_mes,  
     get_stock_familia
 )
 
