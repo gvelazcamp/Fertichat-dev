@@ -30,6 +30,7 @@ init_db()
 
 from sql_queries import (
     # ... tus imports actuales ...
+    get_lista_tipos_comprobante,
     get_lista_proveedores,
     get_lista_tipos_comprobante,
     get_lista_articulos,
