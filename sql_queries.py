@@ -16,7 +16,7 @@ import streamlit as st
 # =====================================================================
 
 def get_db_connection():
-    """Conexión a Postgres (Supabase) usando Secrets/Env vars."""
+    """Conexión a Postgres (Supabase) usando Secrets/Env vars - CON DEBUG."""
     try:
         host = st.secrets.get("DB_HOST", os.getenv("DB_HOST"))
         port = st.secrets.get("DB_PORT", os.getenv("DB_PORT", "5432"))
@@ -24,7 +24,15 @@ def get_db_connection():
         user = st.secrets.get("DB_USER", os.getenv("DB_USER"))
         password = st.secrets.get("DB_PASSWORD", os.getenv("DB_PASSWORD"))
 
+        # 🔍 DEBUG - Ver qué valores tiene
+        st.info(f"🔍 HOST: {host}")
+        st.info(f"🔍 PORT: {port}")
+        st.info(f"🔍 DBNAME: {dbname}")
+        st.info(f"🔍 USER: {user}")
+        st.info(f"🔍 PASS: {'****' if password else 'NONE'}")
+
         if not host or not user or not password:
+            st.error("❌ Faltan credenciales de DB")
             return None
 
         conn = psycopg2.connect(
@@ -36,11 +44,14 @@ def get_db_connection():
             sslmode="require",
             cursor_factory=RealDictCursor
         )
+        
+        st.success("✅ Conexión establecida")
         return conn
         
     except Exception as e:
-        print(f"Error de conexión: {e}")
+        st.error(f"❌ Error de conexión: {e}")
         return None
+
 
 # =====================================================================
 # TABLAS + COLUMNAS REALES (según tu screenshot en Supabase)
@@ -851,29 +862,47 @@ def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int, moneda: s
 # =========================
 
 def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.DataFrame:
-    """Detalle de compras de un proveedor en un mes específico."""
+    """Detalle de compras de un proveedor en un mes específico - CON DEBUG"""
     
     proveedor_like = (proveedor_like or "").strip().lower()
-    total_expr = _sql_total_num_expr_general()
     
-    sql = f"""
+    sql = """
         SELECT 
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Articulo") AS Articulo,
-            TRIM("Nro. Comprobante") AS Nro_Factura,
-            "Fecha",
-            "Cantidad",
-            "Moneda",
-            {total_expr} AS Total
+            "Cliente / Proveedor" AS Proveedor,
+            "Articulo",
+            "Mes",
+            "Año",
+            "Monto Neto" AS Total
         FROM chatbot_raw 
         WHERE LOWER("Cliente / Proveedor") LIKE %s
           AND "Mes" = %s
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-        ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT 100
+        LIMIT 50
     """
     
-    return ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
+    params = (f"%{proveedor_like}%", mes_key)
+    
+    # 🔍 DEBUG
+    st.warning(f"🔍 SQL: {sql}")
+    st.warning(f"🔍 PARAMS: {params}")
+    
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            st.error("❌ CONEXIÓN ES NONE")
+            return pd.DataFrame()
+        
+        st.success("✅ Conexión OK")
+        
+        df = pd.read_sql_query(sql, conn, params=params)
+        
+        st.success(f"✅ Consulta ejecutada - Filas: {len(df)}")
+        
+        conn.close()
+        return df
+        
+    except Exception as e:
+        st.error(f"❌ ERROR: {e}")
+        return pd.DataFrame()
 
 
 # =========================
