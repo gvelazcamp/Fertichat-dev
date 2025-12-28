@@ -1634,3 +1634,30 @@ def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
 def get_stock_familia(*args, **kwargs):
     return get_stock_por_familia(*args, **kwargs)
 
+# =========================
+# DETALLE COMPRAS: PROVEEDOR + MES
+# =========================
+def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.DataFrame:
+    """Detalle de compras de un proveedor en un mes específico."""
+    fecha_expr = _sql_fecha_expr()
+    total_expr = _sql_total_num_expr_general()
+    mes_col = _sql_mes_col()
+
+    proveedor_like = (proveedor_like or "").split("(")[0].strip().lower()
+
+    sql = f"""
+        SELECT
+            TRIM({COL_PROV}) AS Proveedor,
+            TRIM({COL_ART}) AS Articulo,
+            TRIM({COL_NRO_COMP}) AS Nro_Factura,
+            TO_CHAR({fecha_expr}, 'DD/MM/YYYY') AS Fecha,
+            {COL_CANT} AS Cantidad,
+            {COL_MONEDA} AS Moneda,
+            {total_expr} AS Total
+        FROM {TABLE_COMPRAS}
+        WHERE ({COL_TIPO_COMP} = 'Compra Contado' OR {COL_TIPO_COMP} LIKE 'Compra%%')
+          AND LOWER(TRIM({COL_PROV})) LIKE %s
+          AND {mes_col} = %s
+        ORDER BY {fecha_expr} DESC NULLS LAST
+    """
+    return ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
