@@ -1638,11 +1638,11 @@ def get_stock_familia(*args, **kwargs):
 # DETALLE COMPRAS: PROVEEDOR + MES
 # =========================
 def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.DataFrame:
-    """Detalle de compras de un proveedor en un mes específico - VERSIÓN DIRECTA"""
+    """Detalle de compras de un proveedor en un mes específico - CON DEBUG"""
+    import streamlit as st
     
     proveedor_like = (proveedor_like or "").strip().lower()
     
-    # SQL EXACTO que funciona en Supabase
     sql = """
         SELECT 
             "Cliente / Proveedor" AS Proveedor,
@@ -1656,4 +1656,27 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
         LIMIT 50
     """
     
-    return ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
+    params = (f"%{proveedor_like}%", mes_key)
+    
+    # 🔍 DEBUG
+    st.warning(f"🔍 SQL: {sql}")
+    st.warning(f"🔍 PARAMS: {params}")
+    
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            st.error("❌ CONEXIÓN ES NONE")
+            return pd.DataFrame()
+        
+        st.success("✅ Conexión OK")
+        
+        df = pd.read_sql_query(sql, conn, params=params)
+        
+        st.success(f"✅ Consulta ejecutada - Filas: {len(df)}")
+        
+        conn.close()
+        return df
+        
+    except Exception as e:
+        st.error(f"❌ ERROR: {e}")
+        return pd.DataFrame()
