@@ -989,7 +989,6 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
 
         return "📦 Compras por mes:", formatear_dataframe(df)
 
-# --- PRIORIDAD 8: DETALLE COMPRAS PROVEEDOR + MES ---
     # --- PRIORIDAD 8: DETALLE COMPRAS PROVEEDOR + MES ---
     elif tipo == 'detalle_compras_proveedor_mes':
         mes_key = params.get('mes_key')
@@ -997,7 +996,21 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
 
         df = get_detalle_compras_proveedor_mes(proveedor_like, mes_key)
 
+        # 🔍 DEBUG - VER QUÉ HAY EN EL DATAFRAME
+        st.write("🔍 DEBUG DataFrame:")
+        st.write(f"Columnas: {list(df.columns)}")
+        st.write("Primeras 3 filas:")
+        st.write(df.head(3))
+
         if df.empty:
+            titulo, df2, resp2 = fallback_openai_sql(
+                pregunta,
+                "No encontró detalle proveedor + mes"
+            )
+            if df2 is not None and not df2.empty:
+                return f"📋 {resp2 or titulo}", formatear_dataframe(df2)
+            return "No encontré compras para ese proveedor y mes.", None
+
             titulo, df2, resp2 = fallback_openai_sql(
                 pregunta,
                 "No encontró detalle proveedor + mes"
