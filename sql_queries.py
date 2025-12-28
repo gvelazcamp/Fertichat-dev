@@ -269,7 +269,6 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
     
     proveedor_like = (proveedor_like or "").strip().lower()
     
-    # SQL SIMPLE - sin conversión compleja
     sql = """
         SELECT 
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -287,7 +286,21 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
         LIMIT 200
     """
     
-    return ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
+    params = (f"%{proveedor_like}%", mes_key)
+    
+    # Usar pd.read_sql_query directamente (como cuando funcionó)
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return pd.DataFrame()
+        
+        df = pd.read_sql_query(sql, conn, params=params)
+        conn.close()
+        return df
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        return pd.DataFrame()
 
 
 # =====================================================================
