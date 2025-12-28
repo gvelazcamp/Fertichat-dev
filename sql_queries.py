@@ -862,47 +862,29 @@ def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int, moneda: s
 # =========================
 
 def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.DataFrame:
-    """Detalle de compras de un proveedor en un mes específico - CON DEBUG"""
+    """Detalle de compras de un proveedor en un mes específico."""
     
     proveedor_like = (proveedor_like or "").strip().lower()
+    total_expr = _sql_total_num_expr_general()
     
-    sql = """
+    sql = f"""
         SELECT 
-            "Cliente / Proveedor" AS Proveedor,
-            "Articulo",
-            "Mes",
-            "Año",
-            "Monto Neto" AS Total
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            TRIM("Nro. Comprobante") AS Nro_Factura,
+            "Fecha",
+            "Cantidad",
+            "Moneda",
+            {total_expr} AS Total
         FROM chatbot_raw 
         WHERE LOWER("Cliente / Proveedor") LIKE %s
           AND "Mes" = %s
-        LIMIT 50
+          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+        ORDER BY "Fecha" DESC NULLS LAST
+        LIMIT 100
     """
     
-    params = (f"%{proveedor_like}%", mes_key)
-    
-    # 🔍 DEBUG
-    st.warning(f"🔍 SQL: {sql}")
-    st.warning(f"🔍 PARAMS: {params}")
-    
-    try:
-        conn = get_db_connection()
-        if conn is None:
-            st.error("❌ CONEXIÓN ES NONE")
-            return pd.DataFrame()
-        
-        st.success("✅ Conexión OK")
-        
-        df = pd.read_sql_query(sql, conn, params=params)
-        
-        st.success(f"✅ Consulta ejecutada - Filas: {len(df)}")
-        
-        conn.close()
-        return df
-        
-    except Exception as e:
-        st.error(f"❌ ERROR: {e}")
-        return pd.DataFrame()
+    return ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
 
 
 # =========================
