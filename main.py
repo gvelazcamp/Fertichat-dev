@@ -994,6 +994,9 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         mes_key = params.get('mes_key')
         proveedor_like = params.get('proveedor_like')
 
+    # DEBUG TEMPORAL
+    st.write(f"🔍 DEBUG: mes_key = '{mes_key}', proveedor = '{proveedor_like}'")
+
         df = get_detalle_compras_proveedor_mes(proveedor_like, mes_key)
         if df.empty:
             titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró detalle proveedor + mes")
