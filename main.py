@@ -32,6 +32,34 @@ from login_page import (
 # Inicializar base de datos de usuarios
 init_db()
 
+# ======================================================
+# 🔔 CAMPANITA GLOBAL DE PEDIDOS INTERNOS
+# ======================================================
+from pedidos import contar_notificaciones_no_leidas
+
+user = st.session_state.get("user", {})
+usuario_actual = user.get("usuario", user.get("email", ""))
+
+if usuario_actual:
+    cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
+
+    col_notif, col_space = st.columns([1, 9])
+
+    with col_notif:
+        if cant_pendientes > 0:
+            if st.button(
+                f"🔔 {cant_pendientes}",
+                key="campanita_global",
+                help="Tenés pedidos internos pendientes"
+            ):
+                st.session_state["menu_principal"] = "📥 Pedidos Internos"
+                st.session_state["ver_notificaciones"] = True
+                st.rerun()
+        else:
+            st.markdown("🔔")
+
+    st.markdown("---")
+
 
 # =========================
 # IMPORTS DE SQL_QUERIES
