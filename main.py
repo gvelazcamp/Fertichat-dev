@@ -3002,9 +3002,6 @@ def inject_css_responsive():
         unsafe_allow_html=True
     )
 
-# Llamalo una vez, al inicio del main()
-inject_css_responsive()
-
 
 
 # =====================================================================
@@ -3017,15 +3014,18 @@ def main():
         layout="wide"
     )
 
+    # ✅ Llamalo una vez, al inicio del main()
+    inject_css_responsive()
+
     # =====================================================================
     # 🔐 VERIFICAR AUTENTICACIÓN
     # =====================================================================
     if not require_auth():
         st.stop()  # Detiene la ejecución si no está autenticado
-    
+
     # Si llegó acá, el usuario está autenticado
     user = get_current_user()
-    
+
     # =====================================================================
     # 🚪 SIDEBAR CON INFO DE USUARIO Y LOGOUT
     # =====================================================================
@@ -3043,19 +3043,20 @@ def main():
                 <div style='font-size: 12px; text-align: center; opacity: 0.8;'>Sistema de Gestión</div>
             </div>
         """, unsafe_allow_html=True)
-        
+
         st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
         if user.get('empresa'):
             st.markdown(f"🏢 {user.get('empresa')}")
         st.markdown(f"📧 _{user.get('email', '')}_")
-        
+
         st.markdown("---")
-        
+
         if st.button("🚪 Cerrar sesión", use_container_width=True, type="secondary"):
             logout()
             st.rerun()
-        
+
         st.markdown("---")
+
     # =========================
     # RENDER TABLA (MODO CELULAR)
     # =========================
@@ -3156,9 +3157,6 @@ def main():
     st.title("🛒 Compras IA")
     st.markdown("*Integrado con OpenAI*")
 
-    # ⛔ NO LLAMAR mostrar_resumen_compras_rotativo() ACÁ
-    # porque ya se muestra arriba en header_slot
-
     if 'historial' not in st.session_state:
         st.session_state.historial = []
 
@@ -3233,17 +3231,17 @@ def main():
     if st.session_state.get('ejecutar_sugerencia'):
         sugerencia = st.session_state.get('sugerencia_pendiente', '')
         pregunta_orig = st.session_state.get('pregunta_original', '')
-        
+
         # Limpiar estado
         st.session_state['ejecutar_sugerencia'] = False
         st.session_state['sugerencia_pendiente'] = None
         st.session_state['mostrar_sugerencia'] = False
         st.session_state['pregunta_original'] = None
-        
+
         if sugerencia:
             with st.spinner("🧠 Ejecutando..."):
                 respuesta, df = procesar_pregunta_router(sugerencia)
-                
+
                 # Comparación de FAMILIAS con tabs de moneda
                 if respuesta == "__COMPARACION_FAMILIA_TABS__" and 'comparacion_familia_tabs' in st.session_state:
                     tabs_data = st.session_state['comparacion_familia_tabs']
@@ -3255,7 +3253,7 @@ def main():
                         'es_comparacion_familia': True,
                         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })
-                
+
                 # Comparación de PROVEEDORES con tabs resumen/detalle
                 elif respuesta == "__COMPARACION_TABS__" and 'comparacion_tabs' in st.session_state:
                     tabs_data = st.session_state['comparacion_tabs']
@@ -3276,26 +3274,32 @@ def main():
                         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })
 
+                # ✅ RENDER INMEDIATO (texto + tabla modo celular)
+                if respuesta and respuesta not in ["__MOSTRAR_SUGERENCIA__", "__COMPARACION_TABS__", "__COMPARACION_FAMILIA_TABS__"]:
+                    st.markdown("**Respuesta:**")
+                    st.markdown(respuesta)
+                    mostrar_detalle_df(df, titulo="📄 Ver detalle de compras", key=f"curr_sug_{len(st.session_state.historial)}")
+
     # =========================================================================
     # PROCESAR NUEVA PREGUNTA
     # =========================================================================
     mostrar_sugerencia_ahora = False  # Flag para controlar rerun
-    
+
     if enviar and pregunta:
         # Limpiar sugerencia anterior
         st.session_state['mostrar_sugerencia'] = False
-        
+
         with st.spinner("🧠 Procesando..."):
             respuesta, df = procesar_pregunta_router(pregunta)
-            
+
             # Caso especial: Mostrar sugerencia con botones
             if respuesta == "__MOSTRAR_SUGERENCIA__":
                 print(f"🎯 Entrando a __MOSTRAR_SUGERENCIA__ para: {pregunta}")
                 resultado = obtener_sugerencia_ejecutable(pregunta)
-                
+
                 # Debug: mostrar qué devolvió la IA
                 print(f"🤖 IA devolvió: {resultado}")
-                
+
                 if resultado and resultado.get('sugerencia'):
                     print(f"✅ Sugerencia encontrada: {resultado.get('sugerencia')}")
                     st.session_state['mostrar_sugerencia'] = True
@@ -3315,7 +3319,7 @@ def main():
                         'es_comparacion': False,
                         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })
-            
+
             # Manejar comparación de FAMILIAS con tabs de moneda
             elif respuesta == "__COMPARACION_FAMILIA_TABS__" and 'comparacion_familia_tabs' in st.session_state:
                 tabs_data = st.session_state['comparacion_familia_tabs']
@@ -3327,7 +3331,7 @@ def main():
                     'es_comparacion_familia': True,
                     'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 })
-            
+
             # Manejar comparación con tabs
             elif respuesta == "__COMPARACION_TABS__" and 'comparacion_tabs' in st.session_state:
                 tabs_data = st.session_state['comparacion_tabs']
@@ -3348,35 +3352,41 @@ def main():
                     'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 })
 
+                # ✅ RENDER INMEDIATO (texto + tabla modo celular)
+                if respuesta and respuesta not in ["__MOSTRAR_SUGERENCIA__", "__COMPARACION_TABS__", "__COMPARACION_FAMILIA_TABS__"]:
+                    st.markdown("**Respuesta:**")
+                    st.markdown(respuesta)
+                    mostrar_detalle_df(df, titulo="📄 Ver detalle de compras", key=f"curr_{len(st.session_state.historial)}")
+
     # Hacer rerun DESPUÉS del spinner si hay sugerencia pendiente
     if mostrar_sugerencia_ahora:
         print(f"🔄 Haciendo st.rerun() porque mostrar_sugerencia_ahora=True")
         st.rerun()
-    
+
     # Mostrar sugerencia con botones (si está pendiente)
     if st.session_state.get('mostrar_sugerencia'):
         print(f"🎨 Renderizando sugerencia: {st.session_state.get('sugerencia_pendiente')}")
         sugerencia = st.session_state.get('sugerencia_pendiente', '')
         entendido = st.session_state.get('sugerencia_entendido', '')
         alternativas = st.session_state.get('sugerencia_alternativas', [])
-        
+
         if sugerencia:  # Solo mostrar si hay sugerencia válida
             st.info(f"🤔 **{entendido}**")
             st.markdown(f"**¿Quisiste decir:** `{sugerencia}`?")
-            
+
             col_si, col_no = st.columns(2)
-            
+
             with col_si:
                 if st.button("✅ Sí, ejecutar", key="btn_si_sugerencia", type="primary"):
                     st.session_state['ejecutar_sugerencia'] = True
                     st.rerun()
-            
+
             with col_no:
                 if st.button("❌ No", key="btn_no_sugerencia"):
                     st.session_state['mostrar_sugerencia'] = False
                     st.session_state['sugerencia_pendiente'] = None
                     st.rerun()
-            
+
             # Alternativas
             if alternativas:
                 st.caption("**Otras opciones:**")
@@ -3399,13 +3409,13 @@ def main():
                 expanded=(i == 0)
             ):
                 st.markdown(f"**Pregunta:** {item['pregunta']}")
-                st.markdown(f"**Respuesta:**")
+                st.markdown("**Respuesta:**")
                 st.markdown(item['respuesta'])
 
                 # Si es comparación de FAMILIA con tabs de moneda
                 if item.get('es_comparacion_familia'):
                     tab_pesos, tab_usd = st.tabs(["💵 Pesos ($)", "💰 Dólares (U$S)"])
-                    
+
                     with tab_pesos:
                         if item.get('df_pesos') is not None and not item['df_pesos'].empty:
                             st.dataframe(
@@ -3423,7 +3433,7 @@ def main():
                             )
                         else:
                             st.info("No hay datos en pesos para este período")
-                    
+
                     with tab_usd:
                         if item.get('df_usd') is not None and not item['df_usd'].empty:
                             st.dataframe(
@@ -3445,7 +3455,7 @@ def main():
                 # Si es comparación proveedor, mostrar tabs resumen/detalle
                 elif item.get('es_comparacion') and item.get('dataframe') is not None:
                     tab1, tab2 = st.tabs(["📊 Resumen", "📋 Detalle"])
-                    
+
                     with tab1:
                         st.dataframe(
                             item['dataframe'],
@@ -3461,7 +3471,7 @@ def main():
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             key=f"dl_resumen_{i}"
                         )
-                    
+
                     with tab2:
                         if item.get('dataframe_detalle') is not None and not item['dataframe_detalle'].empty:
                             st.dataframe(
@@ -3480,16 +3490,17 @@ def main():
                             )
                         else:
                             st.info("No hay detalle disponible")
-                
-                elif item['dataframe'] is not None and not item['dataframe'].empty:
-                    st.dataframe(
-                        item['dataframe'],
-                        use_container_width=True,
-                        hide_index=True
+
+                elif item.get('dataframe') is not None and not item['dataframe'].empty:
+                    # ✅ ACÁ VA LO QUE PREGUNTABAS: render tabla modo celular dentro del historial
+                    mostrar_detalle_df(
+                        item.get('dataframe'),
+                        titulo="📄 Ver tabla (detalle)",
+                        key=f"hist_{i}"
                     )
     else:
         st.info("👋 ¡Hola! Escribime cualquier cosa: un saludo, una pregunta, o una consulta de datos.")
 
-     
+
 if __name__ == "__main__":
     main()
