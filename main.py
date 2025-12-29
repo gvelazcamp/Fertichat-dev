@@ -3210,7 +3210,7 @@ def main():
     # =========================
     menu = st.radio(
         "Menú:",
-        ["🛒 Compras IA", "📦 Stock IA", "🔎 Buscador IA", "📊 Dashboard", "📈 Indicadores IA", 🧾 Pedidos Internos"],
+        ["🛒 Compras IA", "📦 Stock IA", "🔎 Buscador IA", "📊 Dashboard", "📈 Indicadores IA", "📄 Pedidos Internos"],
         horizontal=True,
         key="menu_principal"
     )
