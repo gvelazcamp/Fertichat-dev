@@ -3056,6 +3056,41 @@ def main():
             st.rerun()
         
         st.markdown("---")
+    # =========================
+    # RENDER TABLA (MODO CELULAR)
+    # =========================
+    def mostrar_detalle_df(df: pd.DataFrame, titulo: str = "📄 Ver detalle", key: str = "detalle"):
+        if df is None or df.empty:
+            return
+
+        # Renombres cortos SOLO para UI (no toca tu lógica / DB)
+        ren = {
+            "Proveedor": "Prov",
+            "Articulo": "Art",
+            "Artículo": "Art",
+            "N Factura": "Factura",
+            "Nro_Factura": "Factura",
+            "Fecha": "Fecha",
+            "Mes": "Mes",
+            "cantidad": "Cant",
+            "Cantidad": "Cant",
+            "Total": "Total",
+            "Moneda": "Mon",
+        }
+
+        df_show = df.copy()
+        df_show.rename(
+            columns={k: v for k, v in ren.items() if k in df_show.columns},
+            inplace=True
+        )
+
+        with st.expander(titulo, expanded=False):
+            st.dataframe(
+                df_show,
+                use_container_width=True,
+                height=320,        # 🔥 clave para celular
+                hide_index=True
+            )
 
     # =========================
     # HEADER DINÁMICO (ARRIBA DEL MENÚ)
