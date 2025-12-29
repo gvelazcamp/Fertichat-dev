@@ -1,11 +1,12 @@
 # =========================
-# INTENT DETECTOR - DETECCIÓN DE INTENCIONES (CORREGIDO)
+# INTENT DETECTOR - DETECCIÓN DE INTENCIONES (CORREGIDO CON STOCK)
 # =========================
 # CAMBIOS:
 # 1. Agregado "comparame", "compara", "comparar" a todas las detecciones
 # 2. Agregado "comparame" a las palabras a excluir del proveedor
 # 3. Nueva lógica para detectar "comparar mes X año1 año2"
 # 4. Mejor orden de prioridades
+# 5. ✅ NUEVO: Intenciones de STOCK agregadas
 
 import re
 import unicodedata
@@ -177,10 +178,20 @@ PALABRAS_EXCLUIR_PROVEEDOR = [
     'gracias', 'porfa', 'por', 'favor',
     # Nombres comunes a ignorar
     'che', 'me', 'podrias', 'podes', 'puedes',
+    # ✅ NUEVO: Palabras de stock a excluir
+    'stock', 'lote', 'lotes', 'vencimiento', 'vencer', 'deposito', 'depositos',
 ]
 
 # Palabras que disparan comparación
 PALABRAS_COMPARACION = ['comparar', 'comparame', 'compara', 'comparacion', 'comparaciones', 'vs', 'versus']
+
+# ✅ NUEVO: Palabras que disparan consultas de stock
+PALABRAS_STOCK = [
+    'stock', 'lote', 'lotes', 'vencimiento', 'vencer', 'vencido', 'vencidos',
+    'deposito', 'depositos', 'inventario', 'existencia', 'existencias',
+    'disponible', 'disponibles', 'cuanto hay', 'cuantos hay', 'tenemos',
+    'por vencer', 'proximo a vencer', 'proximos a vencer'
+]
 
 
 def _extraer_patron_libre(texto: str, excluir_palabras: List[str] = None) -> str:
@@ -191,224 +202,272 @@ def _extraer_patron_libre(texto: str, excluir_palabras: List[str] = None) -> str
     txt = normalizar_texto(texto)
     txt = txt.replace("última", "ultima")
     
-    # Limpiar signos de puntuación
-    txt = re.sub(r'[,;:.!?¿¡]', ' ', txt)
-
-    tokens = [t for t in re.split(r'\s+', txt)
-              if t and t not in excluir_palabras and not _es_token_mes_o_periodo(t)]
-    return " ".join(tokens).strip()
-
-
-def _extraer_nro_factura(texto: str) -> Optional[str]:
-    """Extrae número de factura (5+ dígitos)"""
-    m = re.search(r'\b\d{5,}\b', str(texto).strip())
-    if not m:
-        return None
-    return m.group(0)
+    tokens = txt.split()
+    resto = []
+    
+    for t in tokens:
+        if t not in excluir_palabras and not re.fullmatch(r'20\d{2}', t):
+            resto.append(t)
+    
+    patron = ' '.join(resto).strip()
+    
+    # Limpiar puntuación al inicio/fin
+    patron = re.sub(r'^[^\w]+|[^\w]+$', '', patron)
+    
+    return patron
 
 
 # =====================================================================
-# EXTRACCIÓN DE FECHAS Y PERÍODOS
+# ✅ NUEVO: DETECTOR DE INTENCIÓN DE STOCK
 # =====================================================================
 
-def _month_range(year: int, month: int) -> Tuple[datetime, datetime]:
-    """Retorna inicio y fin de un mes"""
-    inicio = datetime(year, month, 1, 0, 0, 0)
-    if month == 12:
-        fin = datetime(year, 12, 31, 23, 59, 59)
-    else:
-        fin = (datetime(year, month + 1, 1) - timedelta(days=1)).replace(hour=23, minute=59, second=59)
-    return inicio, fin
+def _es_consulta_stock(texto_norm: str) -> bool:
+    """Detecta si el texto es una consulta de stock"""
+    for palabra in PALABRAS_STOCK:
+        if palabra in texto_norm:
+            return True
+    return False
 
 
-def extraer_meses_para_comparacion(texto: str) -> List[Tuple[datetime, datetime, str]]:
-    """Extrae meses para comparación (soporte: nombres, YYYY-MM, typos, abreviaturas)"""
-    texto_norm = normalizar_texto(texto)
-    hoy = datetime.now()
-
-    # Diccionario COMPLETO: typos + abreviaturas → número de mes
-    meses_typos = {
-        # Enero
-        'enero': 1, 'ene': 1, 'ener': 1, 'enro': 1,
-        # Febrero  
-        'febrero': 2, 'feb': 2, 'febr': 2, 'febrer': 2, 'febreo': 2,
-        # Marzo
-        'marzo': 3, 'mar': 3, 'marz': 3, 'marso': 3,
-        # Abril
-        'abril': 4, 'abr': 4, 'abri': 4, 'abrl': 4,
-        # Mayo
-        'mayo': 5, 'may': 5, 'mallo': 5,
-        # Junio
-        'junio': 6, 'jun': 6, 'juni': 6, 'juno': 6,
-        # Julio
-        'julio': 7, 'jul': 7, 'juli': 7, 'julo': 7,
-        # Agosto
-        'agosto': 8, 'ago': 8, 'agost': 8, 'agoto': 8, 'agsoto': 8,
-        # Septiembre
-        'septiembre': 9, 'sep': 9, 'sept': 9, 'set': 9,
-        'setiembre': 9, 'septirmbre': 9, 'septiembr': 9, 'setiembr': 9,
-        # Octubre
-        'octubre': 10, 'oct': 10, 'octu': 10, 'octub': 10, 'octubr': 10, 
-        'octbre': 10, 'ocutbre': 10,
-        # Noviembre
-        'noviembre': 11, 'nov': 11, 'noviem': 11, 'noviemb': 11,
-        'novimbre': 11, 'novimbr': 11, 'novienbre': 11, 'novmbre': 11,
-        # Diciembre
-        'diciembre': 12, 'dic': 12, 'diciem': 12, 'diciemb': 12,
-        'dicimbre': 12, 'dicimbr': 12, 'dicienbre': 12, 'dicmbre': 12,
-    }
+def _detectar_intencion_stock(texto: str) -> Dict:
+    """
+    ✅ NUEVO: Detecta la intención específica para consultas de stock
+    Retorna: {'tipo': 'stock_xxx', 'parametros': {...}, 'debug': 'info'}
+    """
+    texto_lower = normalizar_texto(texto)
     
-    # Nombres bonitos para mostrar
-    nombres_bonitos = {
-        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-    }
-
-    encontrados = []
-
-    # 1) YYYY-MM
-    for m in re.finditer(r'\b(20\d{2})-(0[1-9]|1[0-2])\b', texto_norm):
-        y = int(m.group(1))
-        mo = int(m.group(2))
-        ini, fin = _month_range(y, mo)
-        encontrados.append((m.start(), ini, fin, f"{y}-{mo:02d}"))
-
-    # 2) Buscar años en el texto
-    anios_encontrados = sorted([int(x) for x in re.findall(r'\b(20\d{2})\b', texto_norm)])
+    # Lista de familias comunes (puedes expandir)
+    familias_conocidas = ['id', 'fb', 'g', 'hm', 'ur', 'bc', 'ch', 'mi', 'se', 'co']
     
-    # 3) Buscar meses (ordenar por longitud DESC para evitar que "nov" matchee antes que "noviembre")
-    meses_ordenados = sorted(meses_typos.keys(), key=len, reverse=True)
-    meses_ya_encontrados = set()  # Evitar duplicados
+    # =====================================================================
+    # LOTES POR VENCER
+    # =====================================================================
+    if any(k in texto_lower for k in ['por vencer', 'proximo a vencer', 'proximos a vencer', 'vence pronto', 'vencen pronto']):
+        # Extraer días si se especifica
+        dias = 90  # default
+        match_dias = re.search(r'(\d+)\s*dias?', texto_lower)
+        if match_dias:
+            dias = int(match_dias.group(1))
+        return {
+            'tipo': 'stock_lotes_por_vencer',
+            'parametros': {'dias': dias},
+            'debug': f'Stock: lotes por vencer en {dias} días'
+        }
     
-    for variante in meses_ordenados:
-        # Buscar con word boundary
-        pattern = rf'\b{re.escape(variante)}\b'
-        match = re.search(pattern, texto_norm)
+    # =====================================================================
+    # LOTES VENCIDOS
+    # =====================================================================
+    if any(k in texto_lower for k in ['vencido', 'vencidos', 'ya vencio', 'ya vencieron']):
+        return {
+            'tipo': 'stock_lotes_vencidos',
+            'parametros': {},
+            'debug': 'Stock: lotes vencidos'
+        }
+    
+    # =====================================================================
+    # STOCK BAJO
+    # =====================================================================
+    if any(k in texto_lower for k in ['stock bajo', 'poco stock', 'bajo stock', 'quedan pocos', 'se acaba', 'reponer', 'agotando']):
+        return {
+            'tipo': 'stock_bajo',
+            'parametros': {},
+            'debug': 'Stock: stock bajo'
+        }
+    
+    # =====================================================================
+    # BUSCAR LOTE ESPECÍFICO
+    # =====================================================================
+    match_lote = re.search(r'lote\s+([A-Za-z0-9\-]+)', texto_lower)
+    if match_lote:
+        lote = match_lote.group(1).upper()
+        return {
+            'tipo': 'stock_lote_especifico',
+            'parametros': {'lote': lote},
+            'debug': f'Stock: buscar lote {lote}'
+        }
+    
+    # =====================================================================
+    # STOCK POR FAMILIA / SECCIÓN
+    # =====================================================================
+    if any(k in texto_lower for k in ['familia', 'familias', 'seccion', 'secciones', 'por familia', 'por seccion']):
+        # Buscar si hay familia específica
+        for fam in familias_conocidas:
+            if fam in texto_lower.split():
+                return {
+                    'tipo': 'stock_familia',
+                    'parametros': {'familia': fam.upper()},
+                    'debug': f'Stock: familia {fam.upper()}'
+                }
+        return {
+            'tipo': 'stock_por_familia',
+            'parametros': {},
+            'debug': 'Stock: resumen por familias'
+        }
+    
+    # =====================================================================
+    # STOCK POR DEPÓSITO
+    # =====================================================================
+    if any(k in texto_lower for k in ['deposito', 'depositos', 'por deposito', 'ubicacion', 'almacen']):
+        return {
+            'tipo': 'stock_por_deposito',
+            'parametros': {},
+            'debug': 'Stock: resumen por depósito'
+        }
+    
+    # =====================================================================
+    # STOCK DE ARTÍCULO ESPECÍFICO
+    # =====================================================================
+    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuantos hay', 'tenemos', 'disponible', 'hay']):
+        # Extraer artículo (todo lo que no sea palabra clave)
+        palabras_excluir = ['stock', 'cuanto', 'cuantos', 'hay', 'de', 'del', 'tenemos', 'disponible', 
+                           'el', 'la', 'los', 'las', 'que', 'en', 'total', 'resumen']
+        tokens = texto_lower.split()
+        articulo_tokens = [t for t in tokens if t not in palabras_excluir]
+        articulo = ' '.join(articulo_tokens).strip()
         
+        if articulo and len(articulo) > 1:
+            return {
+                'tipo': 'stock_articulo',
+                'parametros': {'articulo': articulo},
+                'debug': f'Stock: artículo {articulo}'
+            }
+    
+    # =====================================================================
+    # STOCK TOTAL (fallback)
+    # =====================================================================
+    if any(k in texto_lower for k in ['stock total', 'todo el stock', 'resumen stock', 'stock general', 'inventario total']):
+        return {
+            'tipo': 'stock_total',
+            'parametros': {},
+            'debug': 'Stock: resumen total'
+        }
+    
+    # =====================================================================
+    # BÚSQUEDA GENERAL DE STOCK
+    # =====================================================================
+    # Si llegó acá y tiene palabra de stock, buscar como artículo
+    articulo = _extraer_patron_libre(texto, PALABRAS_EXCLUIR_PROVEEDOR)
+    if articulo:
+        return {
+            'tipo': 'stock_articulo',
+            'parametros': {'articulo': articulo},
+            'debug': f'Stock: búsqueda general {articulo}'
+        }
+    
+    # Fallback: stock total
+    return {
+        'tipo': 'stock_total',
+        'parametros': {},
+        'debug': 'Stock: total (fallback)'
+    }
+
+
+# =====================================================================
+# HELPERS ADICIONALES (del archivo original)
+# =====================================================================
+
+def _extraer_nro_factura(texto: str) -> str:
+    """Extrae número de factura del texto"""
+    texto_norm = normalizar_texto(texto)
+    
+    # Patrones de número de factura
+    patrones = [
+        r'(?:factura|nro|numero|n°|#)\s*[:\s]*([A-Za-z]?\s*\d{5,8})',
+        r'\b([A-Za-z]\s*\d{7,8})\b',
+        r'\b(\d{5,8})\b'
+    ]
+    
+    for patron in patrones:
+        match = re.search(patron, texto_norm)
         if match:
-            num_mes = meses_typos[variante]
-            
-            # Si ya encontramos este mes, saltar
-            if num_mes in meses_ya_encontrados:
-                continue
-            meses_ya_encontrados.add(num_mes)
-            
-            nombre = nombres_bonitos[num_mes]
-            pos = match.start()
-            
-            # Si hay múltiples años, crear entrada para cada año
-            if len(anios_encontrados) >= 2:
-                for anio in anios_encontrados:
-                    ini, fin = _month_range(anio, num_mes)
-                    encontrados.append((pos, ini, fin, f"{nombre} {anio}"))
-            elif len(anios_encontrados) == 1:
-                ini, fin = _month_range(anios_encontrados[0], num_mes)
-                encontrados.append((pos, ini, fin, f"{nombre} {anios_encontrados[0]}"))
-            else:
-                # Sin año → usar año actual
-                ini, fin = _month_range(hoy.year, num_mes)
-                encontrados.append((pos, ini, fin, nombre))
-
-    # 4) "este mes" y "mes pasado"
-    for m in re.finditer(r'\beste mes\b', texto_norm):
-        ini, fin = _month_range(hoy.year, hoy.month)
-        encontrados.append((m.start(), ini, fin, "Este mes"))
-
-    for m in re.finditer(r'\bmes pasado\b', texto_norm):
-        if hoy.month == 1:
-            ini, fin = _month_range(hoy.year - 1, 12)
-        else:
-            ini, fin = _month_range(hoy.year, hoy.month - 1)
-        encontrados.append((m.start(), ini, fin, "Mes pasado"))
-
-    # Ordenar por posición y eliminar duplicados
-    encontrados.sort(key=lambda x: x[0])
-
-    salida = []
-    vistos = set()
-    for _, ini, fin, label in encontrados:
-        key = (ini.date(), fin.date())
-        if key in vistos:
-            continue
-        vistos.add(key)
-        salida.append((ini, fin, label))
-
-    return salida
+            return match.group(1).replace(' ', '').upper()
+    
+    return ""
 
 
 def extraer_anios(texto: str) -> List[int]:
-    """Extrae años (20xx) del texto"""
-    txt = normalizar_texto(texto or "")
-    anios = sorted({int(x) for x in re.findall(r"\b(20\d{2})\b", txt)})
-
-    if not anios:
-        hoy = datetime.now()
-        anios = [hoy.year - 2, hoy.year - 1, hoy.year]
-    return anios
+    """Extrae años del texto"""
+    anios = re.findall(r'\b(20\d{2})\b', texto)
+    return sorted(set(int(a) for a in anios))
 
 
 def _extraer_mes_key(texto: str) -> Optional[str]:
-    """Extrae mes en formato YYYY-MM"""
-    txt = normalizar_texto(texto)
-
-    # 1) YYYY-MM directo
-    m = re.search(r'\b(20\d{2})-(0[1-9]|1[0-2])\b', txt)
-    if m:
-        return f"{m.group(1)}-{m.group(2)}"
-
-    # 2) Nombre de mes + año opcional
+    """Extrae mes_key en formato YYYY-MM"""
+    texto_norm = normalizar_texto(texto)
+    
     meses_map = {
-        'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
-        'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
-        'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+        'enero': 1, 'ene': 1,
+        'febrero': 2, 'feb': 2,
+        'marzo': 3, 'mar': 3,
+        'abril': 4, 'abr': 4,
+        'mayo': 5, 'may': 5,
+        'junio': 6, 'jun': 6,
+        'julio': 7, 'jul': 7,
+        'agosto': 8, 'ago': 8,
+        'septiembre': 9, 'sep': 9, 'sept': 9, 'set': 9,
+        'octubre': 10, 'oct': 10,
+        'noviembre': 11, 'nov': 11,
+        'diciembre': 12, 'dic': 12
     }
-
-    for mn, num in meses_map.items():
-        if mn in txt:
-            y = datetime.now().year
-            my = re.search(r'\b(20\d{2})\b', txt)
-            if my:
-                y = int(my.group(1))
-            return f"{y}-{num:02d}"
-
+    
+    anio = None
+    mes = None
+    
+    # Buscar año
+    match_anio = re.search(r'\b(20\d{2})\b', texto_norm)
+    if match_anio:
+        anio = int(match_anio.group(1))
+    
+    # Buscar mes
+    for mes_nombre, mes_num in meses_map.items():
+        if mes_nombre in texto_norm:
+            mes = mes_num
+            break
+    
+    if mes:
+        if not anio:
+            anio = datetime.now().year
+        return f"{anio}-{mes:02d}"
+    
     return None
 
 
-def _extraer_mes_keys_multiples(texto: str) -> List[str]:
-    """Extrae múltiples períodos YYYY-MM"""
-    txt = normalizar_texto(texto)
+def extraer_meses_para_comparacion(texto: str) -> List[Tuple[int, int, str]]:
+    """
+    Extrae meses con su año para comparaciones.
+    Retorna lista de tuplas (año, mes_numero, mes_key)
+    """
+    texto_norm = normalizar_texto(texto)
     hoy = datetime.now()
-
+    
     meses_map = {
-        'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
-        'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
-        'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+        'enero': 1, 'ene': 1,
+        'febrero': 2, 'feb': 2,
+        'marzo': 3, 'mar': 3,
+        'abril': 4, 'abr': 4,
+        'mayo': 5, 'may': 5,
+        'junio': 6, 'jun': 6,
+        'julio': 7, 'jul': 7,
+        'agosto': 8, 'ago': 8,
+        'septiembre': 9, 'sep': 9, 'sept': 9, 'set': 9,
+        'octubre': 10, 'oct': 10,
+        'noviembre': 11, 'nov': 11,
+        'diciembre': 12, 'dic': 12
     }
-
-    encontrados = []
-
-    # 1) YYYY-MM
-    for m in re.finditer(r'\b(20\d{2})-(0[1-9]|1[0-2])\b', txt):
-        encontrados.append(f"{m.group(1)}-{m.group(2)}")
-
-    # 2) Nombres de meses
-    patron = r'\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b(?:\s*(20\d{2}))?'
-    for m in re.finditer(patron, txt):
-        mes_nombre = m.group(1)
-        anio_txt = m.group(2)
-        y = int(anio_txt) if anio_txt else hoy.year
-        mo = meses_map[mes_nombre]
-        encontrados.append(f"{y}-{mo:02d}")
-
-    seen = set()
-    out = []
-    for k in encontrados:
-        if k not in seen:
-            seen.add(k)
-            out.append(k)
-
-    return out
+    
+    resultados = []
+    
+    # Buscar patrones "mes año" o "mes de año"
+    for mes_nombre, mes_num in meses_map.items():
+        patron = rf'{mes_nombre}\s*(?:de\s*)?(\d{{4}})?'
+        matches = re.finditer(patron, texto_norm)
+        for match in matches:
+            anio_str = match.group(1)
+            anio = int(anio_str) if anio_str else hoy.year
+            mes_key = f"{anio}-{mes_num:02d}"
+            resultados.append((anio, mes_num, mes_key))
+    
+    return resultados
 
 
 def _extraer_lista_familias(texto: str) -> List[str]:
@@ -459,8 +518,14 @@ def _extraer_proveedor_limpio(texto: str) -> str:
     return _extraer_patron_libre(texto, PALABRAS_EXCLUIR_PROVEEDOR)
 
 
+def _extraer_mes_keys_multiples(texto: str) -> List[str]:
+    """Extrae múltiples mes_key del texto"""
+    meses = extraer_meses_para_comparacion(texto)
+    return [m[2] for m in meses]
+
+
 # =====================================================================
-# DETECTOR DE INTENCIÓN PRINCIPAL CON ORDEN DE PRIORIDAD (CORREGIDO)
+# DETECTOR DE INTENCIÓN PRINCIPAL CON ORDEN DE PRIORIDAD (CORREGIDO + STOCK)
 # =====================================================================
 
 def detectar_intencion(texto: str) -> Dict:
@@ -472,22 +537,21 @@ def detectar_intencion(texto: str) -> Dict:
     - Comparaciones tienen MAYOR prioridad
     - "comparame", "compara" ahora se detectan
     - Mejor limpieza del proveedor
+    - ✅ NUEVO: Intenciones de STOCK agregadas
     """
     
     texto_norm = normalizar_texto(texto).replace("última", "ultima")
     intencion = {'tipo': 'consulta_general', 'parametros': {}, 'debug': ''}
 
     # =====================================================================
+    # ✅ PRIORIDAD 0: CONSULTAS DE STOCK (NUEVA)
+    # =====================================================================
+    if _es_consulta_stock(texto_norm):
+        return _detectar_intencion_stock(texto)
+
+    # =====================================================================
     # 🏆 PRIORIDAD X: TOP PROVEEDORES (COMPRAS IA) - DETECCIÓN FLEXIBLE
     # =====================================================================
-    # Detecta variantes como:
-    # - "top 10 proveedores"
-    # - "top proveedores noviembre 2025"
-    # - "ranking proveedores 2025"
-    # - "mayores proveedores noviembre"
-    # - "principales proveedores 2025"
-    # - "proveedores con mayor gasto noviembre 2025"
-    
     palabras_top = ['top', 'ranking', 'mayores', 'principales', 'mayor gasto', 'mas compramos', 'mas gastamos']
     tiene_top = any(p in texto_norm for p in palabras_top)
     tiene_proveedores = 'proveedor' in texto_norm or 'proveedores' in texto_norm
@@ -571,7 +635,7 @@ def detectar_intencion(texto: str) -> Dict:
     # =====================================================================
     # PRIORIDAD 6: GASTOS SECCIONES / FAMILIAS (solo si NO es comparación)
     # =====================================================================
-    tiene_gastos = any(k in texto_norm for k in ['gastos', 'gasto', 'gastado', 'gastamos', 'importes', 'importe', 'cuanto gasto', 'cuánto gasto', 'cuanto fue', 'cuánto fue'])
+    tiene_gastos = any(k in texto_norm for k in ['gastos', 'gasto', 'gastado', 'gastamos', 'importes', 'importe', 'cuanto gasto', 'cuanto fue'])
     tiene_familia = any(k in texto_norm for k in ['familia', 'familias', 'seccion', 'secciones'])
     
     # ⚠️ NO matchear si es comparación (eso va a PRIORIDAD 7)
@@ -594,85 +658,59 @@ def detectar_intencion(texto: str) -> Dict:
         
         # Detectar si es comparación de FAMILIAS/GASTOS
         es_familia = any(x in texto_norm for x in ['familia', 'familias', 'seccion', 'secciones'])
-        tiene_gastos = any(x in texto_norm for x in ['gastos', 'gasto', 'gastado'])
+        tiene_gastos_comp = any(x in texto_norm for x in ['gastos', 'gasto', 'gastado'])
         
         # Detectar moneda
         moneda = None
         if any(m in texto_norm for m in ['dolares', 'dolar', 'usd', 'u$s']):
             moneda = 'U$S'
-        elif any(m in texto_norm for m in ['pesos']):
+        elif any(m in texto_norm for m in ['pesos', '$']):
             moneda = '$'
-        
-        # =====================================================================
-        # CASO A: COMPARAR FAMILIAS/GASTOS POR AÑOS
-        # Ej: "comparar gastos familias 2023 2024", "comparar familias 2023 2024 pesos"
-        # =====================================================================
-        if (es_familia or tiene_gastos) and len(set(anios)) >= 2 and not proveedores:
-            intencion['tipo'] = 'comparar_familia_anios_monedas'
-            intencion['parametros']['anios'] = sorted(list(set(anios)))
+
+        # --- COMPARACIÓN POR AÑOS ---
+        if len(anios) >= 2:
+            intencion['parametros']['anios'] = anios
+            
             if moneda:
                 intencion['parametros']['moneda'] = moneda
-            intencion['debug'] = f'Match: comparar familias años {sorted(anios)} moneda={moneda}'
-            return intencion
-        
-        # =====================================================================
-        # CASO B: COMPARAR FAMILIAS/GASTOS POR MESES
-        # Ej: "comparar gastos familias junio julio", "comparar familias junio julio pesos"
-        # =====================================================================
-        if (es_familia or tiene_gastos) and len(meses) >= 2 and not proveedores:
-            intencion['tipo'] = 'comparar_familia_meses'
-            intencion['parametros']['meses'] = meses
-            if moneda:
-                intencion['parametros']['moneda'] = moneda
-            intencion['debug'] = f'Match: comparar familias meses {[m[2] for m in meses]} moneda={moneda}'
-            return intencion
-        
-        # =====================================================================
-        # CASO C: Comparar PROVEEDOR - mismo mes en diferentes años
-        # Ej: "comparame compras roche noviembre 2023 2024"
-        # =====================================================================
-        if len(anios) >= 2 and len(meses) >= 2:
-            intencion['tipo'] = 'comparar_proveedor_meses'
-            intencion['parametros']['meses'] = meses
-            intencion['parametros']['proveedores'] = proveedores
-            if moneda:
-                intencion['parametros']['moneda'] = moneda
-            intencion['debug'] = f'Match: comparar {proveedores} meses {[m[2] for m in meses]}'
-            return intencion
-        
-        # =====================================================================
-        # CASO D: Comparar PROVEEDOR por años completos
-        # Ej: "comparar roche 2023 2024"
-        # =====================================================================
-        if len(set(anios)) >= 2:
-            intencion['tipo'] = 'comparar_proveedor_anios_monedas'
-            intencion['parametros']['anios'] = sorted(list(set(anios)))
-            intencion['parametros']['proveedores'] = proveedores
-            if moneda:
-                intencion['parametros']['moneda'] = moneda
-            intencion['debug'] = f'Match: comparar proveedor {proveedores} años {sorted(anios)}'
-            return intencion
-        
-        # =====================================================================
-        # CASO E: Comparar meses diferentes del mismo año
-        # Ej: "comparar junio julio 2025"
-        # =====================================================================
-        if len(meses) >= 2:
-            # Comparar artículo
-            if 'articulo' in texto_norm:
-                intencion['tipo'] = 'comparar_articulo_meses'
-                intencion['debug'] = f'Match: comparar artículo meses {[m[2] for m in meses]}'
+            
+            # Familia
+            if es_familia or tiene_gastos_comp:
+                intencion['tipo'] = 'comparar_familia_anios'
+                intencion['debug'] = f'Match: comparar familia años {anios}'
                 return intencion
             
-            # Comparar proveedor (si hay proveedor detectado)
-            if 'proveedor' in texto_norm or proveedores:
-                intencion['tipo'] = 'comparar_proveedor_meses'
+            # Proveedor
+            if proveedores:
                 intencion['parametros']['proveedores'] = proveedores
+                intencion['tipo'] = 'comparar_proveedor_anios'
+                intencion['debug'] = f'Match: comparar proveedor {proveedores} años {anios}'
+                return intencion
+            
+            # Artículo
+            articulo = _extraer_proveedor_limpio(texto)
+            if articulo:
+                intencion['parametros']['articulo_like'] = articulo
+                intencion['tipo'] = 'comparar_articulo_anios'
+                intencion['debug'] = f'Match: comparar artículo {articulo} años {anios}'
+                return intencion
+
+        # --- COMPARACIÓN POR MESES ---
+        if len(meses) >= 2:
+            intencion['parametros']['meses'] = [m[2] for m in meses]
+            
+            if moneda:
+                intencion['parametros']['moneda'] = moneda
+            
+            # Proveedor
+            if proveedores:
+                intencion['parametros']['proveedores'] = proveedores
+                intencion['tipo'] = 'comparar_proveedor_meses'
                 intencion['debug'] = f'Match: comparar proveedor meses {[m[2] for m in meses]}'
                 return intencion
             
             # Comparar familia (si tiene palabras de familia/gastos)
-            if es_familia or tiene_gastos:
+            if es_familia or tiene_gastos_comp:
                 intencion['tipo'] = 'comparar_familia_meses'
                 intencion['debug'] = f'Match: comparar familia meses {[m[2] for m in meses]}'
                 return intencion
@@ -683,13 +721,8 @@ def detectar_intencion(texto: str) -> Dict:
             intencion['debug'] = f'Match: comparar (default) meses {[m[2] for m in meses]}'
             return intencion
         
-        # =====================================================================
-        # FALLBACK: Es comparación pero no pude extraer parámetros
-        # → Pasar a IA para que interprete (typos, lenguaje natural, etc.)
-        # =====================================================================
-        # Si llegó acá es porque detectó "comparar/comparame/etc" pero no pudo
-        # extraer meses ni años suficientes (posible typo como "novimbr")
-        intencion['tipo'] = 'consulta_general'  # Forzar que vaya a IA
+        # Fallback comparación
+        intencion['tipo'] = 'consulta_general'
         intencion['debug'] = 'Comparación detectada pero sin parámetros suficientes → IA'
         return intencion
 
@@ -717,18 +750,14 @@ def detectar_intencion(texto: str) -> Dict:
             prov = _extraer_proveedor_limpio(texto)
             articulos = extraer_valores_multiples(texto, 'articulo')
 
-            # -------------------------------------------------
-            # 🔥 DESAMBIGUACIÓN: términos que son ARTÍCULO (no proveedor)
-            # -------------------------------------------------
+            # DESAMBIGUACIÓN: términos que son ARTÍCULO (no proveedor)
             if (not articulos) and prov:
                 prov_norm = (prov or "").strip().lower()
                 if prov_norm in {"vitek"}:
                     articulos = [prov]
                     prov = None
 
-            # -------------------------------------------------
-            # 🔹 ARTÍCULO + MES
-            # -------------------------------------------------
+            # ARTÍCULO + MES
             if mes_key and articulos:
                 intencion['tipo'] = 'detalle_compras_articulo_mes'
                 intencion['parametros']['mes_key'] = mes_key
@@ -736,9 +765,7 @@ def detectar_intencion(texto: str) -> Dict:
                 intencion['debug'] = f"Match: detalle compras artículo {articulos[0]} en {mes_key}"
                 return intencion
 
-            # -------------------------------------------------
-            # 🔹 PROVEEDOR + MES
-            # -------------------------------------------------
+            # PROVEEDOR + MES
             if mes_key and prov:
                 intencion['tipo'] = 'detalle_compras_proveedor_mes'
                 intencion['parametros']['mes_key'] = mes_key
@@ -746,14 +773,10 @@ def detectar_intencion(texto: str) -> Dict:
                 intencion['debug'] = f"Match: detalle compras {prov} en {mes_key}"
                 return intencion
 
-            # -------------------------------------------------
-            # 🔹 AÑO EXPLÍCITO (solo si el usuario lo escribió)
-            # -------------------------------------------------
+            # AÑO EXPLÍCITO
             anios = sorted({int(y) for y in re.findall(r"\b(20\d{2})\b", texto_norm)})
 
-            # -------------------------------------------------
-            # 🔹 ARTÍCULO + 2+ AÑOS → COMPARACIÓN
-            # -------------------------------------------------
+            # ARTÍCULO + 2+ AÑOS → COMPARACIÓN
             if len(anios) >= 2 and articulos:
                 intencion['tipo'] = 'comparar_articulo_anios'
                 intencion['parametros']['anios'] = anios
@@ -761,9 +784,7 @@ def detectar_intencion(texto: str) -> Dict:
                 intencion['debug'] = f"Match: comparar artículo {articulos[0]} en años {anios}"
                 return intencion
 
-            # -------------------------------------------------
-            # 🔹 ARTÍCULO + 1 AÑO
-            # -------------------------------------------------
+            # ARTÍCULO + 1 AÑO
             if anios and articulos:
                 intencion['tipo'] = 'detalle_compras_articulo_anio'
                 intencion['parametros']['anio'] = anios[0]
@@ -771,9 +792,7 @@ def detectar_intencion(texto: str) -> Dict:
                 intencion['debug'] = f"Match: detalle compras artículo {articulos[0]} en año {anios[0]}"
                 return intencion
 
-            # -------------------------------------------------
-            # 🔹 PROVEEDOR + AÑO
-            # -------------------------------------------------
+            # PROVEEDOR + AÑO
             if anios and prov:
                 intencion['tipo'] = 'detalle_compras_proveedor_anio'
                 intencion['parametros']['anio'] = anios[0]
