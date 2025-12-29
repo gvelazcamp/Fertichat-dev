@@ -3250,7 +3250,7 @@ def main():
             "🔎 Buscador IA",
             "📊 Dashboard",
             "📈 Indicadores IA",
-            "📄 Pedidos Internos"
+            "📄 Pedidos Internos",
             "📉 Baja de Stock"
         ],
         horizontal=True,
