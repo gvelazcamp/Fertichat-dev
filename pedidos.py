@@ -415,22 +415,25 @@ def mostrar_pedidos_internos():
 
     st.markdown("---")
 
-    # -----------------------------------------------------
-    # Tabs principales
-    # -----------------------------------------------------
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "✍️ Escribir pedido",
-        "✅ Seleccionar productos",
-        "📤 Subir Excel",
-        "📋 Mis pedidos"
-    ])
+    # =========================================================================
+    # TABS
+    # =========================================================================
 
-    # -----------------------------------------------------
-    # Si viene desde campanita → avisar y enfocar Mis pedidos
-    # -----------------------------------------------------
+    ir_a_mis_pedidos = st.session_state.pop("ir_a_mis_pedidos", False)
+
     if ir_a_mis_pedidos:
-        with tab4:
-            st.info("📌 Tenés pedidos internos pendientes de revisión")
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "📋 Mis pedidos"
+        ])
+        tab_mis_pedidos = tab1
+    else:
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "✍️ Escribir pedido",
+            "✅ Seleccionar productos",
+            "📤 Subir Excel",
+            "📋 Mis pedidos"
+        ])
+        tab_mis_pedidos = tab4
 
     # =========================================================================
     # TAB 1: ESCRIBIR PEDIDO
@@ -716,6 +719,7 @@ def mostrar_pedidos_internos():
                                     st.error(msg)
         else:
             st.info("No hay pedidos registrados")
+
 
 
 
