@@ -3257,8 +3257,8 @@ def main():
     elif menu == "📈 Indicadores IA":
         mostrar_indicadores_ia()
         return
-
-    elif menu == "📥 Pedidos":
+    
+    elif menu == "📄 Pedidos Internos":
         from pedidos import mostrar_pedidos_internos
         mostrar_pedidos_internos()
         return
