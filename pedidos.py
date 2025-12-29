@@ -511,14 +511,15 @@ def mostrar_pedidos_internos():
             if "productos_seleccionados" not in st.session_state:
                 st.session_state.productos_seleccionados = {}
 
-            for _, row in df_articulos.head(50).iterrows():
+            for idx, row in enumerate(df_articulos.head(50).iterrows()):
+                _, row = row
                 codigo = str(row.get("codigo", ""))
                 articulo = str(row.get("articulo", ""))
 
                 col1, col2, col3 = st.columns([0.5, 3, 1])
 
-                key_chk = f"chk_{codigo}"
-                key_qty = f"qty_{codigo}"
+                key_chk = f"chk_{seccion_codigo2}_{idx}"
+                key_qty = f"qty_{seccion_codigo2}_{idx}"
 
                 with col1:
                     seleccionado = st.checkbox("", key=key_chk)
@@ -719,6 +720,7 @@ def mostrar_pedidos_internos():
                                     st.error(msg)
         else:
             st.info("No hay pedidos registrados")
+
 
 
 
