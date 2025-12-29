@@ -1766,7 +1766,80 @@ def ejecutar_consulta_buscador(intencion: str, proveedor: str, articulo: str,
         
         # Si no hay artículo específico, usar buscar_comprobantes
         return None, None  # Indica que use la búsqueda normal
+
+                                    def buscar_comprobantes(
+    proveedor: str = None,
+    tipo_comprobante: str = None,
+    articulo: str = None,
+    fecha_desde = None,
+    fecha_hasta = None,
+    texto_busqueda: str = None
+) -> pd.DataFrame:
+    """
+    Busca comprobantes en chatbot_raw con filtros opcionales.
+    ✅ NUEVA FUNCIÓN - No existía antes
+    """
+    try:
+        sql = """
+            SELECT 
+                "Fecha",
+                "Tipo Comprobante" AS "Tipo",
+                "Nro. Comprobante" AS "Nro Factura",
+                "Cliente / Proveedor" AS "Proveedor",
+                "Articulo",
+                "Cantidad",
+                "Monto Neto" AS "Monto"
+            FROM chatbot_raw
+            WHERE 1=1
+        """
+        params = []
+        
+        # Filtro tipo comprobante (solo compras por defecto)
+        if tipo_comprobante:
+            sql += ' AND "Tipo Comprobante" = %s'
+            params.append(tipo_comprobante)
+        else:
+            sql += ' AND ("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%%\')'
+        
+        # Filtro proveedor
+        if proveedor:
+            prov_clean = proveedor.split('(')[0].strip()
+            sql += ' AND LOWER(TRIM("Cliente / Proveedor")) LIKE LOWER(%s)'
+            params.append(f"%{prov_clean}%")
+        
+        # Filtro artículo
+        if articulo:
+            sql += ' AND LOWER(TRIM("Articulo")) LIKE LOWER(%s)'
+            params.append(f"%{articulo}%")
+        
+        # Filtro fechas
+        if fecha_desde:
+            sql += ' AND "Fecha" >= %s'
+            params.append(fecha_desde.strftime('%Y-%m-%d'))
+        
+        if fecha_hasta:
+            sql += ' AND "Fecha" <= %s'
+            params.append(fecha_hasta.strftime('%Y-%m-%d'))
+        
+        # Filtro texto libre (busca en número de factura, artículo o proveedor)
+        if texto_busqueda and texto_busqueda.strip():
+            txt = texto_busqueda.strip()
+            sql += """
+                AND (
+                    LOWER("Nro. Comprobante") LIKE LOWER(%s) OR
+                    LOWER("Articulo") LIKE LOWER(%s) OR
+                    LOWER("Cliente / Proveedor") LIKE LOWER(%s)
+                )
+            """
+            params.extend([f"%{txt}%", f"%{txt}%", f"%{txt}%"])
+        
+        sql += ' ORDER BY "Fecha" DESC LIMIT 500'
+        
+        return ejecutar_consulta(sql, tuple(params) if params else None)
     
+    except Exception as e:
+        print(f"Error en buscar_comprobantes: {e}")
+        return pd.DataFrame()
     # =====================================================================
     # GENERAL (pasar al procesador principal)
     # =====================================================================
