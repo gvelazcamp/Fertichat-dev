@@ -3119,16 +3119,6 @@ def inject_css_responsive():
 # INTERFAZ STREAMLIT
 # =====================================================================
 def main():
-    st.set_page_config(
-        page_title="Ferti Chat - Gestión de Compras",
-        page_icon="🦋",
-        layout="wide"
-    )
-
-    # ✅ Llamalo una vez, al inicio del main()
-    inject_css_responsive()
-
-def main():
 
     st.set_page_config(
         page_title="Ferti Chat - Gestión de Compras",
@@ -3178,6 +3168,7 @@ def main():
             st.rerun()
 
         st.markdown("---")
+
     # =========================
     # HEADER DINÁMICO (ARRIBA DEL MENÚ)
     # =========================
