@@ -3367,23 +3367,20 @@ def main():
     with col2:
         enviar = st.button("Enviar", type="primary", use_container_width=True)
 
-    # =========================================================================
+# =========================================================================
     # MANEJAR CLICK EN BOTÓN "SÍ" DE SUGERENCIA
     # =========================================================================
     if st.session_state.get('ejecutar_sugerencia'):
         sugerencia = st.session_state.get('sugerencia_pendiente', '')
         pregunta_orig = st.session_state.get('pregunta_original', '')
-
         # Limpiar estado
         st.session_state['ejecutar_sugerencia'] = False
         st.session_state['sugerencia_pendiente'] = None
         st.session_state['mostrar_sugerencia'] = False
         st.session_state['pregunta_original'] = None
-
         if sugerencia:
             with st.spinner("🧠 Ejecutando..."):
-                respuesta, df = procesar_pregunta_router(sugerencia)
-
+                respuesta, df = procesar_pregunta_router(sugerencia)  
                 # Comparación de FAMILIAS con tabs de moneda
                 if respuesta == "__COMPARACION_FAMILIA_TABS__" and 'comparacion_familia_tabs' in st.session_state:
                     tabs_data = st.session_state['comparacion_familia_tabs']
@@ -3395,7 +3392,6 @@ def main():
                         'es_comparacion_familia': True,
                         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })
-
                 # Comparación de PROVEEDORES con tabs resumen/detalle
                 elif respuesta == "__COMPARACION_TABS__" and 'comparacion_tabs' in st.session_state:
                     tabs_data = st.session_state['comparacion_tabs']
@@ -3415,13 +3411,13 @@ def main():
                         'es_comparacion': False,
                         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })
-
                 # ✅ RENDER INMEDIATO (texto + tabla modo celular)
                 if respuesta and respuesta not in ["__MOSTRAR_SUGERENCIA__", "__COMPARACION_TABS__", "__COMPARACION_FAMILIA_TABS__"]:
                     st.markdown("**Respuesta:**")
                     st.markdown(respuesta)
                     mostrar_detalle_df(df, titulo="📄 Ver detalle de compras", key=f"curr_sug_{len(st.session_state.historial)}")
-
+            
+            st.rerun() 
     # =========================================================================
     # PROCESAR NUEVA PREGUNTA
     # =========================================================================
