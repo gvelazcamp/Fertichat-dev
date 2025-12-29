@@ -3312,6 +3312,10 @@ def main():
         mostrar_pedidos_internos()
         return
 
+    elif menu == "📉 Baja de Stock":
+        from bajastock import mostrar_baja_stock
+        mostrar_baja_stock()
+
     # =========================
     # 🛒 COMPRAS IA
     # =========================
