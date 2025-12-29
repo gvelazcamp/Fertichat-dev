@@ -42,30 +42,32 @@ def verify_password(password: str, password_hash: str) -> bool:
 # =====================================================================
 
 def init_db():
-    """Crea la tabla de usuarios y carga los predefinidos.
-    Si detecta estructura vieja (ej: columna email y no usuario), recrea la tabla.
+    """
+    Crea la tabla de usuarios y carga los predefinidos.
+    Si detecta una tabla vieja (sin columna 'usuario'), la recrea automáticamente.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Ver si existe tabla users
-    cursor.execute("""
-        SELECT name FROM sqlite_master WHERE type='table' AND name='users'
-    """)
-    exists = cursor.fetchone() is not None
+    # -------------------------------------------------
+    # Detectar si existe tabla vieja con otra estructura
+    # -------------------------------------------------
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+    existe = cursor.fetchone() is not None
 
-    if exists:
-        # Leer columnas actuales
+    if existe:
         cursor.execute("PRAGMA table_info(users)")
-        cols = [row[1] for row in cursor.fetchall()]  # row[1] = nombre columna
+        cols = [r[1] for r in cursor.fetchall()]  # r[1] = nombre de columna
 
-        # Si NO está 'usuario' o falta 'password_hash', asumimos tabla vieja -> recrear
+        # Si no existe 'usuario' (o falta lo básico), es la tabla vieja -> recrear
         if ("usuario" not in cols) or ("password_hash" not in cols):
             cursor.execute("DROP TABLE IF EXISTS users")
             conn.commit()
 
-    # Crear tabla (estructura nueva)
-    cursor.execute("""
+    # -----------------------
+    # Crear tabla nueva
+    # -----------------------
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             usuario TEXT UNIQUE NOT NULL,
@@ -76,23 +78,26 @@ def init_db():
             last_login TIMESTAMP,
             is_active INTEGER DEFAULT 1
         )
-    """)
+    ''')
     conn.commit()
 
-    # Cargar usuarios predefinidos (si no existen)
+    # -----------------------
+    # Cargar usuarios predefinidos
+    # -----------------------
     for u in USUARIOS_PREDEFINIDOS:
-        usuario_norm = u["usuario"].lower().strip()
+        usuario_norm = (u["usuario"] or "").lower().strip()
+
         cursor.execute("SELECT id FROM users WHERE usuario = ?", (usuario_norm,))
         if not cursor.fetchone():
             password_hash = hash_password(u["password"])
-            cursor.execute("""
+            cursor.execute('''
                 INSERT INTO users (usuario, password_hash, nombre, empresa)
                 VALUES (?, ?, ?, ?)
-            """, (usuario_norm, password_hash, u.get("nombre"), u.get("empresa")))
-            print(f"✅ Usuario creado: {usuario_norm}")
+            ''', (usuario_norm, password_hash, u.get("nombre"), u.get("empresa")))
 
     conn.commit()
     conn.close()
+
 
 # =====================================================================
 # LOGIN
