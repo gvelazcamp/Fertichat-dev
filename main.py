@@ -2862,11 +2862,17 @@ def mostrar_resumen_compras_rotativo():
     if dfp is not None and not dfp.empty:
         idx = int(tick) % len(dfp)
         row = dfp.iloc[idx]
-        prov_nom = str(row.get("Proveedor", "—"))
-        prov_pesos = _safe_float(row.get("Total_$", 0))
-        prov_usd = _safe_float(row.get("Total_USD", 0))
+        
+        # Buscar columnas (PostgreSQL devuelve en minúsculas)
+        for col in dfp.columns:
+            if col.lower() == 'proveedor':
+                prov_nom = str(row[col]) if pd.notna(row[col]) else "—"
+            elif col.lower() == 'total_$':
+                prov_pesos = _safe_float(row[col])
+            elif col.lower() == 'total_usd':
+                prov_usd = _safe_float(row[col])
 
-    # ✅ estilo “mini” (chico y prolijo)
+    # ✅ estilo "mini" (chico y prolijo)
     st.markdown("""
     <style>
       .mini-resumen {
@@ -2898,6 +2904,34 @@ def mostrar_resumen_compras_rotativo():
         margin: 4px 0 0 0;
       }
     </style>
+    """, unsafe_allow_html=True)
+
+    total_anio_txt = f"$ {_fmt_num_latam(tot_anio['pesos'], 0)}"
+    total_anio_sub = f"U$S {_fmt_num_latam(tot_anio['usd'], 0)}"
+
+    prov_sub = f"$ {_fmt_num_latam(prov_pesos, 0)} | U$S {_fmt_num_latam(prov_usd, 0)}"
+
+    mes_txt = f"$ {_fmt_num_latam(tot_mes['pesos'], 0)}"
+    mes_sub = f"U$S {_fmt_num_latam(tot_mes['usd'], 0)}"
+
+    st.markdown(f"""
+      <div class="mini-resumen">
+        <div class="mini-card">
+          <p class="mini-t">💰 Total {anio}</p>
+          <p class="mini-v">{total_anio_txt}</p>
+          <p class="mini-s">{total_anio_sub}</p>
+        </div>
+        <div class="mini-card">
+          <p class="mini-t">🏭 Proveedor </p>
+          <p class="mini-v">{prov_nom}</p>
+          <p class="mini-s">{prov_sub}</p>
+        </div>
+        <div class="mini-card">
+          <p class="mini-t">🗓️ Mes actual </p>
+          <p class="mini-v">{mes_txt}</p>
+          <p class="mini-s">{mes_sub}</p>
+        </div>
+      </div>
     """, unsafe_allow_html=True)
 
     total_anio_txt = f"$ {_fmt_num_latam(tot_anio['pesos'], 0)}"
