@@ -12,6 +12,11 @@ import io
 import plotly.express as px
 import plotly.graph_objects as go
 
+# =========================
+# CONFIGURACIÓN DEBUG
+# =========================
+DEBUG_MODE = False  # Cambiar a True para ver debug
+
 # =====================================================================
 # 🔐 SISTEMA DE AUTENTICACIÓN
 # =====================================================================
@@ -2985,16 +2990,11 @@ def main():
         key="menu_principal"
     )
 
-    # =========================
-    # DEBUG VISIBLE - QUÉ BUSCÓ LA APP
-    # =========================
-    with st.sidebar:
-        st.markdown("### 🐞 Debug – Última búsqueda")
-
-        if "debug" in st.session_state:
-            st.json(st.session_state.debug)
-        else:
-            st.info("Todavía no se ejecutó ninguna búsqueda")
+    # DEBUG VISIBLE - QUÉ BUSCÓ LA APP (solo si DEBUG_MODE = True)
+    if DEBUG_MODE:
+        with st.expander("🐞 Debug – Última búsqueda", expanded=False):
+            if "debug" in st.session_state:
+                st.json(st.session_state.debug)
 
     # =========================
     # TARJETAS SEGÚN MENÚ (SE RENDERIZAN ARRIBA)
@@ -3071,15 +3071,16 @@ def main():
 
         st.markdown("---")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔌 Test DB", use_container_width=True):
-                conn = get_db_connection()
-                if conn:
-                    st.success("✅ MySQL OK")
-                    conn.close()
-                else:
-                    st.error("❌ Sin conexión")
+if DEBUG_MODE:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🔌 Test DB", use_container_width=True):
+                    conn = get_db_connection()
+                    if conn:
+                        st.success("✅ Postgres OK")
+                        conn.close()
+                    else:
+                        st.error("❌ Sin conexión")
 
         with col2:
             if st.button("🧠 Test AI", use_container_width=True):
