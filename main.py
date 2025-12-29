@@ -3171,11 +3171,11 @@ def main():
     # =========================
     # RENDER TABLA (MODO CELULAR)
     # =========================
-    def mostrar_detalle_df(df: pd.DataFrame, titulo: str = "📄 Ver detalle", key: str = "detalle"):
+   def mostrar_detalle_df(df: pd.DataFrame, titulo: str = "📄 Detalle", key: str = "detalle"):
         if df is None or df.empty:
             return
 
-        # Renombres cortos SOLO para UI (no toca tu lógica / DB)
+        # Renombres cortos para UI
         ren = {
             "Proveedor": "Prov",
             "Articulo": "Art",
@@ -3196,13 +3196,12 @@ def main():
             inplace=True
         )
 
-        with st.expander(titulo, expanded=False):
-            st.dataframe(
-                df_show,
-                use_container_width=True,
-                height=320,        # 🔥 clave para celular
-                hide_index=True
-            )
+        st.markdown(f"**{titulo}**")
+        st.dataframe(
+            df_show,
+            use_container_width=True,
+            hide_index=True
+        )
 
     # =========================
     # HEADER DINÁMICO (ARRIBA DEL MENÚ)
