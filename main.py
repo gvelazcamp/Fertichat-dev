@@ -2723,18 +2723,23 @@ def mostrar_indicadores_ia():
 # 📊 RESUMEN RÁPIDO (ROTATIVO) - ANTI DUPLICADO
 # =========================
 def mostrar_resumen_compras_rotativo():
-    # ✅ Slot único para que NO se duplique aunque se llame 2 veces
+
+    # ✅ Slot único: si la función corre 2 veces, NO duplica (se sobreescribe)
     if "__resumen_slot" not in st.session_state:
         st.session_state["__resumen_slot"] = st.empty()
     slot = st.session_state["__resumen_slot"]
 
-    # ✅ esto hace que el script se re-ejecute cada 5 segundos
-    tick = 0
+    # ✅ Si usás st_autorefresh acá adentro, evitá crear el widget 2 veces
     try:
         from streamlit_autorefresh import st_autorefresh
-        tick = st_autorefresh(interval=5000, key="__rotar_proveedor_5s__") or 0
+        if "__resumen_autorefresh_set" not in st.session_state:
+            st_autorefresh(interval=5000, key="__resumen_autorefresh__")
+            st.session_state["__resumen_autorefresh_set"] = True
     except Exception:
-        tick = 0  # si no está instalado, queda fijo
+        pass
+
+    # ✅ TODO lo que imprima tarjetas/columns/markdown va acá adentro
+    with slot.container():
 
     anio = datetime.now().year
     mes_key = datetime.now().strftime("%Y-%m")
