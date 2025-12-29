@@ -1070,7 +1070,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         
         # 🔍 DEBUG
         print(f"🔍 GASTOS_SECCIONES - familias: {familias}, mes_key: {mes_key}")
-
+        
         # Si no hay mes_key, intentar buscar solo año
         anio = None
         if not mes_key:
@@ -1080,11 +1080,11 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
                 anio = int(match.group(1))
         
         print(f"🔍 GASTOS_SECCIONES - anio: {anio}")
-
+        
         # Si no hay ni mes ni año, pedir más info
         if not mes_key and not anio:
             return "Especificá el mes o año (ej: 'gastos familias noviembre 2025' o 'gastos familias 2025').", None
-
+        
         # Si no hay familias específicas, traer TODAS
         if not familias:
             if mes_key:
@@ -1097,14 +1097,20 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
                 df = get_gastos_todas_familias_anio(anio)
                 print(f"🔍 Resultado: {len(df) if df is not None else 'None'} filas")
                 periodo = str(anio)
-
+            
+            # 🔍 DEBUG - Ver columnas y datos
+            print(f"🔍 Columnas del DF: {df.columns.tolist() if df is not None else 'None'}")
+            if df is not None and not df.empty:
+                print(f"🔍 Primeras filas:\n{df.head()}")
+                print(f"🔍 Tipos de datos:\n{df.dtypes}")
+            
             if df is None or df.empty:
                 print(f"❌ DataFrame vacío o None")
                 titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró gastos por familias")
                 if df2 is not None and not df2.empty:
                     return f"📌 {resp2 or titulo}", formatear_dataframe(df2)
                 return f"No encontré gastos para {periodo}. Verificá que existan datos en ese período.", None
-
+            
             # Calcular totales por moneda
             total_pesos = 0
             total_usd = 0
@@ -1118,23 +1124,23 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
                     total_usd = df['Total_USD'].apply(lambda x: float(x) if pd.notna(x) else 0).sum()
                 except:
                     pass
-
+            
             total_pesos_fmt = f"${total_pesos:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
             total_usd_fmt = f"U$S {total_usd:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-
+            
             return f"📊 Gastos por familia en {periodo} | 💰 **{total_pesos_fmt}** | 💵 **{total_usd_fmt}**:", formatear_dataframe(df)
-
+        
         # Si hay familias específicas, usar la función original (necesita mes_key)
         if not mes_key:
             return "Para familias específicas necesito el mes (ej: 'gastos familia ID noviembre 2025').", None
-
+        
         df = get_gastos_secciones_detalle_completo(familias, mes_key)
         if df.empty:
             titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró gastos secciones")
             if df2 is not None and not df2.empty:
                 return f"📌 {resp2 or titulo}", formatear_dataframe(df2)
             return "No encontré gastos para esas secciones.", None
-
+        
         return f"📌 Gastos de familias {', '.join(familias)} en {mes_key}:", formatear_dataframe(df)
 
     # --- PRIORIDAD 7: COMPRAS POR MES ---
