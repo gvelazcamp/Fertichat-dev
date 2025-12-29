@@ -1095,43 +1095,45 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
                     return f"📌 {resp2 or titulo}", formatear_dataframe(df2)
                 return f"No encontré gastos para {periodo}.", None
 
-            # ✅ CORREGIDO: Buscar columnas de forma flexible (mayúscula o minúscula)
+            # ✅ CORREGIDO: Función para convertir formato LATAM a número
+            def latam_to_float(valor):
+                if pd.isna(valor):
+                    return 0.0
+                try:
+                    s = str(valor).strip()
+                    # Quitar puntos de miles y cambiar coma por punto decimal
+                    s = s.replace('.', '').replace(',', '.')
+                    return float(s)
+                except:
+                    return 0.0
+
+            # Buscar columna de pesos (flexible)
+            col_pesos = None
+            col_usd = None
+            for col in df.columns:
+                col_lower = col.lower()
+                if 'pesos' in col_lower:
+                    col_pesos = col
+                if 'usd' in col_lower:
+                    col_usd = col
+
+            # Calcular totales
             total_pesos = 0
             total_usd = 0
             
-            # Buscar columna de pesos
-            col_pesos = None
-            for col in df.columns:
-                if 'pesos' in col.lower():
-                    col_pesos = col
-                    break
-            
-            # Buscar columna de USD
-            col_usd = None
-            for col in df.columns:
-                if 'usd' in col.lower():
-                    col_usd = col
-                    break
-            
-            # Calcular totales
             if col_pesos:
-                try:
-                    total_pesos = pd.to_numeric(df[col_pesos], errors='coerce').fillna(0).sum()
-                except:
-                    pass
+                total_pesos = df[col_pesos].apply(latam_to_float).sum()
             
             if col_usd:
-                try:
-                    total_usd = pd.to_numeric(df[col_usd], errors='coerce').fillna(0).sum()
-                except:
-                    pass
+                total_usd = df[col_usd].apply(latam_to_float).sum()
 
+            # Formatear para mostrar
             total_pesos_fmt = f"${total_pesos:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
             total_usd_fmt = f"U$S {total_usd:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
 
             return f"📊 Gastos por familia en {periodo} | 💰 **{total_pesos_fmt}** | 💵 **{total_usd_fmt}**:", formatear_dataframe(df)
 
-        # Si hay familias específicas, usar la función original (necesita mes_key)
+        # Si hay familias específicas
         if not mes_key:
             return "Para familias específicas necesito el mes (ej: 'gastos familia ID noviembre 2025').", None
 
@@ -1143,7 +1145,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             return "No encontré gastos para esas secciones.", None
 
         return f"📌 Gastos de familias {', '.join(familias)} en {mes_key}:", formatear_dataframe(df)
-
+        
     # --- PRIORIDAD 7: COMPRAS POR MES ---
     elif tipo == 'compras_por_mes':
         mes_key = _extraer_mes_key(pregunta)
