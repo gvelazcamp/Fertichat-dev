@@ -6,7 +6,7 @@
 # =====================================================================
 
 import streamlit as st
-from auth import login_user, register_user, change_password, init_db
+from auth import login_user, change_password, init_db  # ✅ SACAR register_user
 
 # Inicializar base de datos
 init_db()
@@ -173,51 +173,54 @@ def show_footer():
 # =====================================================================
 
 def login_form():
-    """Formulario de inicio de sesión con empresa fija"""
-    
+    """Formulario de inicio de sesión con empresa fija (login por USUARIO)"""
+
     with st.form("login_form", clear_on_submit=False):
         # Empresa bloqueada
         empresa = st.text_input("Empresa", value="Fertilab", disabled=True, key="login_empresa")
-        email = st.text_input("Email", placeholder="tu@email.com", key="login_email")
+
+        # ✅ Antes decía Email. Tu auth es por usuario.
+        usuario = st.text_input("Usuario", placeholder="gvelazquez", key="login_usuario")
         password = st.text_input("Contraseña", type="password", placeholder="••••••••", key="login_pass")
-        
+
         remember = st.checkbox("Recordarme", value=True)
-        
+
         submitted = st.form_submit_button("Ingresar", use_container_width=True)
-        
+
         if submitted:
-            if not email or not password:
+            if not usuario or not password:
                 st.error("⚠️ Completá todos los campos")
             else:
-                success, message, user_data = login_user(email, password)
+                success, message, user_data = login_user(usuario, password)
                 if success:
                     st.session_state['authenticated'] = True
                     st.session_state['user'] = user_data
-                    st.success(f"✅ ¡Bienvenido!")
+                    st.success("✅ ¡Bienvenido!")
                     st.rerun()
                 else:
                     st.error(f"❌ {message}")
 
 def change_password_form():
-    """Formulario para cambiar contraseña"""
-    
+    """Formulario para cambiar contraseña (por USUARIO)"""
+
     with st.form("change_password_form", clear_on_submit=True):
-        email = st.text_input("Email", placeholder="tu@email.com", key="chg_email")
+        # ✅ Antes decía Email
+        usuario = st.text_input("Usuario", placeholder="gvelazquez", key="chg_usuario")
         old_password = st.text_input("Contraseña actual", type="password", key="chg_old")
-        new_password = st.text_input("Nueva contraseña", type="password", placeholder="Mínimo 6 caracteres", key="chg_new")
+        new_password = st.text_input("Nueva contraseña", type="password", placeholder="Mínimo 4 caracteres", key="chg_new")
         new_password2 = st.text_input("Confirmar nueva", type="password", key="chg_new2")
-        
+
         submitted = st.form_submit_button("Cambiar contraseña", use_container_width=True)
-        
+
         if submitted:
-            if not email or not old_password or not new_password:
+            if not usuario or not old_password or not new_password:
                 st.error("⚠️ Completá todos los campos")
             elif new_password != new_password2:
                 st.error("⚠️ Las contraseñas no coinciden")
-            elif len(new_password) < 6:
-                st.error("⚠️ Mínimo 6 caracteres")
+            elif len(new_password) < 4:
+                st.error("⚠️ Mínimo 4 caracteres")
             else:
-                success, message = change_password(email, old_password, new_password)
+                success, message = change_password(usuario, old_password, new_password)
                 if success:
                     st.success(f"✅ {message}")
                 else:
@@ -229,27 +232,22 @@ def change_password_form():
 
 def show_login_page():
     """Muestra la página de login completa"""
-    
-    # Aplicar estilos
+
     st.markdown(LOGIN_CSS, unsafe_allow_html=True)
-    
-    # Centrar contenido
+
     col1, col2, col3 = st.columns([1, 1.3, 1])
-    
+
     with col2:
-        # Logo
         show_logo()
-        
-        # Solo 2 tabs: Ingresar y Cambiar clave
+
         tab1, tab2 = st.tabs(["🔐 Ingresar", "🔑 Cambiar clave"])
-        
+
         with tab1:
             login_form()
-        
+
         with tab2:
             change_password_form()
-        
-        # Footer
+
         show_footer()
 
 # =====================================================================
@@ -257,23 +255,16 @@ def show_login_page():
 # =====================================================================
 
 def is_authenticated() -> bool:
-    """Verifica si el usuario está autenticado"""
     return st.session_state.get('authenticated', False)
 
 def get_current_user() -> dict:
-    """Retorna datos del usuario actual"""
     return st.session_state.get('user', {})
 
 def logout():
-    """Cierra la sesión"""
     st.session_state['authenticated'] = False
     st.session_state['user'] = None
 
 def require_auth():
-    """
-    Requiere autenticación.
-    Retorna True si está autenticado, False si no.
-    """
     if not is_authenticated():
         show_login_page()
         return False
@@ -284,18 +275,17 @@ def require_auth():
 # =====================================================================
 
 def show_user_info_sidebar():
-    """Muestra info del usuario en el sidebar"""
     user = get_current_user()
-    
+
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
     st.sidebar.markdown(f"📧 {user.get('email', '')}")
-    
+
     if user.get('empresa'):
         st.sidebar.markdown(f"🏢 {user.get('empresa')}")
-    
+
     st.sidebar.markdown("---")
-    
+
     if st.sidebar.button("🚪 Cerrar sesión", use_container_width=True):
         logout()
         st.rerun()
@@ -311,10 +301,10 @@ if __name__ == "__main__":
         layout="centered",
         initial_sidebar_state="collapsed"
     )
-    
+
     if not require_auth():
         st.stop()
-    
+
     st.title("🦋 Ferti Chat")
     st.success(f"¡Bienvenido {get_current_user().get('nombre')}!")
     show_user_info_sidebar()
