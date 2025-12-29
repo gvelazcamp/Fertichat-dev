@@ -3128,40 +3128,7 @@ def main():
     # ✅ Llamalo una vez, al inicio del main()
     inject_css_responsive()
 
-    # =====================================================================
-    # 🔐 VERIFICAR AUTENTICACIÓN
-    # =====================================================================
-    if not require_auth():
-        st.stop()  # Detiene la ejecución si no está autenticado
-
-    # Si llegó acá, el usuario está autenticado
-    user = get_current_user()
-
-
 def main():
-
-    # =====================================================
-    # OBTENER USUARIO LOGUEADO (EVITA NameError)
-    # =====================================================
-    user = get_current_user() or {}
-
-    # =====================================================
-    # MENÚ PRINCIPAL (ESTO NO SE TOCA)
-    # =====================================================
-    menu = st.radio(
-        "Menú:",
-        [
-            "🛒 Compras IA",
-            "📦 Stock IA",
-            "🔎 Buscador IA",
-            "📊 Dashboard",
-            "📈 Indicadores IA",
-        ],
-        horizontal=True,
-        key="menu_principal"
-    )
-
-    def main():
     st.set_page_config(
         page_title="Ferti Chat - Gestión de Compras",
         page_icon="🦋",
@@ -3172,10 +3139,10 @@ def main():
     inject_css_responsive()
 
     # =====================================================================
-    # 🔐 VERIFICAR AUTENTICACIÓN (ESTO ES LO QUE TE FALTABA)
+    # 🔐 VERIFICAR AUTENTICACIÓN
     # =====================================================================
     if not require_auth():
-        st.stop()  # Detiene la ejecución si no está autenticado
+        st.stop()
 
     # Si llegó acá, el usuario está autenticado
     user = get_current_user()
@@ -3211,6 +3178,16 @@ def main():
 
         st.markdown("---")
 
+    # =========================
+    # MENÚ PRINCIPAL
+    # =========================
+    menu = st.radio(
+        "Menú:",
+        ["🛒 Compras IA", "📦 Stock IA", "🔎 Buscador IA", "📊 Dashboard", "📈 Indicadores IA"],
+        horizontal=True,
+        key="menu_principal"
+    )
+    
     # =========================
     # HEADER DINÁMICO (ARRIBA DEL MENÚ)
     # =========================
