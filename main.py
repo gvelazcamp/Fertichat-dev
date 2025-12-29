@@ -2459,11 +2459,11 @@ def mostrar_stock_ia():
             alerta = alertas[indice]
             
             # ✅ CORREGIDO: usar 'dias_restantes' en vez de 'dias'
-            dias = alerta.get('dias_restantes', alerta.get('dias', 0))
-            articulo = alerta.get('articulo', 'Sin artículo')
-            lote = alerta.get('lote', 'Sin lote')
-            venc = alerta.get('vencimiento', 'Sin fecha')
-            stock = alerta.get('stock', '0')
+            dias = alerta['dias_restantes']
+            articulo = alerta['articulo']
+            lote = alerta['lote']
+            venc = alerta['vencimiento']
+            stock = alerta['stock']
             
             # Contador
             contador = f"<div style='text-align: center; font-size: 0.8em; color: #666; margin-top: 5px;'>{indice + 1} de {len(alertas)} alertas</div>"
