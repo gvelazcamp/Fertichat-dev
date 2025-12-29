@@ -3114,6 +3114,7 @@ def inject_css_responsive():
         unsafe_allow_html=True
     )
 
+
 # =========================
 # UI - MOSTRAR DETALLE DF
 # =========================
@@ -3209,7 +3210,7 @@ def main():
     # =========================
     menu = st.radio(
         "Menú:",
-        ["🛒 Compras IA", "📦 Stock IA", "🔎 Buscador IA", "📊 Dashboard", "📈 Indicadores IA"],
+        ["🛒 Compras IA", "📦 Stock IA", "🔎 Buscador IA", "📊 Dashboard", "📈 Indicadores IA", 🧾 Pedidos Internos"],
         horizontal=True,
         key="menu_principal"
     )
@@ -3255,6 +3256,11 @@ def main():
 
     elif menu == "📈 Indicadores IA":
         mostrar_indicadores_ia()
+        return
+
+    elif menu == "📥 Pedidos":
+        from pedidos import mostrar_pedidos_internos
+        mostrar_pedidos_internos()
         return
 
     # =========================
