@@ -2755,37 +2755,6 @@ def _get_totales_anio(anio: int) -> dict:
         "pesos": _safe_float(df["total_pesos"].iloc[0]),
         "usd": _safe_float(df["total_usd"].iloc[0]),
     }
-    # =========================
-    # DEBUG - ÚLTIMA CONSULTA
-    # =========================
-    st.session_state.debug = {
-        "pregunta": "total compras por año",
-        "proveedor": None,
-        "mes": None,
-        "anio": anio,
-        "sql": query,
-        "params": (anio,)
-    }
-
- # =========================
-    # DEBUG - RUTA TOMADA
-    # =========================
-    st.session_state.debug["ruta"] = "TOTAL_COMPRAS_ANIO"
-    st.session_state.debug["ruta"] = "COMPRAS_PROVEEDOR_MES"
-    
-    df = ejecutar_consulta(query, (anio,))
-    if df is None or df.empty:
-        return {"pesos": 0.0, "usd": 0.0}
-
-    
-    df = ejecutar_consulta(query, (anio,))
-    if df is None or df.empty:
-        return {"pesos": 0.0, "usd": 0.0}
-
-    return {
-        "pesos": _safe_float(df["total_pesos"].iloc[0]),
-        "usd": _safe_float(df["total_usd"].iloc[0]),
-    }
 
 
 @st.cache_data(ttl=300)
@@ -2811,6 +2780,7 @@ def _get_totales_mes(mes_key: str) -> dict:
         "pesos": _safe_float(df["total_pesos"].iloc[0]),
         "usd": _safe_float(df["total_usd"].iloc[0]),
     }
+
 
 @st.cache_data(ttl=300)
 def _get_top_proveedores_anio(anio: int, top_n: int = 20) -> pd.DataFrame:
@@ -2838,6 +2808,7 @@ def _get_top_proveedores_anio(anio: int, top_n: int = 20) -> pd.DataFrame:
         return pd.DataFrame(columns=["Proveedor", "Total_$", "Total_USD"])
     return df
 
+
 def mostrar_resumen_compras_rotativo():
     # ✅ esto hace que el script se re-ejecute cada 5 segundos
     tick = 0
@@ -2862,7 +2833,7 @@ def mostrar_resumen_compras_rotativo():
     if dfp is not None and not dfp.empty:
         idx = int(tick) % len(dfp)
         row = dfp.iloc[idx]
-        
+
         # Buscar columnas (PostgreSQL devuelve en minúsculas)
         for col in dfp.columns:
             if col.lower() == 'proveedor':
@@ -2914,6 +2885,7 @@ def mostrar_resumen_compras_rotativo():
     mes_txt = f"$ {_fmt_num_latam(tot_mes['pesos'], 0)}"
     mes_sub = f"U$S {_fmt_num_latam(tot_mes['usd'], 0)}"
 
+    # ✅ MOSTRAR SOLO UNA VEZ (sin duplicado)
     st.markdown(f"""
       <div class="mini-resumen">
         <div class="mini-card">
@@ -2922,46 +2894,17 @@ def mostrar_resumen_compras_rotativo():
           <p class="mini-s">{total_anio_sub}</p>
         </div>
         <div class="mini-card">
-          <p class="mini-t">🏭 Proveedor </p>
+          <p class="mini-t">🏭 Proveedor</p>
           <p class="mini-v">{prov_nom}</p>
           <p class="mini-s">{prov_sub}</p>
         </div>
         <div class="mini-card">
-          <p class="mini-t">🗓️ Mes actual </p>
+          <p class="mini-t">🗓️ Mes actual</p>
           <p class="mini-v">{mes_txt}</p>
           <p class="mini-s">{mes_sub}</p>
         </div>
       </div>
     """, unsafe_allow_html=True)
-
-    total_anio_txt = f"$ {_fmt_num_latam(tot_anio['pesos'], 0)}"
-    total_anio_sub = f"U$S {_fmt_num_latam(tot_anio['usd'], 0)}"
-
-    prov_sub = f"$ {_fmt_num_latam(prov_pesos, 0)} | U$S {_fmt_num_latam(prov_usd, 0)}"
-
-    mes_txt = f"$ {_fmt_num_latam(tot_mes['pesos'], 0)}"
-    mes_sub = f"U$S {_fmt_num_latam(tot_mes['usd'], 0)}"
-
-    st.markdown(f"""
-      <div class="mini-resumen">
-        <div class="mini-card">
-          <p class="mini-t">💰 Total {anio}</p>
-          <p class="mini-v">{total_anio_txt}</p>
-          <p class="mini-s">{total_anio_sub}</p>
-        </div>
-        <div class="mini-card">
-          <p class="mini-t">🏭 Proveedor </p>
-          <p class="mini-v">{prov_nom}</p>
-          <p class="mini-s">{prov_sub}</p>
-        </div>
-        <div class="mini-card">
-          <p class="mini-t">🗓️ Mes actual </p>
-          <p class="mini-v">{mes_txt}</p>
-          <p class="mini-s">{mes_sub}</p>
-        </div>
-      </div>
-    """, unsafe_allow_html=True)
-
 
 # =====================================================================
 # INTERFAZ STREAMLIT
