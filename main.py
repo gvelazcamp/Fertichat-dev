@@ -3145,6 +3145,22 @@ def main():
     # =====================================================
     user = get_current_user() or {}
 
+    # =====================================================
+    # MENÚ PRINCIPAL (ESTO NO SE TOCA)
+    # =====================================================
+    menu = st.radio(
+        "Menú:",
+        [
+            "🛒 Compras IA",
+            "📦 Stock IA",
+            "🔎 Buscador IA",
+            "📊 Dashboard",
+            "📈 Indicadores IA",
+        ],
+        horizontal=True,
+        key="menu_principal"
+    )
+
     # =====================================================================
     # 🚪 SIDEBAR CON INFO DE USUARIO Y LOGOUT
     # =====================================================================
@@ -3176,9 +3192,9 @@ def main():
 
         st.markdown("---")
 
-    # =========================
-    # RENDER TABLA (MODO CELULAR)
-    # =========================
+    # =====================================================
+    # FUNCIÓN AUXILIAR (NO AFECTA MENÚ)
+    # =====================================================
     def mostrar_detalle_df(
         df: pd.DataFrame,
         titulo: str = "📄 Detalle",
@@ -3208,11 +3224,26 @@ def main():
         )
 
         st.markdown(f"**{titulo}**")
-        st.dataframe(
-            df_show,
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(df_show, use_container_width=True, hide_index=True)
+
+    # =====================================================
+    # EJEMPLO DE USO DEL MENÚ (TU LÓGICA SIGUE ACÁ)
+    # =====================================================
+    if menu == "🛒 Compras IA":
+        st.title("Compras IA")
+        # tu lógica de compras
+
+    elif menu == "📦 Stock IA":
+        st.title("Stock IA")
+
+    elif menu == "🔎 Buscador IA":
+        st.title("Buscador IA")
+
+    elif menu == "📊 Dashboard":
+        st.title("Dashboard")
+
+    elif menu == "📈 Indicadores IA":
+        st.title("Indicadores IA")
 
 
     # =========================
