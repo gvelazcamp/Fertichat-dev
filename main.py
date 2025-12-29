@@ -3158,7 +3158,7 @@ def main():
         st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
         if user.get('empresa'):
             st.markdown(f"🏢 {user.get('empresa')}")
-        st.markdown(f"📧 _{user.get('email', '')}_")
+        st.markdown(f"📧 _{user.get('Usuario', '')}_")
 
         st.markdown("---")
 
