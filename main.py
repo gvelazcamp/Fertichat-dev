@@ -3316,6 +3316,7 @@ def main():
     elif menu == "📉 Baja de Stock":
         from bajastock import mostrar_baja_stock
         mostrar_baja_stock()
+        return
 
     # =========================
     # 🛒 COMPRAS IA
