@@ -2458,11 +2458,12 @@ def mostrar_stock_ia():
             indice = int(time.time() // 5) % len(alertas)
             alerta = alertas[indice]
             
-            dias = alerta['dias']
-            articulo = alerta['articulo']
-            lote = alerta['lote']
-            venc = alerta['vencimiento']
-            stock = alerta['stock']
+            # ✅ CORREGIDO: usar 'dias_restantes' en vez de 'dias'
+            dias = alerta.get('dias_restantes', alerta.get('dias', 0))
+            articulo = alerta.get('articulo', 'Sin artículo')
+            lote = alerta.get('lote', 'Sin lote')
+            venc = alerta.get('vencimiento', 'Sin fecha')
+            stock = alerta.get('stock', '0')
             
             # Contador
             contador = f"<div style='text-align: center; font-size: 0.8em; color: #666; margin-top: 5px;'>{indice + 1} de {len(alertas)} alertas</div>"
@@ -2498,7 +2499,10 @@ def mostrar_stock_ia():
                 {contador}
                 """, unsafe_allow_html=True)
     except Exception as e:
+        # ✅ AGREGADO: Mostrar error en debug para diagnosticar
+        print(f"⚠️ Error en alertas de vencimiento: {e}")
         pass  # Si falla la alerta, no afecta el resto
+
 
     if pregunta:
         with st.spinner("🔍 Consultando stock."):
