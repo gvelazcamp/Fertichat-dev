@@ -2818,7 +2818,7 @@ def _get_top_proveedores_anio(anio: int, top_n: int = 20) -> pd.DataFrame:
 
     query = f"""
         SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Cliente / Proveedor") AS "Proveedor",
             SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) = '$'
                      THEN {total_expr} ELSE 0 END) AS "Total_$",
             SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) IN ('U$S','U$$')
@@ -2837,7 +2837,6 @@ def _get_top_proveedores_anio(anio: int, top_n: int = 20) -> pd.DataFrame:
     if df is None:
         return pd.DataFrame(columns=["Proveedor", "Total_$", "Total_USD"])
     return df
-
 
 def mostrar_resumen_compras_rotativo():
     # ✅ esto hace que el script se re-ejecute cada 5 segundos
