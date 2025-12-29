@@ -3077,8 +3077,9 @@ def main():
     st.title("🛒 Compras IA")
     st.markdown("*Integrado con OpenAI*")
 
-    # ⛔ IMPORTANTE: ACÁ YA NO LLAMES mostrar_resumen_compras_rotativo()
-    # porque ahora se muestra arriba del menú.
+    # ⛔ NO LLAMAR mostrar_resumen_compras_rotativo() ACÁ
+    # porque ya se muestra arriba en header_slot
+
     if 'historial' not in st.session_state:
         st.session_state.historial = []
 
