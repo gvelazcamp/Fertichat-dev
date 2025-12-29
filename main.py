@@ -3137,6 +3137,7 @@ def main():
     # Si llegó acá, el usuario está autenticado
     user = get_current_user()
 
+
 def main():
 
     # =====================================================================
@@ -3181,7 +3182,6 @@ def main():
         if df is None or df.empty:
             return
 
-        # Renombres cortos para UI
         ren = {
             "Proveedor": "Prov",
             "Articulo": "Art",
@@ -3203,11 +3203,7 @@ def main():
         )
 
         st.markdown(f"**{titulo}**")
-        st.dataframe(
-            df_show,
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(df_show, use_container_width=True, hide_index=True)
 
     # =========================
     # HEADER DINÁMICO (ARRIBA DEL MENÚ)
