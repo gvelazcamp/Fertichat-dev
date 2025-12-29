@@ -323,15 +323,16 @@ def obtener_articulos_por_seccion(seccion: str) -> pd.DataFrame:
     """Obtiene artículos de stock filtrados por sección/familia"""
     query = """
         SELECT DISTINCT
-            codigo AS codigo,
-            articulo AS articulo,
-            familia AS familia
+            "CODIGO"   AS codigo,
+            "ARTICULO" AS articulo,
+            "FAMILIA"  AS familia
         FROM stock
-        WHERE UPPER(TRIM(familia)) = %s
-        ORDER BY articulo
+        WHERE UPPER(TRIM("FAMILIA")) = %s
+        ORDER BY "ARTICULO"
         LIMIT 500
     """
     return ejecutar_consulta(query, (seccion.upper(),))
+
 
 
 # =====================================================================
@@ -683,3 +684,4 @@ def mostrar_pedidos_internos():
                                     st.error(msg)
         else:
             st.info("No hay pedidos registrados")
+
