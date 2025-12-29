@@ -1063,10 +1063,13 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
 
         return "🧾 Última factura encontrada:", formatear_dataframe(df)
 
-    # --- PRIORIDAD 6: GASTOS SECCIONES ---
+# --- PRIORIDAD 6: GASTOS SECCIONES ---
     elif tipo == 'gastos_secciones':
         familias = _extraer_lista_familias(pregunta)
         mes_key = _extraer_mes_key(pregunta)
+        
+        # 🔍 DEBUG
+        print(f"🔍 GASTOS_SECCIONES - familias: {familias}, mes_key: {mes_key}")
 
         # Si no hay mes_key, intentar buscar solo año
         anio = None
@@ -1075,6 +1078,8 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             match = re.search(r'(202[3-9]|2030)', pregunta)
             if match:
                 anio = int(match.group(1))
+        
+        print(f"🔍 GASTOS_SECCIONES - anio: {anio}")
 
         # Si no hay ni mes ni año, pedir más info
         if not mes_key and not anio:
@@ -1083,17 +1088,22 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         # Si no hay familias específicas, traer TODAS
         if not familias:
             if mes_key:
+                print(f"🔍 Llamando get_gastos_todas_familias_mes({mes_key})")
                 df = get_gastos_todas_familias_mes(mes_key)
+                print(f"🔍 Resultado: {len(df) if df is not None else 'None'} filas")
                 periodo = mes_key
             else:
+                print(f"🔍 Llamando get_gastos_todas_familias_anio({anio})")
                 df = get_gastos_todas_familias_anio(anio)
+                print(f"🔍 Resultado: {len(df) if df is not None else 'None'} filas")
                 periodo = str(anio)
 
             if df is None or df.empty:
+                print(f"❌ DataFrame vacío o None")
                 titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró gastos por familias")
                 if df2 is not None and not df2.empty:
                     return f"📌 {resp2 or titulo}", formatear_dataframe(df2)
-                return "No encontré gastos para ese período.", None
+                return f"No encontré gastos para {periodo}. Verificá que existan datos en ese período.", None
 
             # Calcular totales por moneda
             total_pesos = 0
