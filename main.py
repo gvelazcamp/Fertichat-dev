@@ -2729,104 +2729,99 @@ def mostrar_resumen_compras_rotativo():
         st.session_state["__resumen_slot"] = st.empty()
     slot = st.session_state["__resumen_slot"]
 
-    # ✅ Si usás st_autorefresh acá adentro, evitá crear el widget 2 veces
-    try:
-        from streamlit_autorefresh import st_autorefresh
-        if "__resumen_autorefresh_set" not in st.session_state:
-            st_autorefresh(interval=5000, key="__resumen_autorefresh__")
-            st.session_state["__resumen_autorefresh_set"] = True
-    except Exception:
-        pass
+    # ✅ Tick interno para rotar proveedor (evita depender de st_autorefresh acá)
+    tick = st.session_state.get("__resumen_tick", 0)
+    st.session_state["__resumen_tick"] = tick + 1
 
     # ✅ TODO lo que imprima tarjetas/columns/markdown va acá adentro
     with slot.container():
 
-    anio = datetime.now().year
-    mes_key = datetime.now().strftime("%Y-%m")
+        anio = datetime.now().year
+        mes_key = datetime.now().strftime("%Y-%m")
 
-    tot_anio = _get_totales_anio(anio)
-    tot_mes = _get_totales_mes(mes_key)
-    dfp = _get_top_proveedores_anio(anio, top_n=20)
+        tot_anio = _get_totales_anio(anio)
+        tot_mes = _get_totales_mes(mes_key)
+        dfp = _get_top_proveedores_anio(anio, top_n=20)
 
-    prov_nom = "—"
-    prov_pesos = 0.0
-    prov_usd = 0.0
+        prov_nom = "—"
+        prov_pesos = 0.0
+        prov_usd = 0.0
 
-    if dfp is not None and not dfp.empty:
-        idx = int(tick) % len(dfp)
-        row = dfp.iloc[idx]
+        if dfp is not None and not dfp.empty:
+            idx = int(tick) % len(dfp)
+            row = dfp.iloc[idx]
 
-        for col in dfp.columns:
-            if col.lower() == 'proveedor':
-                prov_nom = str(row[col]) if pd.notna(row[col]) else "—"
-            elif col.lower() == 'total_$':
-                prov_pesos = _safe_float(row[col])
-            elif col.lower() == 'total_usd':
-                prov_usd = _safe_float(row[col])
+            for col in dfp.columns:
+                if col.lower() == 'proveedor':
+                    prov_nom = str(row[col]) if pd.notna(row[col]) else "—"
+                elif col.lower() == 'total_$':
+                    prov_pesos = _safe_float(row[col])
+                elif col.lower() == 'total_usd':
+                    prov_usd = _safe_float(row[col])
 
-    total_anio_txt = f"$ {_fmt_num_latam(tot_anio['pesos'], 0)}"
-    total_anio_sub = f"U$S {_fmt_num_latam(tot_anio['usd'], 0)}"
+        total_anio_txt = f"$ {_fmt_num_latam(tot_anio['pesos'], 0)}"
+        total_anio_sub = f"U$S {_fmt_num_latam(tot_anio['usd'], 0)}"
 
-    prov_sub = f"$ {_fmt_num_latam(prov_pesos, 0)} | U$S {_fmt_num_latam(prov_usd, 0)}"
+        prov_sub = f"$ {_fmt_num_latam(prov_pesos, 0)} | U$S {_fmt_num_latam(prov_usd, 0)}"
 
-    mes_txt = f"$ {_fmt_num_latam(tot_mes['pesos'], 0)}"
-    mes_sub = f"U$S {_fmt_num_latam(tot_mes['usd'], 0)}"
+        mes_txt = f"$ {_fmt_num_latam(tot_mes['pesos'], 0)}"
+        mes_sub = f"U$S {_fmt_num_latam(tot_mes['usd'], 0)}"
 
-    # ✅ Render único: se sobreescribe siempre en el MISMO slot
-    html = f"""
-    <style>
-      .mini-resumen {{
-        display: flex;
-        gap: 12px;
-        margin: 6px 0 10px 0;
-      }}
-      .mini-card {{
-        flex: 1;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 10px 12px;
-        background: rgba(255,255,255,0.8);
-      }}
-      .mini-t {{
-        font-size: 0.82rem;
-        font-weight: 600;
-        opacity: 0.85;
-        margin: 0;
-      }}
-      .mini-v {{
-        font-size: 1.05rem;
-        font-weight: 700;
-        margin: 4px 0 0 0;
-      }}
-      .mini-s {{
-        font-size: 0.82rem;
-        opacity: 0.75;
-        margin: 4px 0 0 0;
-      }}
-    </style>
+        # ✅ Render único: se sobreescribe siempre en el MISMO slot
+        html = f"""
+        <style>
+          .mini-resumen {{
+            display: flex;
+            gap: 12px;
+            margin: 6px 0 10px 0;
+          }}
+          .mini-card {{
+            flex: 1;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.8);
+          }}
+          .mini-t {{
+            font-size: 0.82rem;
+            font-weight: 600;
+            opacity: 0.85;
+            margin: 0;
+          }}
+          .mini-v {{
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin: 4px 0 0 0;
+          }}
+          .mini-s {{
+            font-size: 0.82rem;
+            opacity: 0.75;
+            margin: 4px 0 0 0;
+          }}
+        </style>
 
-    <div class="mini-resumen">
-      <div class="mini-card">
-        <p class="mini-t">💰 Total {anio}</p>
-        <p class="mini-v">{total_anio_txt}</p>
-        <p class="mini-s">{total_anio_sub}</p>
-      </div>
+        <div class="mini-resumen">
+          <div class="mini-card">
+            <p class="mini-t">💰 Total {anio}</p>
+            <p class="mini-v">{total_anio_txt}</p>
+            <p class="mini-s">{total_anio_sub}</p>
+          </div>
 
-      <div class="mini-card">
-        <p class="mini-t">🏭 Proveedor</p>
-        <p class="mini-v">{prov_nom}</p>
-        <p class="mini-s">{prov_sub}</p>
-      </div>
+          <div class="mini-card">
+            <p class="mini-t">🏭 Proveedor</p>
+            <p class="mini-v">{prov_nom}</p>
+            <p class="mini-s">{prov_sub}</p>
+          </div>
 
-      <div class="mini-card">
-        <p class="mini-t">🗓️ Mes actual</p>
-        <p class="mini-v">{mes_txt}</p>
-        <p class="mini-s">{mes_sub}</p>
-      </div>
-    </div>
-    """
+          <div class="mini-card">
+            <p class="mini-t">🗓️ Mes actual</p>
+            <p class="mini-v">{mes_txt}</p>
+            <p class="mini-s">{mes_sub}</p>
+          </div>
+        </div>
+        """
 
-    slot.markdown(html, unsafe_allow_html=True)
+        st.markdown(html, unsafe_allow_html=True)
 
 
 # =====================================================================
