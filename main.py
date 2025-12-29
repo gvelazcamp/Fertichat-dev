@@ -2734,19 +2734,27 @@ def _safe_float(x) -> float:
 @st.cache_data(ttl=300)
 def _get_totales_anio(anio: int) -> dict:
     total_expr = _sql_total_num_expr_general()
-    fecha_expr = _sql_fecha_expr()
 
     query = f"""
         SELECT
-            SUM(CASE WHEN TRIM(COALESCE(Moneda,'')) = '$'
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) = '$'
                      THEN {total_expr} ELSE 0 END) AS total_pesos,
-            SUM(CASE WHEN TRIM(COALESCE(Moneda,'')) IN ('U$S','U$$')
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) IN ('U$S','U$$')
                      THEN {total_expr} ELSE 0 END) AS total_usd
-        FROM chatbot
+        FROM chatbot_raw
         WHERE
-            (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-            AND YEAR({fecha_expr}) = %s
+            ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+            AND "Año"::int = %s
     """
+    
+    df = ejecutar_consulta(query, (anio,))
+    if df is None or df.empty:
+        return {"pesos": 0.0, "usd": 0.0}
+
+    return {
+        "pesos": _safe_float(df["total_pesos"].iloc[0]),
+        "usd": _safe_float(df["total_usd"].iloc[0]),
+    }
     # =========================
     # DEBUG - ÚLTIMA CONSULTA
     # =========================
@@ -2786,14 +2794,14 @@ def _get_totales_mes(mes_key: str) -> dict:
 
     query = f"""
         SELECT
-            SUM(CASE WHEN TRIM(COALESCE(Moneda,'')) = '$'
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) = '$'
                      THEN {total_expr} ELSE 0 END) AS total_pesos,
-            SUM(CASE WHEN TRIM(COALESCE(Moneda,'')) IN ('U$S','U$$')
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) IN ('U$S','U$$')
                      THEN {total_expr} ELSE 0 END) AS total_usd
-        FROM chatbot
+        FROM chatbot_raw
         WHERE
-            (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-            AND TRIM(Mes) = %s
+            ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+            AND TRIM("Mes") = %s
     """
     df = ejecutar_consulta(query, (mes_key,))
     if df is None or df.empty:
@@ -2804,27 +2812,25 @@ def _get_totales_mes(mes_key: str) -> dict:
         "usd": _safe_float(df["total_usd"].iloc[0]),
     }
 
-
 @st.cache_data(ttl=300)
 def _get_top_proveedores_anio(anio: int, top_n: int = 20) -> pd.DataFrame:
     total_expr = _sql_total_num_expr_general()
-    fecha_expr = _sql_fecha_expr()
 
     query = f"""
         SELECT
-            TRIM(Proveedor) AS Proveedor,
-            SUM(CASE WHEN TRIM(COALESCE(Moneda,'')) = '$'
-                     THEN {total_expr} ELSE 0 END) AS Total_$,
-            SUM(CASE WHEN TRIM(COALESCE(Moneda,'')) IN ('U$S','U$$')
-                     THEN {total_expr} ELSE 0 END) AS Total_USD
-        FROM chatbot
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) = '$'
+                     THEN {total_expr} ELSE 0 END) AS "Total_$",
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) IN ('U$S','U$$')
+                     THEN {total_expr} ELSE 0 END) AS "Total_USD"
+        FROM chatbot_raw
         WHERE
-            (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
-            AND YEAR({fecha_expr}) = %s
-            AND Proveedor IS NOT NULL
-            AND TRIM(Proveedor) <> ''
-        GROUP BY TRIM(Proveedor)
-        ORDER BY Total_$ DESC, Total_USD DESC
+            ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+            AND "Año"::int = %s
+            AND "Cliente / Proveedor" IS NOT NULL
+            AND TRIM("Cliente / Proveedor") <> ''
+        GROUP BY TRIM("Cliente / Proveedor")
+        ORDER BY "Total_$" DESC, "Total_USD" DESC
         LIMIT {int(top_n)}
     """
     df = ejecutar_consulta(query, (anio,))
