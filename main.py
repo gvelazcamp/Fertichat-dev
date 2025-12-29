@@ -2923,69 +2923,88 @@ def mostrar_resumen_compras_rotativo():
 # =========================
 # CSS RESPONSIVE (CELULAR)
 # =========================
-st.markdown("""
-<style>
-/* ===== Base: que el contenido aproveche el ancho ===== */
-.block-container {
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-}
+def inject_css_responsive():
+    st.markdown(
+        """
+        <style>
+        /* =========================================================
+           RESPONSIVE MOBILE (solo tamaños/espaciado)
+           ========================================================= */
+        @media (max-width: 768px){
 
-/* ======================================================
-   📱 CELULAR / PANTALLAS CHICAS
-   ====================================================== */
-@media (max-width: 768px) {
+            /* Menos padding general */
+            .block-container{
+                padding-top: 0.9rem !important;
+                padding-left: 0.8rem !important;
+                padding-right: 0.8rem !important;
+                padding-bottom: 4.5rem !important;
+            }
 
-  /* Menos márgenes laterales (el principal problema en mobile) */
-  .block-container {
-    padding-left: 0.7rem !important;
-    padding-right: 0.7rem !important;
-    padding-top: 0.7rem !important;
-  }
+            /* Títulos más chicos */
+            h1 { font-size: 1.35rem !important; line-height: 1.2 !important; }
+            h2 { font-size: 1.15rem !important; line-height: 1.2 !important; }
+            h3 { font-size: 1.05rem !important; line-height: 1.2 !important; }
 
-  /* Títulos más chicos */
-  h1 { font-size: 1.25rem !important; line-height: 1.15 !important; }
-  h2 { font-size: 1.10rem !important; line-height: 1.15 !important; }
-  h3 { font-size: 1.00rem !important; line-height: 1.15 !important; }
+            /* Texto general más chico */
+            .stMarkdown, .stText, .stCaption, p, li{
+                font-size: 0.95rem !important;
+                line-height: 1.25 !important;
+            }
 
-  /* Texto general más chico */
-  .stMarkdown, .stText, p, label, span {
-    font-size: 0.95rem !important;
-  }
+            /* Reduce padding interno de contenedores (tus “tarjetas” suelen ser containers) */
+            div[data-testid="stContainer"]{
+                padding: 0.55rem !important;
+            }
 
-  /* ===== DATAFRAMES / TABLAS ===== */
+            /* Radio/menu más compacto */
+            div[role="radiogroup"] label{
+                font-size: 0.95rem !important;
+                margin-bottom: 0.25rem !important;
+            }
 
-  /* Ocultar la barra de íconos arriba de la tabla (molesta en celular) */
-  div[data-testid="stElementToolbar"] { display: none !important; }
+            /* Inputs */
+            input, textarea{
+                font-size: 1rem !important;
+            }
 
-  /* Hacer que la tabla scrollee horizontalmente si es ancha */
-  div[data-testid="stDataFrame"] > div {
-    overflow-x: auto !important;
-  }
+            /* Botones */
+            .stButton > button{
+                width: 100% !important;
+                padding: 0.60rem 0.9rem !important;
+                font-size: 1rem !important;
+            }
 
-  /* Letra más chica adentro de la tabla */
-  div[data-testid="stDataFrame"] div[role="grid"] {
-    font-size: 0.80rem !important;
-  }
+            /* Dataframe: más chico + menos padding visual */
+            div[data-testid="stDataFrame"]{
+                font-size: 0.85rem !important;
+            }
+            div[data-testid="stDataFrame"] *{
+                font-size: 0.85rem !important;
+            }
 
-  /* Permitir que el texto largo (Proveedor) pueda saltar de línea */
-  div[data-testid="stDataFrame"] div[role="gridcell"] {
-    white-space: normal !important;
-    line-height: 1.15 !important;
-  }
+            /* Expanders más compactos */
+            details summary{
+                font-size: 0.95rem !important;
+            }
 
-  /* Encabezados sin romperse raro */
-  div[data-testid="stDataFrame"] div[role="columnheader"] {
-    white-space: nowrap !important;
-  }
+            /* Columnas: permitir wrap en mobile para que no quede 3 tarjetas apretadas */
+            div[data-testid="stHorizontalBlock"]{
+                flex-wrap: wrap !important;
+                gap: 0.5rem !important;
+            }
+            div[data-testid="column"]{
+                min-width: 280px !important;
+                flex: 1 1 280px !important;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-  /* Métricas/valores grandes más chicos */
-  div[data-testid="stMetricValue"] {
-    font-size: 1.15rem !important;
-  }
-}
-</style>
-""", unsafe_allow_html=True)
+# Llamalo una vez, al inicio del main()
+inject_css_responsive()
+
 
 
 # =====================================================================
