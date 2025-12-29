@@ -824,6 +824,87 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     print(f"🔍 DEBUG: {debug}")
 
     # =====================================================================
+    # ✅ NUEVO: MANEJO DE INTENCIONES DE STOCK
+    # =====================================================================
+    
+    # --- STOCK TOTAL ---
+    if tipo == 'stock_total':
+        df = get_stock_total()
+        if df is not None and not df.empty:
+            return "📦 **Resumen de stock total:**", formatear_dataframe(df)
+        return "No pude obtener el stock total. Verificá la conexión a la tabla de stock.", None
+    
+    # --- STOCK POR FAMILIA ---
+    if tipo == 'stock_por_familia':
+        df = get_stock_por_familia()
+        if df is not None and not df.empty:
+            return "📦 **Stock por familia/sección:**", formatear_dataframe(df)
+        return "No encontré datos de stock por familia.", None
+    
+    # --- STOCK FAMILIA ESPECÍFICA ---
+    if tipo == 'stock_familia':
+        familia = params.get('familia', '')
+        df = get_stock_familia(familia)
+        if df is not None and not df.empty:
+            return f"📦 **Stock de la familia {familia}:**", formatear_dataframe(df)
+        return f"No encontré stock para la familia {familia}.", None
+    
+    # --- STOCK POR DEPÓSITO ---
+    if tipo == 'stock_por_deposito':
+        df = get_stock_por_deposito()
+        if df is not None and not df.empty:
+            return "📦 **Stock por depósito:**", formatear_dataframe(df)
+        return "No encontré datos de stock por depósito.", None
+    
+    # --- STOCK DE ARTÍCULO ---
+    if tipo == 'stock_articulo':
+        articulo = params.get('articulo', '')
+        df = get_stock_articulo(articulo)
+        if df is not None and not df.empty:
+            # Calcular total
+            total = 0
+            if 'STOCK' in df.columns:
+                try:
+                    total = df['STOCK'].apply(lambda x: float(str(x).replace(',', '.').replace(' ', '')) if pd.notna(x) else 0).sum()
+                except:
+                    pass
+            msg = f"📦 **Stock de '{articulo}':**"
+            if total > 0:
+                msg += f" (Total: {total:,.0f} unidades)".replace(',', '.')
+            return msg, formatear_dataframe(df)
+        return f"No encontré stock para '{articulo}'. Probá con otro término.", None
+    
+    # --- LOTES POR VENCER ---
+    if tipo == 'stock_lotes_por_vencer':
+        dias = params.get('dias', 90)
+        df = get_lotes_por_vencer(dias)
+        if df is not None and not df.empty:
+            return f"⚠️ **Lotes que vencen en los próximos {dias} días:**", formatear_dataframe(df)
+        return f"No hay lotes que venzan en los próximos {dias} días.", None
+    
+    # --- LOTES VENCIDOS ---
+    if tipo == 'stock_lotes_vencidos':
+        df = get_lotes_vencidos()
+        if df is not None and not df.empty:
+            return "🚨 **Lotes VENCIDOS:**", formatear_dataframe(df)
+        return "No hay lotes vencidos con stock.", None
+    
+    # --- STOCK BAJO ---
+    if tipo == 'stock_bajo':
+        df = get_stock_bajo(10)
+        if df is not None and not df.empty:
+            return "📉 **Artículos con stock bajo (≤10 unidades):**", formatear_dataframe(df)
+        return "No hay artículos con stock bajo.", None
+    
+    # --- LOTE ESPECÍFICO ---
+    if tipo == 'stock_lote_especifico':
+        lote = params.get('lote', '')
+        df = get_stock_lote_especifico(lote)
+        if df is not None and not df.empty:
+            return f"📦 **Información del lote {lote}:**", formatear_dataframe(df)
+        return f"No encontré el lote {lote}.", None
+
+    # =====================================================================
     # CONOCIMIENTO GENERAL (NO SQL)
     # =====================================================================
     if es_conocimiento_general(pregunta):
