@@ -3161,6 +3161,25 @@ def main():
         key="menu_principal"
     )
 
+    def main():
+    st.set_page_config(
+        page_title="Ferti Chat - Gestión de Compras",
+        page_icon="🦋",
+        layout="wide"
+    )
+
+    # ✅ CSS responsive
+    inject_css_responsive()
+
+    # =====================================================================
+    # 🔐 VERIFICAR AUTENTICACIÓN (ESTO ES LO QUE TE FALTABA)
+    # =====================================================================
+    if not require_auth():
+        st.stop()  # Detiene la ejecución si no está autenticado
+
+    # Si llegó acá, el usuario está autenticado
+    user = get_current_user()
+
     # =====================================================================
     # 🚪 SIDEBAR CON INFO DE USUARIO Y LOGOUT
     # =====================================================================
@@ -3192,39 +3211,20 @@ def main():
 
         st.markdown("---")
 
-    # =====================================================
-    # FUNCIÓN AUXILIAR (NO AFECTA MENÚ)
-    # =====================================================
-    def mostrar_detalle_df(
-        df: pd.DataFrame,
-        titulo: str = "📄 Detalle",
-        key: str = "detalle"
-    ):
-        if df is None or df.empty:
-            return
+    # =========================
+    # HEADER DINÁMICO (ARRIBA DEL MENÚ)
+    # =========================
+    header_slot = st.empty()
 
-        ren = {
-            "Proveedor": "Prov",
-            "Articulo": "Art",
-            "Artículo": "Art",
-            "N Factura": "Factura",
-            "Nro_Factura": "Factura",
-            "Fecha": "Fecha",
-            "Mes": "Mes",
-            "cantidad": "Cant",
-            "Cantidad": "Cant",
-            "Total": "Total",
-            "Moneda": "Mon",
-        }
-
-        df_show = df.copy()
-        df_show.rename(
-            columns={k: v for k, v in ren.items() if k in df_show.columns},
-            inplace=True
-        )
-
-        st.markdown(f"**{titulo}**")
-        st.dataframe(df_show, use_container_width=True, hide_index=True)
+    # =========================
+    # MENÚ ÚNICO (HORIZONTAL)
+    # =========================
+    menu = st.radio(
+        "Menú:",
+        ["🛒 Compras IA", "📦 Stock IA", "🔎 Buscador IA", "📊 Dashboard", "📈 Indicadores IA"],
+        horizontal=True,
+        key="menu_principal"
+    )
 
     # =====================================================
     # EJEMPLO DE USO DEL MENÚ (TU LÓGICA SIGUE ACÁ)
