@@ -2920,11 +2920,77 @@ def mostrar_resumen_compras_rotativo():
       </div>
     """, unsafe_allow_html=True)
 
+# =========================
+# CSS RESPONSIVE (CELULAR)
+# =========================
+st.markdown("""
+<style>
+/* ===== Base: que el contenido aproveche el ancho ===== */
+.block-container {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+/* ======================================================
+   📱 CELULAR / PANTALLAS CHICAS
+   ====================================================== */
+@media (max-width: 768px) {
+
+  /* Menos márgenes laterales (el principal problema en mobile) */
+  .block-container {
+    padding-left: 0.7rem !important;
+    padding-right: 0.7rem !important;
+    padding-top: 0.7rem !important;
+  }
+
+  /* Títulos más chicos */
+  h1 { font-size: 1.25rem !important; line-height: 1.15 !important; }
+  h2 { font-size: 1.10rem !important; line-height: 1.15 !important; }
+  h3 { font-size: 1.00rem !important; line-height: 1.15 !important; }
+
+  /* Texto general más chico */
+  .stMarkdown, .stText, p, label, span {
+    font-size: 0.95rem !important;
+  }
+
+  /* ===== DATAFRAMES / TABLAS ===== */
+
+  /* Ocultar la barra de íconos arriba de la tabla (molesta en celular) */
+  div[data-testid="stElementToolbar"] { display: none !important; }
+
+  /* Hacer que la tabla scrollee horizontalmente si es ancha */
+  div[data-testid="stDataFrame"] > div {
+    overflow-x: auto !important;
+  }
+
+  /* Letra más chica adentro de la tabla */
+  div[data-testid="stDataFrame"] div[role="grid"] {
+    font-size: 0.80rem !important;
+  }
+
+  /* Permitir que el texto largo (Proveedor) pueda saltar de línea */
+  div[data-testid="stDataFrame"] div[role="gridcell"] {
+    white-space: normal !important;
+    line-height: 1.15 !important;
+  }
+
+  /* Encabezados sin romperse raro */
+  div[data-testid="stDataFrame"] div[role="columnheader"] {
+    white-space: nowrap !important;
+  }
+
+  /* Métricas/valores grandes más chicos */
+  div[data-testid="stMetricValue"] {
+    font-size: 1.15rem !important;
+  }
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # =====================================================================
 # INTERFAZ STREAMLIT
 # =====================================================================
-
 def main():
     st.set_page_config(
         page_title="Ferti Chat - Gestión de Compras",
