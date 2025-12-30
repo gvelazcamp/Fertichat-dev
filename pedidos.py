@@ -263,82 +263,85 @@ def mostrar_pedidos_internos():
         "📋 Mis pedidos"
     ])
 
-    # =============================================================
-    # TAB 1 – TEXTO LIBRE + SUGERENCIAS
-    # =============================================================
-    with tab1:
-        st.subheader("✍️ Escribir pedido")
+# =============================================================
+# TAB 1 – TEXTO LIBRE + SUGERENCIAS
+# =============================================================
+with tab1:
+    st.subheader("✍️ Escribir pedido")
 
-        seccion = st.selectbox(
-            "Sección (opcional):",
-            [""] + [f"{k} - {v}" for k, v in SECCIONES.items()]
-        )
-        seccion_codigo = seccion.split(" - ")[0] if seccion else ""
+    seccion = st.selectbox(
+        "Sección (opcional):",
+        [""] + [f"{k} - {v}" for k, v in SECCIONES.items()]
+    )
+    seccion_codigo = seccion.split(" - ")[0] if seccion else ""
 
-        texto_pedido = st.text_area("Pedido:", height=150)
+    texto_pedido = st.text_area("Pedido:", height=150)
 
-        if texto_pedido:
-            df = pd.DataFrame(parsear_texto_pedido(texto_pedido))
-            df_edit = st.data_editor(df, hide_index=True, num_rows="dynamic")
+    if texto_pedido:
+        df = pd.DataFrame(parsear_texto_pedido(texto_pedido))
+        df_edit = st.data_editor(df, hide_index=True, num_rows="dynamic")
 
-            st.markdown("### 🔎 Sugerencias")
+        st.markdown("### 🔎 Sugerencias")
 
-            bloquear_envio = False
-            lineas_finales = []
+        lineas_finales = []
+        bloquear_envio = False
 
-            for idx, fila in df_edit.iterrows():
-                art = str(fila.get("articulo", "")).strip()
-                cant = fila.get("cantidad", 1)
+        for idx, fila in df_edit.iterrows():
+            art = str(fila.get("articulo", "")).strip()
+            cant = fila.get("cantidad", 1)
 
-                if not art:
-                    continue
+            if not art:
+                continue
 
-                texto_limpio = limpiar_texto_para_busqueda(art)
-                sugerencias = sugerir_articulos_similares(texto_limpio, seccion_codigo)
+            texto_limpio = limpiar_texto_para_busqueda(art)
+            sugerencias = sugerir_articulos_similares(texto_limpio, seccion_codigo)
 
-                # 🔴 Varias coincidencias → obligar selección
-                if len(sugerencias) > 1:
+            # 🔴 Varias coincidencias
+            if len(sugerencias) > 1:
+                st.warning(f"⚠️ **{art}** puede ser:")
+
+                elegido = st.selectbox(
+                    f"Seleccioná el artículo correcto para '{art}':",
+                    ["— Elegir —"] + sugerencias,
+                    key=f"sug_{idx}"
+                )
+
+                if elegido == "— Elegir —":
                     bloquear_envio = True
-                    st.warning(f"⚠️ **{art}** puede ser:")
-
-                    elegido = st.selectbox(
-                        f"Seleccioná el artículo correcto para '{art}':",
-                        ["— Elegir —"] + sugerencias,
-                        key=f"sug_{idx}"
-                    )
-
-                    if elegido != "— Elegir —":
-                        lineas_finales.append({
-                            "codigo": "",
-                            "articulo": elegido,
-                            "cantidad": cant
-                        })
-                    else:
-                        lineas_finales.append(fila.to_dict())
-
-                # 🟡 Una sola coincidencia → autocompletar
-                elif len(sugerencias) == 1:
-                    st.info(f"🔹 {art} → {sugerencias[0]}")
+                    lineas_finales.append(fila.to_dict())
+                else:
                     lineas_finales.append({
                         "codigo": "",
-                        "articulo": sugerencias[0],
+                        "articulo": elegido,
                         "cantidad": cant
                     })
 
-                # 🟢 Sin coincidencias → dejar como está
-                else:
-                    lineas_finales.append(fila.to_dict())
+            # 🟡 Una sola coincidencia → reemplaza solo
+            elif len(sugerencias) == 1:
+                st.info(f"🔹 {art} → {sugerencias[0]}")
+                lineas_finales.append({
+                    "codigo": "",
+                    "articulo": sugerencias[0],
+                    "cantidad": cant
+                })
 
-            if st.button(
-                "📨 Enviar pedido",
-                type="primary",
-                disabled=bloquear_envio
-            ):
-                ok, msg, _ = crear_pedido(
-                    usuario,
-                    nombre_usuario,
-                    seccion_codigo,
-                    lineas_finales,
-                    ""
-                )
-                st.success(msg) if ok else st.error(msg)
+            # 🟢 Sin coincidencias
+            else:
+                lineas_finales.append(fila.to_dict())
+
+        if bloquear_envio:
+            st.caption("ℹ️ Seleccioná todas las opciones antes de enviar.")
+
+        if st.button(
+            "📨 Enviar pedido",
+            type="primary",
+            disabled=bloquear_envio
+        ):
+            ok, msg, _ = crear_pedido(
+                usuario,
+                nombre_usuario,
+                seccion_codigo,
+                lineas_finales,
+                ""
+            )
+            st.success(msg) if ok else st.error(msg)
