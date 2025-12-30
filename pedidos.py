@@ -57,7 +57,6 @@ def crear_pedido(usuario: str, nombre_usuario: str, seccion: str,
     if not conn:
         return False, "Error de conexión a DB", ""
 
-    numero_pedido = ""
     try:
         cursor = conn.cursor()
         numero_pedido = generar_numero_pedido()
@@ -68,13 +67,7 @@ def crear_pedido(usuario: str, nombre_usuario: str, seccion: str,
             RETURNING id
         """, (numero_pedido, usuario, nombre_usuario, seccion, observaciones))
 
-        pedido_id_row = cursor.fetchone()
-        pedido_id = pedido_id_row[0] if pedido_id_row else None
-
-        if not pedido_id:
-            conn.rollback()
-            conn.close()
-            return False, "No se pudo obtener el ID del pedido.", ""
+        pedido_id = cursor.fetchone()[0]
 
         for linea in lineas:
             cursor.execute("""
@@ -82,20 +75,22 @@ def crear_pedido(usuario: str, nombre_usuario: str, seccion: str,
                 VALUES (%s, %s, %s, %s)
             """, (
                 pedido_id,
-                linea.get("codigo", "") or "",
+                linea.get("codigo", ""),
                 linea.get("articulo", ""),
                 linea.get("cantidad", 1)
             ))
 
-        mensaje = f"Nuevo pedido {numero_pedido} de {nombre_usuario} ({seccion})"
         cursor.execute("""
             INSERT INTO notificaciones (pedido_id, usuario_destino, mensaje)
             VALUES (%s, %s, %s)
-        """, (pedido_id, USUARIO_NOTIFICACIONES, mensaje))
+        """, (
+            pedido_id,
+            USUARIO_NOTIFICACIONES,
+            f"Nuevo pedido {numero_pedido} de {nombre_usuario} ({seccion})"
+        ))
 
         conn.commit()
         conn.close()
-
         return True, f"✅ Pedido {numero_pedido} creado correctamente", numero_pedido
 
     except Exception as e:
@@ -104,135 +99,24 @@ def crear_pedido(usuario: str, nombre_usuario: str, seccion: str,
             conn.close()
         except:
             pass
-        return False, f"Error al crear pedido: {str(e)}", ""
+        return False, f"Error al crear pedido: {e}", ""
 
 
-def obtener_pedidos(usuario: str = None, estado: str = None) -> pd.DataFrame:
-    query = """
-        SELECT
-            p.numero_pedido AS "Nro Pedido",
-            p.nombre_usuario AS "Usuario",
-            p.seccion AS "Sección",
-            p.estado AS "Estado",
-            TO_CHAR(p.fecha_creacion, 'DD/MM/YYYY HH24:MI') AS "Fecha",
-            p.observaciones AS "Observaciones",
-            p.id
-        FROM pedidos p
-        WHERE 1=1
-    """
-    params = []
-
-    if usuario:
-        query += " AND p.usuario = %s"
-        params.append(usuario)
-
-    if estado:
-        query += " AND p.estado = %s"
-        params.append(estado)
-
-    query += " ORDER BY p.fecha_creacion DESC LIMIT 100"
-    return ejecutar_consulta(query, tuple(params) if params else None)
-
-
-def obtener_detalle_pedido(pedido_id: int) -> pd.DataFrame:
-    query = """
-        SELECT
-            codigo AS "Código",
-            articulo AS "Artículo",
-            cantidad AS "Cantidad"
-        FROM pedidos_detalle
-        WHERE pedido_id = %s
-        ORDER BY id
-    """
-    return ejecutar_consulta(query, (pedido_id,))
-
-
-def actualizar_estado_pedido(numero_pedido: str, nuevo_estado: str) -> Tuple[bool, str]:
-    conn = get_db_connection()
-    if not conn:
-        return False, "Error de conexión"
-
-    try:
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE pedidos
-            SET estado = %s, fecha_actualizacion = NOW()
-            WHERE numero_pedido = %s
-        """, (nuevo_estado, numero_pedido))
-        conn.commit()
-        conn.close()
-        return True, f"Estado actualizado a: {nuevo_estado}"
-    except Exception as e:
-        try:
-            conn.close()
-        except:
-            pass
-        return False, str(e)
-
-# =====================================================================
-# NOTIFICACIONES
-# =====================================================================
-
-def contar_notificaciones_no_leidas(usuario: str) -> int:
-    df = ejecutar_consulta("""
-        SELECT COUNT(*) FROM notificaciones
-        WHERE usuario_destino = %s AND leida = FALSE
-    """, (usuario,))
-    return int(df.iloc[0, 0]) if df is not None and not df.empty else 0
-
-
-def obtener_notificaciones(usuario: str) -> pd.DataFrame:
-    return ejecutar_consulta("""
-        SELECT
-            n.id,
-            n.mensaje,
-            n.leida,
-            TO_CHAR(n.fecha, 'DD/MM HH24:MI') AS fecha,
-            p.numero_pedido
-        FROM notificaciones n
-        LEFT JOIN pedidos p ON n.pedido_id = p.id
-        WHERE n.usuario_destino = %s
-        ORDER BY n.fecha DESC
-        LIMIT 50
-    """, (usuario,))
-
-
-def marcar_notificacion_leida(notif_id: int) -> bool:
-    conn = get_db_connection()
-    if not conn:
-        return False
-    try:
-        cursor = conn.cursor()
-        cursor.execute("UPDATE notificaciones SET leida = TRUE WHERE id = %s", (notif_id,))
-        conn.commit()
-        conn.close()
-        return True
-    except:
-        try:
-            conn.close()
-        except:
-            pass
-        return False
 # =====================================================================
 # NORMALIZACIÓN DE TEXTO PARA SUGERENCIAS
 # =====================================================================
 
 def limpiar_texto_para_busqueda(texto: str) -> str:
-    """
-    Limpia el texto del artículo para sugerencias:
-    - Quita números
-    - Quita símbolos
-    - Normaliza espacios
-    """
     if not texto:
         return ""
 
     texto = texto.upper()
-    texto = re.sub(r'\d+', ' ', texto)          # quitar números
-    texto = re.sub(r'[^A-Z\s]', ' ', texto)     # quitar símbolos
-    texto = re.sub(r'\s+', ' ', texto).strip()  # espacios múltiples
+    texto = re.sub(r'\d+', ' ', texto)
+    texto = re.sub(r'[^A-Z\s]', ' ', texto)
+    texto = re.sub(r'\s+', ' ', texto).strip()
 
     return texto
+
 
 # =====================================================================
 # PARSEO TEXTO LIBRE
@@ -263,20 +147,16 @@ def parsear_texto_pedido(texto: str) -> List[dict]:
 
     return lineas
 
+
 # =====================================================================
-# 🔎 SUGERENCIAS DE ARTÍCULOS 
+# 🔎 SUGERENCIAS DE ARTÍCULOS (SECCIÓN + TR)
 # =====================================================================
 
 def sugerir_articulos_similares(texto_articulo: str, seccion: str = "") -> List[str]:
-    """
-    Busca artículos similares en stock.
-    Usa ILIKE y búsqueda por palabras.
-    """
     if not texto_articulo or len(texto_articulo.strip()) < 3:
         return []
 
-    palabras = [p.strip() for p in texto_articulo.upper().split() if len(p.strip()) >= 3]
-
+    palabras = [p for p in texto_articulo.split() if len(p) >= 3]
     if not palabras:
         return []
 
@@ -295,18 +175,17 @@ def sugerir_articulos_similares(texto_articulo: str, seccion: str = "") -> List[
         WHERE {where_articulo}
     """
 
+    # 👉 CLAVE: sección seleccionada + TR
     if seccion:
-        query += ' AND UPPER(TRIM("FAMILIA")) = %s'
+        query += ' AND UPPER(TRIM("FAMILIA")) IN (%s, %s)'
         params.append(seccion.upper())
+        params.append("TR")
 
     query += " ORDER BY 1 LIMIT 10"
 
     df = ejecutar_consulta(query, tuple(params))
+    return df.iloc[:, 0].tolist() if df is not None and not df.empty else []
 
-    if df is None or df.empty:
-        return []
-
-    return [str(a) for a in df.iloc[:, 0].tolist()]
 
 # =====================================================================
 # INTERFAZ
@@ -332,6 +211,7 @@ def mostrar_pedidos_internos():
     # =============================================================
     with tab1:
         st.subheader("✍️ Escribir pedido")
+
         seccion = st.selectbox(
             "Sección (opcional):",
             [""] + [f"{k} - {v}" for k, v in SECCIONES.items()]
@@ -341,22 +221,31 @@ def mostrar_pedidos_internos():
         texto_pedido = st.text_area("Pedido:", height=150)
 
         if texto_pedido:
-            lineas = parsear_texto_pedido(texto_pedido)
-            df = pd.DataFrame(lineas)
-
+            df = pd.DataFrame(parsear_texto_pedido(texto_pedido))
             df_edit = st.data_editor(df, hide_index=True, num_rows="dynamic")
 
             st.markdown("### 🔎 Sugerencias")
+            hubo = False
+
             for _, fila in df_edit.iterrows():
                 art = str(fila.get("articulo", "")).strip()
+                if not art:
+                    continue
+
                 texto_limpio = limpiar_texto_para_busqueda(art)
                 sugerencias = sugerir_articulos_similares(texto_limpio, seccion_codigo)
+
                 if len(sugerencias) > 1:
+                    hubo = True
                     st.warning(f"⚠️ **{art}** puede ser:")
                     for s in sugerencias:
-                        st.markdown(f"- {s}")
+                        st.markdown(f"- {s} (TR)")
                 elif len(sugerencias) == 1:
-                    st.info(f"🔹 {art} → {sugerencias[0]}")
+                    hubo = True
+                    st.info(f"🔹 {art} → {sugerencias[0]} (TR)")
+
+            if not hubo:
+                st.caption("ℹ️ No se encontraron sugerencias automáticas.")
 
             if st.button("📨 Enviar pedido", type="primary"):
                 ok, msg, _ = crear_pedido(
@@ -367,7 +256,3 @@ def mostrar_pedidos_internos():
                     ""
                 )
                 st.success(msg) if ok else st.error(msg)
-
-
-
-
