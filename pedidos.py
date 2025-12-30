@@ -201,10 +201,16 @@ def parsear_texto_pedido(texto: str) -> List[dict]:
 # =====================================================================
 
 def sugerir_articulos_similares(texto_articulo: str, seccion: str = "") -> List[str]:
+    """
+    Busca artículos similares en stock.
+    - Usa ILIKE (case insensitive real)
+    - Incluye siempre TR como familia transversal
+    """
     if not texto_articulo or len(texto_articulo.strip()) < 3:
         return []
 
     palabras = [p for p in texto_articulo.split() if len(p) >= 3]
+
     if not palabras:
         return []
 
@@ -212,7 +218,7 @@ def sugerir_articulos_similares(texto_articulo: str, seccion: str = "") -> List[
     params = []
 
     for p in palabras:
-        condiciones.append('UPPER("ARTICULO") ILIKE %s')
+        condiciones.append('"ARTICULO" ILIKE %s')
         params.append(f"%{p}%")
 
     where_articulo = " AND ".join(condiciones)
@@ -223,15 +229,19 @@ def sugerir_articulos_similares(texto_articulo: str, seccion: str = "") -> List[
         WHERE {where_articulo}
     """
 
-    # 👉 CLAVE: sección seleccionada + TR
     if seccion:
         query += ' AND UPPER(TRIM("FAMILIA")) IN (%s, %s)'
         params.extend([seccion.upper(), 'TR'])
-    
+
     query += " ORDER BY 1 LIMIT 10"
 
     df = ejecutar_consulta(query, tuple(params))
-    return df.iloc[:, 0].tolist() if df is not None and not df.empty else []
+
+    if df is None or df.empty:
+        return []
+
+    return df.iloc[:, 0].astype(str).tolist()
+
 
 
 # =====================================================================
@@ -303,6 +313,7 @@ def mostrar_pedidos_internos():
                     ""
                 )
                 st.success(msg) if ok else st.error(msg)
+
 
 
 
