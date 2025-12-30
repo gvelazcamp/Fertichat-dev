@@ -8,6 +8,7 @@ import pandas as pd
 from typing import List, Tuple
 import re
 import io
+from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, GridUpdateMode
 
 # Importar conexión a DB
 from sql_queries import ejecutar_consulta, get_db_connection
@@ -428,7 +429,7 @@ def mostrar_pedidos_internos():
                 st.error(msg)
 
     # =============================================================
-    # TAB 2 – SELECCIONAR PRODUCTOS (TABLA + CHECK + CANTIDAD ±)
+    # TAB 2 – SELECCIONAR PRODUCTOS (TABLA + CHECK + CANTIDAD (- 0 +) + TR)
     # =============================================================
     with tab2:
         st.subheader("✅ Seleccionar productos")
@@ -443,9 +444,8 @@ def mostrar_pedidos_internos():
         incluir_tr = st.checkbox("Incluir TR (Tronco Común)", value=True, key="tab2_incluir_tr")
         buscar = st.text_input("Buscar artículo (opcional):", key="tab2_buscar")
 
-        # row_key -> {"codigo":..., "articulo":..., "cantidad":...}
         if "tab2_sel" not in st.session_state:
-            st.session_state["tab2_sel"] = {}
+            st.session_state["tab2_sel"] = {}  # articulo -> {"codigo":..., "articulo":..., "cantidad":...}
 
         if not seccion2_codigo:
             st.info("Elegí una sección para listar productos.")
@@ -493,17 +493,15 @@ def mostrar_pedidos_internos():
                     if not articulo:
                         continue
 
-                    row_key = f"{codigo}||{articulo}"
-
-                    if row_key in sel_map:
+                    if articulo in sel_map:
                         sel = True
                         try:
-                            cant = int(float(sel_map[row_key].get("cantidad", 0)))
+                            cant = int(float(sel_map[articulo].get("cantidad", 0)))
                         except:
                             cant = 0
                     else:
                         sel = False
-                        cant = 0  # ✅ default SIEMPRE 0
+                        cant = 0  # ✅ default 0
 
                     filas.append({
                         "Sel": sel,
@@ -515,37 +513,115 @@ def mostrar_pedidos_internos():
 
                 df_tab2 = pd.DataFrame(filas)
 
-                df_tab2_edit = st.data_editor(
+                # --- Renderer JS: botones - [input] + dentro de la celda ---
+                qty_renderer = JsCode(r"""
+                function(params) {
+                    let v = params.value;
+                    v = (v === null || v === undefined || v === "") ? 0 : parseInt(v);
+                    if (isNaN(v)) v = 0;
+
+                    const wrap = document.createElement('div');
+                    wrap.style.display = 'flex';
+                    wrap.style.alignItems = 'center';
+                    wrap.style.justifyContent = 'center';
+                    wrap.style.gap = '8px';
+
+                    const btnStyle = "width:28px;height:28px;border:1px solid #d0d0d0;border-radius:8px;background:#fff;cursor:pointer;line-height:26px;font-size:18px;";
+                    const inpStyle = "width:64px;height:28px;border:1px solid #d0d0d0;border-radius:8px;text-align:center;";
+
+                    const minus = document.createElement('button');
+                    minus.setAttribute('style', btnStyle);
+                    minus.innerHTML = "−";
+
+                    const inp = document.createElement('input');
+                    inp.type = "number";
+                    inp.min = "0";
+                    inp.step = "1";
+                    inp.value = v.toString();
+                    inp.setAttribute('style', inpStyle);
+
+                    const plus = document.createElement('button');
+                    plus.setAttribute('style', btnStyle);
+                    plus.innerHTML = "+";
+
+                    function setVal(n) {
+                        n = parseInt(n);
+                        if (isNaN(n) || n < 0) n = 0;
+                        inp.value = n.toString();
+                        params.setValue(n);
+                    }
+
+                    minus.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const cur = parseInt(inp.value || "0");
+                        setVal(Math.max(0, cur - 1));
+                    });
+
+                    plus.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const cur = parseInt(inp.value || "0");
+                        setVal(cur + 1);
+                    });
+
+                    inp.addEventListener('change', (e) => {
+                        setVal(inp.value);
+                    });
+
+                    wrap.appendChild(minus);
+                    wrap.appendChild(inp);
+                    wrap.appendChild(plus);
+
+                    return wrap;
+                }
+                """)
+
+                gb = GridOptionsBuilder.from_dataframe(df_tab2)
+                gb.configure_column(
+                    "Sel",
+                    headerName="Sel",
+                    editable=True,
+                    cellRenderer="agCheckboxCellRenderer",
+                    cellEditor="agCheckboxCellEditor",
+                    width=70
+                )
+                gb.configure_column("Código", editable=False, width=120)
+                gb.configure_column("Artículo", editable=False, flex=2, minWidth=250)
+                gb.configure_column("Familia", editable=False, width=90)
+                gb.configure_column(
+                    "Cantidad",
+                    editable=False,  # la editás con - / input / +
+                    cellRenderer=qty_renderer,
+                    width=190
+                )
+                gb.configure_grid_options(suppressRowClickSelection=True)
+
+                grid = AgGrid(
                     df_tab2,
-                    hide_index=True,
-                    num_rows="fixed",
-                    column_config={
-                        "Sel": st.column_config.CheckboxColumn("Sel"),
-                        "Cantidad": st.column_config.NumberColumn("Cantidad", min_value=0, step=1),
-                    },
-                    disabled=["Código", "Artículo", "Familia"],
-                    key="tab2_editor"
+                    gridOptions=gb.build(),
+                    height=420,
+                    theme="streamlit",
+                    update_mode=GridUpdateMode.VALUE_CHANGED,
+                    allow_unsafe_jscode=True,
+                    key="tab2_grid"
                 )
 
-                # Guardar selección (mantiene cantidad 0 si el usuario no la sube)
+                df_tab2_edit = pd.DataFrame(grid["data"])
+
+                # Guardar selección
                 nuevo = {}
                 for _, rr in df_tab2_edit.iterrows():
                     if bool(rr.get("Sel", False)):
-                        cod = str(rr.get("Código", "") or "")
-                        art = str(rr.get("Artículo", "") or "").strip()
+                        art = str(rr.get("Artículo", "")).strip()
                         if not art:
                             continue
-
-                        row_key = f"{cod}||{art}"
-
+                        cod = str(rr.get("Código", "") or "")
                         try:
                             cant = int(float(rr.get("Cantidad", 0)))
                         except:
                             cant = 0
                         if cant < 0:
                             cant = 0
-
-                        nuevo[row_key] = {"codigo": cod, "articulo": art, "cantidad": cant}
+                        nuevo[art] = {"codigo": cod, "articulo": art, "cantidad": cant}
 
                 st.session_state["tab2_sel"] = nuevo
 
@@ -556,84 +632,33 @@ def mostrar_pedidos_internos():
                         st.rerun()
 
                 with colB:
-                    st.write(f"Seleccionados: **{len(st.session_state['tab2_sel'])}**")
+                    lineas = list(st.session_state["tab2_sel"].values())
+                    st.write(f"Seleccionados: **{len(lineas)}**")
 
-                lineas = list(st.session_state["tab2_sel"].values())
+                # Validación: no permitir enviar con cantidad 0
+                hay_cero = any(int(it.get("cantidad", 0) or 0) <= 0 for it in lineas)
+                if len(lineas) > 0 and hay_cero:
+                    st.warning("⚠️ Tenés artículos seleccionados con cantidad 0. Ajustá la cantidad para poder enviar.")
 
-                # ✅ Controles − / + (no pueden ir dentro de la celda, van abajo pero sincronizados)
-                if lineas:
-                    st.markdown("### 🧮 Cantidades (− 0 +)")
-
-                    hay_ceros = False
-
-                    for it in lineas:
-                        cod = it.get("codigo", "")
-                        art = it.get("articulo", "")
-                        cant_actual = int(it.get("cantidad", 0) or 0)
-
-                        if cant_actual <= 0:
-                            hay_ceros = True
-
-                        # keys cortas y seguras
-                        base = re.sub(r"[^A-Za-z0-9]+", "_", f"{cod}_{art}")[:80]
-
-                        st.markdown(f"**{cod}** — {art}")
-                        c1, c2, c3 = st.columns([0.12, 0.76, 0.12])
-
-                        with c1:
-                            if st.button("−", key=f"tab2_minus_{base}"):
-                                nuevo_cant = max(0, cant_actual - 1)
-                                # actualizar en session_state
-                                rk = f"{cod}||{art}"
-                                if rk in st.session_state["tab2_sel"]:
-                                    st.session_state["tab2_sel"][rk]["cantidad"] = nuevo_cant
-                                st.rerun()
-
-                        with c2:
-                            nuevo_val = st.number_input(
-                                "",
-                                min_value=0,
-                                step=1,
-                                value=cant_actual,
-                                key=f"tab2_num_{base}",
-                                label_visibility="collapsed"
-                            )
-                            # sincronizar si cambió
-                            if int(nuevo_val) != cant_actual:
-                                rk = f"{cod}||{art}"
-                                if rk in st.session_state["tab2_sel"]:
-                                    st.session_state["tab2_sel"][rk]["cantidad"] = int(nuevo_val)
-
-                        with c3:
-                            if st.button("+", key=f"tab2_plus_{base}"):
-                                nuevo_cant = cant_actual + 1
-                                rk = f"{cod}||{art}"
-                                if rk in st.session_state["tab2_sel"]:
-                                    st.session_state["tab2_sel"][rk]["cantidad"] = nuevo_cant
-                                st.rerun()
-
-                    if hay_ceros:
-                        st.warning("⚠️ Tenés artículos seleccionados con cantidad 0. Ajustá la cantidad para poder enviar.")
-
-                    st.markdown("#### ✅ Selección final")
-                    st.dataframe(pd.DataFrame(lineas)[["codigo", "articulo", "cantidad"]], use_container_width=True)
-
-                    btn_disabled = (len(lineas) == 0) or hay_ceros
-
-                    if st.button("📨 Enviar pedido", type="primary", key="tab2_btn_enviar", disabled=btn_disabled):
-                        ok, msg, _ = crear_pedido(
-                            usuario,
-                            nombre_usuario,
-                            seccion2_codigo,
-                            lineas,
-                            ""
-                        )
-                        if ok:
-                            st.success(msg)
-                            st.session_state["tab2_sel"] = {}
-                            st.rerun()
-                        else:
-                            st.error(msg)
+                if st.button(
+                    "📨 Enviar pedido",
+                    type="primary",
+                    key="tab2_btn_enviar",
+                    disabled=(len(lineas) == 0 or hay_cero)
+                ):
+                    ok, msg, _ = crear_pedido(
+                        usuario,
+                        nombre_usuario,
+                        seccion2_codigo,
+                        lineas,
+                        ""
+                    )
+                    if ok:
+                        st.success(msg)
+                        st.session_state["tab2_sel"] = {}
+                        st.rerun()
+                    else:
+                        st.error(msg)
 
 
     # =============================================================
@@ -748,6 +773,7 @@ def mostrar_pedidos_internos():
                     st.dataframe(df_det, use_container_width=True)
             except Exception:
                 pass
+
 
 
 
