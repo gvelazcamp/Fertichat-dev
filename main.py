@@ -3703,16 +3703,15 @@ def _render_explicacion_compras(df: pd.DataFrame, contexto_respuesta: str = "") 
 # =========================
 # UI - MOSTRAR DETALLE DF
 # =========================
-mostrar_detalle_df(
+def mostrar_detalle_df(
     df,
-    titulo="📄 Ver detalle de compras",
-    key=f"hist_{i}",
-    contexto_respuesta={
-        "where_clause": where_clause,
-        "params": params_sql
-    }
-)
-
+    titulo="Detalle",
+    key="detalle",
+    contexto_respuesta=None,
+    max_rows=200,
+    enable_chart=True,
+    enable_explain=True,
+):
     try:
         if hasattr(df, "empty") and df.empty:
             return
@@ -3735,17 +3734,29 @@ mostrar_detalle_df(
     col1, col2, col3 = st.columns([1, 1, 1])
 
     with col1:
-        ver_tabla = st.checkbox("📄 Ver tabla (detalle)", key=f"{key}_tabla", value=True)
+        ver_tabla = st.checkbox(
+            "📄 Ver tabla (detalle)",
+            key=f"{key}_tabla",
+            value=True
+        )
 
     with col2:
         ver_grafico = False
         if enable_chart:
-            ver_grafico = st.checkbox("📈 Ver gráfico", key=f"{key}_grafico", value=False)
+            ver_grafico = st.checkbox(
+                "📈 Ver gráfico",
+                key=f"{key}_grafico",
+                value=False
+            )
 
     with col3:
         ver_explicacion = False
         if enable_explain:
-            ver_explicacion = st.checkbox("🧠 Ver explicación", key=f"{key}_explica", value=False)
+            ver_explicacion = st.checkbox(
+                "🧠 Ver explicación",
+                key=f"{key}_explica",
+                value=False
+            )
 
     # TABLA (solo recorte)
     if ver_tabla:
@@ -3758,8 +3769,10 @@ mostrar_detalle_df(
             total_full = len(df_full)
             total_view = len(df_view)
             if total_full > total_view:
-                st.caption(f"Mostrando {total_view} de {total_full} registros. "
-                           f"Gráficos/explicación se calculan sobre los {total_full}.")
+                st.caption(
+                    f"Mostrando {total_view} de {total_full} registros. "
+                    f"Gráficos/explicación se calculan sobre los {total_full}."
+                )
         except Exception:
             pass
 
