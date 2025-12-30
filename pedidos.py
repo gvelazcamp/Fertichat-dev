@@ -100,6 +100,54 @@ def crear_pedido(usuario: str, nombre_usuario: str, seccion: str,
         except:
             pass
         return False, f"Error al crear pedido: {e}", ""
+# =====================================================================
+# NOTIFICACIONES
+# =====================================================================
+
+def contar_notificaciones_no_leidas(usuario: str) -> int:
+    df = ejecutar_consulta("""
+        SELECT COUNT(*)
+        FROM notificaciones
+        WHERE usuario_destino = %s AND leida = FALSE
+    """, (usuario,))
+    return int(df.iloc[0, 0]) if df is not None and not df.empty else 0
+
+
+def obtener_notificaciones(usuario: str) -> pd.DataFrame:
+    return ejecutar_consulta("""
+        SELECT
+            n.id,
+            n.mensaje,
+            n.leida,
+            TO_CHAR(n.fecha, 'DD/MM HH24:MI') AS fecha,
+            p.numero_pedido
+        FROM notificaciones n
+        LEFT JOIN pedidos p ON n.pedido_id = p.id
+        WHERE n.usuario_destino = %s
+        ORDER BY n.fecha DESC
+        LIMIT 50
+    """, (usuario,))
+
+
+def marcar_notificacion_leida(notif_id: int) -> bool:
+    conn = get_db_connection()
+    if not conn:
+        return False
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE notificaciones SET leida = TRUE WHERE id = %s",
+            (notif_id,)
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except:
+        try:
+            conn.close()
+        except:
+            pass
+        return False
 
 
 # =====================================================================
@@ -256,4 +304,5 @@ def mostrar_pedidos_internos():
                     ""
                 )
                 st.success(msg) if ok else st.error(msg)
+
 
