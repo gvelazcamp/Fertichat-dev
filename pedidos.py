@@ -533,16 +533,18 @@ def mostrar_pedidos_internos():
                         if (!e || !e.colDef || e.colDef.field !== "Cantidad") return;
                         if (!e.event) return;
 
-                        // Agarrar un rectángulo clickeable confiable
+                        // ✅ cortar edición si se abrió por cualquier motivo
+                        if (e.api && e.api.stopEditing) {
+                            e.api.stopEditing();
+                        }
+
                         let rect = null;
 
-                        // 1) intentar con el contenedor de la celda
                         if (e.event.target && e.event.target.closest) {
                             const cell = e.event.target.closest('.ag-cell');
                             if (cell && cell.getBoundingClientRect) rect = cell.getBoundingClientRect();
                         }
 
-                        // 2) fallback: el target mismo
                         if ((!rect || !rect.width) && e.event.target && e.event.target.getBoundingClientRect) {
                             rect = e.event.target.getBoundingClientRect();
                         }
@@ -555,7 +557,7 @@ def mostrar_pedidos_internos():
                         let cur = parseInt(e.value);
                         if (isNaN(cur) || cur < 0) cur = 0;
 
-                        // izquierda: −  | derecha: +
+                        // izquierda: − | derecha: +
                         if (x < w * 0.33) {
                             cur = Math.max(0, cur - 1);
                         } else if (x > w * 0.66) {
@@ -564,7 +566,6 @@ def mostrar_pedidos_internos():
                             return; // centro: no hace nada
                         }
 
-                        // set + refresh (clave)
                         e.node.setDataValue("Cantidad", cur);
                         if (e.data) e.data["Cantidad"] = cur;
 
@@ -594,7 +595,7 @@ def mostrar_pedidos_internos():
 
                 gb.configure_column(
                     "Cantidad",
-                    editable=True,
+                    editable=True,  # ✅ doble click para tipear (porque vamos a bloquear click-edit)
                     cellEditor="agNumberCellEditor",
                     cellRenderer=qty_renderer,
                     width=140,
@@ -608,6 +609,12 @@ def mostrar_pedidos_internos():
 
                 # 👇 IMPORTANTE: asignarlo directo al gridOptions final
                 grid_options = gb.build()
+
+                # ✅ CLAVE: no entrar en edición con UN click (así funciona el +/−)
+                grid_options["suppressClickEdit"] = True
+                grid_options["singleClickEdit"] = False
+                grid_options["stopEditingWhenCellsLoseFocus"] = True
+
                 grid_options["suppressRowClickSelection"] = True
                 grid_options["onCellClicked"] = on_cell_clicked
 
@@ -787,6 +794,7 @@ def mostrar_pedidos_internos():
                     st.dataframe(df_det, use_container_width=True)
             except Exception:
                 pass
+
 
 
 
