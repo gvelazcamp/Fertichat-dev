@@ -1,49 +1,27 @@
 # =========================
 # MAIN - ORQUESTADOR PRINCIPAL
 # =========================
-# ======================
-# LOGIN (CONTROL CENTRAL)
-# ======================
-from auth import login_user
+
 import streamlit as st
-
-# Inicializar sesión UNA sola vez
-if "user" not in st.session_state:
-    st.session_state["user"] = None
-
-# ---- LOGIN ----
-if st.session_state["user"] is None:
-    st.title("Login FertiChat")
-
-    usuario = st.text_input("Usuario")
-    password = st.text_input("Contraseña", type="password")
-
-    if st.button("Entrar"):
-        ok, msg, user_data = login_user(usuario, password)
-
-        if ok:
-            st.session_state["user"] = user_data  # 👈 ÚNICA FUENTE DE VERDAD
-            st.rerun()
-        else:
-            st.error(msg)
-
-    st.stop()   # ⬅️ ESTO EVITA EL BUCLE
-# ======================
-# APP PRINCIPAL
-# ======================
-user = st.session_state["user"]
-
-st.sidebar.success(f"👤 {user['nombre']} ({user['usuario']})")
-st.sidebar.caption(user["empresa"])    
 import pandas as pd
 from datetime import datetime
 from typing import Tuple, Optional
-from supabase_client import supabase
 import json
 import re
 import io
 import plotly.express as px
 import plotly.graph_objects as go
+
+from supabase_client import supabase
+
+# =========================
+# CONFIGURACIÓN STREAMLIT
+# =========================
+st.set_page_config(
+    page_title="FertiChat",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # =========================
 # CONFIGURACIÓN DEBUG
@@ -51,7 +29,7 @@ import plotly.graph_objects as go
 DEBUG_MODE = False  # Cambiar a True para ver debug
 
 # =====================================================================
-# 🔐 SISTEMA DE AUTENTICACIÓN
+# 🔐 SISTEMA DE AUTENTICACIÓN (ÚNICO)
 # =====================================================================
 from auth import init_db
 from login_page import (
@@ -62,8 +40,40 @@ from login_page import (
     LOGIN_CSS
 )
 
-# Inicializar base de datos de usuarios
+# Inicializar base de datos de usuarios (una sola vez)
 init_db()
+
+# Aplicar CSS del login / app
+st.markdown(LOGIN_CSS, unsafe_allow_html=True)
+
+# ---------------------------------------------------------------------
+# 🔒 REQUERIR AUTENTICACIÓN
+# Esto:
+# - muestra el login lindo si no hay sesión
+# - corta la ejecución con st.stop()
+# - evita bucles
+# ---------------------------------------------------------------------
+require_auth()
+
+# ======================
+# USUARIO AUTENTICADO
+# ======================
+user = get_current_user()  # ← SALE DE session_state["user"]
+
+# Sidebar: info del usuario + logout
+show_user_info_sidebar(user)
+
+if st.sidebar.button("Cerrar sesión"):
+    logout()
+    st.rerun()
+
+# ======================
+# APP PRINCIPAL
+# ======================
+
+st.title("🦋 FertiChat")
+st.caption("Sistema de Gestión de Compras")
+
 
 # ======================================================
 # 🔔 CAMPANITA GLOBAL DE PEDIDOS INTERNOS
