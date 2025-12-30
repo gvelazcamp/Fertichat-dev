@@ -297,6 +297,24 @@ def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int, moneda: s
     """
     return ejecutar_consulta(sql, (f"%{proveedor_like}%", anio))
 
+def get_serie_compras_agregada(where_clause: str, params: tuple) -> pd.DataFrame:
+    """
+    Serie temporal agregada (SIN LIMIT).
+    Se usa SOLO para gráficos y explicación.
+    """
+    total_expr = _sql_total_num_expr_general()
+
+    sql = f"""
+        SELECT
+            "Fecha"::date AS Fecha,
+            SUM({total_expr}) AS Total
+        FROM chatbot_raw
+        WHERE {where_clause}
+        GROUP BY "Fecha"::date
+        ORDER BY "Fecha"::date
+    """
+
+    return ejecutar_consulta(sql, params)
 
 def get_total_compras_proveedor_anio(proveedor_like: str, anio: int) -> dict:
     """Total de compras de un proveedor en un año."""
