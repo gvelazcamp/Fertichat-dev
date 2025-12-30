@@ -209,6 +209,21 @@ def get_lista_tipos_comprobante() -> list:
         return ["Todos"]
     return ["Todos"] + df['tipo'].tolist()
 
+def get_dataset_completo(where_clause: str, params: tuple):
+    total_expr = _sql_total_num_expr_general()
+
+    sql = f"""
+        SELECT
+            "Fecha",
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            "Cantidad",
+            "Moneda",
+            {total_expr} AS Total
+        FROM chatbot_raw
+        WHERE {where_clause}
+    """
+    return ejecutar_consulta(sql, params)
 
 def get_lista_articulos() -> list:
     sql = """
