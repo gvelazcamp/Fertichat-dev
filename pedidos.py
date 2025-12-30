@@ -349,7 +349,7 @@ def mostrar_pedidos_internos():
             st.markdown("### 🔎 Sugerencias")
             for _, fila in df_edit.iterrows():
                 art = str(fila.get("articulo", "")).strip()
-                texto_limpio = limpiar_texto_para_busqueda(articulo)
+                texto_limpio = limpiar_texto_para_busqueda(art)
                 sugerencias = sugerir_articulos_similares(texto_limpio, seccion_codigo)
                 if len(sugerencias) > 1:
                     st.warning(f"⚠️ **{art}** puede ser:")
@@ -367,6 +367,7 @@ def mostrar_pedidos_internos():
                     ""
                 )
                 st.success(msg) if ok else st.error(msg)
+
 
 
 
