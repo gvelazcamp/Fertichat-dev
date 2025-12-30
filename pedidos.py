@@ -593,7 +593,7 @@ def mostrar_pedidos_internos():
                 gb.configure_column("Artículo", editable=False, flex=2, minWidth=280)
                 gb.configure_column("Familia", editable=False, width=90)
 
-                # ✅ Formatter: "−   N   +" (SIEMPRE visible)
+                # ✅ Formatter: "−   N   +" (siempre visible)
                 qty_formatter = JsCode(r"""
                 function(params) {
                     let v = params.value;
@@ -622,7 +622,7 @@ def mostrar_pedidos_internos():
                         let cur = parseInt(e.data["Cantidad"], 10);
                         if (isNaN(cur) || cur < 0) cur = 0;
 
-                        // zonas más grandes para que sea fácil tocar
+                        // zonas amplias: fácil de clickear
                         if (x < w * 0.40) {
                             cur = Math.max(0, cur - 1);
                             e.node.setDataValue("Cantidad", cur);
@@ -630,7 +630,7 @@ def mostrar_pedidos_internos():
                             cur = cur + 1;
                             e.node.setDataValue("Cantidad", cur);
                         } else {
-                            // centro: arranca edición para escribir
+                            // centro: edición para escribir
                             if (e.api && e.rowIndex !== undefined) {
                                 e.api.startEditingCell({ rowIndex: e.rowIndex, colKey: "Cantidad" });
                             }
@@ -647,7 +647,7 @@ def mostrar_pedidos_internos():
 
                 gb.configure_column(
                     "Cantidad",
-                    editable=True,  # ✅ se escribe (centro o doble click)
+                    editable=True,  # ✅ centro o doble click para escribir
                     cellEditor="agNumberCellEditor",
                     valueFormatter=qty_formatter,  # ✅ clave: no desaparece
                     width=160,
@@ -662,7 +662,7 @@ def mostrar_pedidos_internos():
                     }
                 )
 
-                # 👇 IMPORTANTE: asignarlo directo al gridOptions final
+                # ✅ IMPORTANTE: asignarlo al gridOptions final
                 grid_options = gb.build()
                 grid_options["suppressRowClickSelection"] = True
                 grid_options["onCellClicked"] = on_cell_clicked
@@ -845,4 +845,3 @@ def mostrar_pedidos_internos():
                     st.dataframe(df_det, use_container_width=True)
             except Exception:
                 pass
-
