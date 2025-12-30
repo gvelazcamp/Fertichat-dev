@@ -3713,13 +3713,6 @@ mostrar_detalle_df(
     }
 )
 
-    IMPORTANTE:
-    - La TABLA se limita a max_rows por performance.
-    - Los GRÁFICOS y la EXPLICACIÓN se calculan sobre el DF COMPLETO.
-    """
-    if df is None:
-        return
-
     try:
         if hasattr(df, "empty") and df.empty:
             return
