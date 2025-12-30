@@ -542,6 +542,7 @@ def mostrar_pedidos_internos():
                         nuevo[art] = {"codigo": cod, "articulo": art, "cantidad": cant}
 
                 st.session_state["tab2_sel"] = nuevo
+                sel_map = st.session_state["tab2_sel"]  # refrescar referencia
 
                 colA, colB = st.columns([1, 1])
 
@@ -551,32 +552,85 @@ def mostrar_pedidos_internos():
                         st.rerun()
 
                 with colB:
-                    lineas = list(st.session_state["tab2_sel"].values())
-                    st.write(f"Seleccionados: **{len(lineas)}**")
+                    st.write(f"Seleccionados: **{len(sel_map)}**")
 
-                # Mostrar selección
-                if st.session_state["tab2_sel"]:
+                # ============================
+                # ➖ [cantidad] ➕ (carrito)
+                # ============================
+                hay_cero = False
+
+                if sel_map:
+                    st.markdown("#### 🧺 Cantidades (➖ 0 ➕)")
+
+                    for i, art in enumerate(sorted(sel_map.keys())):
+                        it = sel_map[art]
+                        cod = str(it.get("codigo", "") or "")
+                        nombre = str(it.get("articulo", art) or art)
+
+                        try:
+                            cant_actual = int(float(it.get("cantidad", 0) or 0))
+                        except:
+                            cant_actual = 0
+
+                        c0, c1, c2, c3 = st.columns([6, 1, 2, 1])
+
+                        with c0:
+                            st.write(f"**{cod}** — {nombre}")
+
+                        with c1:
+                            if st.button("➖", key=f"tab2_minus_{i}"):
+                                st.session_state["tab2_sel"][art]["cantidad"] = max(0, cant_actual - 1)
+                                st.rerun()
+
+                        with c2:
+                            nuevo_cant = st.number_input(
+                                "Cantidad",
+                                min_value=0,
+                                step=1,
+                                value=cant_actual,
+                                key=f"tab2_qty_{i}",
+                                label_visibility="collapsed"
+                            )
+                            nuevo_cant = int(nuevo_cant)
+                            if nuevo_cant != cant_actual:
+                                st.session_state["tab2_sel"][art]["cantidad"] = nuevo_cant
+
+                        with c3:
+                            if st.button("➕", key=f"tab2_plus_{i}"):
+                                st.session_state["tab2_sel"][art]["cantidad"] = cant_actual + 1
+                                st.rerun()
+
+                    # verificar si hay 0
+                    for v in st.session_state["tab2_sel"].values():
+                        try:
+                            c = int(float(v.get("cantidad", 0) or 0))
+                        except:
+                            c = 0
+                        if c == 0:
+                            hay_cero = True
+                            break
+
+                    if hay_cero:
+                        st.warning("⚠️ Tenés artículos seleccionados con cantidad 0. Ajustá la cantidad para poder enviar.")
+
                     st.markdown("#### ✅ Selección final")
-                    st.dataframe(pd.DataFrame(lineas)[["codigo", "articulo", "cantidad"]], use_container_width=True)
+                    st.dataframe(
+                        pd.DataFrame(list(st.session_state["tab2_sel"].values()))[["codigo", "articulo", "cantidad"]],
+                        use_container_width=True
+                    )
 
-                # ✅ Enviar: si quedó 0, lo subo a 1 (para que no exista cantidad 0 en pedidos)
-                lineas_envio = []
-                for it in lineas:
-                    c = it.get("cantidad", 0)
-                    try:
-                        c = int(float(c))
-                    except:
-                        c = 0
-                    if c <= 0:
-                        c = 1
-                    lineas_envio.append({**it, "cantidad": c})
-
-                if st.button("📨 Enviar pedido", type="primary", key="tab2_btn_enviar", disabled=(len(lineas) == 0)):
+                # Enviar (bloquea si hay 0)
+                if st.button(
+                    "📨 Enviar pedido",
+                    type="primary",
+                    key="tab2_btn_enviar",
+                    disabled=(len(sel_map) == 0) or hay_cero
+                ):
                     ok, msg, _ = crear_pedido(
                         usuario,
                         nombre_usuario,
                         seccion2_codigo,
-                        lineas_envio,
+                        list(st.session_state["tab2_sel"].values()),
                         ""
                     )
                     if ok:
@@ -585,6 +639,7 @@ def mostrar_pedidos_internos():
                         st.rerun()
                     else:
                         st.error(msg)
+
 
     # =============================================================
     # TAB 3 – SUBIR EXCEL/CSV (codigo/articulo/cantidad)
@@ -698,4 +753,5 @@ def mostrar_pedidos_internos():
                     st.dataframe(df_det, use_container_width=True)
             except Exception:
                 pass
+
 
