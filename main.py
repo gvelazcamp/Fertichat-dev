@@ -3607,6 +3607,9 @@ def _render_explicacion_compras(df: pd.DataFrame, contexto_respuesta: str = "") 
         )
 
 
+# =========================
+# UI - MOSTRAR DETALLE DF
+# =========================
 def mostrar_detalle_df(
     df: pd.DataFrame,
     titulo: str = "📋 Ver tabla (detalle)",
@@ -3616,8 +3619,7 @@ def mostrar_detalle_df(
     enable_chart: bool = True,
     enable_explain: bool = True
 ):
-  
-      """
+    """
     Muestra 3 opciones al costado:
     - 📄 Ver tabla (detalle)
     - 📈 Ver gráfico
@@ -3633,6 +3635,10 @@ def mostrar_detalle_df(
             return
     except Exception:
         pass
+
+    # --- tu código de render sigue acá abajo tal cual lo tenías ---
+    # (no lo toqué porque no lo pegaste completo)
+
 
     # Detectar si es compras (para habilitar gráfico/explicación)
     es_compras = _es_df_compras(df)
