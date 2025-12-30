@@ -533,11 +533,23 @@ def mostrar_pedidos_internos():
                         if (!e || !e.colDef || e.colDef.field !== "Cantidad") return;
                         if (!e.event) return;
 
-                        const cell = e.event.target.closest('.ag-cell');
-                        if (!cell) return;
+                        // Agarrar un rectángulo clickeable confiable
+                        let rect = null;
 
-                        const rect = cell.getBoundingClientRect();
-                        const x = e.event.clientX - rect.left;
+                        // 1) intentar con el contenedor de la celda
+                        if (e.event.target && e.event.target.closest) {
+                            const cell = e.event.target.closest('.ag-cell');
+                            if (cell && cell.getBoundingClientRect) rect = cell.getBoundingClientRect();
+                        }
+
+                        // 2) fallback: el target mismo
+                        if ((!rect || !rect.width) && e.event.target && e.event.target.getBoundingClientRect) {
+                            rect = e.event.target.getBoundingClientRect();
+                        }
+
+                        if (!rect || !rect.width) return;
+
+                        const x = (e.event.clientX || e.event.pageX) - rect.left;
                         const w = rect.width;
 
                         let cur = parseInt(e.value);
@@ -549,10 +561,19 @@ def mostrar_pedidos_internos():
                         } else if (x > w * 0.66) {
                             cur = cur + 1;
                         } else {
-                            return; // centro: no hace nada (si quieren, doble click para tipear)
+                            return; // centro: no hace nada
                         }
 
+                        // set + refresh (clave)
                         e.node.setDataValue("Cantidad", cur);
+                        if (e.data) e.data["Cantidad"] = cur;
+
+                        if (e.api && e.api.refreshCells) {
+                            e.api.refreshCells({ rowNodes: [e.node], columns: ["Cantidad"], force: true });
+                        }
+
+                        e.event.preventDefault();
+                        e.event.stopPropagation();
                     } catch(err) {}
                 }
                 """)
@@ -571,7 +592,6 @@ def mostrar_pedidos_internos():
                 gb.configure_column("Artículo", editable=False, flex=2, minWidth=280)
                 gb.configure_column("Familia", editable=False, width=90)
 
-                # ✅ Cantidad: visual "− N +" y editable (doble click para escribir)
                 gb.configure_column(
                     "Cantidad",
                     editable=True,
@@ -586,21 +606,20 @@ def mostrar_pedidos_internos():
                     }
                 )
 
-                gb.configure_grid_options(
-                    suppressRowClickSelection=True,
-                    onCellClicked=on_cell_clicked
-                )
+                # 👇 IMPORTANTE: asignarlo directo al gridOptions final
+                grid_options = gb.build()
+                grid_options["suppressRowClickSelection"] = True
+                grid_options["onCellClicked"] = on_cell_clicked
 
                 grid = AgGrid(
                     df_tab2,
-                    gridOptions=gb.build(),
+                    gridOptions=grid_options,
                     height=420,
                     theme="streamlit",
-                    update_mode=GridUpdateMode.MODEL_CHANGED,  # ✅ capta setDataValue
+                    update_mode=GridUpdateMode.VALUE_CHANGED,  # ✅ mejor para cambios de celda
                     allow_unsafe_jscode=True,
                     key="tab2_grid"
                 )
-
                 df_tab2_edit = pd.DataFrame(grid["data"])
 
                 # Guardar selección
@@ -768,6 +787,7 @@ def mostrar_pedidos_internos():
                     st.dataframe(df_det, use_container_width=True)
             except Exception:
                 pass
+
 
 
 
