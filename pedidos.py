@@ -26,9 +26,9 @@ SECCIONES = {
     "G": "Generales",
     "HT": "Hematología",
     "CT": "Citometría",
-    "TR": "Transporte",
-    "AF": "Administración",
-    "BE": "Bienes de Uso"
+    "TR": "Tronco Comun",
+    "AF": "Alejandra Fajardo",
+    "BE": "Microbiologia"
 }
 
 # =====================================================================
@@ -256,3 +256,4 @@ def mostrar_pedidos_internos():
                     ""
                 )
                 st.success(msg) if ok else st.error(msg)
+
