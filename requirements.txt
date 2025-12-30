@@ -30,3 +30,4 @@ streamlit-autorefresh
 
 openpyxl
 
+streamlit-aggrid
