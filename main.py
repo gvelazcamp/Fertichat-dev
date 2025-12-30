@@ -3473,68 +3473,161 @@ def _build_resumen_compras(df: pd.DataFrame) -> dict:
     }
 
 
-def _render_graficos_compras(df: pd.DataFrame, key_base: str = "graf") -> None:
-    """Renderiza tabs de gráficos para un df de compras."""
-    info = _build_resumen_compras(df)
-    if not info:
-        st.info("No hay datos para graficar.")
+# =========================
+# GRÁFICOS COMPRAS (ROBUSTO)
+# =========================
+def _render_graficos_compras(df: pd.DataFrame, key_base: str = "detalle_df"):
+    """
+    Render de gráficos para compras:
+    - Top artículos por total (barh)
+    - Evolución por fecha (line)
+    - Total por moneda (bar)
+
+    Arregla el error típico de Plotly:
+    cuando 'serie' queda como Series o DF sin reset_index().
+    """
+    if df is None:
         return
 
-    c_tot = info["col_total"]
-    c_mon = info["col_moneda"]
-    c_fec = info["col_fecha"]
-    c_art = info["col_articulo"]
+    if not hasattr(df, "columns"):
+        return
 
-    tabs = st.tabs(["🏷️ Top artículos", "🗓️ Evolución", "💱 Monedas"])
+    cols = list(df.columns)
 
-    # 1) Top artículos
-    with tabs[0]:
-        top_df = info["top_items_df"]
-        if top_df is None or top_df.empty:
-            st.info("No pude armar el ranking de artículos (faltan columnas).")
+    def _pick_col(candidates):
+        for cand in candidates:
+            for c in cols:
+                if str(c).strip().lower() == str(cand).strip().lower():
+                    return c
+        return None
+
+    col_fecha = _pick_col(["Fecha", "fecha"])
+    col_total = _pick_col(["Total", "total", "Monto Neto", "monto neto", "monto_neto", "importe", "Importe"])
+    col_articulo = _pick_col(["Articulo", "articulo", "Artículo", "artículo"])
+    col_moneda = _pick_col(["Moneda", "moneda"])
+
+    if col_total is None:
+        st.warning("No pude armar gráficos: no encuentro la columna de total (Total/total/Monto Neto).")
+        return
+
+    # Copia local
+    dfg = df.copy()
+
+    # Limpieza numérica UY: "7.606,28" -> 7606.28 ; "(1.234,00)" -> -1234.00 ; "$" / "U$S" fuera
+    def _to_number_uy(x):
+        try:
+            s = str(x).strip()
+            if s == "" or s.lower() == "nan":
+                return None
+            s = s.replace("U$S", "").replace("US$", "").replace("$", "").strip()
+            s = s.replace(" ", "")
+            s = s.replace("\u00a0", "")
+            s = s.replace("(", "-").replace(")", "")
+            s = s.replace(".", "").replace(",", ".")
+            return float(s)
+        except Exception:
+            return None
+
+    # Total a numérico
+    try:
+        dfg[col_total] = dfg[col_total].apply(_to_number_uy)
+        dfg[col_total] = pd.to_numeric(dfg[col_total], errors="coerce")
+    except Exception:
+        pass
+
+    # Fecha a datetime si existe
+    if col_fecha is not None:
+        try:
+            dfg[col_fecha] = pd.to_datetime(dfg[col_fecha], errors="coerce", dayfirst=True)
+        except Exception:
+            pass
+
+    # Filtramos filas inválidas para graficar
+    try:
+        dfg = dfg.dropna(subset=[col_total])
+    except Exception:
+        pass
+
+    if dfg.empty:
+        st.warning("No hay datos numéricos válidos para graficar (Total vacío/no convertible).")
+        return
+
+    # Tabs
+    tab1, tab2, tab3 = st.tabs(["🏷️ Top artículos", "📈 Evolución", "💱 Monedas"])
+
+    # -------------------------
+    # TOP ARTÍCULOS
+    # -------------------------
+    with tab1:
+        if col_articulo is None:
+            st.info("No encuentro columna de artículo (Articulo/articulo).")
         else:
-            # Si es Total, graficar total; si es Cantidad, graficar cantidad
-            ycol = "Total" if "Total" in top_df.columns else "Cantidad"
-            fig = px.bar(
-                top_df.sort_values(ycol, ascending=True),
-                x=ycol,
-                y="Artículo",
-                orientation="h"
-            )
-            fig.update_layout(height=420, margin=dict(l=10, r=10, t=30, b=10))
-            st.plotly_chart(fig, use_container_width=True)
-
-    # 2) Evolución por fecha
-    with tabs[1]:
-        if not c_fec or not c_tot:
-            st.info("No hay columnas de Fecha + Total para graficar evolución.")
-        else:
-            dfx = df.copy()
-            dfx["_fecha_"] = _df_get_datetime(dfx, c_fec)
-            dfx["_total_"] = _df_get_numeric(dfx, c_tot)
-            dfx = dfx.dropna(subset=["_fecha_"])
-            if dfx.empty:
-                st.info("No pude interpretar las fechas para graficar.")
-            else:
-                serie = (
-                    dfx.groupby(dfx["_fecha_"].dt.date, as_index=False)["_total_"]
-                       .sum()
-                       .rename(columns={"_total_": "Total", "_fecha_": "Fecha"})
+            try:
+                top = (
+                    dfg.groupby(col_articulo, dropna=False)[col_total]
+                    .sum()
+                    .sort_values(ascending=False)
+                    .head(10)
+                    .reset_index()
+                    .rename(columns={col_articulo: "Artículo", col_total: "Total"})
                 )
-                fig2 = px.line(serie, x="Fecha", y="Total", markers=True)
-                fig2.update_layout(height=420, margin=dict(l=10, r=10, t=30, b=10))
-                st.plotly_chart(fig2, use_container_width=True)
 
-    # 3) Monedas
-    with tabs[2]:
-        totm = info["totales_por_moneda"] or {}
-        if not totm:
-            st.info("No hay columna Moneda + Total para armar distribución por moneda.")
+                if top.empty:
+                    st.info("No hay datos para Top artículos.")
+                else:
+                    fig1 = px.bar(top, x="Total", y="Artículo", orientation="h")
+                    st.plotly_chart(fig1, use_container_width=True, key=f"{key_base}_bar_top")
+            except Exception:
+                st.info("No pude generar el gráfico de Top artículos (pero la app sigue).")
+
+    # -------------------------
+    # EVOLUCIÓN
+    # -------------------------
+    with tab2:
+        if col_fecha is None:
+            st.info("No encuentro columna de fecha (Fecha/fecha).")
         else:
-            dfm = pd.DataFrame({"Moneda": list(totm.keys()), "Total": list(totm.values())})
-            fig3 = px.pie(dfm, names="Moneda", values="Total", hole=0.4)
-            fig3.update_layout(height=420, margin=dict(l=10, r=10, t=30, b=10))
-            st.plotly_chart(fig3, use_container_width=True)
+            try:
+                serie = (
+                    dfg.dropna(subset=[col_fecha])
+                    .groupby(col_fecha)[col_total]
+                    .sum()
+                    .reset_index()
+                    .rename(columns={col_fecha: "Fecha", col_total: "Total"})
+                    .sort_values("Fecha")
+                )
+
+                if serie.empty:
+                    st.info("No hay datos para la evolución por fecha.")
+                else:
+                    fig2 = px.line(serie, x="Fecha", y="Total", markers=True)
+                    st.plotly_chart(fig2, use_container_width=True, key=f"{key_base}_line_evo")
+            except Exception:
+                st.info("No pude generar el gráfico de evolución (pero la app sigue).")
+
+    # -------------------------
+    # MONEDAS
+    # -------------------------
+    with tab3:
+        if col_moneda is None:
+            st.info("No encuentro columna de moneda (Moneda/moneda).")
+        else:
+            try:
+                mon = (
+                    dfg.groupby(col_moneda, dropna=False)[col_total]
+                    .sum()
+                    .reset_index()
+                    .rename(columns={col_moneda: "Moneda", col_total: "Total"})
+                    .sort_values("Total", ascending=False)
+                )
+
+                if mon.empty:
+                    st.info("No hay datos para monedas.")
+                else:
+                    fig3 = px.bar(mon, x="Moneda", y="Total")
+                    st.plotly_chart(fig3, use_container_width=True, key=f"{key_base}_bar_mon")
+            except Exception:
+                st.info("No pude generar el gráfico por moneda (pero la app sigue).")
 
 
 def _render_explicacion_compras(df: pd.DataFrame, contexto_respuesta: str = "") -> None:
@@ -3625,7 +3718,9 @@ def mostrar_detalle_df(
     - 📈 Ver gráfico
     - 🧠 Ver explicación
 
-    Si el DF no parece de compras, mantiene comportamiento: solo tabla.
+    IMPORTANTE:
+    - La TABLA se limita a max_rows por performance.
+    - Los GRÁFICOS y la EXPLICACIÓN se calculan sobre el DF COMPLETO.
     """
     if df is None:
         return
@@ -3636,55 +3731,62 @@ def mostrar_detalle_df(
     except Exception:
         pass
 
-    # --- tu código de render sigue acá abajo tal cual lo tenías ---
-    # (no lo toqué porque no lo pegaste completo)
+    # DF completo para cálculos
+    df_full = df.copy()
 
+    # DF recortado solo para mostrar tabla
+    try:
+        df_view = df_full.head(int(max_rows)).copy()
+    except Exception:
+        df_view = df_full.copy()
 
-    # Detectar si es compras (para habilitar gráfico/explicación)
-    es_compras = _es_df_compras(df)
+    # Header
+    st.markdown(f"### {titulo}")
 
-    # Layout: 3 checks al costado
-    c1, c2, c3 = st.columns([2.2, 1.0, 1.2])
+    # Checks (3 columnas)
+    col1, col2, col3 = st.columns([1, 1, 1])
 
-    with c1:
-        ver_tabla = st.checkbox(titulo, key=f"{key}_tabla", value=False)
+    with col1:
+        ver_tabla = st.checkbox("📄 Ver tabla (detalle)", key=f"{key}_tabla", value=True)
 
-    with c2:
-        ver_graf = st.checkbox(
-            "📈 Ver gráfico",
-            key=f"{key}_graf",
-            value=False,
-            disabled=(not enable_chart or not es_compras)
-        )
+    with col2:
+        ver_grafico = False
+        if enable_chart:
+            ver_grafico = st.checkbox("📈 Ver gráfico", key=f"{key}_grafico", value=False)
 
-    with c3:
-        ver_exp = st.checkbox(
-            "🧠 Ver explicación",
-            key=f"{key}_exp",
-            value=False,
-            disabled=(not enable_explain or not es_compras)
-        )
+    with col3:
+        ver_explicacion = False
+        if enable_explain:
+            ver_explicacion = st.checkbox("🧠 Ver explicación", key=f"{key}_explica", value=False)
 
-    # TABLA
+    # TABLA (solo recorte)
     if ver_tabla:
         try:
-            total_rows = len(df)
+            st.dataframe(df_view, use_container_width=True, hide_index=True)
         except Exception:
-            total_rows = None
+            st.dataframe(df_view)
 
-        df_show = df.head(max_rows) if hasattr(df, "head") else df
-        st.dataframe(df_show, use_container_width=True, hide_index=True)
+        try:
+            total_full = len(df_full)
+            total_view = len(df_view)
+            if total_full > total_view:
+                st.caption(f"Mostrando {total_view} de {total_full} registros. "
+                           f"Gráficos/explicación se calculan sobre los {total_full}.")
+        except Exception:
+            pass
 
-        if total_rows is not None and total_rows > max_rows:
-            st.caption(f"Mostrando {max_rows} de {total_rows} registros.")
+    # GRÁFICOS (sobre DF completo)
+    if enable_chart and ver_grafico:
+        _render_graficos_compras(df_full, key_base=key)
 
-    # GRÁFICO
-    if ver_graf:
-        _render_graficos_compras(df, key_base=key)
+    # EXPLICACIÓN (sobre DF completo)
+    if enable_explain and ver_explicacion:
+        try:
+            _render_explicacion_compras(df_full, contexto_respuesta=contexto_respuesta)
+        except Exception:
+            # Si no tenés esa función o falla, no rompemos la app
+            st.info("No pude generar la explicación (pero la tabla está OK).")
 
-    # EXPLICACIÓN
-    if ver_exp:
-        _render_explicacion_compras(df, contexto_respuesta=contexto_respuesta)
 
 
 # =====================================================================
