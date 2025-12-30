@@ -2,12 +2,6 @@
 # MAIN - ORQUESTADOR PRINCIPAL
 # =========================
 import streamlit as st
-
-st.set_page_config(page_title="FertiChat", layout="wide")
-st.title("Bienvenido a FertiChat 🚀")
-
-st.write("La app está funcionando correctamente.")
-
 import pandas as pd
 from datetime import datetime
 from typing import Tuple, Optional
