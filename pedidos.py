@@ -429,7 +429,7 @@ def mostrar_pedidos_internos():
                 st.error(msg)
 
     # =============================================================
-    # TAB 2 – SELECCIONAR PRODUCTOS (TABLA + CHECK + CANTIDAD (- 0 +) + TR)
+    # TAB 2 – SELECCIONAR PRODUCTOS (TABLA + CHECK + CANTIDAD (- 0 +) EN LA CELDA)
     # =============================================================
     with tab2:
         st.subheader("✅ Seleccionar productos")
@@ -513,69 +513,57 @@ def mostrar_pedidos_internos():
 
                 df_tab2 = pd.DataFrame(filas)
 
-                # --- Renderer JS: botones - [input] + dentro de la celda ---
+                # ✅ Renderer HTML (string) para evitar React error #31
                 qty_renderer = JsCode(r"""
                 function(params) {
                     let v = params.value;
                     v = (v === null || v === undefined || v === "") ? 0 : parseInt(v);
                     if (isNaN(v)) v = 0;
 
-                    const wrap = document.createElement('div');
-                    wrap.style.display = 'flex';
-                    wrap.style.alignItems = 'center';
-                    wrap.style.justifyContent = 'center';
-                    wrap.style.gap = '8px';
+                    return `
+                      <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
+                        <span class="qty-minus"
+                              style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid #d0d0d0;border-radius:8px;cursor:pointer;user-select:none;font-size:18px;">
+                          −
+                        </span>
+                        <span class="qty-val"
+                              style="min-width:28px;text-align:center;font-weight:600;">
+                          ${v}
+                        </span>
+                        <span class="qty-plus"
+                              style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid #d0d0d0;border-radius:8px;cursor:pointer;user-select:none;font-size:18px;">
+                          +
+                        </span>
+                      </div>
+                    `;
+                }
+                """)
 
-                    const btnStyle = "width:28px;height:28px;border:1px solid #d0d0d0;border-radius:8px;background:#fff;cursor:pointer;line-height:26px;font-size:18px;";
-                    const inpStyle = "width:64px;height:28px;border:1px solid #d0d0d0;border-radius:8px;text-align:center;";
+                # ✅ Click handler: si clickean − o +, actualiza Cantidad en esa fila
+                on_cell_clicked = JsCode(r"""
+                function(e) {
+                    try {
+                        if (!e || !e.colDef || e.colDef.field !== "Cantidad") return;
+                        if (!e.event || !e.event.target) return;
 
-                    const minus = document.createElement('button');
-                    minus.setAttribute('style', btnStyle);
-                    minus.innerHTML = "−";
+                        const t = e.event.target;
+                        const isMinus = t.classList.contains("qty-minus") || (t.closest && t.closest(".qty-minus"));
+                        const isPlus  = t.classList.contains("qty-plus")  || (t.closest && t.closest(".qty-plus"));
+                        if (!isMinus && !isPlus) return;
 
-                    const inp = document.createElement('input');
-                    inp.type = "number";
-                    inp.min = "0";
-                    inp.step = "1";
-                    inp.value = v.toString();
-                    inp.setAttribute('style', inpStyle);
+                        let cur = parseInt(e.value);
+                        if (isNaN(cur)) cur = 0;
 
-                    const plus = document.createElement('button');
-                    plus.setAttribute('style', btnStyle);
-                    plus.innerHTML = "+";
+                        if (isMinus) cur = Math.max(0, cur - 1);
+                        if (isPlus)  cur = cur + 1;
 
-                    function setVal(n) {
-                        n = parseInt(n);
-                        if (isNaN(n) || n < 0) n = 0;
-                        inp.value = n.toString();
-                        params.setValue(n);
-                    }
-
-                    minus.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const cur = parseInt(inp.value || "0");
-                        setVal(Math.max(0, cur - 1));
-                    });
-
-                    plus.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const cur = parseInt(inp.value || "0");
-                        setVal(cur + 1);
-                    });
-
-                    inp.addEventListener('change', (e) => {
-                        setVal(inp.value);
-                    });
-
-                    wrap.appendChild(minus);
-                    wrap.appendChild(inp);
-                    wrap.appendChild(plus);
-
-                    return wrap;
+                        e.node.setDataValue("Cantidad", cur);
+                    } catch(err) {}
                 }
                 """)
 
                 gb = GridOptionsBuilder.from_dataframe(df_tab2)
+
                 gb.configure_column(
                     "Sel",
                     headerName="Sel",
@@ -584,23 +572,30 @@ def mostrar_pedidos_internos():
                     cellEditor="agCheckboxCellEditor",
                     width=70
                 )
-                gb.configure_column("Código", editable=False, width=120)
-                gb.configure_column("Artículo", editable=False, flex=2, minWidth=250)
+                gb.configure_column("Código", editable=False, width=130)
+                gb.configure_column("Artículo", editable=False, flex=2, minWidth=280)
                 gb.configure_column("Familia", editable=False, width=90)
+
+                # Cantidad: se ve como (- N +) dentro de la celda
                 gb.configure_column(
                     "Cantidad",
-                    editable=False,  # la editás con - / input / +
+                    editable=True,                 # ✅ si quieren también pueden tipear (doble click)
+                    cellEditor="agNumberCellEditor",
                     cellRenderer=qty_renderer,
-                    width=190
+                    width=210
                 )
-                gb.configure_grid_options(suppressRowClickSelection=True)
+
+                gb.configure_grid_options(
+                    suppressRowClickSelection=True,
+                    onCellClicked=on_cell_clicked
+                )
 
                 grid = AgGrid(
                     df_tab2,
                     gridOptions=gb.build(),
                     height=420,
                     theme="streamlit",
-                    update_mode=GridUpdateMode.VALUE_CHANGED,
+                    update_mode=GridUpdateMode.MODEL_CHANGED,  # ✅ captura cambios por setDataValue
                     allow_unsafe_jscode=True,
                     key="tab2_grid"
                 )
@@ -635,7 +630,7 @@ def mostrar_pedidos_internos():
                     lineas = list(st.session_state["tab2_sel"].values())
                     st.write(f"Seleccionados: **{len(lineas)}**")
 
-                # Validación: no permitir enviar con cantidad 0
+                # Bloquear envío si hay cantidad 0
                 hay_cero = any(int(it.get("cantidad", 0) or 0) <= 0 for it in lineas)
                 if len(lineas) > 0 and hay_cero:
                     st.warning("⚠️ Tenés artículos seleccionados con cantidad 0. Ajustá la cantidad para poder enviar.")
@@ -773,6 +768,7 @@ def mostrar_pedidos_internos():
                     st.dataframe(df_det, use_container_width=True)
             except Exception:
                 pass
+
 
 
 
