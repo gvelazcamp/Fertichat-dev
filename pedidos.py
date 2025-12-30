@@ -579,7 +579,7 @@ def mostrar_pedidos_internos():
                 }
                 """)
 
-                gb = GridOptionsBuilder.from_dataframe(df_tab2)
+                 gb = GridOptionsBuilder.from_dataframe(df_tab2)
 
                 gb.configure_column(
                     "Sel",
@@ -593,30 +593,19 @@ def mostrar_pedidos_internos():
                 gb.configure_column("Artículo", editable=False, flex=2, minWidth=280)
                 gb.configure_column("Familia", editable=False, width=90)
 
-                # ✅ Renderer: "−   N   +" con espacios NBSP para que quede bien separado y clickeable
-                qty_renderer = JsCode(r"""
+                # ✅ Formatter: "−   N   +" (SIEMPRE visible)
+                qty_formatter = JsCode(r"""
                 function(params) {
                     let v = params.value;
                     v = (v === null || v === undefined || v === "") ? 0 : parseInt(v, 10);
                     if (isNaN(v) || v < 0) v = 0;
 
-                    // ancho de la celda para calcular padding
-                    let w = 160;
-                    try {
-                        if (params && params.eGridCell && params.eGridCell.clientWidth) {
-                            w = params.eGridCell.clientWidth;
-                        }
-                    } catch(e) {}
-
-                    // padding aproximado (NBSP no colapsa)
-                    const pad = Math.max(2, Math.floor((w - 60) / 12));
-                    const sp = "\u00A0".repeat(pad);
-
+                    const sp = "\u00A0\u00A0\u00A0"; // NBSP para separar
                     return "−" + sp + v + sp + "+";
                 }
                 """)
 
-                # ✅ Click: izquierda baja, derecha sube + refresca celda
+                # ✅ Click: izquierda baja, derecha sube, centro = editar (para escribir)
                 on_cell_clicked = JsCode(r"""
                 function(e) {
                     try {
@@ -633,17 +622,22 @@ def mostrar_pedidos_internos():
                         let cur = parseInt(e.data["Cantidad"], 10);
                         if (isNaN(cur) || cur < 0) cur = 0;
 
-                        if (x < w * 0.33) {
+                        // zonas más grandes para que sea fácil tocar
+                        if (x < w * 0.40) {
                             cur = Math.max(0, cur - 1);
-                        } else if (x > w * 0.66) {
+                            e.node.setDataValue("Cantidad", cur);
+                        } else if (x > w * 0.60) {
                             cur = cur + 1;
+                            e.node.setDataValue("Cantidad", cur);
                         } else {
-                            return; // centro: no hace nada (doble click para tipear)
+                            // centro: arranca edición para escribir
+                            if (e.api && e.rowIndex !== undefined) {
+                                e.api.startEditingCell({ rowIndex: e.rowIndex, colKey: "Cantidad" });
+                            }
+                            return;
                         }
 
-                        e.node.setDataValue("Cantidad", cur);
-
-                        // ✅ fuerza refresh para que se vea el nuevo número al instante
+                        // refrescar para que se vea al instante
                         if (e.api && e.api.refreshCells) {
                             e.api.refreshCells({ rowNodes: [e.node], columns: ["Cantidad"], force: true });
                         }
@@ -653,9 +647,9 @@ def mostrar_pedidos_internos():
 
                 gb.configure_column(
                     "Cantidad",
-                    editable=True,  # doble click para tipear
+                    editable=True,  # ✅ se escribe (centro o doble click)
                     cellEditor="agNumberCellEditor",
-                    cellRenderer=qty_renderer,
+                    valueFormatter=qty_formatter,  # ✅ clave: no desaparece
                     width=160,
                     cellStyle={
                         "textAlign": "center",
@@ -663,9 +657,8 @@ def mostrar_pedidos_internos():
                         "fontSize": "16px",
                         "userSelect": "none",
                         "fontFamily": "monospace",
-                        "display": "flex",
-                        "alignItems": "center",
-                        "justifyContent": "center"
+                        "whiteSpace": "pre",
+                        "cursor": "pointer"
                     }
                 )
 
@@ -673,20 +666,19 @@ def mostrar_pedidos_internos():
                 grid_options = gb.build()
                 grid_options["suppressRowClickSelection"] = True
                 grid_options["onCellClicked"] = on_cell_clicked
-                grid_options["singleClickEdit"] = False  # ✅ click = +/- ; editar = doble click
+                grid_options["stopEditingWhenCellsLoseFocus"] = True
 
                 grid = AgGrid(
                     df_tab2,
                     gridOptions=grid_options,
                     height=420,
                     theme="streamlit",
-                    update_mode=GridUpdateMode.MODEL_CHANGED,  # ✅ setDataValue => cambia modelo
+                    update_mode=GridUpdateMode.MODEL_CHANGED,
                     allow_unsafe_jscode=True,
                     key="tab2_grid"
                 )
 
                 df_tab2_edit = pd.DataFrame(grid["data"])
-
 
                 # Guardar selección
                 nuevo = {}
@@ -853,13 +845,4 @@ def mostrar_pedidos_internos():
                     st.dataframe(df_det, use_container_width=True)
             except Exception:
                 pass
-
-
-
-
-
-
-
-
-
 
