@@ -593,41 +593,100 @@ def mostrar_pedidos_internos():
                 gb.configure_column("Artículo", editable=False, flex=2, minWidth=280)
                 gb.configure_column("Familia", editable=False, width=90)
 
+                # ✅ Renderer: "−   N   +" con espacios NBSP para que quede bien separado y clickeable
+                qty_renderer = JsCode(r"""
+                function(params) {
+                    let v = params.value;
+                    v = (v === null || v === undefined || v === "") ? 0 : parseInt(v, 10);
+                    if (isNaN(v) || v < 0) v = 0;
+
+                    // ancho de la celda para calcular padding
+                    let w = 160;
+                    try {
+                        if (params && params.eGridCell && params.eGridCell.clientWidth) {
+                            w = params.eGridCell.clientWidth;
+                        }
+                    } catch(e) {}
+
+                    // padding aproximado (NBSP no colapsa)
+                    const pad = Math.max(2, Math.floor((w - 60) / 12));
+                    const sp = "\u00A0".repeat(pad);
+
+                    return "−" + sp + v + sp + "+";
+                }
+                """)
+
+                # ✅ Click: izquierda baja, derecha sube + refresca celda
+                on_cell_clicked = JsCode(r"""
+                function(e) {
+                    try {
+                        if (!e || !e.colDef || e.colDef.field !== "Cantidad") return;
+                        if (!e.event) return;
+
+                        const cell = e.event.target.closest('.ag-cell');
+                        if (!cell) return;
+
+                        const rect = cell.getBoundingClientRect();
+                        const x = e.event.clientX - rect.left;
+                        const w = rect.width;
+
+                        let cur = parseInt(e.data["Cantidad"], 10);
+                        if (isNaN(cur) || cur < 0) cur = 0;
+
+                        if (x < w * 0.33) {
+                            cur = Math.max(0, cur - 1);
+                        } else if (x > w * 0.66) {
+                            cur = cur + 1;
+                        } else {
+                            return; // centro: no hace nada (doble click para tipear)
+                        }
+
+                        e.node.setDataValue("Cantidad", cur);
+
+                        // ✅ fuerza refresh para que se vea el nuevo número al instante
+                        if (e.api && e.api.refreshCells) {
+                            e.api.refreshCells({ rowNodes: [e.node], columns: ["Cantidad"], force: true });
+                        }
+                    } catch(err) {}
+                }
+                """)
+
                 gb.configure_column(
                     "Cantidad",
-                    editable=True,  # ✅ doble click para tipear (porque vamos a bloquear click-edit)
+                    editable=True,  # doble click para tipear
                     cellEditor="agNumberCellEditor",
                     cellRenderer=qty_renderer,
-                    width=140,
+                    width=160,
                     cellStyle={
                         "textAlign": "center",
                         "fontWeight": "700",
                         "fontSize": "16px",
-                        "userSelect": "none"
+                        "userSelect": "none",
+                        "fontFamily": "monospace",
+                        "display": "flex",
+                        "alignItems": "center",
+                        "justifyContent": "center"
                     }
                 )
 
                 # 👇 IMPORTANTE: asignarlo directo al gridOptions final
                 grid_options = gb.build()
-
-                # ✅ CLAVE: no entrar en edición con UN click (así funciona el +/−)
-                grid_options["suppressClickEdit"] = True
-                grid_options["singleClickEdit"] = False
-                grid_options["stopEditingWhenCellsLoseFocus"] = True
-
                 grid_options["suppressRowClickSelection"] = True
                 grid_options["onCellClicked"] = on_cell_clicked
+                grid_options["singleClickEdit"] = False  # ✅ click = +/- ; editar = doble click
 
                 grid = AgGrid(
                     df_tab2,
                     gridOptions=grid_options,
                     height=420,
                     theme="streamlit",
-                    update_mode=GridUpdateMode.VALUE_CHANGED,  # ✅ mejor para cambios de celda
+                    update_mode=GridUpdateMode.MODEL_CHANGED,  # ✅ setDataValue => cambia modelo
                     allow_unsafe_jscode=True,
                     key="tab2_grid"
                 )
+
                 df_tab2_edit = pd.DataFrame(grid["data"])
+
 
                 # Guardar selección
                 nuevo = {}
@@ -794,6 +853,7 @@ def mostrar_pedidos_internos():
                     st.dataframe(df_det, use_container_width=True)
             except Exception:
                 pass
+
 
 
 
