@@ -3966,7 +3966,7 @@ def main():
         st.session_state["menu_principal"] = "📄 Pedidos Internos"
         st.session_state.pop("ir_a_pedidos")
 
-    # =========================
+# =========================
 # MENÚ PRINCIPAL (SIDEBAR)
 # =========================
 menu = st.sidebar.radio(
@@ -3979,20 +3979,97 @@ menu = st.sidebar.radio(
         "📈 Indicadores IA",
         "📄 Pedidos Internos",
         "📉 Baja de Stock",
-    ],
-    index=0
-)
 
-st.sidebar.markdown("---")
+    else:
+        header_slot.empty()
 
+    st.markdown("---")
 
-    # 🔁 Sincronizar menú UI con menú lógico (evita crash de Streamlit)
-    if "menu_principal" not in st.session_state:
-        st.session_state.menu_principal = menu
+# =====================================================================
+# INTERFAZ STREAMLIT
+# =====================================================================
+def main():
+    st.set_page_config(
+        page_title="Ferti Chat - Gestión de Compras",
+        page_icon="🦋",
+        layout="wide"
+    )
 
-    if menu != st.session_state.menu_principal:
-        st.session_state.menu_principal = menu
+    # ✅ CSS responsive
+    inject_css_responsive()
 
+    # =====================================================================
+    # 🔐 VERIFICAR AUTENTICACIÓN
+    # =====================================================================
+    if not require_auth():
+        st.stop()
+
+    # Si llegó acá, el usuario está autenticado
+    user = get_current_user() or {}
+
+    # =====================================================================
+    # 🚪 SIDEBAR CON INFO DE USUARIO Y LOGOUT
+    # =====================================================================
+    with st.sidebar:
+        st.markdown(f"""
+            <div style='
+                background: linear-gradient(135deg, #1e3a5f, #3d7ab5);
+                padding: 20px;
+                border-radius: 10px;
+                margin-bottom: 20px;
+                color: white;
+            '>
+                <div style='font-size: 24px; text-align: center; margin-bottom: 5px;'>🦋</div>
+                <div style='font-size: 18px; font-weight: bold; text-align: center;'>Ferti Chat</div>
+                <div style='font-size: 12px; text-align: center; opacity: 0.8;'>Sistema de Gestión</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
+        if user.get('empresa'):
+            st.markdown(f"🏢 {user.get('empresa')}")
+        st.markdown(f"📧 _{user.get('Usuario', '')}_")
+
+        st.markdown("---")
+
+        if st.button("🚪 Cerrar sesión", use_container_width=True, type="secondary"):
+            logout()
+            st.rerun()
+
+        st.markdown("---")
+
+    # =========================
+    # HEADER DINÁMICO (ARRIBA DEL MENÚ)
+    # =========================
+    header_slot = st.empty()
+
+    # ======================================================
+    # 🚦 REDIRECCIÓN DESDE CAMPANITA
+    # ======================================================
+    if st.session_state.get("ir_a_pedidos"):
+        st.session_state["menu_ui"] = "📄 Pedidos Internos"
+        st.session_state["menu_principal"] = "📄 Pedidos Internos"
+        st.session_state.pop("ir_a_pedidos")
+
+    # =========================
+    # MENÚ PRINCIPAL (SIDEBAR)
+    # =========================
+    menu = st.sidebar.radio(
+        "Menú",
+        [
+            "🛒 Compras IA",
+            "📦 Stock IA",
+            "🔎 Buscador IA",
+            "📊 Dashboard",
+            "📈 Indicadores IA",
+            "📄 Pedidos Internos",
+            "📉 Baja de Stock",
+        ],
+        index=0,
+        key="menu_principal"  # 👈 clave fija para que Streamlit no “pierda” el menú
+    )
+
+    st.sidebar.markdown("---")
 
     # DEBUG VISIBLE - QUÉ BUSCÓ LA APP
     if DEBUG_MODE:
@@ -4017,45 +4094,44 @@ st.sidebar.markdown("---")
 
     st.markdown("---")
 
-
-# =========================
-# ROUTER DE MÓDULOS
-# =========================
-if menu == "📦 Stock IA":
-    mostrar_stock_ia()
-    return
-
-elif menu == "🔎 Buscador IA":
-    mostrar_buscador()
-    return
-
-elif menu == "📊 Dashboard":
-    mostrar_dashboard()
-    return
-
-elif menu == "📈 Indicadores IA":
-    mostrar_indicadores_ia()
-    return
-
-elif menu == "📄 Pedidos Internos":
-    try:
-        from pedidos import mostrar_pedidos_internos
-    except Exception:
-        import traceback
-        st.error("❌ Error cargando pedidos.py (abajo va el error REAL):")
-        st.code(traceback.format_exc())
+    # =========================
+    # ROUTER DE MÓDULOS
+    # =========================
+    if menu == "📦 Stock IA":
+        mostrar_stock_ia()
         return
 
-    mostrar_pedidos_internos()
-    return
+    elif menu == "🔎 Buscador IA":
+        mostrar_buscador()
+        return
 
-elif menu == "📉 Baja de Stock":
-    from bajastock import mostrar_baja_stock
-    mostrar_baja_stock()
-    return
+    elif menu == "📊 Dashboard":
+        mostrar_dashboard()
+        return
+
+    elif menu == "📈 Indicadores IA":
+        mostrar_indicadores_ia()
+        return
+
+    elif menu == "📄 Pedidos Internos":
+        try:
+            from pedidos import mostrar_pedidos_internos
+        except Exception:
+            import traceback
+            st.error("❌ Error cargando pedidos.py (abajo va el error REAL):")
+            st.code(traceback.format_exc())
+            return
+
+        mostrar_pedidos_internos()
+        return
+
+    elif menu == "📉 Baja de Stock":
+        from bajastock import mostrar_baja_stock
+        mostrar_baja_stock()
+        return
 
     # =========================
-    # 🛒 COMPRAS IA
+    # 🛒 COMPRAS IA (DEFAULT)
     # =========================
     st.title("🛒 Compras IA")
     st.markdown("*Integrado con OpenAI*")
@@ -4128,23 +4204,23 @@ elif menu == "📉 Baja de Stock":
     with col2:
         enviar = st.button("Enviar", type="primary", use_container_width=True)
 
-# =========================================================================
+    # =========================================================================
     # MANEJAR CLICK EN BOTÓN "SÍ" DE SUGERENCIA
     # =========================================================================
     if st.session_state.get('ejecutar_sugerencia'):
         sugerencia = st.session_state.get('sugerencia_pendiente', '')
         pregunta_orig = st.session_state.get('pregunta_original', '')
-        
+
         # Limpiar estado ANTES de procesar
         st.session_state['ejecutar_sugerencia'] = False
         st.session_state['sugerencia_pendiente'] = None
         st.session_state['mostrar_sugerencia'] = False
         st.session_state['pregunta_original'] = None
-        
+
         if sugerencia:
             with st.spinner("🧠 Ejecutando..."):
-                respuesta, df = procesar_pregunta_router(sugerencia)  
-                
+                respuesta, df = procesar_pregunta_router(sugerencia)
+
                 # Comparación de FAMILIAS con tabs de moneda
                 if respuesta == "__COMPARACION_FAMILIA_TABS__" and 'comparacion_familia_tabs' in st.session_state:
                     tabs_data = st.session_state['comparacion_familia_tabs']
@@ -4156,6 +4232,7 @@ elif menu == "📉 Baja de Stock":
                         'es_comparacion_familia': True,
                         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })
+
                 # Comparación de PROVEEDORES con tabs resumen/detalle
                 elif respuesta == "__COMPARACION_TABS__" and 'comparacion_tabs' in st.session_state:
                     tabs_data = st.session_state['comparacion_tabs']
@@ -4167,6 +4244,7 @@ elif menu == "📉 Baja de Stock":
                         'es_comparacion': True,
                         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })
+
                 else:
                     st.session_state.historial.append({
                         'pregunta': f"{pregunta_orig} → {sugerencia}",
@@ -4175,13 +4253,14 @@ elif menu == "📉 Baja de Stock":
                         'es_comparacion': False,
                         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })
-            
+
             # ✅ Mostrar resultado inmediato FUERA del spinner
             st.success("✅ Consulta ejecutada")
             if respuesta and respuesta not in ["__MOSTRAR_SUGERENCIA__", "__COMPARACION_TABS__", "__COMPARACION_FAMILIA_TABS__"]:
                 st.markdown(f"**{respuesta}**")
                 if df is not None and not df.empty:
                     st.dataframe(df, use_container_width=True, hide_index=True)
+
     # =========================================================================
     # PROCESAR NUEVA PREGUNTA
     # =========================================================================
@@ -4197,24 +4276,16 @@ elif menu == "📉 Baja de Stock":
 
             # Caso especial: Mostrar sugerencia con botones
             if respuesta == "__MOSTRAR_SUGERENCIA__":
-                print(f"🎯 Entrando a __MOSTRAR_SUGERENCIA__ para: {pregunta}")
                 resultado = obtener_sugerencia_ejecutable(pregunta)
 
-                # Debug: mostrar qué devolvió la IA
-                print(f"🤖 IA devolvió: {resultado}")
-
                 if resultado and resultado.get('sugerencia'):
-                    print(f"✅ Sugerencia encontrada: {resultado.get('sugerencia')}")
                     st.session_state['mostrar_sugerencia'] = True
                     st.session_state['sugerencia_pendiente'] = resultado['sugerencia']
                     st.session_state['sugerencia_entendido'] = resultado.get('entendido', 'Interpreté tu consulta')
                     st.session_state['sugerencia_alternativas'] = resultado.get('alternativas', [])
                     st.session_state['pregunta_original'] = pregunta
-                    mostrar_sugerencia_ahora = True  # Marcar para rerun después del spinner
-                    print(f"✅ mostrar_sugerencia_ahora = True, session_state['mostrar_sugerencia'] = True")
+                    mostrar_sugerencia_ahora = True
                 else:
-                    print(f"❌ IA no devolvió sugerencia válida")
-                    # IA no pudo interpretar → mostrar ayuda en historial
                     st.session_state.historial.append({
                         'pregunta': pregunta,
                         'respuesta': "🤔 No pude interpretar tu consulta. Probá con:\n\n• **compras roche 2025**\n• **comparar roche 2023 2024**\n• **comparar roche noviembre 2023 vs noviembre 2024**\n• **gastos familias noviembre 2025**\n• **última factura vitek**",
@@ -4246,6 +4317,7 @@ elif menu == "📉 Baja de Stock":
                     'es_comparacion': True,
                     'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 })
+
             else:
                 st.session_state.historial.append({
                     'pregunta': pregunta,
@@ -4266,20 +4338,17 @@ elif menu == "📉 Baja de Stock":
                         contexto_respuesta=respuesta
                     )
 
-
     # Hacer rerun DESPUÉS del spinner si hay sugerencia pendiente
     if mostrar_sugerencia_ahora:
-        print(f"🔄 Haciendo st.rerun() porque mostrar_sugerencia_ahora=True")
         st.rerun()
 
     # Mostrar sugerencia con botones (si está pendiente)
     if st.session_state.get('mostrar_sugerencia'):
-        print(f"🎨 Renderizando sugerencia: {st.session_state.get('sugerencia_pendiente')}")
         sugerencia = st.session_state.get('sugerencia_pendiente', '')
         entendido = st.session_state.get('sugerencia_entendido', '')
         alternativas = st.session_state.get('sugerencia_alternativas', [])
 
-        if sugerencia:  # Solo mostrar si hay sugerencia válida
+        if sugerencia:
             st.info(f"🤔 **{entendido}**")
             st.markdown(f"**¿Quisiste decir:** `{sugerencia}`?")
 
@@ -4296,7 +4365,6 @@ elif menu == "📉 Baja de Stock":
                     st.session_state['sugerencia_pendiente'] = None
                     st.rerun()
 
-            # Alternativas
             if alternativas:
                 st.caption("**Otras opciones:**")
                 for i, alt in enumerate(alternativas[:2]):
@@ -4321,7 +4389,6 @@ elif menu == "📉 Baja de Stock":
                 st.markdown("**Respuesta:**")
                 st.markdown(item['respuesta'])
 
-                # Si es comparación de FAMILIA con tabs de moneda
                 if item.get('es_comparacion_familia'):
                     tab_pesos, tab_usd = st.tabs(["💵 Pesos ($)", "💰 Dólares (U$S)"])
 
@@ -4361,7 +4428,6 @@ elif menu == "📉 Baja de Stock":
                         else:
                             st.info("No hay datos en dólares para este período")
 
-                # Si es comparación proveedor, mostrar tabs resumen/detalle
                 elif item.get('es_comparacion') and item.get('dataframe') is not None:
                     tab1, tab2 = st.tabs(["📊 Resumen", "📋 Detalle"])
 
@@ -4371,7 +4437,6 @@ elif menu == "📉 Baja de Stock":
                             use_container_width=True,
                             hide_index=True
                         )
-                        # Botón descargar resumen
                         excel_data = df_to_excel(item['dataframe'])
                         st.download_button(
                             label="📥 Descargar Resumen",
@@ -4388,7 +4453,6 @@ elif menu == "📉 Baja de Stock":
                                 use_container_width=True,
                                 hide_index=True
                             )
-                            # Botón descargar detalle
                             excel_data_det = df_to_excel(item['dataframe_detalle'])
                             st.download_button(
                                 label="📥 Descargar Detalle",
@@ -4401,7 +4465,6 @@ elif menu == "📉 Baja de Stock":
                             st.info("No hay detalle disponible")
 
                 elif item.get('dataframe') is not None and not item['dataframe'].empty:
-                    # ✅ ACÁ VA LO QUE PREGUNTABAS: render tabla modo celular dentro del historial
                     mostrar_detalle_df(
                         item.get('dataframe'),
                         titulo="📄 Ver tabla (detalle)",
