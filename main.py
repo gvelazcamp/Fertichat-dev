@@ -4287,7 +4287,7 @@ def main():
                         st.session_state['ejecutar_sugerencia'] = True
                         st.rerun()
 
-    # =========================================================================
+# =========================================================================
     # Historial (movido después de sugerencias)
     # =========================================================================
     if st.session_state.historial:
@@ -4303,6 +4303,7 @@ def main():
                 st.markdown("**Respuesta:**")
                 st.markdown(item['respuesta'])
 
+                # Si es comparación de FAMILIA con tabs de moneda
                 if item.get('es_comparacion_familia'):
                     tab_pesos, tab_usd = st.tabs(["💵 Pesos ($)", "💰 Dólares (U$S)"])
 
@@ -4342,6 +4343,7 @@ def main():
                         else:
                             st.info("No hay datos en dólares para este período")
 
+                # Si es comparación proveedor, mostrar tabs resumen/detalle
                 elif item.get('es_comparacion') and item.get('dataframe') is not None:
                     tab1, tab2 = st.tabs(["📊 Resumen", "📋 Detalle"])
 
@@ -4378,19 +4380,17 @@ def main():
                         else:
                             st.info("No hay detalle disponible")
 
+                # Detalle normal
                 elif item.get('dataframe') is not None and not item['dataframe'].empty:
                     mostrar_detalle_df(
                         item.get('dataframe'),
                         titulo="📄 Ver tabla (detalle)",
                         key=f"hist_{i}"
                     )
+
     else:
         st.info("👋 ¡Hola! Escribime cualquier cosa: un saludo, una pregunta, o una consulta de datos.")
 
 
 if __name__ == "__main__":
-    main()
-
-                
-                                    else:
-        
+    main()    
