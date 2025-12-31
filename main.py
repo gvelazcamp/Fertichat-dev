@@ -3979,11 +3979,12 @@ menu = st.sidebar.radio(
         "📈 Indicadores IA",
         "📄 Pedidos Internos",
         "📉 Baja de Stock",
+    ],
+    index=0,
+    key="menu_principal"
+)
 
-    else:
-        header_slot.empty()
-
-    st.markdown("---")
+st.sidebar.markdown("---")
 
 # =====================================================================
 # INTERFAZ STREAMLIT
