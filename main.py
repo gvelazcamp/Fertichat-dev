@@ -4025,31 +4025,6 @@ if menu == "🛒 Compras IA":
     if 'historial' not in st.session_state:
         st.session_state.historial = []
 
-    with st.sidebar:
-        st.header("📊 Información")
-        ...
-    # TODO EL BLOQUE TAL CUAL YA LO TENÉS
-
-    with st.sidebar:
-        st.header("📊 Información")
-        st.markdown("""
-        **Este chatbot entiende:**
-
-        💬 **Conversación:**
-        - "Hola", "Buenos días", "Gracias"
-
-        📚 **Conocimiento general:**
-        - "¿Qué es HPV?"
-        - "¿Para qué sirve un reactivo?"
-
-        📊 **Consultas de datos:**
-        - listar proveedores
-        - compras roche 2025
-        - ultima factura articulo vitek
-        - comparar gastos familias junio julio
-        - gastos secciones G,FB 2025-06
-        """)
-
         st.markdown("---")
 
         if st.button("🗑️ Limpiar historial", use_container_width=True):
