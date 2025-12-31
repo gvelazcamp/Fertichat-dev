@@ -3971,7 +3971,7 @@ menu = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 
-    # =========================
+# =========================
     # TARJETAS SEGÚN MENÚ
     # =========================
     if menu == "🛒 Compras IA":
