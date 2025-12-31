@@ -1,4 +1,4 @@
-# # =========================
+# =========================
 # MAIN - ORQUESTADOR PRINCIPAL
 # =========================
 
@@ -106,17 +106,17 @@ from sql_queries import (
     # Conexión y ejecución
     get_db_connection,
     ejecutar_consulta,
-    
+
     # Helpers SQL
     _sql_fecha_expr,
     _sql_total_num_expr_general,
-    
+
     # Listados
     get_lista_proveedores,
     get_lista_tipos_comprobante,
     get_lista_articulos,
     get_valores_unicos,
-    
+
     # Facturas
     get_detalle_factura_por_numero,
     get_total_factura_por_numero,
@@ -124,40 +124,40 @@ from sql_queries import (
     get_ultima_factura_inteligente,
     get_ultima_factura_numero_de_articulo,
     get_facturas_de_articulo,
-    
+
     # Detalle compras proveedor
     get_detalle_compras_proveedor_mes,
     get_detalle_compras_proveedor_anio,
     get_total_compras_proveedor_anio,
     get_detalle_compras_proveedor_anios,
-    
+
     # Detalle compras artículo
     get_detalle_compras_articulo_mes,
     get_detalle_compras_articulo_anio,
     get_total_compras_articulo_anio,
-    
+
     # Comparaciones meses
     get_comparacion_proveedor_meses,
     get_comparacion_articulo_meses,
     get_comparacion_familia_meses_moneda,
-    
+
     # Comparaciones años
     get_comparacion_articulo_anios,
     get_comparacion_proveedor_anios_monedas,
     get_comparacion_familia_anios_monedas,
-    
+
     # Gastos familias
     get_gastos_todas_familias_mes,
     get_gastos_todas_familias_anio,
     get_gastos_secciones_detalle_completo,
     get_gastos_por_familia,
-    
+
     # Otros
     get_detalle_compras,
     get_compras_por_mes_excel,
     get_total_compras_proveedor_moneda_periodos,
     get_top_10_proveedores_chatbot,
-    
+
     # Dashboard
     get_dashboard_totales,
     get_dashboard_compras_por_mes,
@@ -165,7 +165,7 @@ from sql_queries import (
     get_dashboard_gastos_familia,
     get_dashboard_ultimas_compras,
     get_alertas_vencimiento_multiple,
-    
+
     # Stock (placeholders)
     get_lista_articulos_stock,
     get_lista_familias_stock,
@@ -292,7 +292,7 @@ def render_orquestador_output(pregunta_original: str, respuesta: str, df: Option
                 st.info("Sin datos en pesos.")
 
         with tabs[1]:
-            dుఫ = info.get("df_usd")
+            duf = info.get("df_usd")  # ✅ FIX: variable correcta (antes había un nombre roto)
             if duf is not None and not duf.empty:
                 st.dataframe(formatear_dataframe(duf), use_container_width=True, hide_index=True)
             else:
@@ -330,7 +330,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = "gpt-4o-mini"
 
 client = OpenAI(api_key=OPENAI_API_KEY)
-
 
 # =====================================================================
 # FORMATEO DE NÚMEROS (LATAM)
@@ -381,7 +380,6 @@ def _fmt_num_latam(valor, decimales: int = 2) -> str:
     latam = base.replace(",", "X").replace(".", ",").replace("X", ".")
     return f"{prefijo}{latam}".strip()
 
-
 def _es_col_importe_latam(nombre_col: str) -> bool:
     """Detecta si una columna es un importe"""
     n = normalizar_texto(nombre_col or "")
@@ -398,7 +396,6 @@ def _es_col_importe_latam(nombre_col: str) -> bool:
 
     return False
 
-
 def formatear_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """Formatea DataFrame con números en formato LATAM"""
     if df is None or df.empty:
@@ -412,7 +409,6 @@ def formatear_dataframe(df: pd.DataFrame) -> pd.DataFrame:
             d[c] = d[c].apply(lambda x: (f"{float(x):.2f}%" if pd.notna(x) else ""))
     return d
 
-
 # =====================================================================
 # OPENAI - RESPUESTAS CONVERSACIONALES
 # =====================================================================
@@ -420,13 +416,13 @@ def formatear_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 def es_saludo_o_conversacion(texto: str) -> bool:
     """Detecta si es un saludo o conversación casual (sin consulta de datos)"""
     texto_norm = normalizar_texto(texto)
-    
+
     # Palabras que indican consulta de datos (NO es saludo si hay alguna de estas)
     palabras_consulta = [
         'compras', 'compra', 'compre', 'compramos', 'comprado',
         'comparar', 'comparame', 'compara', 'comparacion',
         'gastos', 'gasto', 'gastamos', 'gastado', 'gastar',
-        'cuanto', 'cuanta', 'cuantos', 'cuantas',  # Preguntas de cantidad
+        'cuanto', 'cuanta', 'cuantos', 'cuantas',
         'proveedor', 'proveedores', 'articulo', 'articulos',
         'factura', 'facturas', 'familia', 'familias',
         'stock', 'lote', 'lotes', 'vencimiento', 'vencer',
@@ -436,38 +432,37 @@ def es_saludo_o_conversacion(texto: str) -> bool:
         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
         'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
     ]
-    
+
     # Si hay palabras de consulta, NO es saludo (es una consulta con saludo incluido)
     for p in palabras_consulta:
         if p in texto_norm:
             print(f"🔍 es_saludo_o_conversacion: encontró '{p}' → NO es saludo")
             return False
-    
+
     saludos = [
         'hola', 'buenos dias', 'buenas tardes', 'buenas noches',
         'hey', 'hi', 'hello', 'que tal', 'como estas', 'como andas',
         'gracias', 'muchas gracias', 'chau', 'adios', 'hasta luego',
         'buen dia', 'saludos'
     ]
-    
+
     for saludo in saludos:
         if saludo in texto_norm:
             return True
-    
+
     # Mensajes muy cortos sin palabras de datos
     if len(texto_norm.split()) <= 3:
         return True
-    
-    return False
 
+    return False
 
 def es_pregunta_conocimiento(texto: str) -> bool:
     """Detecta si es una pregunta de conocimiento general"""
     texto_norm = normalizar_texto(texto)
-    
+
     patrones = [
         r'^que es\b',
-        r'^que son\b', 
+        r'^que son\b',
         r'^como funciona\b',
         r'^para que sirve\b',
         r'^cual es\b',
@@ -476,15 +471,14 @@ def es_pregunta_conocimiento(texto: str) -> bool:
         r'^que significa\b',
         r'^definicion de\b',
     ]
-    
+
     for patron in patrones:
         if re.search(patron, texto_norm):
             palabras_datos = ['compras', 'gastos', 'proveedor', 'articulo', 'factura', 'familia']
             if not any(p in texto_norm for p in palabras_datos):
                 return True
-    
-    return False
 
+    return False
 
 def responder_con_openai(pregunta: str, tipo: str) -> str:
     """Responde con OpenAI (conversación o conocimiento)"""
@@ -500,7 +494,7 @@ Responde preguntas de conocimiento general de forma clara, precisa y útil.
 Si la pregunta es sobre términos médicos, científicos o de laboratorio, explícalos bien.
 Responde en español de forma concisa pero completa."""
         max_tok = 500
-    
+
     try:
         response = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -512,7 +506,7 @@ Responde en español de forma concisa pero completa."""
             max_tokens=max_tok
         )
         return response.choices[0].message.content.strip()
-    except Exception as e:
+    except Exception:
         return "No pude procesar tu pregunta."
 
 def recomendar_como_preguntar(pregunta: str) -> str:
@@ -549,7 +543,6 @@ Usa frases como:
         return response.choices[0].message.content.strip()
     except Exception:
         return "No pude ayudarte a reformular la pregunta."
-
 
 def obtener_sugerencia_ejecutable(pregunta: str) -> dict:
     """
@@ -606,7 +599,7 @@ EJEMPLOS DE TRADUCCIÓN:
 
 ERRORES COMUNES QUE DEBES ENTENDER:
 - "novimbre", "novienbre", "novimbr" → noviembre
-- "setiembre", "septirmbre" → septiembre  
+- "setiembre", "septirmbre" → septiembre
 - "oct", "nov", "dic" → octubre, noviembre, diciembre
 - Sin tildes: "ultima", "cuanto", "deposito"
 - "comparame", "comparar", "compara" → comparar
@@ -625,20 +618,20 @@ RESPONDE SOLO JSON (sin ```json ni nada más):
             ],
             temperature=0.2,
             max_tokens=250,
-            timeout=15  # Timeout de 15 segundos
+            timeout=15
         )
         content = response.choices[0].message.content.strip()
         print(f"🤖 IA respondió: {content}")
-        
+
         # Limpiar markdown si viene
         content = re.sub(r'```json\s*', '', content)
         content = re.sub(r'```\s*', '', content)
         content = content.strip()
-        
+
         resultado = json.loads(content)
         print(f"🤖 JSON parseado: {resultado}")
         return resultado
-        
+
     except json.JSONDecodeError as e:
         print(f"❌ Error parseando JSON: {e}")
         print(f"❌ Contenido recibido: {content if 'content' in dir() else 'N/A'}")
@@ -646,7 +639,6 @@ RESPONDE SOLO JSON (sin ```json ni nada más):
     except Exception as e:
         print(f"❌ Error en obtener_sugerencia_ejecutable: {e}")
         return {'entendido': '', 'sugerencia': '', 'alternativas': []}
-
 
 # =====================================================================
 # OPENAI - FALLBACK SQL
@@ -674,7 +666,6 @@ def _extraer_json_de_texto(s: str) -> Optional[dict]:
         return None
     return None
 
-
 def _sql_es_seguro(sql: str) -> bool:
     """Verifica que el SQL sea solo SELECT y seguro"""
     if not sql:
@@ -699,12 +690,11 @@ def _sql_es_seguro(sql: str) -> bool:
 
     return True
 
-
 def fallback_openai_sql(pregunta: str, motivo: str) -> Tuple[Optional[str], Optional[pd.DataFrame], Optional[str]]:
     """FALLBACK: Genera SQL con OpenAI cuando las reglas no funcionan"""
     hoy = datetime.now()
     mes_actual = hoy.strftime('%Y-%m')
-    
+
     schema_info = """
 ESQUEMA DE LA BASE DE DATOS:
 - Tabla: chatbot
@@ -748,30 +738,26 @@ Responde SOLO con JSON:
             temperature=0.1,
             max_tokens=800
         )
-        
+
         content = response.choices[0].message.content.strip()
         obj = _extraer_json_de_texto(content)
-        
+
         if not obj:
             return None, None, None
-        
+
         sql = str(obj.get("sql", "")).strip()
         titulo = str(obj.get("titulo", "Resultado")).strip()
         respuesta = str(obj.get("respuesta", "")).strip()
-        
+
         if not _sql_es_seguro(sql):
             return None, None, None
-        
+
         df = ejecutar_consulta(sql)
         return titulo, df, respuesta
-        
-    except Exception as e:
+
+    except Exception:
         return None, None, None
 
-
-# =====================================================================
-# HELPERS - FACTURAS
-# =====================================================================
 # =====================================================================
 # HELPERS - FACTURAS
 # =====================================================================
