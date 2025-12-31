@@ -4002,9 +4002,6 @@ st.markdown("---")
 if menu == "📦 Stock IA":
     mostrar_stock_ia()
 
-elif menu == "🛒 Compras IA":
-    mostrar_compras_ia()
-
 elif menu == "🔎 Buscador IA":
     mostrar_buscador_ia()
 
