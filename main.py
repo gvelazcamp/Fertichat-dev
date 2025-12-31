@@ -3962,95 +3962,8 @@ def main():
     # 🚦 REDIRECCIÓN DESDE CAMPANITA
     # ======================================================
     if st.session_state.get("ir_a_pedidos"):
-        st.session_state["menu_ui"] = "📄 Pedidos Internos"
         st.session_state["menu_principal"] = "📄 Pedidos Internos"
-        st.session_state.pop("ir_a_pedidos")
-
-# =========================
-# MENÚ PRINCIPAL (SIDEBAR)
-# =========================
-menu = st.sidebar.radio(
-    "Menú",
-    [
-        "🛒 Compras IA",
-        "📦 Stock IA",
-        "🔎 Buscador IA",
-        "📊 Dashboard",
-        "📈 Indicadores IA",
-        "📄 Pedidos Internos",
-        "📉 Baja de Stock",
-    ],
-    index=0,
-    key="menu_principal"
-)
-
-st.sidebar.markdown("---")
-
-# =====================================================================
-# INTERFAZ STREAMLIT
-# =====================================================================
-def main():
-    st.set_page_config(
-        page_title="Ferti Chat - Gestión de Compras",
-        page_icon="🦋",
-        layout="wide"
-    )
-
-    # ✅ CSS responsive
-    inject_css_responsive()
-
-    # =====================================================================
-    # 🔐 VERIFICAR AUTENTICACIÓN
-    # =====================================================================
-    if not require_auth():
-        st.stop()
-
-    # Si llegó acá, el usuario está autenticado
-    user = get_current_user() or {}
-
-    # =====================================================================
-    # 🚪 SIDEBAR CON INFO DE USUARIO Y LOGOUT
-    # =====================================================================
-    with st.sidebar:
-        st.markdown(f"""
-            <div style='
-                background: linear-gradient(135deg, #1e3a5f, #3d7ab5);
-                padding: 20px;
-                border-radius: 10px;
-                margin-bottom: 20px;
-                color: white;
-            '>
-                <div style='font-size: 24px; text-align: center; margin-bottom: 5px;'>🦋</div>
-                <div style='font-size: 18px; font-weight: bold; text-align: center;'>Ferti Chat</div>
-                <div style='font-size: 12px; text-align: center; opacity: 0.8;'>Sistema de Gestión</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
-        if user.get('empresa'):
-            st.markdown(f"🏢 {user.get('empresa')}")
-        st.markdown(f"📧 _{user.get('Usuario', '')}_")
-
-        st.markdown("---")
-
-        if st.button("🚪 Cerrar sesión", use_container_width=True, type="secondary"):
-            logout()
-            st.rerun()
-
-        st.markdown("---")
-
-    # =========================
-    # HEADER DINÁMICO (ARRIBA DEL MENÚ)
-    # =========================
-    header_slot = st.empty()
-
-    # ======================================================
-    # 🚦 REDIRECCIÓN DESDE CAMPANITA
-    # ======================================================
-    if st.session_state.get("ir_a_pedidos"):
-        st.session_state["menu_ui"] = "📄 Pedidos Internos"
-        st.session_state["menu_principal"] = "📄 Pedidos Internos"
-        st.session_state.pop("ir_a_pedidos")
+        st.session_state.pop("ir_a_pedidos", None)
 
     # =========================
     # MENÚ PRINCIPAL (SIDEBAR)
@@ -4067,7 +3980,7 @@ def main():
             "📉 Baja de Stock",
         ],
         index=0,
-        key="menu_principal"  # 👈 clave fija para que Streamlit no “pierda” el menú
+        key="menu_principal"
     )
 
     st.sidebar.markdown("---")
@@ -4477,3 +4390,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+                
+                                    else:
+        
