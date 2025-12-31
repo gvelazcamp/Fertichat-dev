@@ -4017,14 +4017,20 @@ elif menu == "📄 Pedidos Internos":
 elif menu == "📉 Baja de Stock":
     mostrar_baja_stock()
 
-    # =========================
-    # 🛒 COMPRAS IA (DEFAULT)
-    # =========================
+# =========================
+# 🛒 COMPRAS IA (DEFAULT)
+# =========================
+if menu == "🛒 Compras IA":
     st.title("🛒 Compras IA")
     st.markdown("*Integrado con OpenAI*")
 
     if 'historial' not in st.session_state:
         st.session_state.historial = []
+
+    with st.sidebar:
+        st.header("📊 Información")
+        ...
+    # TODO EL BLOQUE TAL CUAL YA LO TENÉS
 
     with st.sidebar:
         st.header("📊 Información")
