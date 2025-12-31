@@ -3992,31 +3992,24 @@ else:
 
 if menu == "📦 Stock IA":
     mostrar_stock_ia()
-    return
 
 elif menu == "🛒 Compras IA":
     mostrar_compras_ia()
-    return
 
 elif menu == "🔎 Buscador IA":
     mostrar_buscador_ia()
-    return
 
 elif menu == "📊 Dashboard":
     mostrar_dashboard()
-    return
 
 elif menu == "📈 Indicadores IA":
     mostrar_indicadores_ia()
-    return
 
 elif menu == "📄 Pedidos Internos":
     mostrar_pedidos_internos()
-    return
 
 elif menu == "📉 Baja de Stock":
     mostrar_baja_stock()
-    return
 
     # =========================
     # 🛒 COMPRAS IA (DEFAULT)
