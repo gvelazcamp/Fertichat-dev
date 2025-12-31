@@ -3154,77 +3154,81 @@ def mostrar_resumen_compras_rotativo():
     mes_txt = f"$ {_fmt_num_latam(tot_mes['pesos'], 0)}"
     mes_sub = f"U$S {_fmt_num_latam(tot_mes['usd'], 0)}"
 
-    # 🎨 CSS (TAMAÑO FIJO, NO SE DEFORMA)
-    st.markdown(
-        """
-        <style>
-          .mini-resumen {
-            display: flex;
-            gap: 14px;
-            margin: 10px 0 14px 0;
-          }
-          .mini-card {
-            flex: 1;
-            min-width: 0;
-            height: 120px;
-            border-radius: 14px;
-            padding: 12px 14px;
-            background: rgba(255,255,255,0.85);
-            border: 1px solid #e5e7eb;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-          }
-          .mini-t {
-            font-size: 0.78rem;
-            font-weight: 600;
-            opacity: 0.75;
-            margin: 0;
-          }
-          .mini-v {
-            font-size: 1.05rem;
-            font-weight: 700;
-            margin: 2px 0 0 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-          .mini-s {
-            font-size: 0.8rem;
-            opacity: 0.7;
-            margin: 0;
-          }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    # 🎨 CSS – TARJETAS GRANDES, OSCURAS Y LEGIBLES
+st.markdown(
+    """
+    <style>
+      .mini-resumen {
+        display: flex;
+        gap: 16px;
+        margin: 16px 0 20px 0;
+      }
 
-    # 🧾 HTML FINAL
-    st.markdown(
-        f"""
-        <div class="mini-resumen">
-          <div class="mini-card">
-            <p class="mini-t">💰 Total {anio}</p>
-            <p class="mini-v">{total_anio_txt}</p>
-            <p class="mini-s">{total_anio_sub}</p>
-          </div>
+      .mini-card {
+        flex: 1;
+        min-width: 0;
+        height: 145px;
+        border-radius: 16px;
+        padding: 16px 18px;
+        background: #1f2933;
+        border: 1px solid #374151;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
 
-          <div class="mini-card">
-            <p class="mini-t">🏭 Proveedor</p>
-            <p class="mini-v" title="{prov_nom}">{prov_nom}</p>
-            <p class="mini-s">{prov_sub}</p>
-          </div>
+      .mini-t {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #9ca3af;
+        margin: 0;
+      }
 
-          <div class="mini-card">
-            <p class="mini-t">🗓️ Mes actual</p>
-            <p class="mini-v">{mes_txt}</p>
-            <p class="mini-s">{mes_sub}</p>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+      .mini-v {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #f9fafb;
+        margin: 4px 0 0 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
 
+      .mini-s {
+        font-size: 0.9rem;
+        color: #d1d5db;
+        margin: 0;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# 🧾 HTML FINAL
+st.markdown(
+    f"""
+    <div class="mini-resumen">
+      <div class="mini-card">
+        <p class="mini-t">💰 Total {anio}</p>
+        <p class="mini-v">{total_anio_txt}</p>
+        <p class="mini-s">{total_anio_sub}</p>
+      </div>
+
+      <div class="mini-card">
+        <p class="mini-t">🏭 Proveedor</p>
+        <p class="mini-v" title="{prov_nom}">{prov_nom}</p>
+        <p class="mini-s">{prov_sub}</p>
+      </div>
+
+      <div class="mini-card">
+        <p class="mini-t">🗓️ Mes actual</p>
+        <p class="mini-v">{mes_txt}</p>
+        <p class="mini-s">{mes_sub}</p>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 # =========================
 # CSS RESPONSIVE (CELULAR)
 # =========================
