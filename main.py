@@ -761,8 +761,11 @@ Responde SOLO con JSON:
 # =====================================================================
 # HELPERS - FACTURAS
 # =====================================================================
+# =====================================================================
+# HELPERS - FACTURAS
+# =====================================================================
 
-def extraer_numero_factura(pregunta: str) -> str | None:
+def extraer_numero_factura(pregunta: str) -> Optional[str]:
     """Extrae número de factura desde texto.
     - Soporta: 'detalle factura 275217', 'factura A00275217', 'A00 275217', etc.
     - Devuelve SOLO dígitos (sin 'A', sin ceros a la izquierda).
@@ -789,7 +792,7 @@ def extraer_numero_factura(pregunta: str) -> str | None:
     return None
 
 
-def normalizar_factura_para_db(nro_raw: str) -> tuple[str | None, str | None, str | None]:
+def normalizar_factura_para_db(nro_raw: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Devuelve:
     - nro_db: formato para buscar en DB (ej: A00275217)
     - nro_alt: formato alternativo (ej: A0275217) por si hay otra carga histórica
@@ -846,7 +849,6 @@ def _formatear_detalle_factura_df(df: pd.DataFrame) -> pd.DataFrame:
     return dfx
 
 
-
 # =====================================================================
 # PROCESADOR PRINCIPAL - ORQUESTADOR
 # =====================================================================
@@ -882,14 +884,14 @@ def procesar_pregunta_router(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]
     intencion_info = detectar_intencion(pregunta)
     tipo = intencion_info.get('tipo', 'desconocido')
     debug = intencion_info.get('debug', '')
-    
+
     # Procesar la pregunta
     respuesta, df = procesar_pregunta(pregunta)
-    
+
     # Guardar log
     tuvo_datos = df is not None and not df.empty
     registros = len(df) if tuvo_datos else 0
-    
+
     try:
         guardar_chat_log(
             pregunta=pregunta,
@@ -901,15 +903,16 @@ def procesar_pregunta_router(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]
         )
     except:
         pass  # Si falla el log, no afecta la app
-    
+
     return respuesta, df
+
 
 def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     """
     🎯 ORQUESTADOR PRINCIPAL
     Recibe pregunta → detecta intención → llama SQL → formatea respuesta
     """
-    
+
     if not pregunta or not pregunta.strip():
         return "Por favor, escribe una pregunta.", None
 
@@ -959,6 +962,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
                 titulo,
                 formatear_dataframe(df)
             )
+
     # =====================================================================
     # PASO 1: ¿Es saludo/conversación?
     # =====================================================================
@@ -966,7 +970,6 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         respuesta = responder_con_openai(pregunta, "conversacion")
         print(f"✅ TIPO: Conversación → OpenAI")
         return f"💬 {respuesta}", None
-
 
     # =====================================================================
     # PASO 2: ¿Es pregunta de conocimiento?
@@ -991,21 +994,21 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     # =====================================================================
     # ✅ NUEVO: MANEJO DE INTENCIONES DE STOCK
     # =====================================================================
-    
+
     # --- STOCK TOTAL ---
     if tipo == 'stock_total':
         df = get_stock_total()
         if df is not None and not df.empty:
             return "📦 **Resumen de stock total:**", formatear_dataframe(df)
         return "No pude obtener el stock total. Verificá la conexión a la tabla de stock.", None
-    
+
     # --- STOCK POR FAMILIA ---
     if tipo == 'stock_por_familia':
         df = get_stock_por_familia()
         if df is not None and not df.empty:
             return "📦 **Stock por familia/sección:**", formatear_dataframe(df)
         return "No encontré datos de stock por familia.", None
-    
+
     # --- STOCK FAMILIA ESPECÍFICA ---
     if tipo == 'stock_familia':
         familia = params.get('familia', '')
@@ -1013,14 +1016,14 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         if df is not None and not df.empty:
             return f"📦 **Stock de la familia {familia}:**", formatear_dataframe(df)
         return f"No encontré stock para la familia {familia}.", None
-    
+
     # --- STOCK POR DEPÓSITO ---
     if tipo == 'stock_por_deposito':
         df = get_stock_por_deposito()
         if df is not None and not df.empty:
             return "📦 **Stock por depósito:**", formatear_dataframe(df)
         return "No encontré datos de stock por depósito.", None
-    
+
     # --- STOCK DE ARTÍCULO ---
     if tipo == 'stock_articulo':
         articulo = params.get('articulo', '')
@@ -1030,7 +1033,9 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             total = 0
             if 'STOCK' in df.columns:
                 try:
-                    total = df['STOCK'].apply(lambda x: float(str(x).replace(',', '.').replace(' ', '')) if pd.notna(x) else 0).sum()
+                    total = df['STOCK'].apply(
+                        lambda x: float(str(x).replace(',', '.').replace(' ', '')) if pd.notna(x) else 0
+                    ).sum()
                 except:
                     pass
             msg = f"📦 **Stock de '{articulo}':**"
@@ -1038,7 +1043,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
                 msg += f" (Total: {total:,.0f} unidades)".replace(',', '.')
             return msg, formatear_dataframe(df)
         return f"No encontré stock para '{articulo}'. Probá con otro término.", None
-    
+
     # --- LOTES POR VENCER ---
     if tipo == 'stock_lotes_por_vencer':
         dias = params.get('dias', 90)
@@ -1046,21 +1051,21 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         if df is not None and not df.empty:
             return f"⚠️ **Lotes que vencen en los próximos {dias} días:**", formatear_dataframe(df)
         return f"No hay lotes que venzan en los próximos {dias} días.", None
-    
+
     # --- LOTES VENCIDOS ---
     if tipo == 'stock_lotes_vencidos':
         df = get_lotes_vencidos()
         if df is not None and not df.empty:
             return "🚨 **Lotes VENCIDOS:**", formatear_dataframe(df)
         return "No hay lotes vencidos con stock.", None
-    
+
     # --- STOCK BAJO ---
     if tipo == 'stock_bajo':
         df = get_stock_bajo(10)
         if df is not None and not df.empty:
             return "📉 **Artículos con stock bajo (≤10 unidades):**", formatear_dataframe(df)
         return "No hay artículos con stock bajo.", None
-    
+
     # --- LOTE ESPECÍFICO ---
     if tipo == 'stock_lote_especifico':
         lote = params.get('lote', '')
@@ -1079,7 +1084,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     # =====================================================================
     # PASO 4: Ejecutar SQL según intención (ORDEN DE PRIORIDAD)
     # =====================================================================
-    
+
     df = None
     titulo = "Resultado"
 
@@ -1152,7 +1157,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             pregunta,
             ['ultima', 'factura', 'articulo', 'completa', 'toda', 'todo', 'traer', 'mostrar', 'ver', 'detalle', 'de', 'del', 'la', 'el', 'por', 'para']
         )
-        
+
         if not patron:
             return "¿De qué artículo querés la factura completa?", None
 
@@ -1165,7 +1170,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
 
         df = get_detalle_factura_por_numero(nro)
         df_tot = get_total_factura_por_numero(nro)
-        
+
         if not df_tot.empty and 'total_factura' in df_tot.columns:
             try:
                 total = float(df_tot['total_factura'].iloc[0])
@@ -1228,7 +1233,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
 
         return "🧾 Última factura encontrada:", formatear_dataframe(df)
 
-# --- PRIORIDAD 6: GASTOS SECCIONES ---
+    # --- PRIORIDAD 6: GASTOS SECCIONES ---
     elif tipo == 'gastos_secciones':
         familias = _extraer_lista_familias(pregunta)
         mes_key = _extraer_mes_key(pregunta)
@@ -1285,10 +1290,10 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             # Calcular totales
             total_pesos = 0
             total_usd = 0
-            
+
             if col_pesos:
                 total_pesos = df[col_pesos].apply(latam_to_float).sum()
-            
+
             if col_usd:
                 total_usd = df[col_usd].apply(latam_to_float).sum()
 
@@ -1310,7 +1315,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             return "No encontré gastos para esas secciones.", None
 
         return f"📌 Gastos de familias {', '.join(familias)} en {mes_key}:", formatear_dataframe(df)
-        
+
     # --- PRIORIDAD 7: COMPRAS POR MES ---
     elif tipo == 'compras_por_mes':
         mes_key = _extraer_mes_key(pregunta)
@@ -1355,14 +1360,13 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             formatear_dataframe(df)
         )
 
-
     # --- PRIORIDAD 8: DETALLE COMPRAS ARTÍCULO + MES ---
     elif tipo == "detalle_compras_articulo_mes":
         mes_key = params.get("mes_key")
         articulo_like = params.get("articulo_like")
-        
+
         df = get_detalle_compras_articulo_mes(articulo_like, mes_key)
-        
+
         if df is None or df.empty:
             titulo, df2, resp2 = fallback_openai_sql(
                 pregunta,
@@ -1370,9 +1374,9 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             )
             if df2 is not None and not df2.empty:
                 return f"📋 {resp2 or titulo}", formatear_dataframe(df2)
-            
+
             return f"No encontré compras del artículo '{articulo_like}' en {mes_key}.", None
-        
+
         # Calcular totales por moneda
         totales_str = ""
         if 'Total' in df.columns and 'Moneda' in df.columns:
@@ -1387,7 +1391,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         else:
             total = df['Total'].sum() if 'Total' in df.columns else 0
             totales_str = f"💰 **${total:,.2f}**".replace(',', 'X').replace('.', ',').replace('X', '.')
-        
+
         return (
             f"📦 Compras del artículo **{articulo_like.upper()}** en {mes_key} "
             f"| {totales_str}| {len(df)} registros:",
@@ -1398,25 +1402,25 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     elif tipo == "comparar_articulo_anios":
         anios = params.get("anios", [])
         articulo_like = params.get("articulo_like", "")
-        
+
         df = get_comparacion_articulo_anios(anios, articulo_like)
-        
+
         if df is None or df.empty:
             return f"No encontré compras del artículo '{articulo_like}' en los años {anios}.", None
-        
+
         # Calcular totales por año
         totales_por_anio = []
         for anio in sorted(anios):
             col_pesos = f"{anio}_$"
             col_usd = f"{anio}_USD"
-            
+
             total_pesos = df[col_pesos].sum() if col_pesos in df.columns else 0
             total_usd = df[col_usd].sum() if col_usd in df.columns else 0
-            
+
             # Formatear números
             pesos_fmt = f"${total_pesos:,.0f}".replace(',', '.')
             usd_fmt = f"U$S {total_usd:,.0f}".replace(',', '.')
-            
+
             if total_pesos > 0 and total_usd > 0:
                 totales_por_anio.append(f"**{anio}**: {pesos_fmt} + {usd_fmt}")
             elif total_usd > 0:
@@ -1425,9 +1429,9 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
                 totales_por_anio.append(f"**{anio}**: {pesos_fmt}")
             else:
                 totales_por_anio.append(f"**{anio}**: $0")
-        
+
         totales_str = " | ".join(totales_por_anio)
-        
+
         return (
             f"📊 Comparación del artículo **{articulo_like.upper()}** | {totales_str}:",
             formatear_dataframe(df)
@@ -1523,8 +1527,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             f"📋 Compras de {proveedor_like.upper()} en {anio} | 💰 **Total: {total_fmt}** | {len(df)} registros:",
             formatear_dataframe(df)
         )
-
-    # --- PRIORIDAD 9: TOTAL PROVEEDOR + MONEDA + PERÍODOS ---
+# --- PRIORIDAD 9: TOTAL PROVEEDOR + MONEDA + PERÍODOS ---
     elif tipo == 'total_proveedor_moneda_periodos':
         periodos = params.get('periodos', [])
         monedas = params.get('monedas')
@@ -1561,15 +1564,15 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
 
         return titulo + ":", formatear_dataframe(df)
 
- # --- PRIORIDAD 10: COMPARACIONES (MESES) ---
+    # --- PRIORIDAD 10: COMPARACIONES (MESES) ---
     elif tipo == 'comparar_familia_meses':
         # ✅ CORREGIDO: Primero intentar obtener de params['meses']
         meses_params = params.get("meses", [])
         familias = params.get("familias")
-        
+
         mes1 = None
         mes2 = None
-        
+
         # Si vienen meses en params (lista de tuplas)
         if meses_params and len(meses_params) >= 2:
             try:
@@ -1579,11 +1582,11 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
                 mes2 = ini2.strftime("%Y-%m")
             except:
                 pass
-        
+
         # Fallback: extraer de la pregunta
         if not mes1 or not mes2:
             meses_detectados = extraer_meses_para_comparacion(pregunta)
-            
+
             if len(meses_detectados) >= 2:
                 ini1, _, _ = meses_detectados[0]
                 ini2, _, _ = meses_detectados[1]
@@ -1600,7 +1603,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         df_pesos = get_comparacion_familia_meses_moneda(
             mes1, mes2, mes1, mes2, "$", familias if familias else None
         )
-        
+
         # Obtener datos en USD
         df_usd = get_comparacion_familia_meses_moneda(
             mes1, mes2, mes1, mes2, "U$S", familias if familias else None
@@ -1620,7 +1623,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             'mes1': mes1,
             'mes2': mes2
         }
-        
+
         return "__COMPARACION_FAMILIA_TABS__", None
 
     # --- PRIORIDAD 11: COMPARACIONES (AÑOS) ---
@@ -1657,14 +1660,14 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
 
         # Obtener detalle también
         df_detalle = get_detalle_compras_proveedor_anios(anios, proveedores if proveedores else None)
-        
+
         # Guardar en session_state para mostrar tabs
         st.session_state['comparacion_tabs'] = {
             'resumen': formatear_dataframe(df_resumen),
             'detalle': formatear_dataframe(df_detalle) if df_detalle is not None and not df_detalle.empty else None,
             'titulo': f"🏭 Comparación {', '.join(proveedores) if proveedores else 'proveedores'} ({', '.join(map(str, sorted(anios)))})"
         }
-        
+
         # Devolver marcador especial
         return "__COMPARACION_TABS__", None
 
@@ -1698,16 +1701,16 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     else:
         # 🤖 SISTEMA HÍBRIDO: Si llegó hasta acá, el intent_detector no entendió
         # → Usamos IA para interpretar y sugerir
-        
+
         texto_lower = normalizar_texto(pregunta)
-        
+
         # Excluir saludos simples de la IA (ya se manejan arriba)
         saludos = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'gracias', 'chau', 'adios']
         es_saludo = any(s in texto_lower for s in saludos) and len(texto_lower.split()) <= 3
-        
+
         if es_saludo:
             return "👋 ¡Hola! ¿En qué te puedo ayudar?", None
-        
+
         # Para TODO lo demás → Mostrar sugerencia con IA
         return "__MOSTRAR_SUGERENCIA__", None
 
@@ -1722,37 +1725,37 @@ def detectar_intencion_buscador(pregunta: str) -> str:
     Devuelve: 'ultima_factura', 'total_compras', 'cuantas_facturas', 'detalle', 'general'
     """
     p = pregunta.lower().strip()
-    
+
     # Última factura / cuándo llegó
     if any(k in p for k in ['ultimo', 'última', 'ultima', 'cuando llego', 'cuando vino', 'llegó', 'vino']):
         return 'ultima_factura'
-    
+
     # Total / cuánto gastamos
     if any(k in p for k in ['total', 'cuanto', 'cuánto', 'gastamos', 'compramos', 'suma']):
         return 'total_compras'
-    
+
     # Cuántas facturas
     if any(k in p for k in ['cuantas', 'cuántas', 'cantidad de', 'numero de']):
         return 'cuantas_facturas'
-    
+
     # Detalle
     if any(k in p for k in ['detalle', 'todas', 'listado', 'lista']):
         return 'detalle'
-    
+
     return 'general'
 
 
-def ejecutar_consulta_buscador(intencion: str, proveedor: str, articulo: str, 
-                                fecha_desde, fecha_hasta) -> Tuple[str, Optional[pd.DataFrame]]:
+def ejecutar_consulta_buscador(intencion: str, proveedor: str, articulo: str,
+                               fecha_desde, fecha_hasta) -> Tuple[str, Optional[pd.DataFrame]]:
     """
     Ejecuta la consulta específica según la intención detectada.
     Usa directamente los filtros seleccionados.
     """
-    
+
     # Limpiar valores
     prov_clean = proveedor.split('(')[0].strip() if proveedor and proveedor != "Todos" else None
     art_clean = articulo.strip() if articulo and articulo != "Todos" else None
-    
+
     # =====================================================================
     # ÚLTIMA FACTURA
     # =====================================================================
@@ -1763,23 +1766,23 @@ def ejecutar_consulta_buscador(intencion: str, proveedor: str, articulo: str,
             if df is not None and not df.empty:
                 return f"🧾 Última factura del artículo '{art_clean}':", df
             return f"No encontré facturas del artículo '{art_clean}'.", None
-        
+
         elif prov_clean:
             # Buscar última factura del proveedor
             df = get_ultima_factura_inteligente(prov_clean)
             if df is not None and not df.empty:
                 return f"🧾 Última factura de '{prov_clean}':", df
             return f"No encontré facturas de '{prov_clean}'.", None
-        
+
         return "Seleccioná un proveedor o artículo para ver la última factura.", None
-    
+
     # =====================================================================
     # TOTAL COMPRAS
     # =====================================================================
     elif intencion == 'total_compras':
         fecha_expr = _sql_fecha_expr()
         total_expr = _sql_total_num_expr_general()
-        
+
         sql = f"""
             SELECT 
                 COUNT(*) AS Registros,
@@ -1788,29 +1791,29 @@ def ejecutar_consulta_buscador(intencion: str, proveedor: str, articulo: str,
             WHERE (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
         """
         params = []
-        
+
         if prov_clean:
             sql += " AND LOWER(TRIM(Proveedor)) LIKE LOWER(%s)"
             params.append(f"%{prov_clean}%")
-        
+
         if art_clean:
             sql += " AND LOWER(TRIM(Articulo)) LIKE LOWER(%s)"
             params.append(f"%{art_clean}%")
-        
+
         if fecha_desde:
             sql += f" AND {fecha_expr} >= %s"
             params.append(fecha_desde.strftime('%Y-%m-%d'))
-        
+
         if fecha_hasta:
             sql += f" AND {fecha_expr} <= %s"
             params.append(fecha_hasta.strftime('%Y-%m-%d'))
-        
+
         df = ejecutar_consulta(sql, tuple(params) if params else None)
-        
+
         if df is not None and not df.empty:
             registros = df['Registros'].iloc[0]
             total = df['Total'].iloc[0]
-            
+
             # Construir contexto para el título
             contexto = []
             if prov_clean:
@@ -1824,29 +1827,29 @@ def ejecutar_consulta_buscador(intencion: str, proveedor: str, articulo: str,
                     contexto.append(f"desde {fecha_desde.strftime('%d/%m/%Y')}")
                 else:
                     contexto.append(f"hasta {fecha_hasta.strftime('%d/%m/%Y')}")
-            
+
             titulo = "💰 Total de compras"
             if contexto:
                 titulo += f" ({', '.join(contexto)})"
-            
+
             total_fmt = f"${float(total):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.') if total else "$0"
-            
+
             resultado = pd.DataFrame({
                 'Concepto': [titulo],
                 'Registros': [int(registros) if registros else 0],
                 'Total': [total_fmt]
             })
-            
+
             return f"✅ {titulo}:", resultado
-        
+
         return "No encontré compras con esos filtros.", None
-    
+
     # =====================================================================
     # CUÁNTAS FACTURAS
     # =====================================================================
     elif intencion == 'cuantas_facturas':
         fecha_expr = _sql_fecha_expr()
-        
+
         sql = f"""
             SELECT 
                 COUNT(DISTINCT `N Factura`) AS Facturas,
@@ -1855,40 +1858,40 @@ def ejecutar_consulta_buscador(intencion: str, proveedor: str, articulo: str,
             WHERE (tipo_comprobante = 'Compra Contado' OR tipo_comprobante LIKE 'Compra%%')
         """
         params = []
-        
+
         if prov_clean:
-            sql += " AND 9(TRIM(Proveedor)) LIKE LOWER(%s)"
+            sql += " AND LOWER(TRIM(Proveedor)) LIKE LOWER(%s)"
             params.append(f"%{prov_clean}%")
-        
+
         if art_clean:
             sql += " AND LOWER(TRIM(Articulo)) LIKE LOWER(%s)"
             params.append(f"%{art_clean}%")
-        
+
         if fecha_desde:
             sql += f" AND {fecha_expr} >= %s"
             params.append(fecha_desde.strftime('%Y-%m-%d'))
-        
+
         if fecha_hasta:
             sql += f" AND {fecha_expr} <= %s"
             params.append(fecha_hasta.strftime('%Y-%m-%d'))
-        
+
         df = ejecutar_consulta(sql, tuple(params) if params else None)
-        
+
         if df is not None and not df.empty:
             facturas = df['Facturas'].iloc[0]
             lineas = df['Lineas'].iloc[0]
-            
+
             resultado = pd.DataFrame({
                 'Concepto': ['Cantidad de facturas'],
                 'Facturas únicas': [int(facturas) if facturas else 0],
                 'Líneas totales': [int(lineas) if lineas else 0]
             })
-            
+
             return "📊 Cantidad de facturas:", resultado
-        
+
         return "No encontré facturas con esos filtros.", None
-    
-# =====================================================================
+
+    # =====================================================================
     # GENERAL (pasar al procesador principal)
     # =====================================================================
     return None, None
@@ -1921,30 +1924,30 @@ def buscar_comprobantes(
             WHERE 1=1
         """
         params = []
-        
+
         if tipo_comprobante:
             sql += ' AND "Tipo Comprobante" = %s'
             params.append(tipo_comprobante)
         else:
             sql += ' AND ("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%%\')'
-        
+
         if proveedor:
             prov_clean = proveedor.split('(')[0].strip()
             sql += ' AND LOWER(TRIM("Cliente / Proveedor")) LIKE LOWER(%s)'
             params.append(f"%{prov_clean}%")
-        
+
         if articulo:
             sql += ' AND LOWER(TRIM("Articulo")) LIKE LOWER(%s)'
             params.append(f"%{articulo}%")
-        
+
         if fecha_desde:
             sql += ' AND "Fecha" >= %s'
             params.append(fecha_desde.strftime('%Y-%m-%d'))
-        
+
         if fecha_hasta:
             sql += ' AND "Fecha" <= %s'
             params.append(fecha_hasta.strftime('%Y-%m-%d'))
-        
+
         if texto_busqueda and texto_busqueda.strip():
             txt = texto_busqueda.strip()
             sql += """
@@ -1955,21 +1958,22 @@ def buscar_comprobantes(
                 )
             """
             params.extend([f"%{txt}%", f"%{txt}%", f"%{txt}%"])
-        
+
         sql += ' ORDER BY "Fecha" DESC LIMIT 500'
-        
+
         return ejecutar_consulta(sql, tuple(params) if params else None)
-    
+
     except Exception as e:
         print(f"Error en buscar_comprobantes: {e}")
         return pd.DataFrame()
-        
+
+
 def mostrar_buscador():
     """Pantalla del Buscador de Comprobantes - CON INTENCIONES IA"""
-    
+
     st.title("🔍 Buscador de Comprobantes")
     st.markdown("Búsqueda con filtros + preguntas en lenguaje natural")
-    
+
     # --- Selector principal: Factura o Lote ---
     tipo_busqueda = st.radio(
         "Buscar por:",
@@ -1977,10 +1981,10 @@ def mostrar_buscador():
         horizontal=True,
         key="tipo_busqueda"
     )
-    
+
     st.markdown("---")
-    
-      # =========================================================================
+
+    # =========================================================================
     # MODO FACTURA (tabla chatbot)
     # =========================================================================
     if tipo_busqueda == "📄 Factura":
@@ -2062,7 +2066,6 @@ def mostrar_buscador():
             st.markdown("<br>", unsafe_allow_html=True)
             buscar = st.button("🔎 Buscar", use_container_width=True)
 
-
         # --- Ayuda contextual ---
         if proveedor != "Todos" or articulo != "Todos":
             contexto_actual = []
@@ -2070,29 +2073,29 @@ def mostrar_buscador():
                 contexto_actual.append(f"**{proveedor.split('(')[0].strip()}**")
             if articulo != "Todos":
                 contexto_actual.append(f"**{articulo}**")
-            
+
             st.caption(f"💡 Contexto seleccionado: {', '.join(contexto_actual)} — Podés preguntar: 'cuánto compramos', 'última factura', 'total del mes'...")
-        
+
         st.markdown("---")
-        
+
         # --- Ejecutar búsqueda FACTURA ---
         if buscar:
-            
+
             # OPCIÓN 1: PREGUNTA IA
             if pregunta_ia and pregunta_ia.strip():
                 intencion = detectar_intencion_buscador(pregunta_ia)
-                
+
                 contexto_texto = []
                 if proveedor != "Todos":
                     contexto_texto.append(f"proveedor: {proveedor.split('(')[0].strip()}")
                 if articulo != "Todos":
                     contexto_texto.append(f"artículo: {articulo}")
-                
+
                 if contexto_texto:
                     st.info(f"🧠 Procesando: *\"{pregunta_ia}\"* con contexto: {', '.join(contexto_texto)}")
                 else:
                     st.info(f"🧠 Procesando: *\"{pregunta_ia}\"*")
-                
+
                 with st.spinner("🧠 Analizando..."):
                     respuesta, df = ejecutar_consulta_buscador(
                         intencion,
@@ -2101,7 +2104,7 @@ def mostrar_buscador():
                         fecha_desde,
                         fecha_hasta
                     )
-                    
+
                     if respuesta is None:
                         pregunta_completa = pregunta_ia.strip()
                         if proveedor != "Todos":
@@ -2109,16 +2112,18 @@ def mostrar_buscador():
                         if articulo != "Todos":
                             pregunta_completa += f" {articulo}"
                         respuesta, df = procesar_pregunta(pregunta_completa)
-                    
+                    else:
+                        pregunta_completa = pregunta_ia.strip()
+
                     render_orquestador_output(pregunta_completa, respuesta, df)
-                    
+
                     if df is not None and not df.empty:
                         st.dataframe(
-                            formatear_dataframe(df), 
-                            use_container_width=True, 
+                            formatear_dataframe(df),
+                            use_container_width=True,
                             hide_index=True
                         )
-            
+
             # OPCIÓN 2: BÚSQUEDA POR FILTROS
             else:
                 with st.spinner("🔍 Buscando comprobantes..."):
@@ -2130,10 +2135,10 @@ def mostrar_buscador():
                         fecha_hasta=fecha_hasta,
                         texto_busqueda=texto_busqueda
                     )
-                    
+
                     if df is not None and not df.empty:
                         st.success(f"✅ Se encontraron **{len(df)}** comprobantes")
-                        
+
                         if 'Monto' in df.columns:
                             try:
                                 montos = df['Monto'].apply(lambda x: float(
@@ -2143,13 +2148,13 @@ def mostrar_buscador():
                                 st.info(f"💰 **Total:** ${total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
                             except:
                                 pass
-                        
+
                         st.dataframe(
                             formatear_dataframe(df),
                             use_container_width=True,
                             hide_index=True
                         )
-                        
+
                         excel_data = df_to_excel(df)
                         st.download_button(
                             label="📥 Descargar Excel",
@@ -2159,23 +2164,23 @@ def mostrar_buscador():
                         )
                     else:
                         st.warning("⚠️ No se encontraron resultados con esos filtros")
-        
+
         else:
             st.info("👆 Seleccioná filtros y presioná **Buscar**, o escribí una pregunta en 'Preguntar IA'")
-    
+
     # =========================================================================
     # MODO LOTE (tabla stock)
     # =========================================================================
     else:  # tipo_busqueda == "📦 Lote"
-        
+
         # --- Cargar listas desde tabla stock ---
         lista_articulos_stock = get_lista_articulos_stock()
         lista_familias_stock = get_lista_familias_stock()
         lista_depositos_stock = get_lista_depositos_stock()
-        
+
         # --- Fila 1: Filtros principales ---
         col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
-        
+
         with col1:
             articulo_stock = st.selectbox(
                 "Artículo",
@@ -2183,7 +2188,7 @@ def mostrar_buscador():
                 index=0,
                 key="articulo_stock"
             )
-        
+
         with col2:
             familia_stock = st.selectbox(
                 "Familia",
@@ -2191,7 +2196,7 @@ def mostrar_buscador():
                 index=0,
                 key="familia_stock"
             )
-        
+
         with col3:
             deposito_stock = st.selectbox(
                 "Depósito",
@@ -2199,40 +2204,40 @@ def mostrar_buscador():
                 index=0,
                 key="deposito_stock"
             )
-        
+
         with col4:
             lote_busqueda = st.text_input(
                 "Número de Lote",
                 placeholder="Ej: D250829AF",
                 key="lote_busqueda"
             )
-        
+
         # --- Fila 2: Búsqueda y botón ---
         col5, col6, col7 = st.columns([4, 4, 1])
-        
+
         with col5:
             texto_busqueda_stock = st.text_input(
                 "Buscar texto (artículo, código o lote)",
                 placeholder="Ej: VITEK o 15625",
                 key="texto_stock"
             )
-        
+
         with col6:
             pregunta_ia_stock = st.text_input(
                 "Preguntar IA (opcional)",
                 placeholder="Ej: qué lotes vencen pronto?",
                 key="pregunta_stock"
             )
-        
+
         with col7:
             st.markdown("<br>", unsafe_allow_html=True)
             buscar_stock = st.button("🔎 Buscar", use_container_width=True, key="btn_stock")
-        
+
         st.markdown("---")
-        
+
         # --- Ejecutar búsqueda LOTE ---
         if buscar_stock:
-            
+
             with st.spinner("🔍 Buscando en stock..."):
                 df = buscar_stock_por_lote(
                     articulo=articulo_stock if articulo_stock != "Todos" else None,
@@ -2241,10 +2246,10 @@ def mostrar_buscador():
                     deposito=deposito_stock if deposito_stock != "Todos" else None,
                     texto_busqueda=texto_busqueda_stock
                 )
-                
+
                 if df is not None and not df.empty:
                     st.success(f"✅ Se encontraron **{len(df)}** registros de stock")
-                    
+
                     # Calcular total de stock
                     if 'STOCK' in df.columns:
                         try:
@@ -2254,13 +2259,13 @@ def mostrar_buscador():
                             st.info(f"📦 **Stock total:** {total_stock:,.0f} unidades".replace(',', '.'))
                         except:
                             pass
-                    
+
                     st.dataframe(
                         df,
                         use_container_width=True,
                         hide_index=True
                     )
-                    
+
                     # Descargar Excel
                     excel_data = df_to_excel(df)
                     st.download_button(
@@ -2271,7 +2276,7 @@ def mostrar_buscador():
                     )
                 else:
                     st.warning("⚠️ No se encontraron resultados con esos filtros")
-        
+
         else:
             st.info("👆 Seleccioná filtros y presioná **Buscar** para buscar lotes en stock")
 
@@ -2282,7 +2287,7 @@ def mostrar_buscador():
 def detectar_intencion_stock(texto: str) -> dict:
     """Detecta la intención para consultas de stock"""
     texto_lower = texto.lower().strip()
-    
+
     # Vencimientos
     if any(k in texto_lower for k in ['vencer', 'vencen', 'vencimiento', 'vence', 'por vencer', 'proximo a vencer']):
         if 'vencido' in texto_lower or 'ya vencio' in texto_lower:
@@ -2292,15 +2297,15 @@ def detectar_intencion_stock(texto: str) -> dict:
         match = re.search(r'(\d+)\s*(dias|día|dia|días)', texto_lower)
         dias = int(match.group(1)) if match else 90
         return {'tipo': 'lotes_por_vencer', 'dias': dias, 'debug': f'Lotes por vencer en {dias} días'}
-    
+
     # Vencidos
     if any(k in texto_lower for k in ['vencido', 'vencidos', 'ya vencio', 'caducado']):
         return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
-    
+
     # Stock bajo
     if any(k in texto_lower for k in ['stock bajo', 'poco stock', 'bajo stock', 'quedan pocos', 'se acaba', 'reponer']):
         return {'tipo': 'stock_bajo', 'debug': 'Stock bajo'}
-    
+
     # Lote específico
     if any(k in texto_lower for k in ['lote', 'nro lote', 'numero de lote']):
         # Buscar patrón de lote (alfanumérico)
@@ -2308,7 +2313,7 @@ def detectar_intencion_stock(texto: str) -> dict:
         match = re.search(r'lote\s+(\w+)', texto_lower)
         if match:
             return {'tipo': 'lote_especifico', 'lote': match.group(1), 'debug': f'Lote específico: {match.group(1)}'}
-    
+
     # Stock por familia
     if any(k in texto_lower for k in ['familia', 'familias', 'por familia', 'seccion', 'secciones']):
         # Ver si menciona una familia específica
@@ -2317,11 +2322,11 @@ def detectar_intencion_stock(texto: str) -> dict:
             if fam in texto_lower.split():
                 return {'tipo': 'stock_familia', 'familia': fam.upper(), 'debug': f'Stock familia {fam.upper()}'}
         return {'tipo': 'stock_por_familia', 'debug': 'Stock por familias'}
-    
+
     # Stock por depósito
     if any(k in texto_lower for k in ['deposito', 'depósito', 'depositos', 'depósitos', 'almacen']):
         return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
-    
+
     # Stock de artículo específico
     if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
         # Extraer nombre del artículo
@@ -2330,38 +2335,38 @@ def detectar_intencion_stock(texto: str) -> dict:
         if palabras:
             articulo = ' '.join(palabras)
             return {'tipo': 'stock_articulo', 'articulo': articulo, 'debug': f'Stock de artículo: {articulo}'}
-    
+
     # Total general
     if any(k in texto_lower for k in ['total', 'resumen', 'general', 'todo el stock']):
         return {'tipo': 'stock_total', 'debug': 'Stock total'}
-    
+
     # Por defecto, intentar buscar artículo
     return {'tipo': 'stock_articulo', 'articulo': texto, 'debug': f'Búsqueda general: {texto}'}
 
 
 def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     """Procesa una pregunta sobre stock"""
-    
+
     intencion = detectar_intencion_stock(pregunta)
     tipo = intencion.get('tipo')
-    
+
     print(f"🔍 STOCK IA - Intención: {tipo}")
     print(f"📋 Debug: {intencion.get('debug')}")
-    
+
     # Stock total
     if tipo == 'stock_total':
         df = get_stock_total()
         if df is not None and not df.empty:
             return "📦 Resumen de stock total:", df
         return "No pude obtener el stock total.", None
-    
+
     # Stock por familia
     if tipo == 'stock_por_familia':
         df = get_stock_por_familia()
         if df is not None and not df.empty:
             return "📊 Stock agrupado por familia:", df
         return "No encontré datos de stock por familia.", None
-    
+
     # Stock de una familia específica
     if tipo == 'stock_familia':
         familia = intencion.get('familia', '')
@@ -2369,14 +2374,14 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         if df is not None and not df.empty:
             return f"📦 Stock de familia {familia}:", df
         return f"No encontré stock para la familia {familia}.", None
-    
+
     # Stock por depósito
     if tipo == 'stock_por_deposito':
         df = get_stock_por_deposito()
         if df is not None and not df.empty:
             return "🏢 Stock agrupado por depósito:", df
         return "No encontré datos de stock por depósito.", None
-    
+
     # Lotes por vencer
     if tipo == 'lotes_por_vencer':
         dias = intencion.get('dias', 90)
@@ -2384,21 +2389,21 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         if df is not None and not df.empty:
             return f"⚠️ Lotes que vencen en los próximos {dias} días:", df
         return f"No hay lotes que venzan en los próximos {dias} días.", None
-    
+
     # Lotes vencidos
     if tipo == 'lotes_vencidos':
         df = get_lotes_vencidos()
         if df is not None and not df.empty:
             return "🚨 Lotes ya vencidos:", df
         return "No hay lotes vencidos registrados.", None
-    
+
     # Stock bajo
     if tipo == 'stock_bajo':
         df = get_stock_bajo(10)
         if df is not None and not df.empty:
             return "📉 Artículos con stock bajo (≤10 unidades):", df
         return "No hay artículos con stock bajo.", None
-    
+
     # Lote específico
     if tipo == 'lote_especifico':
         lote = intencion.get('lote', '')
@@ -2406,7 +2411,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         if df is not None and not df.empty:
             return f"🔍 Información del lote {lote}:", df
         return f"No encontré el lote {lote}.", None
-    
+
     # Stock de artículo
     if tipo == 'stock_articulo':
         articulo = intencion.get('articulo', pregunta)
@@ -2414,8 +2419,9 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         if df is not None and not df.empty:
             return f"📦 Stock de '{articulo}':", df
         return f"No encontré stock para '{articulo}'.", None
-    
+
     return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo'.", None
+
 
 # =========================
 # 📦 RESUMEN STOCK (ROTATIVO CADA 5s)
@@ -2648,17 +2654,17 @@ def mostrar_stock_ia():
             # Cambiar cada 5 segundos basado en el tiempo actual
             indice = int(time.time() // 5) % len(alertas)
             alerta = alertas[indice]
-            
+
             # ✅ CORREGIDO: usar 'dias_restantes' en vez de 'dias'
             dias = alerta['dias_restantes']
             articulo = alerta['articulo']
             lote = alerta['lote']
             venc = alerta['vencimiento']
             stock = alerta['stock']
-            
+
             # Contador
             contador = f"<div style='text-align: center; font-size: 0.8em; color: #666; margin-top: 5px;'>{indice + 1} de {len(alertas)} alertas</div>"
-            
+
             if dias <= 7:
                 # Crítico - rojo
                 st.markdown(f"""
@@ -2690,10 +2696,8 @@ def mostrar_stock_ia():
                 {contador}
                 """, unsafe_allow_html=True)
     except Exception as e:
-        # ✅ AGREGADO: Mostrar error en debug para diagnosticar
         print(f"⚠️ Error en alertas de vencimiento: {e}")
         pass  # Si falla la alerta, no afecta el resto
-
 
     if pregunta:
         with st.spinner("🔍 Consultando stock."):
@@ -2752,43 +2756,43 @@ def mostrar_stock_ia():
 
 def mostrar_dashboard():
     """Dashboard con gráficos de compras y stock"""
-    
+
     st.title("📊 Dashboard")
-    
+
     # Selector de año
     anio_actual = datetime.now().year
     col_filtro, col_espacio = st.columns([1, 3])
     with col_filtro:
         anio = st.selectbox("Año:", [anio_actual, anio_actual - 1, anio_actual - 2], index=0)
-    
+
     st.markdown("---")
-    
+
     # =====================
     # MÉTRICAS PRINCIPALES
     # =====================
     try:
         totales = get_dashboard_totales(anio)
-        
+
         col1, col2, col3, col4 = st.columns(4)
-        
+
         with col1:
             total_fmt = f"${totales['total_pesos']:,.0f}".replace(',', '.')
             st.metric("💰 Total Compras $", total_fmt)
-        
+
         with col2:
             usd_fmt = f"U$S {totales['total_usd']:,.0f}".replace(',', '.')
             st.metric("💵 Total USD", usd_fmt)
-        
+
         with col3:
             st.metric("🏭 Proveedores", totales['proveedores'])
-        
+
         with col4:
             st.metric("📄 Facturas", totales['facturas'])
     except Exception as e:
         st.error(f"Error cargando métricas: {e}")
-    
+
     st.markdown("---")
-    
+
     # =====================
     # GRÁFICOS EN 2 COLUMNAS
     # =====================
@@ -2877,10 +2881,10 @@ def mostrar_dashboard():
 
         except Exception as e:
             st.error(f"Error: {e}")
-    
+
     # SEGUNDA FILA DE GRÁFICOS
     col_izq2, col_der2 = st.columns(2)
-    
+
     # GRÁFICO 3: Gastos por Familia (Torta)
     with col_izq2:
         st.subheader("🥧 Gastos por Familia")
@@ -2916,32 +2920,39 @@ def mostrar_dashboard():
                 st.info("No hay datos para este año")
         except Exception as e:
             st.error(f"Error: {e}")
-    
+
     # GRÁFICO 4: Alertas y Últimas Compras
     with col_der2:
         st.subheader("🚨 Alertas y Actividad")
-        
+
         # Alertas de vencimiento
         try:
             alertas = get_alertas_vencimiento_multiple(5)
             if alertas:
                 st.markdown("**⚠️ Próximos vencimientos:**")
                 for alerta in alertas[:3]:
-                    dias = alerta['dias']
+                    # ✅ FIX mínimo: soportar ambos nombres de clave (dias_restantes / dias)
+                    dias = alerta.get('dias_restantes', alerta.get('dias', None))
+                    try:
+                        dias = int(dias) if dias is not None else 999999
+                    except:
+                        dias = 999999
+
                     if dias <= 7:
                         color = "🔴"
                     elif dias <= 30:
                         color = "🟠"
                     else:
                         color = "🟡"
+
                     st.markdown(f"{color} **{alerta['articulo'][:30]}** - {alerta['vencimiento']} ({dias} días)")
             else:
                 st.success("✅ No hay vencimientos próximos")
         except:
             pass
-        
+
         st.markdown("---")
-        
+
         # Últimos artículos comprados
         try:
             st.markdown("**🛒 Últimos artículos comprados:**")
@@ -2994,6 +3005,7 @@ def mostrar_indicadores_ia():
         """,
         unsafe_allow_html=True
     )
+
 
 # =========================
 # 📊 RESUMEN RÁPIDO
@@ -3195,6 +3207,7 @@ def mostrar_resumen_compras_rotativo():
         </div>
       </div>
     """, unsafe_allow_html=True)
+
 
 # =========================
 # CSS RESPONSIVE (CELULAR)
@@ -3885,7 +3898,6 @@ def mostrar_detalle_df(
                 _render_explicacion_compras(df)
 
 
-
 # =====================================================================
 # INTERFAZ STREAMLIT
 # =====================================================================
@@ -4273,7 +4285,7 @@ def main():
                         st.session_state['ejecutar_sugerencia'] = True
                         st.rerun()
 
-# =========================================================================
+    # =========================================================================
     # Historial (movido después de sugerencias)
     # =========================================================================
     if st.session_state.historial:
@@ -4379,4 +4391,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()    
+    main()
