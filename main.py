@@ -3898,20 +3898,6 @@ def mostrar_detalle_df(
             else:
                 _render_explicacion_compras(df)
 
-# =========================
-# 📄 PEDIDOS INTERNOS
-# =========================
-def mostrar_pedidos_internos():
-    st.title("📄 Pedidos Internos")
-    st.info("Módulo de Pedidos Internos listo para usar.")
-
-# =========================
-# 📉 BAJA DE STOCK
-# =========================
-def mostrar_baja_stock():
-    st.title("📉 Baja de Stock")
-    st.info("Módulo de Baja de Stock listo para usar.")
-    
 # =====================================================================
 # INTERFAZ STREAMLIT
 # =====================================================================
