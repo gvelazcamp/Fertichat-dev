@@ -3920,7 +3920,7 @@ def main():
     # Si llegó acá, el usuario está autenticado
     user = get_current_user() or {}
 
-    # =====================================================================
+# =====================================================================
 # 🚪 SIDEBAR CON INFO DE USUARIO Y LOGOUT
 # =====================================================================
 with st.sidebar:
@@ -3950,8 +3950,8 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-
-# =========================
+    
+# =========================   
 # MENÚ PRINCIPAL (SIDEBAR)
 # =========================
 menu = st.sidebar.radio(
@@ -3986,36 +3986,40 @@ elif menu == "📦 Stock IA":
 else:
     header_slot.empty()
 
-st.markdown("---")
-
-    # =========================
-    # ROUTER DE MÓDULOS
-    # =========================
-    if menu == "📦 Stock IA":
-        mostrar_stock_ia()
-        return
-
-    elif menu == "🔎 Buscador IA":
-        mostrar_buscador()
-        return
-
-    elif menu == "📊 Dashboard":
-        mostrar_dashboard()
-        return
-
-    elif menu == "📈 Indicadores IA":
-        mostrar_indicadores_ia()
-        return
-
-    elif menu == "📄 Pedidos Internos":
-        try:
-            from pedidos import mostrar_pedidos_internos
-        except Exception:
-            import traceback
-            st.error("❌ Error cargando pedidos.py (abajo va el error REAL):")
+st.markdown("---")("❌ Error cargando pedidos.py (abajo va el error REAL):")
             st.code(traceback.format_exc())
             return
+# =========================
+# ROUTER DE MÓDULOS
+# =========================
 
+if menu == "📦 Stock IA":
+    mostrar_stock_ia()
+    return
+
+elif menu == "🛒 Compras IA":
+    mostrar_compras_ia()
+    return
+
+elif menu == "🔎 Buscador IA":
+    mostrar_buscador_ia()
+    return
+
+elif menu == "📊 Dashboard":
+    mostrar_dashboard()
+    return
+
+elif menu == "📈 Indicadores IA":
+    mostrar_indicadores_ia()
+    return
+
+elif menu == "📄 Pedidos Internos":
+    mostrar_pedidos_internos()
+    return
+
+elif menu == "📉 Baja de Stock":
+    mostrar_baja_stock()
+    return
         mostrar_pedidos_internos()
         return
 
