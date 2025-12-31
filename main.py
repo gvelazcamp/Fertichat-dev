@@ -4370,42 +4370,5 @@ if menu == "🛒 Compras IA":
     else:
         st.info("👋 ¡Hola! Escribime cualquier cosa: un saludo, una pregunta, o una consulta de datos.")
 
-# imports
-# stubs (las funciones "en construcción")
-
-def main():
-
-    st.set_page_config(...)
-    inject_css_responsive()
-
-    if not require_auth():
-        st.stop()
-
-    user = get_current_user() or {}
-
-    # SIDEBAR
-    with st.sidebar:
-        ...
-
-    # MENÚ
-    menu = st.sidebar.radio(...)
-
-    # TARJETAS
-    ...
-
-    # ROUTER
-    if menu == "📦 Stock IA":
-        mostrar_stock_ia()
-    elif menu == "🔎 Buscador IA":
-        mostrar_buscador_ia()
-    elif menu == "📄 Pedidos Internos":
-        mostrar_pedidos_internos()
-    elif menu == "📉 Baja de Stock":
-        mostrar_baja_stock()
-
-    # COMPRAS IA (default)
-    if menu == "🛒 Compras IA":
-        ...
-
 if __name__ == "__main__":
     main()
