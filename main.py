@@ -58,9 +58,6 @@ require_auth()
 # ======================
 user = get_current_user() or {}
 
-# Sidebar: info del usuario
-show_user_info_sidebar(user)
-
 # ======================
 # APP PRINCIPAL
 # ======================
