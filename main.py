@@ -3209,7 +3209,8 @@ def mostrar_resumen_compras_rotativo():
                 prov_usd = _safe_float(row[col])
 
     # 🎨 CSS con tamaño FIJO
-    st.markdown("""
+st.markdown(
+    """
     <style>
       .mini-resumen {
         display: flex;
@@ -3221,6 +3222,37 @@ def mostrar_resumen_compras_rotativo():
         min-width: 0;
         height: 120px;
         border-radius: 14px;
+        padding: 12px 14px;
+        background: rgba(255,255,255,0.85);
+        border: 1px solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .mini-t {
+        font-size: 0.78rem;
+        font-weight: 600;
+        opacity: 0.75;
+        margin: 0;
+      }
+      .mini-v {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin: 2px 0 0 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .mini-s {
+        font-size: 0.8rem;
+        opacity: 0.7;
+        margin: 0;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+        
 def mostrar_resumen_compras_rotativo():
     # 🔁 re-ejecuta cada 5 segundos
     tick = 0
