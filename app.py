@@ -22,6 +22,8 @@ def main():
     # =========================
     if "rol" not in st.session_state:
         st.session_state.rol = "user"
+    if "modo_avanzado" not in st.session_state:
+    st.session_state.modo_avanzado = False    
 
     if "logueado" not in st.session_state:
         st.session_state.logueado = False
@@ -162,6 +164,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
