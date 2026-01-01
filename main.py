@@ -4080,9 +4080,10 @@ elif menu == "📈 Indicadores (Power BI)":
     mostrar_indicadores_ia()
 
 # =========================
-# 🛒Compras IA (DEFAULT)
+# 🛒Compras IA (DEFAULT) - DESACTIVADO
 # =========================
-if menu == "🛒 Compras IA":
+# (Ya se renderiza desde el Router con Compras_IA())
+if False and menu == "🛒 Compras IA":
     st.title("🛒 Compras IA")
     st.markdown("*Integrado con OpenAI*")
 
@@ -4096,6 +4097,7 @@ if menu == "🛒 Compras IA":
         st.rerun()
 
     st.markdown("---")
+    # ... (dejar todo lo que tenías dentro, tal cual)
 
     if DEBUG_MODE:
         col1, col2 = st.columns(2)
