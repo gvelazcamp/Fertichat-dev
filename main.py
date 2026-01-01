@@ -4023,18 +4023,20 @@ with st.sidebar:
 
     opciones = [
         "🛒 Compras IA",
-        "🔍 Buscador IA",
+        "🔎 Buscador IA",
         "📦 Stock IA",
         "📊 Dashboard",
-        "🧾 Pedidos internos",
-        "📉 Baja de stock",
+        "📄 Pedidos internos",
+        "🧾 Baja de stock",
         "📈 Indicadores (Power BI)",
     ]
 
-    # default seguro
-    default_opt = st.session_state.get("menu_principal", "🛒Compras IA")
+    default_opt = st.session_state.get("menu_principal", "🛒 Compras IA")
+
+    # ✅ Evita ValueError si quedó un valor viejo en session_state
     if default_opt not in opciones:
-        default_opt = "🛒Compras IA"
+        default_opt = opciones[0]
+        st.session_state["menu_principal"] = default_opt
 
     menu = st.radio(
         "Ir a:",
