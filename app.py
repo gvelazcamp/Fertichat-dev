@@ -1,11 +1,3 @@
-# app.py
-# =========================
-# ENTRYPOINT STREAMLIT CLOUD
-# =========================
-from main import main
-
-main()
-
 # =========================
 # FERTI CHAT - BASE ADAPTATIVA
 # =========================
@@ -173,6 +165,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
