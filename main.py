@@ -3981,7 +3981,7 @@ with st.sidebar:
 # Def pantalla
 # =========================
 
-def _pantalla_Compras_IA():
+def Compras_IA():
     """Chat simple usando tu orquestador procesar_pregunta_router + render_orquestador_output."""
     st.subheader("🛒 Compras IA")
 
