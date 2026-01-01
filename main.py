@@ -4033,6 +4033,7 @@ with st.sidebar:
         "📄 Pedidos internos",
         "🧾 Baja de stock",
         "📈 Indicadores (Power BI)",
+        "📦 Órdenes de compra",
     ]
 
     default_opt = st.session_state.get("menu_principal", "🛒 Compras IA")
@@ -4081,6 +4082,9 @@ elif menu == "🧾 Baja de stock":
 
 elif menu == "📈 Indicadores (Power BI)":
     mostrar_indicadores_ia()
+
+elif menu == "📦 Órdenes de compra":
+    mostrar_ordenes_compra()
 
 # =========================
 # 🛒Compras IA (DEFAULT) - DESACTIVADO
