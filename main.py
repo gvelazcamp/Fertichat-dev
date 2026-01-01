@@ -4032,7 +4032,7 @@ with st.sidebar:
     ]
 
     # default seguro
-    default_opt = st.session_state.get("menu_principal", "💬 Chat compras")
+    default_opt = st.session_state.get("menu_principal", "Compras IA")
     if default_opt not in opciones:
         default_opt = "Compras IA"
 
