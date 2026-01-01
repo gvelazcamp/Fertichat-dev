@@ -3980,62 +3980,37 @@ with st.sidebar:
 # MENÚ PRINCIPAL (SIDEBAR)
 # =========================
 
-# ✅ Default del menú (solo 1 vez, no se pisa en cada rerun)
-if "menu_principal" not in st.session_state:
-    st.session_state["menu_principal"] = "🛒 Compras IA"
+# Si la campanita pidió ir a pedidos
+if st.session_state.get("ir_a_pedidos"):
+    st.session_state["menu_principal"] = "🧾 Pedidos internos"
+    st.session_state["ir_a_pedidos"] = False
 
-# ✅ Diagnóstico opcional (si NO ves esto, el sidebar está oculto por CSS o no se ejecuta este bloque)
-if DEBUG_MODE:
-    st.sidebar.info("✅ Sidebar renderizando (DEBUG)")
+# Opciones del menú
+opciones_menu = [
+    "🏠 Inicio",
+    "🔍 Buscador",
+    "📦 Stock IA",
+    "📉 Baja de stock",
+    "🧾 Pedidos internos",
+    "📊 Dashboard",
+    "📈 Indicadores (Power BI)",
+]
 
-# =========================
-# DEBUG (DIAGNÓSTICO MENÚ)
-# Pegar ESTE BLOQUE justo ANTES del st.sidebar.radio(...)
-# =========================
-if DEBUG_MODE:
-    # 1) Marca visible en pantalla (si NO aparece, no estás llegando a esta parte del código)
-    st.write("🧪 DEBUG: llegué a la sección del menú (antes del sidebar.radio)")
-
-    # 2) Marca dentro del sidebar (si NO aparece, el sidebar está oculto por CSS o colapsado/forzado)
-    st.sidebar.success("🧪 DEBUG: Sidebar activo (si ves esto, el sidebar NO está oculto)")
-
-    # 3) Mostrar estado relevante
-    st.sidebar.write("DEBUG session_state keys:", list(st.session_state.keys()))
-    st.sidebar.write("menu_principal actual:", st.session_state.get("menu_principal", "(no existe)"))
-    st.sidebar.write("rol:", st.session_state.get("rol", "(no existe)"))
-    st.sidebar.write("logueado:", st.session_state.get("logueado", "(no existe)"))
-    st.sidebar.write("modo_avanzado:", st.session_state.get("modo_avanzado", "(no existe)"))
-
-    # 4) Fuerza visual del sidebar SOLO para diagnosticar si el CSS lo está ocultando
-    st.markdown("""
-    <style>
-    /* DEBUG: si algún CSS ocultó el sidebar, esto lo vuelve visible */
-    [data-testid="stSidebar"] { 
-        display: block !important; 
-        visibility: visible !important; 
-        opacity: 1 !important;
-        width: auto !important;
-        transform: none !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-menu = st.sidebar.radio(
+# Selección (persistente)
+seleccion = st.sidebar.radio(
     "Menú",
-    [
-        "🛒 Compras IA",
-        "📦 Stock IA",
-        "🔎 Buscador IA",
-        "📊 Dashboard",
-        "📈 Indicadores IA",
-        "📄 Pedidos Internos",
-        "📉 Baja de Stock",
-    ],
-    index=0,
-    key="menu_principal"
+    opciones_menu,
+    index=opciones_menu.index(st.session_state.get("menu_principal", "🏠 Inicio"))
+    if st.session_state.get("menu_principal", "🏠 Inicio") in opciones_menu else 0,
+    key="menu_principal",
 )
 
 st.sidebar.markdown("---")
+show_user_info_sidebar()
+
+if st.sidebar.button("Salir", use_container_width=True):
+    logout()
+    st.rerun()
 
 # =========================
 # TARJETAS SEGÚN MENÚ
@@ -4058,26 +4033,31 @@ else:
 st.markdown("---")
 
 # =========================
-# ROUTER DE MÓDULOS
+# ROUTER DE PÁGINAS
 # =========================
+if seleccion == "🏠 Inicio":
+    st.subheader("Resumen rápido")
+    # Si querés mostrar algo fijo en inicio:
+    mostrar_resumen_stock_rotativo(dias_vencer=30)
 
-if menu == "📦 Stock IA":
-    mostrar_stock_ia()
-
-elif menu == "🔎 Buscador IA":
+elif seleccion == "🔍 Buscador":
     mostrar_buscador_ia()
 
-elif menu == "📊 Dashboard":
-    mostrar_dashboard()
+elif seleccion == "📦 Stock IA":
+    mostrar_resumen_stock_rotativo(dias_vencer=30)
+    mostrar_stock_ia()
 
-elif menu == "📈 Indicadores IA":
-    mostrar_indicadores_ia()
+elif seleccion == "📉 Baja de stock":
+    mostrar_baja_stock()
 
-elif menu == "📄 Pedidos Internos":
+elif seleccion == "🧾 Pedidos internos":
     mostrar_pedidos_internos()
 
-elif menu == "📉 Baja de Stock":
-    mostrar_baja_stock()
+elif seleccion == "📊 Dashboard":
+    mostrar_dashboard()
+
+elif seleccion == "📈 Indicadores (Power BI)":
+    mostrar_indicadores_ia()
 
 # =========================
 # 🛒 COMPRAS IA (DEFAULT)
