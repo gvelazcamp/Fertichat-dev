@@ -4055,8 +4055,8 @@ with st.sidebar:
 # -------------------------
 # Router
 # -------------------------
-if menu == "🛒Compras IA ":
-    mostrar_pantalla_🛒 Compras_IA()
+if menu == "🛒 Compras IA":
+    mostrar_pantalla_compras_ia()
 
 elif menu == "🔍 Buscador IA":
     mostrar_buscador_ia()
