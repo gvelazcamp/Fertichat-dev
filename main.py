@@ -1,11 +1,11 @@
 # =========================
-# MAIN.PY - PC con SIDEBAR + MÓVIL con MENÚ PROPIO (FUNCIONANDO)
+# MAIN.PY - PC con SIDEBAR + MÓVIL con MENÚ PROPIO (FUNCIONANDO 100%)
 # =========================
 
 import streamlit as st
 from datetime import datetime
 from urllib.parse import quote, unquote
-import hashlib
+import time
 
 st.set_page_config(
     page_title="FertiChat",
@@ -47,22 +47,68 @@ user = get_current_user() or {}
 if "radio_menu" not in st.session_state:
     st.session_state["radio_menu"] = "🏠 Inicio"
 
-# Variable para detectar clicks
-if "menu_click" not in st.session_state:
-    st.session_state["menu_click"] = None
+# Tracking de última navegación
+if "last_nav_time" not in st.session_state:
+    st.session_state["last_nav_time"] = 0
 
 
 # =========================
-# CSS + MENÚ MÓVIL CON JS (SIN RECARGAR PÁGINA)
+# NAVEGACIÓN POR QUERY PARAMS (MEJORADO)
+# =========================
+try:
+    # Capturar parámetros
+    menu_param = st.query_params.get("menu")
+    timestamp_param = st.query_params.get("t")
+    logout_param = st.query_params.get("logout")
+    
+    # Convertir listas a valores simples
+    if isinstance(menu_param, list):
+        menu_param = menu_param[0] if menu_param else None
+    if isinstance(timestamp_param, list):
+        timestamp_param = timestamp_param[0] if timestamp_param else None
+    if isinstance(logout_param, list):
+        logout_param = logout_param[0] if logout_param else None
+    
+    # Procesar navegación de menú
+    if menu_param and timestamp_param:
+        try:
+            nav_time = float(timestamp_param)
+            # Solo procesar si es una navegación nueva
+            if nav_time > st.session_state["last_nav_time"]:
+                menu_decoded = unquote(menu_param)
+                if menu_decoded in MENU_OPTIONS:
+                    st.session_state["radio_menu"] = menu_decoded
+                    st.session_state["last_nav_time"] = nav_time
+                    # Limpiar query params
+                    st.query_params.clear()
+                    # Forzar actualización
+                    st.rerun()
+        except (ValueError, TypeError):
+            pass
+    
+    # Procesar logout
+    if logout_param == "1":
+        logout()
+        st.query_params.clear()
+        st.rerun()
+
+except Exception as e:
+    # Ignorar errores de query params
+    if DEBUG_MODE:
+        st.error(f"Error en navegación: {e}")
+
+
+# =========================
+# CSS + MENÚ MÓVIL (TU DISEÑO ORIGINAL)
 # =========================
 def inject_css_and_mobile_menu(user: dict, menu_actual: str):
-    # Generar botones del menú con IDs únicos
+    # Menú móvil: links con query param + timestamp único
     menu_items_html = ""
-    for idx, opcion in enumerate(MENU_OPTIONS):
+    for opcion in MENU_OPTIONS:
         active_class = "fc-active" if opcion == menu_actual else ""
-        menu_id = hashlib.md5(opcion.encode()).hexdigest()[:8]
-        # Usar data-menu en lugar de href
-        menu_items_html += f'<a class="fc-menu-item {active_class}" data-menu="{opcion}" data-idx="{idx}">{opcion}</a>\n'
+        # Agregar timestamp para forzar navegación
+        href = f"?menu={quote(opcion)}&t={{timestamp}}"
+        menu_items_html += f'<a class="fc-menu-item {active_class}" href="{href}" data-menu="{opcion}">{opcion}</a>\n'
 
     html = f"""
 <style>
@@ -357,81 +403,22 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 
   {menu_items_html}
 
-  <a class="fc-logout" id="fc-logout-btn">🚪 Cerrar sesión</a>
+  <a class="fc-logout" href="?logout=1">🚪 Cerrar sesión</a>
 </div>
 
 <script>
 (function() {{
-    // Esperar a que el DOM esté listo
-    if (document.readyState === 'loading') {{
-        document.addEventListener('DOMContentLoaded', initMenu);
-    }} else {{
-        initMenu();
-    }}
-    
-    function initMenu() {{
-        // Obtener todos los items del menú
-        const menuItems = document.querySelectorAll('.fc-menu-item[data-menu]');
-        const logoutBtn = document.getElementById('fc-logout-btn');
-        
-        // Agregar event listeners a cada item
-        menuItems.forEach(function(item) {{
-            item.addEventListener('click', function(e) {{
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const menuName = this.getAttribute('data-menu');
-                const idx = this.getAttribute('data-idx');
-                
-                // Crear input hidden con el nombre del menú
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'menu_click';
-                input.value = menuName;
-                input.id = 'menu_click_' + idx;
-                document.body.appendChild(input);
-                
-                // Simular click en el input para que Streamlit lo detecte
-                input.click();
-                
-                // Cerrar menú
-                document.getElementById('fc-menu-cb').checked = false;
-                
-                // Trigger Streamlit rerun después de un micro delay
-                setTimeout(function() {{
-                    // Buscar botón de Streamlit para hacer rerun
-                    const buttons = window.parent.document.querySelectorAll('button[kind="primary"]');
-                    buttons.forEach(btn => {{
-                        if (btn.textContent.includes('menu_nav_')) {{
-                            btn.click();
-                        }}
-                    }});
-                }}, 50);
-            }});
+    // Agregar timestamps únicos a cada link
+    const menuLinks = document.querySelectorAll('.fc-menu-item[data-menu]');
+    menuLinks.forEach(function(link) {{
+        link.addEventListener('click', function(e) {{
+            // Obtener href y agregar timestamp actual
+            const href = this.getAttribute('href');
+            const timestamp = Date.now();
+            const newHref = href.replace('{{timestamp}}', timestamp);
+            this.setAttribute('href', newHref);
         }});
-        
-        // Logout
-        if (logoutBtn) {{
-            logoutBtn.addEventListener('click', function(e) {{
-                e.preventDefault();
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'logout_click';
-                input.value = 'true';
-                document.body.appendChild(input);
-                input.click();
-                
-                setTimeout(function() {{
-                    const buttons = window.parent.document.querySelectorAll('button[kind="primary"]');
-                    buttons.forEach(btn => {{
-                        if (btn.textContent.includes('logout_nav')) {{
-                            btn.click();
-                        }}
-                    }});
-                }}, 50);
-            }});
-        }}
-    }}
+    }});
 }})();
 </script>
 """
@@ -442,31 +429,6 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 
 # Inyectar CSS + menú móvil
 inject_css_and_mobile_menu(user=user, menu_actual=st.session_state["radio_menu"])
-
-
-# =========================
-# BOTONES INVISIBLES PARA NAVEGACIÓN
-# =========================
-# Crear un botón invisible por cada opción de menú
-for idx, opcion in enumerate(MENU_OPTIONS):
-    if st.button(f"nav", key=f"menu_nav_{idx}", type="primary"):
-        st.session_state["radio_menu"] = opcion
-        st.rerun()
-
-# Botón invisible para logout
-if st.button("logout", key="logout_nav", type="primary"):
-    logout()
-    st.rerun()
-
-# CSS para ocultar los botones invisibles
-st.markdown("""
-<style>
-/* Ocultar botones de navegación invisibles */
-button[kind="primary"] {
-    display: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 
 # =========================
