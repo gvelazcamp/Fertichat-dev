@@ -46,6 +46,7 @@ from ui_inicio import mostrar_inicio
 from ficha_stock import mostrar_ficha_stock
 from articulos import mostrar_articulos
 from depositos import mostrar_depositos
+from familias import mostrar_familias
 
 # =========================
 # CSS RESPONSIVE
@@ -238,3 +239,7 @@ elif menu == "📚 Artículos":
 
 elif menu == "🏬 Depósitos":
     mostrar_depositos()
+
+elif menu == "🧩 Familias":
+    mostrar_familias()
+
