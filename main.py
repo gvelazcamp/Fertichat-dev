@@ -190,6 +190,25 @@ def inject_css_responsive():
             width: 100%;
         }
 
+/* ✅ Más negro el texto default (por ejemplo "Fertilab") y placeholders en móvil */
+.stApp input,
+.stApp input:disabled{
+    color: #0f172a !important;          /* texto más negro */
+    -webkit-text-fill-color: #0f172a !important;  /* iOS/Android/Chrome mobile */
+    opacity: 1 !important;
+}
+
+.stApp input::placeholder{
+    color: #64748b !important;          /* placeholder más visible */
+    -webkit-text-fill-color: #64748b !important;
+    opacity: 1 !important;
+}
+
+/* Si querés que el label también sea más oscuro */
+.stApp label{
+    color: #0f172a !important;
+}
+
         /* =========================
            RESPONSIVE
         ========================= */
