@@ -102,7 +102,7 @@ def inject_css():
         }
 
         /* ========================================
-           MÓVIL - MENÚ HAMBURGUESA ARRIBA (ESTILO GNS+)
+           MÓVIL - Ocultar sidebar y ajustar padding
         ======================================== */
         @media (max-width: 768px){
             
@@ -111,13 +111,47 @@ def inject_css():
                 display: none !important;
             }
 
-            /* Padding para el header móvil */
+            /* Padding para el header móvil (el menú se renderiza aparte) */
             .block-container{
                 padding-top: 70px !important;
             }
+        }
 
+        /* PC - Normal */
+        @media (min-width: 769px){
+            .block-container{
+                padding-top: 1.25rem !important;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+# =========================
+# MENÚ MÓVIL HTML
+# =========================
+def render_mobile_menu():
+    import streamlit.components.v1 as components
+    
+    user = st.session_state.get("user", {})
+    menu_actual = st.session_state.get("radio_menu", "🏠 Inicio")
+    
+    menu_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            
+            body {{
+                font-family: Inter, system-ui, sans-serif;
+            }}
+            
             /* Header móvil fijo arriba */
-            #mobile-header{
+            #mobile-header{{
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -129,10 +163,10 @@ def inject_css():
                 align-items: center;
                 padding: 0 12px;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            }
+            }}
 
             /* Botón hamburguesa */
-            #menu-toggle{
+            #menu-toggle{{
                 width: 40px;
                 height: 40px;
                 background: transparent;
@@ -144,37 +178,38 @@ def inject_css():
                 align-items: center;
                 gap: 5px;
                 padding: 0;
-            }
+            }}
 
-            #menu-toggle span{
+            #menu-toggle span{{
                 width: 24px;
                 height: 3px;
                 background: white;
                 border-radius: 2px;
                 transition: all 0.3s;
-            }
+                display: block;
+            }}
 
             /* Animación del botón cuando está abierto */
-            #menu-toggle.open span:nth-child(1){
+            #menu-toggle.open span:nth-child(1){{
                 transform: rotate(45deg) translate(6px, 6px);
-            }
-            #menu-toggle.open span:nth-child(2){
+            }}
+            #menu-toggle.open span:nth-child(2){{
                 opacity: 0;
-            }
-            #menu-toggle.open span:nth-child(3){
+            }}
+            #menu-toggle.open span:nth-child(3){{
                 transform: rotate(-45deg) translate(6px, -6px);
-            }
+            }}
 
             /* Logo en el header */
-            #mobile-logo{
+            #mobile-logo{{
                 color: white;
                 font-size: 20px;
                 font-weight: 800;
                 margin-left: 12px;
-            }
+            }}
 
             /* Menú desplegable */
-            #mobile-menu{
+            #mobile-menu{{
                 position: fixed;
                 top: 56px;
                 left: 0;
@@ -188,14 +223,14 @@ def inject_css():
                 z-index: 9998;
                 overflow-y: auto;
                 padding: 16px;
-            }
+            }}
 
-            #mobile-menu.open{
+            #mobile-menu.open{{
                 transform: translateX(0);
-            }
+            }}
 
             /* Overlay */
-            #mobile-overlay{
+            #mobile-overlay{{
                 position: fixed;
                 top: 56px;
                 left: 0;
@@ -206,15 +241,15 @@ def inject_css():
                 opacity: 0;
                 visibility: hidden;
                 transition: all 0.3s;
-            }
+            }}
 
-            #mobile-overlay.open{
+            #mobile-overlay.open{{
                 opacity: 1;
                 visibility: visible;
-            }
+            }}
 
             /* Items del menú móvil */
-            .mobile-menu-item{
+            .mobile-menu-item{{
                 padding: 12px 14px;
                 margin: 6px 0;
                 border-radius: 10px;
@@ -227,115 +262,99 @@ def inject_css():
                 transition: all 0.15s;
                 display: block;
                 text-decoration: none;
-            }
+            }}
 
-            .mobile-menu-item:hover{
+            .mobile-menu-item:hover{{
                 background: rgba(245,158,11,0.1);
                 border-color: rgba(245,158,11,0.2);
-            }
+            }}
 
-            .mobile-menu-item.active{
+            .mobile-menu-item.active{{
                 background: rgba(245,158,11,0.15);
                 border-color: rgba(245,158,11,0.3);
                 font-weight: 700;
                 color: #0b3b60;
-            }
+            }}
 
             /* Info del usuario en menú móvil */
-            .mobile-user-info{
+            .mobile-user-info{{
                 background: rgba(248,250,252,0.9);
                 padding: 14px;
                 border-radius: 12px;
                 margin-bottom: 16px;
                 border: 1px solid rgba(15,23,42,0.1);
-            }
+            }}
 
-            .mobile-user-info div{
+            .mobile-user-info div{{
                 color: #0f172a;
                 font-size: 14px;
                 margin: 4px 0;
-            }
-        }
-
-        /* PC - Ocultar menú móvil */
-        @media (min-width: 769px){
-            #mobile-header,
-            #mobile-menu,
-            #mobile-overlay{
-                display: none !important;
-            }
-        }
+            }}
+            
+            /* Ocultar en PC */
+            @media (min-width: 769px) {{
+                #mobile-header,
+                #mobile-menu,
+                #mobile-overlay {{
+                    display: none !important;
+                }}
+            }}
         </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-# =========================
-# MENÚ MÓVIL HTML
-# =========================
-def render_mobile_menu():
-    user = st.session_state.get("user", {})
-    menu_actual = st.session_state.get("radio_menu", "🏠 Inicio")
-    
-    menu_html = f"""
-    <!-- Header móvil -->
-    <div id="mobile-header">
-        <button id="menu-toggle" onclick="toggleMenu()">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-        <div id="mobile-logo">🦋 FertiChat</div>
-    </div>
-
-    <!-- Overlay -->
-    <div id="mobile-overlay" onclick="toggleMenu()"></div>
-
-    <!-- Menú desplegable -->
-    <div id="mobile-menu">
-        <div class="mobile-user-info">
-            <div style="font-weight:700;">👤 {user.get('nombre', 'Usuario')}</div>
-            <div style="font-size:12px;color:#64748b;">🏢 {user.get('empresa', 'Empresa')}</div>
-            <div style="font-size:12px;color:#64748b;">📧 {user.get('Usuario', '')}</div>
+    </head>
+    <body>
+        <!-- Header móvil -->
+        <div id="mobile-header">
+            <button id="menu-toggle" onclick="toggleMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div id="mobile-logo">🦋 FertiChat</div>
         </div>
 
-        <div style="color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase;margin:12px 0 8px 4px;">
-            📌 Menú
-        </div>
+        <!-- Overlay -->
+        <div id="mobile-overlay" onclick="toggleMenu()"></div>
+
+        <!-- Menú desplegable -->
+        <div id="mobile-menu">
+            <div class="mobile-user-info">
+                <div style="font-weight:700;">👤 {user.get('nombre', 'Usuario')}</div>
+                <div style="font-size:12px;color:#64748b;">🏢 {user.get('empresa', 'Empresa')}</div>
+                <div style="font-size:12px;color:#64748b;">📧 {user.get('Usuario', '')}</div>
+            </div>
+
+            <div style="color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase;margin:12px 0 8px 4px;">
+                📌 Menú
+            </div>
     """
     
     # Generar items del menú
     for opcion in MENU_OPTIONS:
         active_class = "active" if opcion == menu_actual else ""
         menu_html += f"""
-        <a href="?menu={opcion}" class="mobile-menu-item {active_class}" onclick="selectMenu('{opcion}')">
-            {opcion}
-        </a>
+            <a href="?menu={opcion}" class="mobile-menu-item {active_class}">
+                {opcion}
+            </a>
         """
     
     menu_html += """
-        <a href="?logout=1" class="mobile-menu-item" style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:16px;">
-            🚪 Cerrar sesión
-        </a>
-    </div>
+            <a href="?logout=1" class="mobile-menu-item" style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:16px;">
+                🚪 Cerrar sesión
+            </a>
+        </div>
 
-    <script>
-        function toggleMenu() {
-            document.getElementById('menu-toggle').classList.toggle('open');
-            document.getElementById('mobile-menu').classList.toggle('open');
-            document.getElementById('mobile-overlay').classList.toggle('open');
-        }
-
-        function selectMenu(opcion) {
-            const url = new URL(window.location.href);
-            url.searchParams.set('menu', opcion);
-            window.location.href = url.toString();
-        }
-    </script>
+        <script>
+            function toggleMenu() {
+                document.getElementById('menu-toggle').classList.toggle('open');
+                document.getElementById('mobile-menu').classList.toggle('open');
+                document.getElementById('mobile-overlay').classList.toggle('open');
+            }
+        </script>
+    </body>
+    </html>
     """
     
-    st.markdown(menu_html, unsafe_allow_html=True)
+    components.html(menu_html, height=0)
 
 
 # =========================
