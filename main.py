@@ -1,13 +1,10 @@
 # =========================
-# MAIN.PY - CON MENÚ MÓVIL CUSTOM QUE SÍ FUNCIONA
+# MAIN.PY - VERSIÓN MÓVIL CON SELECTBOX FLOTANTE
 # =========================
 
 import streamlit as st
 from datetime import datetime
 
-# =========================
-# CONFIGURACIÓN STREAMLIT
-# =========================
 st.set_page_config(
     page_title="FertiChat",
     page_icon="🦋",
@@ -37,13 +34,13 @@ from familias import mostrar_familias
 
 
 # =========================
-# CSS + MENÚ MÓVIL CUSTOM
+# CSS MEJORADO
 # =========================
-def inject_mobile_menu():
+def inject_css():
     st.markdown(
         """
         <style>
-        /* OCULTAR ELEMENTOS DE STREAMLIT */
+        /* Ocultar elementos de Streamlit */
         div.stAppToolbar,
         div[data-testid="stToolbar"],
         div[data-testid="stToolbarActions"],
@@ -54,17 +51,12 @@ def inject_mobile_menu():
         }
 
         header[data-testid="stHeader"]{
-          display: block !important;
           height: 0 !important;
           min-height: 0 !important;
           background: transparent !important;
-          border: 0 !important;
-          box-shadow: none !important;
-          margin: 0 !important;
-          padding: 0 !important;
         }
 
-        /* THEME */
+        /* Theme */
         :root{
             --fc-bg-1: #f6f4ef;
             --fc-bg-2: #f3f6fb;
@@ -72,8 +64,8 @@ def inject_mobile_menu():
             --fc-accent: #f59e0b;
         }
 
-        html, body, [class*="css"]{
-            font-family: Inter, system-ui, -apple-system, sans-serif;
+        html, body{
+            font-family: Inter, system-ui, sans-serif;
             color: #0f172a;
         }
 
@@ -87,6 +79,7 @@ def inject_mobile_menu():
             padding-bottom: 2.25rem;
         }
 
+        /* Sidebar PC */
         section[data-testid="stSidebar"]{
             border-right: 1px solid rgba(15, 23, 42, 0.08);
         }
@@ -103,7 +96,6 @@ def inject_mobile_menu():
         }
         div[data-testid="stSidebar"] div[role="radiogroup"] label:hover{
             background: rgba(37,99,235,0.06);
-            border: 1px solid rgba(37,99,235,0.10);
         }
         div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){
             background: rgba(245,158,11,0.10);
@@ -111,180 +103,57 @@ def inject_mobile_menu():
         }
 
         /* ========================================
-           MENÚ MÓVIL CUSTOM - BOTÓN + DRAWER
+           MÓVIL - SELECTBOX FLOTANTE
         ======================================== */
         @media (max-width: 768px){
             
-            /* OCULTAR SIDEBAR NATIVO EN MÓVIL */
+            /* Ocultar sidebar en móvil */
             section[data-testid="stSidebar"]{
                 display: none !important;
             }
 
-            /* Padding para el botón */
+            /* Padding arriba para el selectbox */
             .block-container{
-                padding-top: 70px !important;
+                padding-top: 80px !important;
             }
 
-            /* BOTÓN MENÚ FLOTANTE */
-            #mobile-menu-btn{
-                position: fixed;
-                top: 12px;
-                left: 12px;
-                z-index: 9999;
-                width: 52px;
-                height: 52px;
-                background: #ffffff;
-                border: 2px solid #0b3b60;
-                border-radius: 14px;
-                box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 26px;
+            /* Selectbox móvil flotante */
+            div[data-testid="stSelectbox"]:first-of-type{
+                position: fixed !important;
+                top: 12px !important;
+                left: 12px !important;
+                right: 12px !important;
+                z-index: 9999 !important;
+                background: white !important;
+                padding: 8px !important;
+                border-radius: 12px !important;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
             }
 
-            /* DRAWER (menú deslizable) */
-            #mobile-drawer{
-                position: fixed;
-                top: 0;
-                left: -100%;
-                width: 280px;
-                height: 100vh;
-                background: rgba(255,255,255,0.98);
-                box-shadow: 8px 0 24px rgba(0,0,0,0.15);
-                z-index: 9998;
-                transition: left 0.3s ease;
-                overflow-y: auto;
-                padding: 20px;
+            /* Estilo del select */
+            div[data-testid="stSelectbox"]:first-of-type select,
+            div[data-testid="stSelectbox"]:first-of-type div[data-baseweb="select"]{
+                background: white !important;
+                color: #0f172a !important;
+                font-size: 16px !important;
+                font-weight: 600 !important;
+                border: 2px solid #0b3b60 !important;
+                border-radius: 10px !important;
             }
 
-            #mobile-drawer.open{
-                left: 0;
-            }
-
-            /* OVERLAY */
-            #mobile-overlay{
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.5);
-                z-index: 9997;
-                display: none;
-            }
-
-            #mobile-overlay.open{
-                display: block;
-            }
-
-            /* Items del menú */
-            .mobile-menu-item{
-                padding: 12px 14px;
-                margin: 6px 0;
-                border-radius: 10px;
-                background: rgba(248,250,252,0.8);
-                border: 1px solid rgba(15,23,42,0.1);
-                cursor: pointer;
-                color: #0f172a;
-                font-size: 15px;
-                font-weight: 500;
-            }
-
-            .mobile-menu-item.active{
-                background: rgba(245,158,11,0.15);
-                border-color: rgba(245,158,11,0.3);
-                font-weight: 700;
-                color: #0b3b60;
-            }
-
-            .mobile-menu-item:active{
-                transform: scale(0.98);
+            /* Ocultar label del selectbox */
+            div[data-testid="stSelectbox"]:first-of-type label{
+                display: none !important;
             }
         }
 
-        /* PC - sin cambios */
+        /* PC - selectbox oculto */
         @media (min-width: 769px){
-            #mobile-menu-btn,
-            #mobile-drawer,
-            #mobile-overlay{
+            #mobile-menu-select{
                 display: none !important;
             }
         }
         </style>
-
-        <!-- MENÚ MÓVIL HTML -->
-        <div id="mobile-menu-btn" onclick="toggleMenu()">☰</div>
-        
-        <div id="mobile-overlay" onclick="toggleMenu()"></div>
-        
-        <div id="mobile-drawer">
-            <div style="text-align:center; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid #e2e8f0;">
-                <div style="font-size:22px; font-weight:800; color:#0f172a;">🦋 FertiChat</div>
-                <div style="font-size:11px; color:#64748b; margin-top:4px;">Sistema de Gestión</div>
-            </div>
-            
-            <div id="menu-items">
-                <!-- Se generan con JS -->
-            </div>
-
-            <div style="margin-top:20px; padding-top:15px; border-top:1px solid #e2e8f0;">
-                <div class="mobile-menu-item" onclick="logout()">🚪 Cerrar sesión</div>
-            </div>
-        </div>
-
-        <script>
-        const MENU_OPTIONS = [
-            "🏠 Inicio",
-            "🛒 Compras IA",
-            "📦 Stock IA",
-            "🔎 Buscador IA",
-            "📥 Ingreso de comprobantes",
-            "📊 Dashboard",
-            "📄 Pedidos internos",
-            "🧾 Baja de stock",
-            "📈 Indicadores (Power BI)",
-            "📦 Órdenes de compra",
-            "📒 Ficha de stock",
-            "📚 Artículos",
-            "🏬 Depósitos",
-            "🧩 Familias"
-        ];
-
-        function toggleMenu(){
-            document.getElementById('mobile-drawer').classList.toggle('open');
-            document.getElementById('mobile-overlay').classList.toggle('open');
-        }
-
-        function selectMenu(option){
-            // Cambiar parámetro en URL
-            const url = new URL(window.location.href);
-            url.searchParams.set('menu', option);
-            window.location.href = url.toString();
-        }
-
-        function logout(){
-            const url = new URL(window.location.href);
-            url.searchParams.set('logout', '1');
-            window.location.href = url.toString();
-        }
-
-        // Generar items del menú
-        window.addEventListener('DOMContentLoaded', function(){
-            const container = document.getElementById('menu-items');
-            const urlParams = new URLSearchParams(window.location.search);
-            const currentMenu = urlParams.get('menu') || '🏠 Inicio';
-            
-            MENU_OPTIONS.forEach(option => {
-                const div = document.createElement('div');
-                div.className = 'mobile-menu-item' + (option === currentMenu ? ' active' : '');
-                div.textContent = option;
-                div.onclick = () => selectMenu(option);
-                container.appendChild(div);
-            });
-        });
-        </script>
         """,
         unsafe_allow_html=True
     )
@@ -293,30 +162,42 @@ def inject_mobile_menu():
 # =========================
 # INICIALIZACIÓN
 # =========================
-inject_mobile_menu()
+inject_css()
 init_db()
 require_auth()
 
 user = get_current_user() or {}
 
 # =========================
-# MANEJAR MENÚ MÓVIL
+# MENÚ MÓVIL (SELECTBOX FLOTANTE)
 # =========================
-try:
-    # Logout desde móvil
-    if st.query_params.get("logout") == "1":
-        logout()
-        st.query_params.clear()
-        st.rerun()
-    
-    # Cambio de menú desde móvil
-    menu_param = st.query_params.get("menu")
-    if menu_param and menu_param in MENU_OPTIONS:
-        st.session_state["radio_menu"] = menu_param
-        st.query_params.clear()
-        st.rerun()
-except:
-    pass
+if "radio_menu" not in st.session_state:
+    st.session_state["radio_menu"] = "🏠 Inicio"
+
+# Detectar ancho de pantalla (aproximado)
+import streamlit.components.v1 as components
+screen_width = components.html(
+    """
+    <script>
+    window.parent.postMessage({width: window.innerWidth}, "*");
+    </script>
+    """,
+    height=0
+)
+
+# Mostrar selectbox SIEMPRE (CSS lo oculta en PC)
+menu_mobile = st.selectbox(
+    "Menú",
+    MENU_OPTIONS,
+    index=MENU_OPTIONS.index(st.session_state["radio_menu"]),
+    key="mobile_menu_select",
+    label_visibility="collapsed"
+)
+
+# Si cambió el selectbox móvil, actualizar
+if menu_mobile != st.session_state["radio_menu"]:
+    st.session_state["radio_menu"] = menu_mobile
+    st.rerun()
 
 # =========================
 # TÍTULO Y CAMPANITA
@@ -325,8 +206,6 @@ usuario_actual = user.get("usuario", user.get("email", ""))
 cant_pendientes = 0
 if usuario_actual:
     cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
-
-st.markdown("<div id='fc_header_anchor'></div>", unsafe_allow_html=True)
 
 col_logo, col_spacer, col_notif = st.columns([7, 2, 1])
 
@@ -347,7 +226,7 @@ with col_logo:
 with col_notif:
     if cant_pendientes > 0:
         if st.button(f"🔔 {cant_pendientes}", key="campanita_global"):
-            st.session_state["ir_a_pedidos"] = True
+            st.session_state["radio_menu"] = "📄 Pedidos internos"
             st.rerun()
     else:
         st.markdown("<div style='text-align:right; font-size:26px;'>🔔</div>", unsafe_allow_html=True)
@@ -375,7 +254,7 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
-    st.text_input("Buscar...", value="", key="sidebar_search", label_visibility="collapsed", placeholder="Buscar...")
+    st.text_input("Buscar...", key="sidebar_search", label_visibility="collapsed", placeholder="Buscar...")
 
     st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
     if user.get('empresa'):
@@ -391,50 +270,41 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("## 📌 Menú")
 
-    if st.session_state.get("ir_a_pedidos"):
-        st.session_state["radio_menu"] = "📄 Pedidos internos"
-        st.session_state["ir_a_pedidos"] = False
-
-    if st.session_state.get("navegacion_destino"):
-        st.session_state["radio_menu"] = st.session_state["navegacion_destino"]
-        del st.session_state["navegacion_destino"]
-
-    if "radio_menu" not in st.session_state:
-        st.session_state["radio_menu"] = "🏠 Inicio"
-
     menu = st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
 
 
 # =========================
 # ROUTER
 # =========================
-if menu == "🏠 Inicio":
+menu_actual = st.session_state["radio_menu"]
+
+if menu_actual == "🏠 Inicio":
     mostrar_inicio()
-elif menu == "🛒 Compras IA":
+elif menu_actual == "🛒 Compras IA":
     mostrar_resumen_compras_rotativo()
     Compras_IA()
-elif menu == "📦 Stock IA":
+elif menu_actual == "📦 Stock IA":
     mostrar_resumen_stock_rotativo()
     mostrar_stock_ia()
-elif menu == "🔎 Buscador IA":
+elif menu_actual == "🔎 Buscador IA":
     mostrar_buscador_ia()
-elif menu == "📥 Ingreso de comprobantes":
+elif menu_actual == "📥 Ingreso de comprobantes":
     mostrar_ingreso_comprobantes()
-elif menu == "📊 Dashboard":
+elif menu_actual == "📊 Dashboard":
     mostrar_dashboard()
-elif menu == "📄 Pedidos internos":
+elif menu_actual == "📄 Pedidos internos":
     mostrar_pedidos_internos()
-elif menu == "🧾 Baja de stock":
+elif menu_actual == "🧾 Baja de stock":
     mostrar_baja_stock()
-elif menu == "📈 Indicadores (Power BI)":
+elif menu_actual == "📈 Indicadores (Power BI)":
     mostrar_indicadores_ia()
-elif menu == "📦 Órdenes de compra":
+elif menu_actual == "📦 Órdenes de compra":
     mostrar_ordenes_compra()
-elif menu == "📒 Ficha de stock":
+elif menu_actual == "📒 Ficha de stock":
     mostrar_ficha_stock()
-elif menu == "📚 Artículos":
+elif menu_actual == "📚 Artículos":
     mostrar_articulos()
-elif menu == "🏬 Depósitos":
+elif menu_actual == "🏬 Depósitos":
     mostrar_depositos()
-elif menu == "🧩 Familias":
+elif menu_actual == "🧩 Familias":
     mostrar_familias()
