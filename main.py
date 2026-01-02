@@ -102,12 +102,13 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
 /* PC: ocultar menú móvil */
 @media (min-width: 769px) {
     #fc-mobile-header,
-    #fc-mobile-menu-container {
+    #fc-mobile-menu-container,
+    #fc-overlay {
         display: none !important;
     }
 }
 
-/* MÓVIL: menú propio */
+    /* MÓVIL: menú propio */
 @media (max-width: 768px) {
     section[data-testid="stSidebar"] {
         display: none !important;
@@ -139,6 +140,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
         letter-spacing: -0.01em;
     }
 
+    /* Ocultar el contenedor del menú móvil por defecto */
     #fc-mobile-menu-container {
         position: fixed;
         top: 56px;
@@ -152,10 +154,14 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
         padding: 16px;
         transform: translateX(-100%);
         transition: transform 0.25s ease;
+        visibility: hidden;
+        opacity: 0;
     }
 
     #fc-mobile-menu-container.open {
         transform: translateX(0);
+        visibility: visible;
+        opacity: 1;
     }
 
     .fc-user-info {
@@ -261,6 +267,11 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     #fc-overlay.open {
         opacity: 1;
         visibility: visible;
+    }
+
+    /* CRÍTICO: Ocultar botones en PC y cuando menú está cerrado */
+    #fc-mobile-menu-container:not(.open) button {
+        pointer-events: none;
     }
 }
 </style>
