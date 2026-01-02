@@ -271,6 +271,11 @@ def _cache_articulos_por_tipo(tipo: Optional[str]) -> pd.DataFrame:
     else:
         df_raw = _sb_select("articulos", "*", order=("nombre", True))
 
+    # ✅ AGREGADO: Debug para ver qué columnas trae realmente
+    if df_raw is not None and not df_raw.empty:
+        st.sidebar.write("DEBUG - Columnas en DB:", df_raw.columns.tolist())
+        st.sidebar.write("DEBUG - Primeras 3 filas:", df_raw.head(3))
+    
     if df_raw is None or df_raw.empty:
         return pd.DataFrame(columns=ARTICULO_COLS)
 
@@ -900,4 +905,5 @@ def mostrar_articulos():
             if sel and sel.get("id"):
                 st.markdown("---")
                 _ui_archivos(str(sel["id"]))
+
 
