@@ -172,28 +172,23 @@ with st.sidebar:
     st.markdown("## 📌 Menú")
 
     if st.session_state.get("ir_a_pedidos"):
-        st.session_state["menu_seleccionado"] = "📄 Pedidos internos"
+        st.session_state["radio_menu"] = "📄 Pedidos internos"
         st.session_state["ir_a_pedidos"] = False
 
-    # Manejar navegación desde pantalla de inicio
+    # Manejar navegación desde pantalla de inicio (ANTES de crear el radio)
     if st.session_state.get("navegacion_destino"):
-        st.session_state["menu_seleccionado"] = st.session_state["navegacion_destino"]
+        st.session_state["radio_menu"] = st.session_state["navegacion_destino"]
         del st.session_state["navegacion_destino"]
     
-    # Obtener menú actual
-    menu_actual = st.session_state.get("menu_seleccionado", "🏠 Inicio")
-    if menu_actual not in MENU_OPTIONS:
-        menu_actual = MENU_OPTIONS[0]
+    # Si no hay valor previo, usar Inicio
+    if "radio_menu" not in st.session_state:
+        st.session_state["radio_menu"] = "🏠 Inicio"
 
     menu = st.radio(
         "Ir a:", 
         MENU_OPTIONS, 
-        index=MENU_OPTIONS.index(menu_actual),
         key="radio_menu"
     )
-    
-    # Guardar selección del radio
-    st.session_state["menu_seleccionado"] = menu
 
 # =========================
 # ROUTER
