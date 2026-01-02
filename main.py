@@ -1,5 +1,5 @@
 # =========================
-# MAIN.PY - VERSIÓN MÓVIL CON SELECTBOX FLOTANTE
+# MAIN.PY - MENÚ HAMBURGUESA ARRIBA (ESTILO GNS+)
 # =========================
 
 import streamlit as st
@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="FertiChat",
     page_icon="🦋",
     layout="wide",
-    initial_sidebar_state="collapsed"  # CERRADO al inicio
+    initial_sidebar_state="expanded"  # Solo para PC
 )
 
 # =========================
@@ -34,7 +34,7 @@ from familias import mostrar_familias
 
 
 # =========================
-# CSS MEJORADO
+# CSS + MENÚ MÓVIL HAMBURGUESA
 # =========================
 def inject_css():
     st.markdown(
@@ -52,7 +52,6 @@ def inject_css():
 
         header[data-testid="stHeader"]{
           height: 0 !important;
-          min-height: 0 !important;
           background: transparent !important;
         }
 
@@ -103,186 +102,240 @@ def inject_css():
         }
 
         /* ========================================
-           RESPONSIVE MÓVIL - SIDEBAR PERFECTO
+           MÓVIL - MENÚ HAMBURGUESA ARRIBA (ESTILO GNS+)
         ======================================== */
         @media (max-width: 768px){
             
-            /* ✅ SIDEBAR - Ajustado correctamente */
+            /* Ocultar sidebar de Streamlit en móvil */
             section[data-testid="stSidebar"]{
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                height: 100vh !important;
-                width: 280px !important;
-                max-width: 280px !important;
-                z-index: 999998 !important;
-                transform: translateX(-100%) !important;
-                transition: transform 0.3s ease !important;
-                display: block !important;
-                visibility: visible !important;
-                background: rgba(255,255,255,0.98) !important;
-                backdrop-filter: blur(12px) !important;
-                box-shadow: 8px 0 24px rgba(0,0,0,0.2) !important;
-                overflow-y: auto !important;
-                overflow-x: hidden !important;
-            }
-
-            /* Sidebar ABIERTO */
-            section[data-testid="stSidebar"][aria-expanded="true"]{
-                transform: translateX(0) !important;
-            }
-
-            /* Contenedor interno */
-            section[data-testid="stSidebar"] > div{
-                background: transparent !important;
-                width: 100% !important;
-                padding: 1rem !important;
-            }
-
-            /* TODO visible y negro */
-            section[data-testid="stSidebar"] *{
-                visibility: visible !important;
-                opacity: 1 !important;
-                color: #0f172a !important;
-                -webkit-text-fill-color: #0f172a !important;
-            }
-
-            /* Logo/título del sidebar */
-            section[data-testid="stSidebar"] h1,
-            section[data-testid="stSidebar"] h2,
-            section[data-testid="stSidebar"] h3{
-                color: #0f172a !important;
-                word-wrap: break-word !important;
-            }
-
-            /* Inputs y campos de texto */
-            section[data-testid="stSidebar"] input,
-            section[data-testid="stSidebar"] textarea{
-                background: rgba(248,250,252,0.9) !important;
-                border: 1px solid rgba(15,23,42,0.12) !important;
-                color: #0f172a !important;
-                width: 100% !important;
-            }
-
-            /* Botones del sidebar */
-            section[data-testid="stSidebar"] button{
-                width: 100% !important;
-                background: rgba(248,250,252,0.9) !important;
-                color: #0f172a !important;
-                border: 1px solid rgba(15,23,42,0.12) !important;
-            }
-
-            /* ✅ MENÚ RADIO - Sin puntos, bien visible */
-            section[data-testid="stSidebar"] div[role="radiogroup"]{
-                display: flex !important;
-                flex-direction: column !important;
-                gap: 4px !important;
-            }
-
-            section[data-testid="stSidebar"] div[role="radiogroup"] label{
-                display: flex !important;
-                align-items: center !important;
-                background: rgba(248,250,252,0.9) !important;
-                border: 1px solid rgba(15,23,42,0.12) !important;
-                border-radius: 10px !important;
-                padding: 10px 12px !important;
-                margin: 0 !important;
-                cursor: pointer !important;
-                width: 100% !important;
-            }
-
-            /* Ocultar círculo del radio */
-            section[data-testid="stSidebar"] div[role="radiogroup"] div[data-baseweb="radio"]{
                 display: none !important;
             }
 
-            /* Texto del menú */
-            section[data-testid="stSidebar"] div[role="radiogroup"] label > div{
-                color: #0f172a !important;
-                font-size: 14px !important;
-                font-weight: 500 !important;
-                width: 100% !important;
-                text-align: left !important;
+            /* Padding para el header móvil */
+            .block-container{
+                padding-top: 70px !important;
             }
 
-            /* Item seleccionado */
-            section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){
-                background: rgba(245,158,11,0.18) !important;
-                border-color: rgba(245,158,11,0.35) !important;
-            }
-
-            section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) > div{
-                color: #0b3b60 !important;
-                font-weight: 700 !important;
-            }
-
-            /* ✅ OVERLAY oscuro cuando sidebar está abierto */
-            section[data-testid="stSidebar"][aria-expanded="true"]::before{
-                content: "";
+            /* Header móvil fijo arriba */
+            #mobile-header{
                 position: fixed;
                 top: 0;
                 left: 0;
                 right: 0;
+                height: 56px;
+                background: #0b3b60;
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                padding: 0 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            }
+
+            /* Botón hamburguesa */
+            #menu-toggle{
+                width: 40px;
+                height: 40px;
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                gap: 5px;
+                padding: 0;
+            }
+
+            #menu-toggle span{
+                width: 24px;
+                height: 3px;
+                background: white;
+                border-radius: 2px;
+                transition: all 0.3s;
+            }
+
+            /* Animación del botón cuando está abierto */
+            #menu-toggle.open span:nth-child(1){
+                transform: rotate(45deg) translate(6px, 6px);
+            }
+            #menu-toggle.open span:nth-child(2){
+                opacity: 0;
+            }
+            #menu-toggle.open span:nth-child(3){
+                transform: rotate(-45deg) translate(6px, -6px);
+            }
+
+            /* Logo en el header */
+            #mobile-logo{
+                color: white;
+                font-size: 20px;
+                font-weight: 800;
+                margin-left: 12px;
+            }
+
+            /* Menú desplegable */
+            #mobile-menu{
+                position: fixed;
+                top: 56px;
+                left: 0;
+                width: 280px;
+                height: calc(100vh - 56px);
+                background: rgba(255,255,255,0.98);
+                backdrop-filter: blur(12px);
+                box-shadow: 4px 0 12px rgba(0,0,0,0.15);
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 9998;
+                overflow-y: auto;
+                padding: 16px;
+            }
+
+            #mobile-menu.open{
+                transform: translateX(0);
+            }
+
+            /* Overlay */
+            #mobile-overlay{
+                position: fixed;
+                top: 56px;
+                left: 0;
+                right: 0;
                 bottom: 0;
                 background: rgba(0,0,0,0.5);
-                z-index: -1;
-                pointer-events: auto;
+                z-index: 9997;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.3s;
             }
 
-            /* ✅ BOTÓN HAMBURGUESA */
-            button[data-testid="stExpandSidebarButton"],
-            button[data-testid="stSidebarCollapsedControl"],
-            button[data-testid="stSidebarCollapseButton"],
-            button[data-testid="baseButton-header"],
-            button[kind="header"],
-            button[kind="headerNoPadding"],
-            header button{
-                display: flex !important;
-                position: fixed !important;
-                top: 10px !important;
-                left: 10px !important;
-                z-index: 999999 !important;
-                width: 52px !important;
-                height: 52px !important;
-                min-width: 52px !important;
-                min-height: 52px !important;
-                background: #ffffff !important;
-                border: 3px solid #0b3b60 !important;
-                border-radius: 14px !important;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                align-items: center !important;
-                justify-content: center !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-            
-            /* SVG del botón */
-            button[data-testid="stExpandSidebarButton"] svg,
-            button[data-testid="stSidebarCollapsedControl"] svg,
-            button[data-testid="stSidebarCollapseButton"] svg,
-            button[data-testid="baseButton-header"] svg,
-            button[kind="header"] svg,
-            header button svg{
-                display: block !important;
-                color: #0b3b60 !important;
-                fill: #0b3b60 !important;
-                width: 28px !important;
-                height: 28px !important;
+            #mobile-overlay.open{
+                opacity: 1;
+                visibility: visible;
             }
 
-            /* ✅ CONTENIDO PRINCIPAL - Sin padding extra */
-            .block-container{
-                padding-top: 1.5rem !important;
-                padding-left: 1rem !important;
-                padding-right: 1rem !important;
+            /* Items del menú móvil */
+            .mobile-menu-item{
+                padding: 12px 14px;
+                margin: 6px 0;
+                border-radius: 10px;
+                background: rgba(248,250,252,0.8);
+                border: 1px solid rgba(15,23,42,0.1);
+                cursor: pointer;
+                color: #0f172a;
+                font-size: 15px;
+                font-weight: 500;
+                transition: all 0.15s;
+                display: block;
+                text-decoration: none;
+            }
+
+            .mobile-menu-item:hover{
+                background: rgba(245,158,11,0.1);
+                border-color: rgba(245,158,11,0.2);
+            }
+
+            .mobile-menu-item.active{
+                background: rgba(245,158,11,0.15);
+                border-color: rgba(245,158,11,0.3);
+                font-weight: 700;
+                color: #0b3b60;
+            }
+
+            /* Info del usuario en menú móvil */
+            .mobile-user-info{
+                background: rgba(248,250,252,0.9);
+                padding: 14px;
+                border-radius: 12px;
+                margin-bottom: 16px;
+                border: 1px solid rgba(15,23,42,0.1);
+            }
+
+            .mobile-user-info div{
+                color: #0f172a;
+                font-size: 14px;
+                margin: 4px 0;
+            }
+        }
+
+        /* PC - Ocultar menú móvil */
+        @media (min-width: 769px){
+            #mobile-header,
+            #mobile-menu,
+            #mobile-overlay{
+                display: none !important;
             }
         }
         </style>
         """,
         unsafe_allow_html=True
     )
+
+
+# =========================
+# MENÚ MÓVIL HTML
+# =========================
+def render_mobile_menu():
+    user = st.session_state.get("user", {})
+    menu_actual = st.session_state.get("radio_menu", "🏠 Inicio")
+    
+    menu_html = f"""
+    <!-- Header móvil -->
+    <div id="mobile-header">
+        <button id="menu-toggle" onclick="toggleMenu()">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <div id="mobile-logo">🦋 FertiChat</div>
+    </div>
+
+    <!-- Overlay -->
+    <div id="mobile-overlay" onclick="toggleMenu()"></div>
+
+    <!-- Menú desplegable -->
+    <div id="mobile-menu">
+        <div class="mobile-user-info">
+            <div style="font-weight:700;">👤 {user.get('nombre', 'Usuario')}</div>
+            <div style="font-size:12px;color:#64748b;">🏢 {user.get('empresa', 'Empresa')}</div>
+            <div style="font-size:12px;color:#64748b;">📧 {user.get('Usuario', '')}</div>
+        </div>
+
+        <div style="color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase;margin:12px 0 8px 4px;">
+            📌 Menú
+        </div>
+    """
+    
+    # Generar items del menú
+    for opcion in MENU_OPTIONS:
+        active_class = "active" if opcion == menu_actual else ""
+        menu_html += f"""
+        <a href="?menu={opcion}" class="mobile-menu-item {active_class}" onclick="selectMenu('{opcion}')">
+            {opcion}
+        </a>
+        """
+    
+    menu_html += """
+        <a href="?logout=1" class="mobile-menu-item" style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:16px;">
+            🚪 Cerrar sesión
+        </a>
+    </div>
+
+    <script>
+        function toggleMenu() {
+            document.getElementById('menu-toggle').classList.toggle('open');
+            document.getElementById('mobile-menu').classList.toggle('open');
+            document.getElementById('mobile-overlay').classList.toggle('open');
+        }
+
+        function selectMenu(opcion) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('menu', opcion);
+            window.location.href = url.toString();
+        }
+    </script>
+    """
+    
+    st.markdown(menu_html, unsafe_allow_html=True)
 
 
 # =========================
@@ -293,6 +346,28 @@ init_db()
 require_auth()
 
 user = get_current_user() or {}
+
+# Inicializar menú
+if "radio_menu" not in st.session_state:
+    st.session_state["radio_menu"] = "🏠 Inicio"
+
+# Manejar navegación desde menú móvil
+try:
+    menu_param = st.query_params.get("menu")
+    if menu_param and menu_param in MENU_OPTIONS:
+        st.session_state["radio_menu"] = menu_param
+        st.query_params.clear()
+        st.rerun()
+    
+    if st.query_params.get("logout") == "1":
+        logout()
+        st.query_params.clear()
+        st.rerun()
+except:
+    pass
+
+# Renderizar menú móvil
+render_mobile_menu()
 
 # =========================
 # TÍTULO Y CAMPANITA
@@ -330,7 +405,7 @@ st.markdown("<hr>", unsafe_allow_html=True)
 
 
 # =========================
-# SIDEBAR (PC Y MÓVIL)
+# SIDEBAR (SOLO PC)
 # =========================
 with st.sidebar:
     st.markdown(f"""
@@ -364,10 +439,6 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("## 📌 Menú")
-
-    # Inicializar si no existe
-    if "radio_menu" not in st.session_state:
-        st.session_state["radio_menu"] = "🏠 Inicio"
 
     menu = st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
 
