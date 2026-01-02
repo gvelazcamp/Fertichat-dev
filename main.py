@@ -43,6 +43,7 @@ from ui_buscador import mostrar_buscador_ia
 from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo
 from ui_dashboard import mostrar_dashboard, mostrar_indicadores_ia, mostrar_resumen_compras_rotativo
 from ui_inicio import mostrar_inicio
+from ficha_stock import mostrar_ficha_stock
 
 # =========================
 # CSS RESPONSIVE
@@ -227,3 +228,7 @@ elif menu == "📈 Indicadores (Power BI)":
 
 elif menu == "📦 Órdenes de compra":
     mostrar_ordenes_compra()
+
+elif menu == "📒 Ficha de stock":
+    mostrar_ficha_stock()
+
