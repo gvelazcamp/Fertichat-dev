@@ -44,12 +44,13 @@ def mostrar_inicio():
             }
             destino = mapping.get(go.strip().lower())
             if destino:
+                # ACTUALIZAR DIRECTAMENTE radio_menu
                 st.session_state["radio_menu"] = destino
                 _clear_query_params_safe()
                 st.rerun()
             else:
                 _clear_query_params_safe()
-    except Exception:
+    except Exception as e:
         pass
 
     # =========================
