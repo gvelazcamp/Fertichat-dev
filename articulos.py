@@ -165,51 +165,32 @@ def _sb_select(
 
 def _normalizar_articulos_df(df: pd.DataFrame) -> pd.DataFrame:
     """
-    ✅ SIN MAPEO - USA COLUMNAS DIRECTAS DE SUPABASE
+    ✅ VERSIÓN LIMPIA - Mapea columnas de Supabase
     """
     if df is None or df.empty:
         return pd.DataFrame(columns=ARTICULO_COLS)
     
-    # Crear DataFrame de salida con todas las columnas esperadas
+    # Crear DataFrame nuevo con las columnas mapeadas
     df_out = pd.DataFrame()
     
-    # Copiar columnas directamente si existen (SIN renombrar)
-    if "Id" in df.columns:
-        df_out["id"] = df["Id"].astype(str)
-    else:
-        df_out["id"] = ""
-    
-    if "Descripción" in df.columns:
-        df_out["nombre"] = df["Descripción"].astype(str)
-    else:
-        df_out["nombre"] = ""
-    
-    if "Familia" in df.columns:
-        df_out["familia"] = df["Familia"].astype(str)
-    else:
-        df_out["familia"] = ""
-    
-    if "Código Int." in df.columns:
-        df_out["codigo_interno"] = df["Código Int."].astype(str)
-    else:
-        df_out["codigo_interno"] = ""
-    
-    if "Código Ext." in df.columns:
-        df_out["codigo_barra"] = df["Código Ext."].astype(str)
-    else:
-        df_out["codigo_barra"] = ""
+    # Mapeo directo de columnas que existen en tu Supabase
+    df_out["id"] = df["Id"].astype(str) if "Id" in df.columns else ""
+    df_out["nombre"] = df["Descripción"].astype(str) if "Descripción" in df.columns else ""
+    df_out["familia"] = df["Familia"].astype(str) if "Familia" in df.columns else ""
+    df_out["codigo_interno"] = df["Código Int."].astype(str) if "Código Int." in df.columns else ""
+    df_out["codigo_barra"] = df["Código Ext."].astype(str) if "Código Ext." in df.columns else ""
+    df_out["unidad_base"] = df["Unidad"].astype(str) if "Unidad" in df.columns else "unidad"
     
     # Resto de columnas con valores por defecto
+    df_out["tipo"] = ""
     df_out["descripcion"] = ""
     df_out["subfamilia"] = ""
     df_out["equipo"] = ""
     df_out["proveedor_id"] = None
-    df_out["tipo"] = ""
     df_out["fifo"] = True
     df_out["iva"] = "basico_22"
     df_out["tiene_lote"] = False
     df_out["requiere_vencimiento"] = False
-    df_out["unidad_base"] = "unidad"
     df_out["unidad_compra"] = "unidad"
     df_out["contenido_por_unidad_compra"] = 1.0
     df_out["stock_min"] = 0.0
@@ -227,67 +208,6 @@ def _normalizar_articulos_df(df: pd.DataFrame) -> pd.DataFrame:
     df_out["updated_at"] = None
     
     return df_out
-    
-    for col, valor_default in columnas_faltantes.items():
-        if col not in df.columns:
-            df[col] = valor_default
-    
-    # Retornar solo las columnas esperadas
-    return df[ARTICULO_COLS].copy()
-    
-    # ========================================
-    # CONVERSIÓN DE TIPOS
-    # ========================================
-    
-    # ID como string
-    if "id" in df.columns:
-        df["id"] = df["id"].astype(str)
-    
-    # Booleanos con valores por defecto
-    if "activo" in df.columns:
-        df["activo"] = df["activo"].fillna(True).astype(bool)
-    else:
-        df["activo"] = True
-    
-    if "fifo" in df.columns:
-        df["fifo"] = df["fifo"].fillna(True).astype(bool)
-    else:
-        df["fifo"] = True
-        
-    if "tiene_lote" in df.columns:
-        df["tiene_lote"] = df["tiene_lote"].fillna(False).astype(bool)
-    else:
-        df["tiene_lote"] = False
-        
-    if "requiere_vencimiento" in df.columns:
-        df["requiere_vencimiento"] = df["requiere_vencimiento"].fillna(False).astype(bool)
-    else:
-        df["requiere_vencimiento"] = False
-    
-    # Normalizar strings
-    for col in ["nombre", "codigo_interno", "codigo_barra", "familia", "subfamilia", "equipo"]:
-        if col in df.columns:
-            df[col] = df[col].fillna("").astype(str)
-    
-    # Normalizar tipo (puede venir como número o texto)
-    if "tipo" in df.columns:
-        df["tipo"] = df["tipo"].fillna("").astype(str).str.strip()
-    
-    # Valores por defecto para campos opcionales
-    if df["unidad_base"].isna().all():
-        df["unidad_base"] = "unidad"
-    
-    if df["unidad_compra"].isna().all():
-        df["unidad_compra"] = "unidad"
-    
-    if df["contenido_por_unidad_compra"].isna().all():
-        df["contenido_por_unidad_compra"] = 1.0
-    
-    if df["iva"].isna().all():
-        df["iva"] = "basico_22"
-    
-    # Retornar solo las columnas esperadas
-    return df[ARTICULO_COLS].copy()
 
 
 def _sb_upsert_articulo(payload: Dict[str, Any]) -> Tuple[bool, str, Optional[Dict]]:
@@ -298,9 +218,7 @@ def _sb_upsert_articulo(payload: Dict[str, Any]) -> Tuple[bool, str, Optional[Di
     if supabase is None:
         return False, "Supabase no disponible", None
     
-    # ========================================
-    # MAPEO INVERSO PARA GUARDAR
-    # ========================================
+    # Mapeo inverso para guardar
     payload_db = {
         "Descripción": payload.get("nombre"),
         "Familia": payload.get("familia"),
@@ -320,7 +238,6 @@ def _sb_upsert_articulo(payload: Dict[str, Any]) -> Tuple[bool, str, Optional[Di
         if payload.get("id"):
             # UPDATE
             art_id = payload.get("id")
-            
             res = supabase.table("articulos").update(payload_db).eq("Id", art_id).execute()
             data = getattr(res, "data", None) or []
             if data:
@@ -413,6 +330,15 @@ def _cache_articulos_por_tipo(tipo: Optional[str]) -> pd.DataFrame:
         df = df.sort_values("nombre", kind="stable")
     
     return df
+
+
+def _invalidate_caches():
+    """
+    Invalida todos los caches
+    """
+    _cache_proveedores.clear()
+    _cache_articulos_por_tipo.clear()
+
 
 # =====================================================================
 # LÓGICA DE PRECIO
@@ -556,7 +482,7 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
 
     current_row = None
     if is_edit:
-        df_all = _cache_articulos_por_tipo(None)  # Traer todos para buscar por ID
+        df_all = _cache_articulos_por_tipo(None)
         match = df_all[df_all["id"].astype(str) == str(selected["id"])]
         if not match.empty:
             current_row = match.iloc[0].to_dict()
@@ -875,5 +801,3 @@ def mostrar_articulos():
             if sel and sel.get("id"):
                 st.markdown("---")
                 _ui_archivos(str(sel["id"]))
-
-
