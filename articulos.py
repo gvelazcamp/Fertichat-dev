@@ -29,6 +29,7 @@ except Exception:
 BUCKET_ARTICULOS = "articulos"
 
 TIPOS = {
+    "Todos": None,          # ✅ AGREGADO (mostrar todos)
     "Ingreso": "ingreso",
     "Egreso": "egreso",
     "Gastos fijos": "gasto_fijo",
@@ -114,48 +115,6 @@ def _sb_select(table: str, columns: str = "*", filters: Optional[List[Tuple[str,
     data = getattr(res, "data", None) or []
     return pd.DataFrame(data)
 
-def _sb_select_articulos_por_tipo_con_fallback(tipo: str) -> pd.DataFrame:
-    """
-    Lee articulos filtrando por tipo, pero con fallback para que NO quede vacío si:
-    - en BD el tipo está con mayúsculas (Ingreso/Egreso)
-    - el tipo está NULL (importados sin tipo)
-    - el filtro eq no matchea
-    """
-    # 1) intento exacto (lo mismo que ya hacías)
-    try:
-        df = _sb_select("articulos", "*", filters=[("tipo", "eq", tipo)], order=("nombre", True))
-        if df is not None and not df.empty:
-            return df
-    except Exception:
-        pass
-
-    # 2) intento case-insensitive (por si guardaste "Ingreso" en vez de "ingreso")
-    try:
-        df = _sb_select("articulos", "*", filters=[("tipo", "ilike", tipo)], order=("nombre", True))
-        if df is not None and not df.empty:
-            return df
-        df = _sb_select("articulos", "*", filters=[("tipo", "ilike", f"%{tipo}%")], order=("nombre", True))
-        if df is not None and not df.empty:
-            return df
-    except Exception:
-        pass
-
-    # 3) OR: tipo = tipo OR tipo = TipoCapitalizada OR tipo IS NULL
-    #    (esto hace que SIEMPRE veas artículos aunque vengan sin tipo)
-    try:
-        cap = (tipo[:1].upper() + tipo[1:]) if tipo else tipo
-        q = (
-            supabase.table("articulos")
-            .select("*")
-            .or_(f"tipo.eq.{tipo},tipo.eq.{cap},tipo.is.null")
-            .order("nombre", desc=False)
-        )
-        res = q.execute()
-        data = getattr(res, "data", None) or []
-        return pd.DataFrame(data)
-    except Exception:
-        return pd.DataFrame()
-
 
 def _sb_upsert_articulo(payload: Dict[str, Any]) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     try:
@@ -187,7 +146,7 @@ def _sb_upload_storage(bucket: str, path: str, content_bytes: bytes, mime: str) 
 
 
 # =====================================================================
-# CACHES
+# C see? no. Keep as given
 # =====================================================================
 @st.cache_data(ttl=30)
 def _cache_proveedores() -> pd.DataFrame:
@@ -209,18 +168,22 @@ def _cache_proveedores() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=30)
-def _cache_articulos_por_tipo(tipo: str) -> pd.DataFrame:
-    df = _sb_select_articulos_por_tipo_con_fallback(tipo)
+def _cache_articulos_por_tipo(tipo: Optional[str]) -> pd.DataFrame:
+    # ✅ AGREGADO: si tipo es None => traer todos
+    if not tipo:
+        df = _sb_select("articulos", "*", order=("nombre", True))
+    else:
+        df = _sb_select("articulos", "*", filters=[("tipo", "eq", tipo)], order=("nombre", True))
 
-    if df is None or df.empty:
-        return pd.DataFrame(columns=ARTICULO_COLS)
+    if df.empty:
+        return df
 
     for c in ARTICULO_COLS:
         if c not in df.columns:
             df[c] = None
-
     df = df[ARTICULO_COLS].copy()
     return df
+
 
 @st.cache_data(ttl=60)
 def _cache_unicos_chatbot_raw() -> pd.DataFrame:
@@ -287,7 +250,6 @@ def _invalidate_caches():
     _cache_proveedores.clear()
     _cache_articulos_por_tipo.clear()
     _cache_sugerencias_desde_chatbot_raw.clear()
-
 
 
 # =====================================================================
@@ -453,7 +415,6 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
         btn_new = st.button("➕ Nuevo", use_container_width=True)
     with b3:
         btn_reload = st.button("🔄 Recargar", use_container_width=True)
-
 
     if btn_reload:
         _invalidate_caches()
@@ -721,6 +682,9 @@ def mostrar_articulos():
     tipo_label = st.radio("Categoría", list(TIPOS.keys()), horizontal=True)
     tipo = TIPOS[tipo_label]
 
+    # ✅ AGREGADO: clave segura para keys cuando tipo es None
+    tipo_key = tipo if tipo else "todos"
+
     # Tabs para que no quede “desparramado”
     tab_listado, tab_form = st.tabs(["📋 Listado", "📝 Nuevo / Editar"])
 
@@ -736,11 +700,11 @@ def mostrar_articulos():
                 placeholder="Vacío = muestra todos",
             )
         with c2:
-            if st.button("🧹 Limpiar", use_container_width=True, key=f"art_list_clear_{tipo}"):
+            if st.button("🧹 Limpiar", use_container_width=True, key=f"art_list_clear_{tipo_key}"):
                 st.session_state["articulos_busqueda"] = ""
                 st.rerun()
 
-        if st.button("🔄 Recargar listado", use_container_width=True, key=f"art_list_reload_{tipo}"):
+        if st.button("🔄 Recargar listado", use_container_width=True, key=f"art_list_reload_{tipo_key}"):
             _invalidate_caches()
             st.rerun()
 
@@ -792,15 +756,18 @@ def mostrar_articulos():
     with tab_form:
         cA, cB = st.columns(2)
         with cA:
-            if st.button("➕ Nuevo artículo", use_container_width=True, key=f"art_form_new_{tipo}"):
+            if st.button("➕ Nuevo artículo", use_container_width=True, key=f"art_form_new_{tipo_key}"):
                 st.session_state["articulos_sel"] = None
                 st.rerun()
         with cB:
-            if st.button("🔄 Recargar", use_container_width=True, key=f"art_form_reload_{tipo}"):
+            if st.button("🔄 Recargar", use_container_width=True, key=f"art_form_reload_{tipo_key}"):
                 _invalidate_caches()
                 st.rerun()
 
-        saved_id = _form_articulo(tipo, st.session_state.get("articulos_sel"))
+        # ✅ AGREGADO: si estás en "Todos", el form necesita un tipo real para crear/editar
+        tipo_form = tipo if tipo else "ingreso"
+
+        saved_id = _form_articulo(tipo_form, st.session_state.get("articulos_sel"))
 
         if saved_id:
             st.session_state["articulos_sel"] = {"id": saved_id}
@@ -811,5 +778,3 @@ def mostrar_articulos():
             if sel and sel.get("id"):
                 st.markdown("---")
                 _ui_archivos(str(sel["id"]))
-
-
