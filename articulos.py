@@ -275,11 +275,11 @@ def _aplicar_historial_precio_minimo(payload: Dict[str, Any], current_row: Optio
 # UI
 # =====================================================================
 def _grid(df: pd.DataFrame) -> Optional[Dict[str, Any]]:
-    if df.empty:
-        st.info("Sin artículos.")
+    if df is None or df.empty:
+        st.info("Sin artículos para mostrar.")
         return None
 
-    # Armamos una vista para listado
+    # Vista para listado (columna id solo para selección)
     view_cols = [
         "nombre",
         "codigo_interno",
@@ -298,10 +298,15 @@ def _grid(df: pd.DataFrame) -> Optional[Dict[str, Any]]:
     for c in view_cols:
         if c not in df.columns:
             df[c] = None
+
     vdf = df[view_cols].copy()
 
+    # Mostrar cantidad
+    st.caption(f"Mostrando {len(vdf)} artículo(s).")
+
+    # Sin AgGrid: solo tabla (sin selección)
     if AgGrid is None:
-        st.dataframe(vdf.drop(columns=["id"], errors="ignore"), use_container_width=True)
+        st.dataframe(vdf.drop(columns=["id"], errors="ignore"), use_container_width=True, height=350)
         return None
 
     gb = GridOptionsBuilder.from_dataframe(vdf)
@@ -357,97 +362,15 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
         if not match.empty:
             current_row = match.iloc[0].to_dict()
 
-    # Prefill solo si es NUEVO
-    prefill = None
-    if (not is_edit) and ("articulos_prefill" in st.session_state):
-        prefill = st.session_state.get("articulos_prefill") or None
+    base = current_row or {}
 
-    # Defaults del formulario
-    base = current_row or prefill or {}
-
-    col1, col2 = st.columns(2)
-
-
-    with col1:
-        nombre = st.text_input("Nombre *", value=str((current_row or {}).get("nombre") or ""))
-        descripcion = st.text_area("Descripción", value=str((current_row or {}).get("descripcion") or ""), height=90)
-
-        codigo_interno = st.text_input("Código interno", value=str((current_row or {}).get("codigo_interno") or ""))
-        codigo_barra = st.text_input("Código de barra", value=str((current_row or {}).get("codigo_barra") or ""))
-
-        familia = st.text_input("Familia", value=str((current_row or {}).get("familia") or ""))
-        subfamilia = st.text_input("Subfamilia", value=str((current_row or {}).get("subfamilia") or ""))
-        equipo = st.text_input("Equipo", value=str((current_row or {}).get("equipo") or ""))
-
-        proveedor_id = _selector_proveedor(str((current_row or {}).get("proveedor_id") or "") or None)
-
-    with col2:
-        fifo = st.checkbox("FIFO", value=bool((current_row or {}).get("fifo", True)))
-        activo = st.checkbox("Activo", value=bool((current_row or {}).get("activo", True)))
-
-        # IVA
-        inv_iva = {v: k for k, v in IVA_OPS.items()}
-        iva_default = inv_iva.get((current_row or {}).get("iva") or "basico_22", "Básico (22%)")
-        iva_label = st.selectbox("IVA", list(IVA_OPS.keys()), index=list(IVA_OPS.keys()).index(iva_default))
-        iva = IVA_OPS[iva_label]
-
-        tiene_lote = st.checkbox("Tiene lote", value=bool((current_row or {}).get("tiene_lote", False)))
-        requiere_vencimiento = st.checkbox("Requiere vencimiento", value=bool((current_row or {}).get("requiere_vencimiento", False)))
-
-        # Unidades
-        inv_ub = {v: k for k, v in UNIDAD_BASE_OPS.items()}
-        ub_default = inv_ub.get((current_row or {}).get("unidad_base") or "unidad", "Unidad")
-        unidad_base_label = st.selectbox("Unidad base (stock)", list(UNIDAD_BASE_OPS.keys()), index=list(UNIDAD_BASE_OPS.keys()).index(ub_default))
-        unidad_base = UNIDAD_BASE_OPS[unidad_base_label]
-
-        inv_uc = {v: k for k, v in UNIDAD_COMPRA_OPS.items()}
-        uc_default = inv_uc.get((current_row or {}).get("unidad_compra") or "unidad", "Unidad")
-        unidad_compra_label = st.selectbox("Unidad de compra", list(UNIDAD_COMPRA_OPS.keys()), index=list(UNIDAD_COMPRA_OPS.keys()).index(uc_default))
-        unidad_compra = UNIDAD_COMPRA_OPS[unidad_compra_label]
-
-        contenido_default = float((current_row or {}).get("contenido_por_unidad_compra") or 1)
-        contenido_por_unidad_compra = st.number_input(
-            "Contenido por unidad de compra (ej: 1 caja = 100 unidades)",
-            min_value=1.0,
-            value=contenido_default if contenido_default >= 1 else 1.0,
-            step=1.0,
-        )
-
-        stock_min = st.number_input("Stock mínimo", min_value=0.0, value=float((current_row or {}).get("stock_min") or 0), step=1.0)
-        stock_max = st.number_input("Stock máximo", min_value=0.0, value=float((current_row or {}).get("stock_max") or 0), step=1.0)
-
-        # Precio actual (referencia)
-        moneda_actual = st.selectbox("Moneda (precio actual)", MONEDAS, index=MONEDAS.index(((current_row or {}).get("moneda_actual") or "UYU")))
-
-        precio_actual_val = (current_row or {}).get("precio_actual")
-        try:
-            precio_actual_val = float(precio_actual_val) if precio_actual_val is not None else 0.0
-        except Exception:
-            precio_actual_val = 0.0
-
-        precio_actual = st.number_input("Precio actual (referencia)", min_value=0.0, value=float(precio_actual_val), step=1.0)
-
-        inv_pp = {v: k for k, v in PRECIO_POR_OPS.items()}
-        pp_default = inv_pp.get((current_row or {}).get("precio_por_actual") or "unidad_compra", "Por unidad de compra")
-        precio_por_label = st.selectbox("Precio actual es por", list(PRECIO_POR_OPS.keys()), index=list(PRECIO_POR_OPS.keys()).index(pp_default))
-        precio_por_actual = PRECIO_POR_OPS[precio_por_label]
-
-        # Mostrar precio anterior (solo lectura)
-        st.markdown("---")
-        st.markdown("**Último precio anterior (historial mínimo)**")
-        st.write({
-            "precio_anterior": (current_row or {}).get("precio_anterior"),
-            "moneda_anterior": (current_row or {}).get("moneda_anterior"),
-            "precio_por_anterior": (current_row or {}).get("precio_por_anterior"),
-            "fecha_precio_anterior": (current_row or {}).get("fecha_precio_anterior"),
-        })
-
-    colb1, colb2, colb3 = st.columns(3)
-    with colb1:
+    # Botones arriba (mejor UX)
+    b1, b2, b3 = st.columns(3)
+    with b1:
         btn_save = st.button("💾 Guardar", type="primary", use_container_width=True)
-    with colb2:
+    with b2:
         btn_new = st.button("➕ Nuevo", use_container_width=True)
-    with colb3:
+    with b3:
         btn_reload = st.button("🔄 Recargar", use_container_width=True)
 
     if btn_reload:
@@ -458,6 +381,118 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
         st.session_state["articulos_sel"] = None
         st.rerun()
 
+    # -------------------------
+    # General
+    # -------------------------
+    with st.expander("🧾 Datos generales", expanded=True):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            nombre = st.text_input("Nombre *", value=str(base.get("nombre") or ""))
+            descripcion = st.text_area("Descripción", value=str(base.get("descripcion") or ""), height=90)
+
+            codigo_interno = st.text_input("Código interno", value=str(base.get("codigo_interno") or ""))
+            codigo_barra = st.text_input("Código de barra", value=str(base.get("codigo_barra") or ""))
+
+            familia = st.text_input("Familia", value=str(base.get("familia") or ""))
+            subfamilia = st.text_input("Subfamilia", value=str(base.get("subfamilia") or ""))
+            equipo = st.text_input("Equipo", value=str(base.get("equipo") or ""))
+
+            # Proveedor: si no existe tabla, _cache_proveedores devuelve vacío y no rompe
+            proveedor_id = _selector_proveedor(str(base.get("proveedor_id") or "") or None)
+
+        with col2:
+            fifo = st.checkbox("FIFO", value=bool(base.get("fifo", True)))
+            activo = st.checkbox("Activo", value=bool(base.get("activo", True)))
+
+            # IVA
+            inv_iva = {v: k for k, v in IVA_OPS.items()}
+            iva_default = inv_iva.get(base.get("iva") or "basico_22", "Básico (22%)")
+            iva_label = st.selectbox("IVA", list(IVA_OPS.keys()), index=list(IVA_OPS.keys()).index(iva_default))
+            iva = IVA_OPS[iva_label]
+
+            tiene_lote = st.checkbox("Tiene lote", value=bool(base.get("tiene_lote", False)))
+            requiere_vencimiento = st.checkbox("Requiere vencimiento", value=bool(base.get("requiere_vencimiento", False)))
+
+    # -------------------------
+    # Unidades / Stock
+    # -------------------------
+    with st.expander("📦 Unidades y stock", expanded=True):
+        colU1, colU2 = st.columns(2)
+
+        with colU1:
+            inv_ub = {v: k for k, v in UNIDAD_BASE_OPS.items()}
+            ub_default = inv_ub.get(base.get("unidad_base") or "unidad", "Unidad")
+            unidad_base_label = st.selectbox(
+                "Unidad base (stock)",
+                list(UNIDAD_BASE_OPS.keys()),
+                index=list(UNIDAD_BASE_OPS.keys()).index(ub_default),
+            )
+            unidad_base = UNIDAD_BASE_OPS[unidad_base_label]
+
+            stock_min = st.number_input("Stock mínimo", min_value=0.0, value=float(base.get("stock_min") or 0), step=1.0)
+            stock_max = st.number_input("Stock máximo", min_value=0.0, value=float(base.get("stock_max") or 0), step=1.0)
+
+        with colU2:
+            inv_uc = {v: k for k, v in UNIDAD_COMPRA_OPS.items()}
+            uc_default = inv_uc.get(base.get("unidad_compra") or "unidad", "Unidad")
+            unidad_compra_label = st.selectbox(
+                "Unidad de compra",
+                list(UNIDAD_COMPRA_OPS.keys()),
+                index=list(UNIDAD_COMPRA_OPS.keys()).index(uc_default),
+            )
+            unidad_compra = UNIDAD_COMPRA_OPS[unidad_compra_label]
+
+            contenido_default = float(base.get("contenido_por_unidad_compra") or 1)
+            contenido_por_unidad_compra = st.number_input(
+                "Contenido por unidad de compra (ej: 1 caja = 100 unidades)",
+                min_value=1.0,
+                value=contenido_default if contenido_default >= 1 else 1.0,
+                step=1.0,
+            )
+
+    # -------------------------
+    # Precio
+    # -------------------------
+    with st.expander("💲 Precio", expanded=True):
+        colP1, colP2 = st.columns(2)
+
+        with colP1:
+            moneda_actual = st.selectbox(
+                "Moneda (precio actual)",
+                MONEDAS,
+                index=MONEDAS.index((base.get("moneda_actual") or "UYU")),
+            )
+
+            precio_actual_val = base.get("precio_actual")
+            try:
+                precio_actual_val = float(precio_actual_val) if precio_actual_val is not None else 0.0
+            except Exception:
+                precio_actual_val = 0.0
+
+            precio_actual = st.number_input("Precio actual (referencia)", min_value=0.0, value=float(precio_actual_val), step=1.0)
+
+            inv_pp = {v: k for k, v in PRECIO_POR_OPS.items()}
+            pp_default = inv_pp.get(base.get("precio_por_actual") or "unidad_compra", "Por unidad de compra")
+            precio_por_label = st.selectbox(
+                "Precio actual es por",
+                list(PRECIO_POR_OPS.keys()),
+                index=list(PRECIO_POR_OPS.keys()).index(pp_default),
+            )
+            precio_por_actual = PRECIO_POR_OPS[precio_por_label]
+
+            st.caption(f"Fecha último precio: {base.get('fecha_precio_actual') or '—'}")
+
+        with colP2:
+            st.markdown("**Último precio anterior (historial mínimo)**")
+            st.write(f"Precio anterior: {base.get('precio_anterior') or '—'}")
+            st.write(f"Moneda anterior: {base.get('moneda_anterior') or '—'}")
+            st.write(f"Por anterior: {base.get('precio_por_anterior') or '—'}")
+            st.write(f"Fecha anterior: {base.get('fecha_precio_anterior') or '—'}")
+
+    # -------------------------
+    # Guardar
+    # -------------------------
     if not btn_save:
         return None
 
@@ -656,5 +691,6 @@ def mostrar_articulos():
             if sel and sel.get("id"):
                 st.markdown("---")
                 _ui_archivos(str(sel["id"]))
+
 
 
