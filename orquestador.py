@@ -1005,3 +1005,15 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     else:
         # 🤖 SISTEMA HÍBRIDO: Si llegó hasta acá, el intent_detector no entendió
         # → Usamos IA para interpretar y sugerir
+
+        texto_lower = normalizar_texto(pregunta)
+
+        # Excluir saludos simples de la IA (ya se manejan arriba)
+        saludos = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'gracias', 'chau', 'adios']
+        es_saludo = any(s in texto_lower for s in saludos) and len(texto_lower.split()) <= 3
+
+        if es_saludo:
+            return "👋 ¡Hola! ¿En qué te puedo ayudar?", None
+
+        # Para TODO lo demás → Mostrar sugerencia con IA
+        return "__MOSTRAR_SUGERENCIA__", None
