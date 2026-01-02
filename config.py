@@ -23,6 +23,7 @@ MENU_OPTIONS = [
     "🛒 Compras IA",
     "🔎 Buscador IA",
     "📦 Stock IA",
+    "📥 Ingreso de comprobantes",
     "📊 Dashboard",
     "📄 Pedidos internos",
     "🧾 Baja de stock",
