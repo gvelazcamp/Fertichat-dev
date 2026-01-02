@@ -394,8 +394,9 @@ def mostrar_resumen_compras_rotativo():
     except Exception:
         tick = 0
 
-    anio = datetime.now().year
-    mes_key = datetime.now().strftime("%Y-%m")
+    # Usar 2025 ya que 2026 no tiene datos todavía
+    anio = 2025
+    mes_key = "2025-12"  # Último mes con datos
 
     tot_anio = _get_totales_anio(anio)
     tot_mes = _get_totales_mes(mes_key)
@@ -501,4 +502,3 @@ def mostrar_resumen_compras_rotativo():
         """,
         unsafe_allow_html=True
     )
-
