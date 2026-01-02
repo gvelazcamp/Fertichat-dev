@@ -1,5 +1,5 @@
 # =====================================================================
-# 📚 MÓDULO ARTÍCULOS (GNS) - FERTI CHAT
+# 📚 MÓDULO ARTÍCULOS - FERTI CHAT
 # Archivo: articulos.py
 #
 # Objetivo:
@@ -478,3 +478,4 @@ def mostrar_articulos():
         _ui_detalle(row)
         st.markdown("---")
         _ui_archivos(articulo_id)
+
