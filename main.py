@@ -268,4 +268,73 @@ with st.sidebar:
             padding: 16px;
             border-radius: 18px;
             margin-bottom: 14px;
-            border: 1px solid rgba(15, 23, 42,
+            border: 1px solid rgba(15, 23, 42, 0.10);
+            box-shadow: 0 10px 26px rgba(2, 6, 23, 0.06);
+        '>
+            <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
+                <div style='font-size: 26px;'>🦋</div>
+                <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.text_input("Buscar...", key="sidebar_search", label_visibility="collapsed", placeholder="Buscar...")
+
+    st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
+    if user.get('empresa'):
+        st.markdown(f"🏢 {user.get('empresa')}")
+    st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
+
+    st.markdown("---")
+
+    if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar", use_container_width=True):
+        logout()
+        st.rerun()
+
+    st.markdown("---")
+    st.markdown("## 📌 Menú")
+
+    old_menu = st.session_state["radio_menu"]
+    menu = st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
+
+    # Si cambió el menú, cerrar sidebar en móvil
+    if menu != old_menu and st.session_state["sidebar_open"]:
+        st.session_state["sidebar_open"] = False
+        st.rerun()
+
+
+# =========================
+# ROUTER
+# =========================
+menu_actual = st.session_state["radio_menu"]
+
+if menu_actual == "🏠 Inicio":
+    mostrar_inicio()
+elif menu_actual == "🛒 Compras IA":
+    mostrar_resumen_compras_rotativo()
+    Compras_IA()
+elif menu_actual == "📦 Stock IA":
+    mostrar_resumen_stock_rotativo()
+    mostrar_stock_ia()
+elif menu_actual == "🔎 Buscador IA":
+    mostrar_buscador_ia()
+elif menu_actual == "📥 Ingreso de comprobantes":
+    mostrar_ingreso_comprobantes()
+elif menu_actual == "📊 Dashboard":
+    mostrar_dashboard()
+elif menu_actual == "📄 Pedidos internos":
+    mostrar_pedidos_internos()
+elif menu_actual == "🧾 Baja de stock":
+    mostrar_baja_stock()
+elif menu_actual == "📈 Indicadores (Power BI)":
+    mostrar_indicadores_ia()
+elif menu_actual == "📦 Órdenes de compra":
+    mostrar_ordenes_compra()
+elif menu_actual == "📒 Ficha de stock":
+    mostrar_ficha_stock()
+elif menu_actual == "📚 Artículos":
+    mostrar_articulos()
+elif menu_actual == "🏬 Depósitos":
+    mostrar_depositos()
+elif menu_actual == "🧩 Familias":
+    mostrar_familias()
