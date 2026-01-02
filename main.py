@@ -1,10 +1,10 @@
 # =========================
-# MAIN.PY - PC con SIDEBAR + MÓVIL con MENÚ PROPIO (SIN DUPLICADOS)
+# MAIN.PY - PC con SIDEBAR + MÓVIL con MENÚ PROPIO (ARREGLADO)
 # =========================
 
 import streamlit as st
 from datetime import datetime
-import streamlit.components.v1 as components
+from urllib.parse import quote, unquote
 
 st.set_page_config(
     page_title="FertiChat",
@@ -48,18 +48,48 @@ if "radio_menu" not in st.session_state:
 
 
 # =========================
-# CSS + MENÚ MÓVIL CON COMUNICACIÓN JS
+# NAVEGACIÓN POR QUERY PARAMS - MEJORADA
+# =========================
+try:
+    # Manejar navegación desde menú móvil
+    menu_param = st.query_params.get("menu")
+    if isinstance(menu_param, list):
+        menu_param = menu_param[0] if menu_param else None
+
+    if menu_param:
+        menu_decoded = unquote(menu_param)
+        if menu_decoded in MENU_OPTIONS:
+            st.session_state["radio_menu"] = menu_decoded
+            # Limpiar query params
+            st.query_params.clear()
+            # Forzar rerun para actualizar la vista
+            st.rerun()
+
+    # Manejar logout
+    logout_param = st.query_params.get("logout")
+    if isinstance(logout_param, list):
+        logout_param = logout_param[0] if logout_param else None
+
+    if logout_param == "1":
+        logout()
+        st.query_params.clear()
+        st.rerun()
+
+except Exception as e:
+    # Ignorar errores de query params
+    pass
+
+
+# =========================
+# CSS + MENÚ MÓVIL (TU DISEÑO ORIGINAL)
 # =========================
 def inject_css_and_mobile_menu(user: dict, menu_actual: str):
-    # Generar items del menú móvil
+    # Menú móvil: links con query param URL-encoded
     menu_items_html = ""
-    for idx, opcion in enumerate(MENU_OPTIONS):
+    for opcion in MENU_OPTIONS:
         active_class = "fc-active" if opcion == menu_actual else ""
-        menu_items_html += f'''
-        <div class="fc-menu-item {active_class}" data-menu-idx="{idx}" data-menu-name="{opcion}">
-            {opcion}
-        </div>
-        '''
+        href = f"?menu={quote(opcion)}"
+        menu_items_html += f'<a class="fc-menu-item {active_class}" href="{href}">{opcion}</a>\n'
 
     html = f"""
 <style>
@@ -143,18 +173,21 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 }}
 
 /* =========================
-   MÓVIL: menú propio
+   MÓVIL: menú propio + ocultar sidebar nativo
 ========================= */
 @media (max-width: 768px) {{
 
+    /* Ocultar sidebar nativo SOLO en móvil */
     section[data-testid="stSidebar"] {{
         display: none !important;
     }}
 
+    /* Dejar espacio para header móvil fijo */
     .block-container {{
         padding-top: 70px !important;
     }}
 
+    /* Checkbox escondido (controla open/close) */
     #fc-menu-cb {{
         position: fixed;
         left: -9999px;
@@ -164,6 +197,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         height: 0;
     }}
 
+    /* Header móvil fijo */
     #fc-mobile-header {{
         position: fixed;
         top: 0;
@@ -178,6 +212,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }}
 
+    /* Botón hamburguesa (es un LABEL del checkbox) */
     #fc-menu-toggle {{
         width: 44px;
         height: 44px;
@@ -210,6 +245,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         letter-spacing: -0.01em;
     }}
 
+    /* Overlay (es un LABEL del checkbox para cerrar) */
     #fc-mobile-overlay {{
         position: fixed;
         top: 56px;
@@ -223,6 +259,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         transition: all 0.20s;
     }}
 
+    /* Drawer */
     #fc-mobile-menu {{
         position: fixed;
         top: 56px;
@@ -239,6 +276,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         padding: 16px;
     }}
 
+    /* OPEN (controlado por checkbox) */
     #fc-menu-cb:checked ~ #fc-mobile-overlay {{
         opacity: 1;
         visibility: visible;
@@ -247,6 +285,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         transform: translateX(0);
     }}
 
+    /* Animación del icono a X */
     #fc-menu-cb:checked ~ #fc-mobile-header #fc-menu-toggle span:nth-child(1) {{
         transform: rotate(45deg) translate(6px, 6px);
     }}
@@ -257,6 +296,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         transform: rotate(-45deg) translate(6px, -6px);
     }}
 
+    /* Info usuario */
     .fc-user-info {{
         background: rgba(248,250,252,0.95);
         padding: 14px;
@@ -285,9 +325,9 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         margin: 12px 0 8px 4px;
     }}
 
+    /* Items menú */
     .fc-menu-item {{
         display: block;
-        width: 100%;
         padding: 14px 14px;
         margin: 6px 0;
         border-radius: 10px;
@@ -298,7 +338,6 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         font-size: 15px;
         font-weight: 500;
         text-decoration: none !important;
-        text-align: left;
         -webkit-tap-highlight-color: transparent;
     }}
 
@@ -316,7 +355,6 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 
     .fc-logout {{
         display: block;
-        width: 100%;
         padding: 14px 14px;
         margin: 14px 0 6px 0;
         border-radius: 10px;
@@ -326,13 +364,15 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         color: #dc2626 !important;
         font-size: 15px;
         font-weight: 700;
-        text-align: left;
+        text-decoration: none !important;
     }}
 }}
 </style>
 
+<!-- CHECKBOX CONTROL -->
 <input type="checkbox" id="fc-menu-cb" />
 
+<!-- HEADER MÓVIL -->
 <div id="fc-mobile-header">
   <label id="fc-menu-toggle" for="fc-menu-cb" aria-label="Abrir menú">
     <span></span><span></span><span></span>
@@ -340,8 +380,10 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
   <div id="fc-mobile-logo">🦋 FertiChat</div>
 </div>
 
+<!-- OVERLAY (clic cierra) -->
 <label id="fc-mobile-overlay" for="fc-menu-cb"></label>
 
+<!-- MENÚ LATERAL -->
 <div id="fc-mobile-menu">
   <div class="fc-user-info">
     <div class="fc-user-line" style="font-weight:800;">👤 {user.get('nombre', 'Usuario')}</div>
@@ -353,63 +395,17 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 
   {menu_items_html}
 
-  <div class="fc-logout" id="fc-logout-btn">
-    🚪 Cerrar sesión
-  </div>
+  <a class="fc-logout" href="?logout=1">🚪 Cerrar sesión</a>
 </div>
-
-<script>
-// Manejador de clicks del menú móvil
-document.addEventListener('DOMContentLoaded', function() {{
-    const menuItems = document.querySelectorAll('.fc-menu-item');
-    const logoutBtn = document.getElementById('fc-logout-btn');
-    
-    menuItems.forEach(item => {{
-        item.addEventListener('click', function() {{
-            const menuName = this.getAttribute('data-menu-name');
-            // Enviar mensaje a Streamlit
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                data: {{ menu: menuName }}
-            }}, '*');
-            
-            // Cerrar menú
-            document.getElementById('fc-menu-cb').checked = false;
-        }});
-    }});
-    
-    if (logoutBtn) {{
-        logoutBtn.addEventListener('click', function() {{
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                data: {{ logout: true }}
-            }}, '*');
-        }});
-    }}
-}});
-</script>
 """
 
+    # Sin indentación para evitar renderizado como código
     html = "\n".join(line.lstrip() for line in html.splitlines())
-    
-    # Usar componente HTML para capturar eventos
-    menu_click = components.html(html, height=0, scrolling=False)
-    
-    return menu_click
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # Inyectar CSS + menú móvil
-menu_data = inject_css_and_mobile_menu(user=user, menu_actual=st.session_state["radio_menu"])
-
-# Procesar clicks del menú móvil
-if menu_data:
-    if isinstance(menu_data, dict):
-        if 'menu' in menu_data:
-            st.session_state["radio_menu"] = menu_data['menu']
-            st.rerun()
-        elif menu_data.get('logout'):
-            logout()
-            st.rerun()
+inject_css_and_mobile_menu(user=user, menu_actual=st.session_state["radio_menu"])
 
 
 # =========================
