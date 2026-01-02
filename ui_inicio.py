@@ -144,8 +144,6 @@ def mostrar_inicio():
       .tile-ficha{background:rgba(251,146,60,0.10);border-color:rgba(251,146,60,0.18);}
       .tile-articulos{background:rgba(20,184,166,0.10);border-color:rgba(20,184,166,0.18);}
       .tile-depositos{background:rgba(99,102,241,0.10);border-color:rgba(99,102,241,0.18);}
-      .tile-familias{background:rgba(236,72,153,0.10);border-color:rgba(236,72,153,0.18);}
-
       @media (max-width: 980px){
         .fc-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
       }
