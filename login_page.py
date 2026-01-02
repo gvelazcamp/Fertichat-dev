@@ -187,6 +187,28 @@ LOGIN_CSS = """
         }
     }
 
+/* =========================
+   FIX: Input "Usuario" siempre blanco (móvil/auto-fill)
+   ========================= */
+div[data-testid="stForm"] input,
+div[data-testid="stForm"] textarea {
+    background-color: #f8fafc !important;
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+}
+
+/* Autofill (Chrome/Android) */
+div[data-testid="stForm"] input:-webkit-autofill,
+div[data-testid="stForm"] input:-webkit-autofill:hover,
+div[data-testid="stForm"] input:-webkit-autofill:focus,
+div[data-testid="stForm"] input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+    box-shadow: 0 0 0 1000px #f8fafc inset !important;
+    -webkit-text-fill-color: #1e293b !important;
+    caret-color: #1e293b !important;
+    transition: background-color 9999s ease-in-out 0s !important;
+}
+
     @media (max-width: 480px) {
         /* un poco más compacto aún */
         [data-testid="stForm"] {
