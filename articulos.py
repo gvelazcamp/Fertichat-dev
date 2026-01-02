@@ -373,6 +373,7 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
     with b3:
         btn_reload = st.button("🔄 Recargar", use_container_width=True)
 
+
     if btn_reload:
         _invalidate_caches()
         st.rerun()
@@ -653,11 +654,11 @@ def mostrar_articulos():
                 placeholder="Vacío = muestra todos",
             )
         with c2:
-            if st.button("🧹 Limpiar", use_container_width=True):
+            if st.button("🧹 Limpiar", use_container_width=True, key=f"art_list_clear_{tipo}"):
                 st.session_state["articulos_busqueda"] = ""
                 st.rerun()
 
-        if st.button("🔄 Recargar listado", use_container_width=True):
+        if st.button("🔄 Recargar listado", use_container_width=True, key=f"art_list_reload_{tipo}"):
             _invalidate_caches()
             st.rerun()
 
@@ -709,11 +710,11 @@ def mostrar_articulos():
     with tab_form:
         cA, cB = st.columns(2)
         with cA:
-            if st.button("➕ Nuevo artículo", use_container_width=True):
+            if st.button("➕ Nuevo artículo", use_container_width=True, key=f"art_form_new_{tipo}"):
                 st.session_state["articulos_sel"] = None
                 st.rerun()
         with cB:
-            if st.button("🔄 Recargar", use_container_width=True):
+            if st.button("🔄 Recargar", use_container_width=True, key=f"art_form_reload_{tipo}"):
                 _invalidate_caches()
                 st.rerun()
 
@@ -728,6 +729,7 @@ def mostrar_articulos():
             if sel and sel.get("id"):
                 st.markdown("---")
                 _ui_archivos(str(sel["id"]))
+
 
 
 
