@@ -1,5 +1,5 @@
 # =========================
-# MAIN.PY - ORQUESTADOR PRINCIPAL (MINIMALISTA)
+# MAIN.PY - CON MENÚ MÓVIL CUSTOM QUE SÍ FUNCIONA
 # =========================
 
 import streamlit as st
@@ -12,33 +12,19 @@ st.set_page_config(
     page_title="FertiChat",
     page_icon="🦋",
     layout="wide",
-    initial_sidebar_state="expanded"  # IMPORTANTE: sidebar abierto por defecto
+    initial_sidebar_state="expanded"
 )
 
 # =========================
 # IMPORTS
 # =========================
 from config import MENU_OPTIONS, DEBUG_MODE
-
-# Autenticación (ya existen)
 from auth import init_db
-from login_page import (
-    require_auth,
-    show_user_info_sidebar,
-    get_current_user,
-    logout,
-    LOGIN_CSS
-)
-
-# Módulos externos (ya existen)
+from login_page import require_auth, get_current_user, logout
 from pedidos import mostrar_pedidos_internos, contar_notificaciones_no_leidas
 from bajastock import mostrar_baja_stock
 from ordenes_compra import mostrar_ordenes_compra
-from supabase_client import supabase
-
-# Módulos nuevos
-from ui_compras import Compras_IA, render_orquestador_output
-from orquestador import procesar_pregunta_router
+from ui_compras import Compras_IA
 from ui_buscador import mostrar_buscador_ia
 from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo
 from ui_dashboard import mostrar_dashboard, mostrar_indicadores_ia, mostrar_resumen_compras_rotativo
@@ -51,16 +37,13 @@ from familias import mostrar_familias
 
 
 # =========================
-# CSS RESPONSIVE + TEMA CORPORATIVO
+# CSS + MENÚ MÓVIL CUSTOM
 # =========================
-def inject_css_responsive():
+def inject_mobile_menu():
     st.markdown(
         """
         <style>
-        /* =========================
-           OCULTAR BARRA SUPERIOR STREAMLIT (Share / menú / icons / barra blanca)
-           IMPORTANTE: NO ocultar stHeader con display:none, porque mata el botón del sidebar
-        ========================= */
+        /* OCULTAR ELEMENTOS DE STREAMLIT */
         div.stAppToolbar,
         div[data-testid="stToolbar"],
         div[data-testid="stToolbarActions"],
@@ -68,13 +51,8 @@ def inject_css_responsive():
         #MainMenu,
         footer{
           display: none !important;
-          height: 0 !important;
-          min-height: 0 !important;
-          padding: 0 !important;
-          margin: 0 !important;
         }
 
-        /* ✅ Header mínimo (necesario para que exista el botón de sidebar) */
         header[data-testid="stHeader"]{
           display: block !important;
           height: 0 !important;
@@ -86,61 +64,29 @@ def inject_css_responsive():
           padding: 0 !important;
         }
 
-        /* =========================
-           THEME (look & feel tipo mockup)
-        ========================= */
+        /* THEME */
         :root{
             --fc-bg-1: #f6f4ef;
             --fc-bg-2: #f3f6fb;
-            --fc-surface: #ffffff;
-            --fc-border: rgba(15, 23, 42, 0.10);
-            --fc-text: #0f172a;
-            --fc-muted: #64748b;
             --fc-primary: #0b3b60;
-            --fc-primary-2: #2563eb;
             --fc-accent: #f59e0b;
-            --fc-radius: 18px;
-            --fc-radius-sm: 12px;
-            --fc-shadow: 0 14px 40px rgba(2, 6, 23, 0.08);
-            --fc-shadow-sm: 0 8px 22px rgba(2, 6, 23, 0.06);
         }
 
         html, body, [class*="css"]{
-            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", sans-serif;
-            color: var(--fc-text);
+            font-family: Inter, system-ui, -apple-system, sans-serif;
+            color: #0f172a;
         }
 
         [data-testid="stAppViewContainer"]{
-            background:
-                radial-gradient(1200px 600px at 20% 10%, rgba(245,158,11,0.10), transparent 55%),
-                radial-gradient(900px 520px at 90% 20%, rgba(37,99,235,0.10), transparent 55%),
-                linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2));
+            background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2));
         }
 
-        [data-testid="stAppViewContainer"]::before{
-            content:"";
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            opacity: 0.20;
-            background-image: url("data:image/svg+xml;utf8,<?xml version='1.0' encoding='UTF-8'?>\
-<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='900' viewBox='0 0 1600 900'>\
-<path d='M0,680 C260,610 420,740 720,670 C1020,600 1200,740 1600,640 L1600,900 L0,900 Z' fill='%230b3b60' fill-opacity='0.06'/>\
-<path d='M0,720 C260,650 440,800 760,720 C1080,640 1220,760 1600,690 L1600,900 L0,900 Z' fill='%232563eb' fill-opacity='0.05'/>\
-</svg>");
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-position: center bottom;
-        }
-
-        /* ✅ Como dejamos stHeader en altura 0, padding-top normal */
         .block-container{
             max-width: 1240px;
             padding-top: 1.25rem;
             padding-bottom: 2.25rem;
         }
 
-        /* Sidebar base (PC) */
         section[data-testid="stSidebar"]{
             border-right: 1px solid rgba(15, 23, 42, 0.08);
         }
@@ -149,257 +95,196 @@ def inject_css_responsive():
             backdrop-filter: blur(8px);
         }
 
-        .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"]{
-            border-radius: 999px !important;
-        }
-
         div[data-testid="stSidebar"] div[role="radiogroup"] label{
             border-radius: 12px;
             padding: 8px 10px;
             margin: 3px 0;
             border: 1px solid transparent;
-            transition: all 120ms ease;
         }
         div[data-testid="stSidebar"] div[role="radiogroup"] label:hover{
             background: rgba(37,99,235,0.06);
             border: 1px solid rgba(37,99,235,0.10);
-        }
-        div[data-testid="stSidebar"] div[role="radiogroup"] label input:checked + div{
-            font-weight: 700 !important;
-            color: var(--fc-primary) !important;
         }
         div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){
             background: rgba(245,158,11,0.10);
             border: 1px solid rgba(245,158,11,0.18);
         }
 
-        .stButton > button{
-            border-radius: 14px !important;
-            border: 1px solid rgba(15,23,42,0.10) !important;
-            box-shadow: var(--fc-shadow-sm);
-        }
-
-        hr{
-            border: none;
-            border-top: 1px solid rgba(15,23,42,0.10);
-            margin: 14px 0;
-        }
-
-        /* (queda por compatibilidad si algún módulo usa fc-header) */
-        .fc-header{
-            background: rgba(255,255,255,0.70);
-            border: 1px solid rgba(15,23,42,0.10);
-            box-shadow: var(--fc-shadow);
-            border-radius: var(--fc-radius);
-            padding: 16px 18px;
-        }
-        .fc-brand h1{
-            letter-spacing: -0.02em;
-        }
-        .fc-subtitle{
-            color: var(--fc-muted);
-        }
-        .fc-notif button{
-            width: 100%;
-        }
-
-        /* =========================
-           ✅ HEADER REAL (sin div vacío)
-           Estiliza el bloque de columnas que viene después del ancla
-        ========================= */
-        #fc_header_anchor{
-            height: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        #fc_header_anchor + div[data-testid="stHorizontalBlock"]{
-            background: rgba(255,255,255,0.70) !important;
-            border: 1px solid rgba(15,23,42,0.10) !important;
-            box-shadow: var(--fc-shadow) !important;
-            border-radius: var(--fc-radius) !important;
-            padding: 16px 18px !important;
-        }
-
-        /* Por si quedó algún fc-header vacío viejo, lo mata */
-        div.fc-header:empty{
-            display: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border: 0 !important;
-            box-shadow: none !important;
-            height: 0 !important;
-        }
-
-        /* ✅ Más negro el texto default (por ejemplo "Fertilab") y placeholders */
-        .stApp input,
-        .stApp input:disabled{
-            color: #0f172a !important;
-            -webkit-text-fill-color: #0f172a !important;
-            opacity: 1 !important;
-        }
-
-        .stApp input::placeholder{
-            color: #64748b !important;
-            -webkit-text-fill-color: #64748b !important;
-            opacity: 1 !important;
-        }
-
-        .stApp label{
-            color: #0f172a !important;
-        }
-
-        /* =========================
-           FIX: Input "Usuario" siempre blanco (móvil/auto-fill)
-        ========================= */
-        div[data-testid="stForm"] input,
-        div[data-testid="stForm"] textarea{
-            background-color: #f8fafc !important;
-            color: #1e293b !important;
-            -webkit-text-fill-color: #1e293b !important;
-        }
-
-        /* Autofill (Chrome/Android) */
-        div[data-testid="stForm"] input:-webkit-autofill,
-        div[data-testid="stForm"] input:-webkit-autofill:hover,
-        div[data-testid="stForm"] input:-webkit-autofill:focus,
-        div[data-testid="stForm"] input:-webkit-autofill:active{
-            -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
-            box-shadow: 0 0 0 1000px #f8fafc inset !important;
-            -webkit-text-fill-color: #1e293b !important;
-            caret-color: #1e293b !important;
-            transition: background-color 9999s ease-in-out 0s !important;
-        }
-
-        /* =========================
-           RESPONSIVE (MÓVIL) - SIMPLIFICADO Y FUNCIONAL
-        ========================= */
+        /* ========================================
+           MENÚ MÓVIL CUSTOM - BOTÓN + DRAWER
+        ======================================== */
         @media (max-width: 768px){
-
-            /* Contenido principal */
-            .block-container{
-                padding-top: 1.5rem !important;
-                padding-left: 1rem !important;
-                padding-right: 1rem !important;
-                padding-bottom: 4rem !important;
-            }
-
-            /* =========================
-               ✅ BOTÓN HAMBURGUESA - MÁXIMA VISIBILIDAD
-            ========================= */
             
-            /* Botón hamburguesa - TODOS los selectores posibles */
-            button[data-testid="stExpandSidebarButton"],
-            button[data-testid="stSidebarCollapsedControl"],
-            button[data-testid="stSidebarCollapseButton"],
-            button[data-testid="baseButton-header"],
-            button[kind="header"],
-            button[kind="headerNoPadding"],
-            div[data-testid="collapsedControl"] button,
-            header button[kind="header"]{
-                display: flex !important;
-                position: fixed !important;
-                top: 10px !important;
-                left: 10px !important;
-                z-index: 999999 !important;
-                width: 54px !important;
-                height: 54px !important;
-                min-width: 54px !important;
-                min-height: 54px !important;
-                border-radius: 14px !important;
-                background: #ffffff !important;
-                border: 2px solid #0b3b60 !important;
-                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
-                padding: 0 !important;
-                align-items: center !important;
-                justify-content: center !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                cursor: pointer !important;
-            }
-            
-            /* Icono del botón */
-            button[data-testid="stExpandSidebarButton"] svg,
-            button[data-testid="stSidebarCollapsedControl"] svg,
-            button[data-testid="stSidebarCollapseButton"] svg,
-            button[data-testid="baseButton-header"] svg,
-            button[kind="header"] svg,
-            button[kind="headerNoPadding"] svg,
-            div[data-testid="collapsedControl"] button svg,
-            header button[kind="header"] svg{
-                color: #0b3b60 !important;
-                fill: #0b3b60 !important;
-                stroke: #0b3b60 !important;
-                opacity: 1 !important;
-                width: 28px !important;
-                height: 28px !important;
-            }
-
-            /* =========================
-               ✅ SIDEBAR cuando se ABRE
-            ========================= */
-            
-            /* Sidebar container */
+            /* OCULTAR SIDEBAR NATIVO EN MÓVIL */
             section[data-testid="stSidebar"]{
-                background: rgba(255,255,255,0.98) !important;
-                border-right: 1px solid rgba(15, 23, 42, 0.12) !important;
-                box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15) !important;
-            }
-            
-            /* Contenido del sidebar */
-            section[data-testid="stSidebar"] > div{
-                background: rgba(255,255,255,0.98) !important;
-            }
-
-            /* TEXTOS del sidebar - NEGRO */
-            section[data-testid="stSidebar"],
-            section[data-testid="stSidebar"] *{
-                color: #0f172a !important;
-            }
-
-            /* Labels del menú radio */
-            section[data-testid="stSidebar"] div[role="radiogroup"] label{
-                background: rgba(248,250,252,0.8) !important;
-                border: 1px solid rgba(15,23,42,0.1) !important;
-                border-radius: 10px !important;
-                padding: 8px 12px !important;
-                margin: 3px 0 !important;
-                color: #0f172a !important;
-            }
-
-            /* Item seleccionado */
-            section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){
-                background: rgba(245,158,11,0.15) !important;
-                border-color: rgba(245,158,11,0.3) !important;
-                font-weight: 700 !important;
-            }
-
-            /* Ocultar círculo del radio */
-            section[data-testid="stSidebar"] div[role="radiogroup"] div[data-baseweb="radio"]{
                 display: none !important;
             }
 
-            /* Inputs */
-            section[data-testid="stSidebar"] input{
-                background: #ffffff !important;
-                color: #0f172a !important;
-                border: 1px solid rgba(15,23,42,0.15) !important;
+            /* Padding para el botón */
+            .block-container{
+                padding-top: 70px !important;
             }
 
-            /* =========================
-               TIPOGRAFÍAS
-            ========================= */
-            h1 { font-size: 1.4rem !important; }
-            h2 { font-size: 1.2rem !important; }
-            h3 { font-size: 1.05rem !important; }
+            /* BOTÓN MENÚ FLOTANTE */
+            #mobile-menu-btn{
+                position: fixed;
+                top: 12px;
+                left: 12px;
+                z-index: 9999;
+                width: 52px;
+                height: 52px;
+                background: #ffffff;
+                border: 2px solid #0b3b60;
+                border-radius: 14px;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 26px;
+            }
 
-            .stButton > button{
-                width: 100% !important;
-                padding: 0.6rem 1rem !important;
+            /* DRAWER (menú deslizable) */
+            #mobile-drawer{
+                position: fixed;
+                top: 0;
+                left: -100%;
+                width: 280px;
+                height: 100vh;
+                background: rgba(255,255,255,0.98);
+                box-shadow: 8px 0 24px rgba(0,0,0,0.15);
+                z-index: 9998;
+                transition: left 0.3s ease;
+                overflow-y: auto;
+                padding: 20px;
+            }
+
+            #mobile-drawer.open{
+                left: 0;
+            }
+
+            /* OVERLAY */
+            #mobile-overlay{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 9997;
+                display: none;
+            }
+
+            #mobile-overlay.open{
+                display: block;
+            }
+
+            /* Items del menú */
+            .mobile-menu-item{
+                padding: 12px 14px;
+                margin: 6px 0;
+                border-radius: 10px;
+                background: rgba(248,250,252,0.8);
+                border: 1px solid rgba(15,23,42,0.1);
+                cursor: pointer;
+                color: #0f172a;
+                font-size: 15px;
+                font-weight: 500;
+            }
+
+            .mobile-menu-item.active{
+                background: rgba(245,158,11,0.15);
+                border-color: rgba(245,158,11,0.3);
+                font-weight: 700;
+                color: #0b3b60;
+            }
+
+            .mobile-menu-item:active{
+                transform: scale(0.98);
             }
         }
 
+        /* PC - sin cambios */
+        @media (min-width: 769px){
+            #mobile-menu-btn,
+            #mobile-drawer,
+            #mobile-overlay{
+                display: none !important;
+            }
+        }
         </style>
+
+        <!-- MENÚ MÓVIL HTML -->
+        <div id="mobile-menu-btn" onclick="toggleMenu()">☰</div>
+        
+        <div id="mobile-overlay" onclick="toggleMenu()"></div>
+        
+        <div id="mobile-drawer">
+            <div style="text-align:center; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid #e2e8f0;">
+                <div style="font-size:22px; font-weight:800; color:#0f172a;">🦋 FertiChat</div>
+                <div style="font-size:11px; color:#64748b; margin-top:4px;">Sistema de Gestión</div>
+            </div>
+            
+            <div id="menu-items">
+                <!-- Se generan con JS -->
+            </div>
+
+            <div style="margin-top:20px; padding-top:15px; border-top:1px solid #e2e8f0;">
+                <div class="mobile-menu-item" onclick="logout()">🚪 Cerrar sesión</div>
+            </div>
+        </div>
+
+        <script>
+        const MENU_OPTIONS = [
+            "🏠 Inicio",
+            "🛒 Compras IA",
+            "📦 Stock IA",
+            "🔎 Buscador IA",
+            "📥 Ingreso de comprobantes",
+            "📊 Dashboard",
+            "📄 Pedidos internos",
+            "🧾 Baja de stock",
+            "📈 Indicadores (Power BI)",
+            "📦 Órdenes de compra",
+            "📒 Ficha de stock",
+            "📚 Artículos",
+            "🏬 Depósitos",
+            "🧩 Familias"
+        ];
+
+        function toggleMenu(){
+            document.getElementById('mobile-drawer').classList.toggle('open');
+            document.getElementById('mobile-overlay').classList.toggle('open');
+        }
+
+        function selectMenu(option){
+            // Cambiar parámetro en URL
+            const url = new URL(window.location.href);
+            url.searchParams.set('menu', option);
+            window.location.href = url.toString();
+        }
+
+        function logout(){
+            const url = new URL(window.location.href);
+            url.searchParams.set('logout', '1');
+            window.location.href = url.toString();
+        }
+
+        // Generar items del menú
+        window.addEventListener('DOMContentLoaded', function(){
+            const container = document.getElementById('menu-items');
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentMenu = urlParams.get('menu') || '🏠 Inicio';
+            
+            MENU_OPTIONS.forEach(option => {
+                const div = document.createElement('div');
+                div.className = 'mobile-menu-item' + (option === currentMenu ? ' active' : '');
+                div.textContent = option;
+                div.onclick = () => selectMenu(option);
+                container.appendChild(div);
+            });
+        });
+        </script>
         """,
         unsafe_allow_html=True
     )
@@ -408,11 +293,30 @@ def inject_css_responsive():
 # =========================
 # INICIALIZACIÓN
 # =========================
-inject_css_responsive()
+inject_mobile_menu()
 init_db()
 require_auth()
 
 user = get_current_user() or {}
+
+# =========================
+# MANEJAR MENÚ MÓVIL
+# =========================
+try:
+    # Logout desde móvil
+    if st.query_params.get("logout") == "1":
+        logout()
+        st.query_params.clear()
+        st.rerun()
+    
+    # Cambio de menú desde móvil
+    menu_param = st.query_params.get("menu")
+    if menu_param and menu_param in MENU_OPTIONS:
+        st.session_state["radio_menu"] = menu_param
+        st.query_params.clear()
+        st.rerun()
+except:
+    pass
 
 # =========================
 # TÍTULO Y CAMPANITA
@@ -422,19 +326,18 @@ cant_pendientes = 0
 if usuario_actual:
     cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
 
-# ✅ Ancla: estiliza el bloque de columnas (evita <div class="fc-header"></div> vacío)
 st.markdown("<div id='fc_header_anchor'></div>", unsafe_allow_html=True)
 
 col_logo, col_spacer, col_notif = st.columns([7, 2, 1])
 
 with col_logo:
     st.markdown("""
-        <div class="fc-brand" style="display: flex; align-items: center; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
             <div>
-                <h1 style="margin: 0; font-size: 38px; font-weight: 900; color: #0f172a; letter-spacing: -0.02em;">
+                <h1 style="margin: 0; font-size: 38px; font-weight: 900; color: #0f172a;">
                     FertiChat
                 </h1>
-                <p class="fc-subtitle" style="margin: 4px 0 0 0; font-size: 15px;">
+                <p style="margin: 4px 0 0 0; font-size: 15px; color: #64748b;">
                     Sistema de Gestión de Compras
                 </p>
             </div>
@@ -442,20 +345,18 @@ with col_logo:
     """, unsafe_allow_html=True)
 
 with col_notif:
-    st.markdown("<div class='fc-notif' style='display:flex; justify-content:flex-end; align-items:center; height:100%;'>", unsafe_allow_html=True)
     if cant_pendientes > 0:
-        if st.button(f"🔔 {cant_pendientes}", key="campanita_global", help="Tenés pedidos internos pendientes"):
+        if st.button(f"🔔 {cant_pendientes}", key="campanita_global"):
             st.session_state["ir_a_pedidos"] = True
             st.rerun()
     else:
-        st.markdown("<div style='text-align:right; font-size:26px; padding-top:6px;'>🔔</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:right; font-size:26px;'>🔔</div>", unsafe_allow_html=True)
 
 st.markdown("<hr>", unsafe_allow_html=True)
 
 
 # =========================
-# SIDEBAR
+# SIDEBAR (SOLO PC)
 # =========================
 with st.sidebar:
     st.markdown(f"""
@@ -471,9 +372,6 @@ with st.sidebar:
                 <div style='font-size: 26px;'>🦋</div>
                 <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
             </div>
-            <div style='font-size: 12px; text-align:center; color:#64748b; margin-top:2px;'>
-                Sistema de Gestión
-            </div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -486,7 +384,7 @@ with st.sidebar:
 
     st.markdown("---")
 
-    if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar", use_container_width=True, type="secondary"):
+    if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar", use_container_width=True):
         logout()
         st.rerun()
 
@@ -504,11 +402,7 @@ with st.sidebar:
     if "radio_menu" not in st.session_state:
         st.session_state["radio_menu"] = "🏠 Inicio"
 
-    menu = st.radio(
-        "Ir a:",
-        MENU_OPTIONS,
-        key="radio_menu"
-    )
+    menu = st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
 
 
 # =========================
@@ -516,44 +410,31 @@ with st.sidebar:
 # =========================
 if menu == "🏠 Inicio":
     mostrar_inicio()
-
 elif menu == "🛒 Compras IA":
     mostrar_resumen_compras_rotativo()
     Compras_IA()
-
 elif menu == "📦 Stock IA":
     mostrar_resumen_stock_rotativo()
     mostrar_stock_ia()
-
 elif menu == "🔎 Buscador IA":
     mostrar_buscador_ia()
-
 elif menu == "📥 Ingreso de comprobantes":
     mostrar_ingreso_comprobantes()
-
 elif menu == "📊 Dashboard":
     mostrar_dashboard()
-
 elif menu == "📄 Pedidos internos":
     mostrar_pedidos_internos()
-
 elif menu == "🧾 Baja de stock":
     mostrar_baja_stock()
-
 elif menu == "📈 Indicadores (Power BI)":
     mostrar_indicadores_ia()
-
 elif menu == "📦 Órdenes de compra":
     mostrar_ordenes_compra()
-
 elif menu == "📒 Ficha de stock":
     mostrar_ficha_stock()
-
 elif menu == "📚 Artículos":
     mostrar_articulos()
-
 elif menu == "🏬 Depósitos":
     mostrar_depositos()
-
 elif menu == "🧩 Familias":
     mostrar_familias()
