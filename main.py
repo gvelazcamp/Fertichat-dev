@@ -1,11 +1,9 @@
 # =========================
-# MAIN.PY - PC con SIDEBAR + MÓVIL con MENÚ PROPIO (FUNCIONANDO 100%)
+# MAIN.PY - SOLUCIÓN DEFINITIVA CON BOTONES NATIVOS
 # =========================
 
 import streamlit as st
 from datetime import datetime
-from urllib.parse import quote, unquote
-import time
 
 st.set_page_config(
     page_title="FertiChat",
@@ -36,184 +34,90 @@ from familias import mostrar_familias
 
 
 # =========================
-# INICIALIZACIÓN
+# CSS GLOBAL
 # =========================
-init_db()
-require_auth()
-
-user = get_current_user() or {}
-
-# Inicializar menú
-if "radio_menu" not in st.session_state:
-    st.session_state["radio_menu"] = "🏠 Inicio"
-
-# Tracking de última navegación
-if "last_nav_time" not in st.session_state:
-    st.session_state["last_nav_time"] = 0
-
-
-# =========================
-# NAVEGACIÓN POR QUERY PARAMS (MEJORADO)
-# =========================
-try:
-    # Capturar parámetros
-    menu_param = st.query_params.get("menu")
-    timestamp_param = st.query_params.get("t")
-    logout_param = st.query_params.get("logout")
-    
-    # Convertir listas a valores simples
-    if isinstance(menu_param, list):
-        menu_param = menu_param[0] if menu_param else None
-    if isinstance(timestamp_param, list):
-        timestamp_param = timestamp_param[0] if timestamp_param else None
-    if isinstance(logout_param, list):
-        logout_param = logout_param[0] if logout_param else None
-    
-    # Procesar navegación de menú
-    if menu_param and timestamp_param:
-        try:
-            nav_time = float(timestamp_param)
-            # Solo procesar si es una navegación nueva
-            if nav_time > st.session_state["last_nav_time"]:
-                menu_decoded = unquote(menu_param)
-                if menu_decoded in MENU_OPTIONS:
-                    st.session_state["radio_menu"] = menu_decoded
-                    st.session_state["last_nav_time"] = nav_time
-                    # Limpiar query params
-                    st.query_params.clear()
-                    # Forzar actualización
-                    st.rerun()
-        except (ValueError, TypeError):
-            pass
-    
-    # Procesar logout
-    if logout_param == "1":
-        logout()
-        st.query_params.clear()
-        st.rerun()
-
-except Exception as e:
-    # Ignorar errores de query params
-    if DEBUG_MODE:
-        st.error(f"Error en navegación: {e}")
-
-
-# =========================
-# CSS + MENÚ MÓVIL (TU DISEÑO ORIGINAL)
-# =========================
-def inject_css_and_mobile_menu(user: dict, menu_actual: str):
-    # Menú móvil: links con query param + timestamp único
-    menu_items_html = ""
-    for opcion in MENU_OPTIONS:
-        active_class = "fc-active" if opcion == menu_actual else ""
-        # Agregar timestamp para forzar navegación
-        href = f"?menu={quote(opcion)}&t={{timestamp}}"
-        menu_items_html += f'<a class="fc-menu-item {active_class}" href="{href}" data-menu="{opcion}">{opcion}</a>\n'
-
-    html = f"""
+st.markdown("""
 <style>
-/* =========================
-   OCULTAR UI DE STREAMLIT
-========================= */
+/* Ocultar UI de Streamlit */
 div.stAppToolbar,
 div[data-testid="stToolbar"],
 div[data-testid="stToolbarActions"],
 div[data-testid="stDecoration"],
 #MainMenu,
-footer {{
+footer {
   display: none !important;
-}}
+}
 
-header[data-testid="stHeader"] {{
+header[data-testid="stHeader"] {
   height: 0 !important;
   background: transparent !important;
-}}
+}
 
-/* =========================
-   THEME GENERAL
-========================= */
-:root {{
+/* Theme general */
+:root {
     --fc-bg-1: #f6f4ef;
     --fc-bg-2: #f3f6fb;
     --fc-primary: #0b3b60;
     --fc-accent: #f59e0b;
-}}
+}
 
-html, body {{
+html, body {
     font-family: Inter, system-ui, sans-serif;
     color: #0f172a;
-}}
+}
 
-[data-testid="stAppViewContainer"] {{
+[data-testid="stAppViewContainer"] {
     background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2));
-}}
+}
 
-.block-container {{
+.block-container {
     max-width: 1240px;
     padding-top: 1.25rem;
     padding-bottom: 2.25rem;
-}}
+}
 
-/* =========================
-   SIDEBAR PC
-========================= */
-section[data-testid="stSidebar"] {{
+/* Sidebar PC */
+section[data-testid="stSidebar"] {
     border-right: 1px solid rgba(15, 23, 42, 0.08);
-}}
-section[data-testid="stSidebar"] > div {{
+}
+section[data-testid="stSidebar"] > div {
     background: rgba(255,255,255,0.70);
     backdrop-filter: blur(8px);
-}}
+}
 
-div[data-testid="stSidebar"] div[role="radiogroup"] label {{
+div[data-testid="stSidebar"] div[role="radiogroup"] label {
     border-radius: 12px;
     padding: 8px 10px;
     margin: 3px 0;
     border: 1px solid transparent;
-}}
-div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
     background: rgba(37,99,235,0.06);
-}}
-div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     background: rgba(245,158,11,0.10);
     border: 1px solid rgba(245,158,11,0.18);
-}}
+}
 
-/* =========================
-   PC: ocultar menú móvil
-========================= */
-@media (min-width: 769px) {{
-    #fc-menu-cb,
+/* PC: ocultar menú móvil */
+@media (min-width: 769px) {
     #fc-mobile-header,
-    #fc-mobile-menu,
-    #fc-mobile-overlay {{
+    #fc-mobile-menu-container {
         display: none !important;
-    }}
-}}
+    }
+}
 
-/* =========================
-   MÓVIL: menú propio
-========================= */
-@media (max-width: 768px) {{
-
-    section[data-testid="stSidebar"] {{
+/* MÓVIL: menú propio */
+@media (max-width: 768px) {
+    section[data-testid="stSidebar"] {
         display: none !important;
-    }}
+    }
 
-    .block-container {{
+    .block-container {
         padding-top: 70px !important;
-    }}
+    }
 
-    #fc-menu-cb {{
-        position: fixed;
-        left: -9999px;
-        top: -9999px;
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }}
-
-    #fc-mobile-header {{
+    #fc-mobile-header {
         position: fixed;
         top: 0;
         left: 0;
@@ -225,9 +129,100 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         align-items: center;
         padding: 0 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }}
+    }
 
-    #fc-menu-toggle {{
+    #fc-mobile-logo {
+        color: white;
+        font-size: 18px;
+        font-weight: 800;
+        margin-left: 12px;
+        letter-spacing: -0.01em;
+    }
+
+    #fc-mobile-menu-container {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        width: 290px;
+        height: calc(100vh - 56px);
+        background: rgba(255,255,255,0.98);
+        box-shadow: 4px 0 12px rgba(0,0,0,0.15);
+        z-index: 999998;
+        overflow-y: auto;
+        padding: 16px;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+    }
+
+    #fc-mobile-menu-container.open {
+        transform: translateX(0);
+    }
+
+    .fc-user-info {
+        background: rgba(248,250,252,0.95);
+        padding: 14px;
+        border-radius: 12px;
+        margin-bottom: 14px;
+        border: 1px solid rgba(15,23,42,0.10);
+    }
+
+    .fc-user-line {
+        color: #0f172a;
+        font-size: 14px;
+        margin: 4px 0;
+        line-height: 1.2;
+    }
+
+    .fc-user-sub {
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .fc-section-label {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin: 12px 0 8px 4px;
+    }
+
+    /* Estilizar botones de Streamlit como tu menú */
+    #fc-mobile-menu-container button[kind="secondary"] {
+        display: block !important;
+        width: 100%;
+        padding: 14px 14px;
+        margin: 6px 0;
+        border-radius: 10px;
+        background: rgba(248,250,252,0.92) !important;
+        border: 1px solid rgba(15,23,42,0.10) !important;
+        cursor: pointer;
+        color: #0f172a !important;
+        font-size: 15px;
+        font-weight: 500;
+        text-decoration: none;
+        text-align: left;
+    }
+
+    #fc-mobile-menu-container button[kind="secondary"]:hover {
+        background: rgba(245,158,11,0.10) !important;
+        border-color: rgba(245,158,11,0.20) !important;
+    }
+
+    #fc-mobile-menu-container button[kind="primary"] {
+        display: block !important;
+        width: 100%;
+        padding: 14px 14px;
+        margin: 14px 0 6px 0;
+        border-radius: 10px;
+        background: rgba(244,63,94,0.08) !important;
+        border: 1px solid rgba(244,63,94,0.20) !important;
+        cursor: pointer;
+        color: #dc2626 !important;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .fc-menu-toggle {
         width: 44px;
         height: 44px;
         background: transparent;
@@ -239,196 +234,98 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         align-items: center;
         gap: 5px;
         padding: 0;
-        -webkit-tap-highlight-color: transparent;
-    }}
+    }
 
-    #fc-menu-toggle span {{
+    .fc-menu-toggle span {
         width: 24px;
         height: 3px;
         background: white;
         border-radius: 2px;
         transition: all 0.20s;
         display: block;
-    }}
+    }
 
-    #fc-mobile-logo {{
-        color: white;
-        font-size: 18px;
-        font-weight: 800;
-        margin-left: 12px;
-        letter-spacing: -0.01em;
-    }}
-
-    #fc-mobile-overlay {{
+    #fc-overlay {
         position: fixed;
         top: 56px;
         left: 0;
         right: 0;
         bottom: 0;
         background: rgba(0,0,0,0.5);
-        z-index: 999998;
+        z-index: 999997;
         opacity: 0;
         visibility: hidden;
-        transition: all 0.20s;
-    }}
+        transition: all 0.25s;
+    }
 
-    #fc-mobile-menu {{
-        position: fixed;
-        top: 56px;
-        left: 0;
-        width: 290px;
-        height: calc(100vh - 56px);
-        height: calc(100dvh - 56px);
-        background: rgba(255,255,255,0.98);
-        box-shadow: 4px 0 12px rgba(0,0,0,0.15);
-        transform: translateX(-100%);
-        transition: transform 0.20s ease;
-        z-index: 999999;
-        overflow-y: auto;
-        padding: 16px;
-    }}
-
-    #fc-menu-cb:checked ~ #fc-mobile-overlay {{
+    #fc-overlay.open {
         opacity: 1;
         visibility: visible;
-    }}
-    #fc-menu-cb:checked ~ #fc-mobile-menu {{
-        transform: translateX(0);
-    }}
-
-    #fc-menu-cb:checked ~ #fc-mobile-header #fc-menu-toggle span:nth-child(1) {{
-        transform: rotate(45deg) translate(6px, 6px);
-    }}
-    #fc-menu-cb:checked ~ #fc-mobile-header #fc-menu-toggle span:nth-child(2) {{
-        opacity: 0;
-    }}
-    #fc-menu-cb:checked ~ #fc-mobile-header #fc-menu-toggle span:nth-child(3) {{
-        transform: rotate(-45deg) translate(6px, -6px);
-    }}
-
-    .fc-user-info {{
-        background: rgba(248,250,252,0.95);
-        padding: 14px;
-        border-radius: 12px;
-        margin-bottom: 14px;
-        border: 1px solid rgba(15,23,42,0.10);
-    }}
-
-    .fc-user-line {{
-        color: #0f172a;
-        font-size: 14px;
-        margin: 4px 0;
-        line-height: 1.2;
-    }}
-
-    .fc-user-sub {{
-        color: #64748b;
-        font-size: 12px;
-    }}
-
-    .fc-section-label {{
-        color: #64748b;
-        font-size: 11px;
-        font-weight: 800;
-        text-transform: uppercase;
-        margin: 12px 0 8px 4px;
-    }}
-
-    .fc-menu-item {{
-        display: block;
-        padding: 14px 14px;
-        margin: 6px 0;
-        border-radius: 10px;
-        background: rgba(248,250,252,0.92);
-        border: 1px solid rgba(15,23,42,0.10);
-        cursor: pointer;
-        color: #0f172a !important;
-        font-size: 15px;
-        font-weight: 500;
-        text-decoration: none !important;
-        -webkit-tap-highlight-color: transparent;
-    }}
-
-    .fc-menu-item:active {{
-        background: rgba(245,158,11,0.10);
-        border-color: rgba(245,158,11,0.20);
-    }}
-
-    .fc-menu-item.fc-active {{
-        background: rgba(245,158,11,0.15);
-        border-color: rgba(245,158,11,0.30);
-        font-weight: 800;
-        color: #0b3b60 !important;
-    }}
-
-    .fc-logout {{
-        display: block;
-        padding: 14px 14px;
-        margin: 14px 0 6px 0;
-        border-radius: 10px;
-        background: rgba(244,63,94,0.08);
-        border: 1px solid rgba(244,63,94,0.20);
-        cursor: pointer;
-        color: #dc2626 !important;
-        font-size: 15px;
-        font-weight: 700;
-        text-decoration: none !important;
-    }}
-}}
+    }
+}
 </style>
+""", unsafe_allow_html=True)
 
-<!-- CHECKBOX CONTROL -->
-<input type="checkbox" id="fc-menu-cb" />
 
-<!-- HEADER MÓVIL -->
+# =========================
+# INICIALIZACIÓN
+# =========================
+init_db()
+require_auth()
+
+user = get_current_user() or {}
+
+if "radio_menu" not in st.session_state:
+    st.session_state["radio_menu"] = "🏠 Inicio"
+
+if "menu_open" not in st.session_state:
+    st.session_state["menu_open"] = False
+
+
+# =========================
+# HEADER MÓVIL (SIEMPRE VISIBLE)
+# =========================
+st.markdown(f"""
 <div id="fc-mobile-header">
-  <label id="fc-menu-toggle" for="fc-menu-cb" aria-label="Abrir menú">
+  <div class="fc-menu-toggle" onclick="window.parent.document.querySelector('#fc-mobile-menu-container').classList.toggle('open'); window.parent.document.querySelector('#fc-overlay').classList.toggle('open');">
     <span></span><span></span><span></span>
-  </label>
+  </div>
   <div id="fc-mobile-logo">🦋 FertiChat</div>
 </div>
-
-<!-- OVERLAY (clic cierra) -->
-<label id="fc-mobile-overlay" for="fc-menu-cb"></label>
-
-<!-- MENÚ LATERAL -->
-<div id="fc-mobile-menu">
-  <div class="fc-user-info">
-    <div class="fc-user-line" style="font-weight:800;">👤 {user.get('nombre', 'Usuario')}</div>
-    <div class="fc-user-line fc-user-sub">🏢 {user.get('empresa', 'Empresa')}</div>
-    <div class="fc-user-line fc-user-sub">📧 {user.get('Usuario', user.get('usuario', ''))}</div>
-  </div>
-
-  <div class="fc-section-label">Menú</div>
-
-  {menu_items_html}
-
-  <a class="fc-logout" href="?logout=1">🚪 Cerrar sesión</a>
-</div>
-
-<script>
-(function() {{
-    // Agregar timestamps únicos a cada link
-    const menuLinks = document.querySelectorAll('.fc-menu-item[data-menu]');
-    menuLinks.forEach(function(link) {{
-        link.addEventListener('click', function(e) {{
-            // Obtener href y agregar timestamp actual
-            const href = this.getAttribute('href');
-            const timestamp = Date.now();
-            const newHref = href.replace('{{timestamp}}', timestamp);
-            this.setAttribute('href', newHref);
-        }});
-    }});
-}})();
-</script>
-"""
-
-    html = "\n".join(line.lstrip() for line in html.splitlines())
-    st.markdown(html, unsafe_allow_html=True)
+<div id="fc-overlay" onclick="this.classList.remove('open'); window.parent.document.querySelector('#fc-mobile-menu-container').classList.remove('open');"></div>
+""", unsafe_allow_html=True)
 
 
-# Inyectar CSS + menú móvil
-inject_css_and_mobile_menu(user=user, menu_actual=st.session_state["radio_menu"])
+# =========================
+# MENÚ MÓVIL CON BOTONES NATIVOS DE STREAMLIT
+# =========================
+menu_container = st.container()
+with menu_container:
+    st.markdown('<div id="fc-mobile-menu-container">', unsafe_allow_html=True)
+    
+    # Info usuario
+    st.markdown(f"""
+    <div class="fc-user-info">
+        <div class="fc-user-line" style="font-weight:800;">👤 {user.get('nombre', 'Usuario')}</div>
+        <div class="fc-user-line fc-user-sub">🏢 {user.get('empresa', 'Empresa')}</div>
+        <div class="fc-user-line fc-user-sub">📧 {user.get('Usuario', user.get('usuario', ''))}</div>
+    </div>
+    <div class="fc-section-label">Menú</div>
+    """, unsafe_allow_html=True)
+    
+    # Botones del menú (usando st.button que NO recarga la página)
+    for opcion in MENU_OPTIONS:
+        if st.button(opcion, key=f"mobile_menu_{opcion}", type="secondary", use_container_width=True):
+            st.session_state["radio_menu"] = opcion
+            st.session_state["menu_open"] = False
+            st.rerun()
+    
+    # Botón logout
+    if st.button("🚪 Cerrar sesión", key="mobile_logout", type="primary", use_container_width=True):
+        logout()
+        st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # =========================
