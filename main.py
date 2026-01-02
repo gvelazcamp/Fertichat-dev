@@ -58,70 +58,22 @@ def inject_css_responsive():
         """
         <style>
         /* =========================
-           IMPORTANTE:
-           NO ocultar stToolbar/stAppToolbar porque ahí está el botón del sidebar (PC y móvil)
-           Ocultamos SOLO acciones (Share / iconos) + menú y dejamos todo transparente
+           OCULTAR BARRA SUPERIOR STREAMLIT (Share / menú / icons / barra blanca)
+           (NO ocultamos el botón de sidebar en mobile; lo estilizamos)
         ========================= */
-
-        /* Quita la "línea blanca" / decoración superior */
-        div[data-testid="stDecoration"]{
-          display: none !important;
-          height: 0 !important;
-        }
-
-        /* Header transparente (no lo ocultamos) */
-        header,
-        header[data-testid="stHeader"]{
-          background: transparent !important;
-          box-shadow: none !important;
-          border-bottom: 0 !important;
-        }
-
-        /* Toolbar transparente (no la ocultamos) */
         div.stAppToolbar,
-        div[data-testid="stToolbar"]{
-          background: transparent !important;
-          box-shadow: none !important;
-          border: 0 !important;
-        }
-
-        /* Oculta acciones del toolbar (Share / iconos) */
-        div[data-testid="stToolbarActions"]{
-          display: none !important;
-        }
-
-        /* Oculta menú 3 puntitos */
-        #MainMenu{
-          display: none !important;
-        }
-
-        /* Oculta footer */
+        div[data-testid="stToolbar"],
+        div[data-testid="stToolbarActions"],
+        header,
+        header[data-testid="stHeader"],
+        div[data-testid="stDecoration"],
+        #MainMenu,
         footer{
           display: none !important;
           height: 0 !important;
-        }
-
-        /* =========================
-           BOTÓN SIDEBAR (móvil/PC cuando está colapsado)
-        ========================= */
-
-        /* Contenedor del botón cuando sidebar está colapsado */
-        div[data-testid="stSidebarCollapsedControl"]{
-          display: flex !important;
-          position: fixed !important;
-          top: 12px !important;
-          left: 12px !important;
-          z-index: 10050 !important;
-        }
-
-        /* Botón (algunas versiones usan stExpandSidebarButton) */
-        button[data-testid="stExpandSidebarButton"],
-        div[data-testid="stSidebarCollapsedControl"] button{
-          background: rgba(255,255,255,0.92) !important;
-          border: 1px solid rgba(15,23,42,0.16) !important;
-          border-radius: 12px !important;
-          padding: 6px 8px !important;
-          box-shadow: 0 10px 24px rgba(2,6,23,0.12) !important;
+          min-height: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
         }
 
         /* =========================
@@ -171,12 +123,14 @@ def inject_css_responsive():
             background-position: center bottom;
         }
 
+        /* ✅ Como ocultamos stHeader/stToolbar, dejamos padding-top normal */
         .block-container{
             max-width: 1240px;
             padding-top: 1.25rem;
             padding-bottom: 2.25rem;
         }
 
+        /* Sidebar base (PC) */
         section[data-testid="stSidebar"]{
             border-right: 1px solid rgba(15, 23, 42, 0.08);
         }
@@ -221,7 +175,7 @@ def inject_css_responsive():
             margin: 14px 0;
         }
 
-        /* (compatibilidad si algún módulo usa fc-header) */
+        /* (queda por compatibilidad si algún módulo usa fc-header) */
         .fc-header{
             background: rgba(255,255,255,0.70);
             border: 1px solid rgba(15,23,42,0.10);
@@ -257,7 +211,7 @@ def inject_css_responsive():
             padding: 16px 18px !important;
         }
 
-        /* Si quedó algún fc-header vacío viejo, lo mata */
+        /* Por si quedó algún fc-header vacío viejo, lo mata */
         div.fc-header:empty{
             display: none !important;
             padding: 0 !important;
@@ -267,7 +221,7 @@ def inject_css_responsive():
             height: 0 !important;
         }
 
-        /* ✅ Texto default más oscuro en inputs */
+        /* ✅ Más negro el texto default (por ejemplo "Fertilab") y placeholders */
         .stApp input,
         .stApp input:disabled{
             color: #0f172a !important;
@@ -286,50 +240,109 @@ def inject_css_responsive():
         }
 
         /* =========================
-           RESPONSIVE
+           RESPONSIVE (MÓVIL)
+           - Sidebar blanco como PC
+           - Quita el “punto/radio” gigante
+           - Botón flotante de abrir sidebar con look pro
         ========================= */
         @media (max-width: 768px){
+
+            /* Contenido */
             .block-container{
                 padding-top: 0.9rem !important;
                 padding-left: 0.8rem !important;
                 padding-right: 0.8rem !important;
                 padding-bottom: 4.5rem !important;
             }
+
+            /* ✅ Sidebar drawer blanco (cuando se abre en móvil) */
+            section[data-testid="stSidebar"]{
+                background: transparent !important;
+            }
+            section[data-testid="stSidebar"] > div,
+            div[data-testid="stSidebarContent"]{
+                background: rgba(255,255,255,0.88) !important;
+                backdrop-filter: blur(10px) !important;
+            }
+
+            /* Inputs del sidebar (evita que se vean “negros”) */
+            section[data-testid="stSidebar"] .stTextInput input{
+                background: rgba(255,255,255,0.92) !important;
+                color: #0f172a !important;
+                -webkit-text-fill-color: #0f172a !important;
+                border: 1px solid rgba(15,23,42,0.12) !important;
+            }
+
+            /* ✅ Botón flotante para abrir sidebar (la “mancha blanca”) */
+            button[data-testid="stExpandSidebarButton"]{
+                position: fixed !important;
+                top: 12px !important;
+                left: 12px !important;
+                z-index: 999999 !important;
+                width: 44px !important;
+                height: 44px !important;
+                border-radius: 14px !important;
+                background: rgba(255,255,255,0.88) !important;
+                border: 1px solid rgba(15,23,42,0.12) !important;
+                box-shadow: 0 10px 26px rgba(2, 6, 23, 0.12) !important;
+            }
+            button[data-testid="stExpandSidebarButton"] svg,
+            button[data-testid="stExpandSidebarButton"] span{
+                color: #0f172a !important;
+                opacity: 1 !important;
+            }
+
+            /* ✅ Quitar el radio “punto” gigante del menú en móvil */
+            section[data-testid="stSidebar"] div[role="radiogroup"] div[data-baseweb="radio"]{
+                display: none !important;
+            }
+            section[data-testid="stSidebar"] div[role="radiogroup"] label{
+                padding-left: 10px !important;
+            }
+
+            /* Tipografías */
             h1 { font-size: 1.35rem !important; line-height: 1.2 !important; }
             h2 { font-size: 1.15rem !important; line-height: 1.2 !important; }
             h3 { font-size: 1.05rem !important; line-height: 1.2 !important; }
+
             .stMarkdown, .stText, .stCaption, p, li{
                 font-size: 0.95rem !important;
                 line-height: 1.25 !important;
             }
+
             div[data-testid="stContainer"]{
                 padding: 0.55rem !important;
             }
+
             div[role="radiogroup"] label{
                 font-size: 0.95rem !important;
                 margin-bottom: 0.25rem !important;
             }
+
             input, textarea{
                 font-size: 1rem !important;
             }
+
             .stButton > button{
                 width: 100% !important;
                 padding: 0.60rem 0.9rem !important;
                 font-size: 1rem !important;
             }
-            div[data-testid="stDataFrame"]{
-                font-size: 0.85rem !important;
-            }
+
+            div[data-testid="stDataFrame"],
             div[data-testid="stDataFrame"] *{
                 font-size: 0.85rem !important;
             }
+
             details summary{
                 font-size: 0.95rem !important;
             }
+
             div[data-testid="stHorizontalBlock"]{
                 flex-wrap: wrap !important;
                 gap: 0.5rem !important;
             }
+
             div[data-testid="column"]{
                 min-width: 280px !important;
                 flex: 1 1 280px !important;
@@ -339,7 +352,6 @@ def inject_css_responsive():
         """,
         unsafe_allow_html=True
     )
-
 
 # =========================
 # INICIALIZACIÓN
