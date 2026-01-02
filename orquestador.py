@@ -1001,4 +1001,3 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     else:
         # 🤖 SISTEMA HÍBRIDO: Si llegó hasta acá, el intent_detector no entendió
         # → Usamos IA para interpretar y sugerir
-
