@@ -28,6 +28,8 @@ MENU_OPTIONS = [
     "🧾 Baja de stock",
     "📈 Indicadores (Power BI)",
     "📦 Órdenes de compra",
+    "📚 Artículos",
+    "📒 Ficha de stock",
 ]
 
 # Power BI URL
