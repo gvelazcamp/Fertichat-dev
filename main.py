@@ -1,5 +1,5 @@
 # =========================
-# MAIN.PY - SIDEBAR NATIVO (PC) + FLECHITA/☰ NATIVO (MÓVIL)
+# MAIN.PY - SIDEBAR NATIVO (PC OK) + CONTROL NATIVO EN MÓVIL (Z FLIP 5)
 # =========================
 
 import streamlit as st
@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="FertiChat",
     page_icon="🦋",
     layout="wide",
-    initial_sidebar_state="auto"  # ✅ PC abierto / móvil colapsado (nativo)
+    initial_sidebar_state="auto"  # ✅ PC abierto / móvil auto (nativo)
 )
 
 # =========================
@@ -46,26 +46,16 @@ if "radio_menu" not in st.session_state:
 
 
 # =========================
-# CSS (CLAVE: NO OCULTAR TOOLBAR/HEADER NATIVO EN MÓVIL)
+# CSS (CLAVE: NO OCULTAR stToolbar EN MÓVIL)
 # =========================
 st.markdown(r"""
 <style>
-/* Ocultar UI de Streamlit (SIN ocultar stToolbar completo) */
-div[data-testid="stDecoration"], #MainMenu, footer {
-  display: none !important;
-}
+/* Ocultar elementos (sin romper el control nativo del sidebar) */
+#MainMenu, footer { display: none !important; }
+div[data-testid="stDecoration"] { display: none !important; }
 
-/* Ocultar acciones del toolbar (pero NO el toolbar entero, porque ahí vive el control del sidebar) */
-div[data-testid="stToolbarActions"] {
-  display: none !important;
-}
-
-/* Header: mantenerlo visible (si lo ocultás, desaparece el control del sidebar en móvil) */
-header[data-testid="stHeader"] {
-  visibility: visible !important;
-  height: auto !important;
-  background: transparent !important;
-}
+/* ✅ NO ocultar stToolbar ni stHeader globalmente */
+/* Si ocultás stToolbar, en Z Flip 5 desaparece el botón ☰/flecha */
 
 /* Theme general */
 :root {
@@ -77,13 +67,12 @@ html, body { font-family: Inter, system-ui, sans-serif; color: #0f172a; }
 [data-testid="stAppViewContainer"] { background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2)); }
 .block-container { max-width: 1240px; padding-top: 1.25rem; padding-bottom: 2.25rem; }
 
-/* Sidebar */
+/* Sidebar look */
 section[data-testid="stSidebar"] { border-right: 1px solid rgba(15, 23, 42, 0.08); }
 section[data-testid="stSidebar"] > div {
     background: rgba(255,255,255,0.70);
     backdrop-filter: blur(8px);
 }
-
 div[data-testid="stSidebar"] div[role="radiogroup"] label {
     border-radius: 12px; padding: 8px 10px; margin: 3px 0; border: 1px solid transparent;
 }
@@ -92,13 +81,35 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.18);
 }
 
-/* Header móvil visual */
+/* Header móvil visual (solo estética) */
 #mobile-header { display: none; }
 
-/* =========================
-   MÓVIL: mostrar header visual + asegurar que el control nativo se vea/clickee
-========================= */
-@media (max-width: 767px) {
+/* =========================================================
+   DESKTOP REAL (mouse/trackpad):
+   - sidebar siempre visible
+   - oculto controles de colapsar/expandir para que no lo puedan cerrar en PC
+   - puedo ocultar toolbar actions sin romper nada
+========================================================= */
+@media (hover: hover) and (pointer: fine) {
+  div[data-testid="stToolbarActions"] { display: none !important; }
+
+  /* No permitir colapsar sidebar en PC */
+  div[data-testid="collapsedControl"] { display: none !important; }
+  [data-testid="baseButton-header"],
+  button[data-testid="stSidebarCollapseButton"],
+  button[data-testid="stSidebarExpandButton"],
+  button[title="Close sidebar"],
+  button[title="Open sidebar"] {
+    display: none !important;
+  }
+}
+
+/* =========================================================
+   MÓVIL REAL (touch):
+   - mostrar SI o SI el control nativo (☰ / flecha)
+   - mantener visible el botón de cerrar del sidebar
+========================================================= */
+@media (hover: none) and (pointer: coarse) {
   .block-container { padding-top: 70px !important; }
 
   #mobile-header {
@@ -120,7 +131,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     font-weight: 800;
   }
 
-  /* ✅ Control nativo “abrir sidebar” (en algunos streamlit es collapsedControl, en otros stSidebarExpandButton) */
+  /* ✅ Abrir sidebar (nativo) */
   div[data-testid="collapsedControl"],
   button[data-testid="stSidebarExpandButton"],
   button[title="Open sidebar"] {
@@ -131,7 +142,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     z-index: 1000000 !important;
   }
 
-  /* ✅ Flecha gris “Cerrar menú” dentro del sidebar (varía según versión) */
+  /* ✅ Cerrar sidebar (nativo) */
   [data-testid="baseButton-header"],
   button[data-testid="stSidebarCollapseButton"],
   button[title="Close sidebar"] {
@@ -188,7 +199,7 @@ st.markdown("<hr>", unsafe_allow_html=True)
 
 
 # =========================
-# SIDEBAR (NATIVO)
+# SIDEBAR
 # =========================
 with st.sidebar:
     st.markdown(f"""
