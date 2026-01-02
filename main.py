@@ -100,6 +100,37 @@ def inject_css():
             background: rgba(245,158,11,0.10);
             border: 1px solid rgba(245,158,11,0.18);
         }
+
+        /* =========================
+   HEADER / SIDEBAR FIX MOBILE
+   ========================= */
+
+/* PC: ocultar header */
+@media (min-width: 769px){
+  header[data-testid="stHeader"],
+  div[data-testid="stToolbar"],
+  div.stAppToolbar{
+    display: none !important;
+  }
+}
+
+/* CELULAR: header VISIBLE (CLAVE) */
+@media (max-width: 768px){
+  header[data-testid="stHeader"]{
+    display: block !important;
+    height: auto !important;
+    background: transparent !important;
+  }
+
+  /* Botón hamburguesa */
+  button[data-testid="stExpandSidebarButton"]{
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 999999 !important;
+  }
+}
+
         </style>
         """,
         unsafe_allow_html=True
