@@ -49,22 +49,14 @@ if "sidebar_open" not in st.session_state:
 
 
 # =========================
-# CIERRE POR CLICK FUERA (SIN JS) USANDO QUERY PARAM
+# OVERLAY CLICK (SIN JS, SIN RECARGA COMPLETA)
 # =========================
-close_sidebar_param = ""
-try:
-    close_sidebar_param = st.query_params.get("close_sidebar", "")
-except Exception:
-    qp = st.experimental_get_query_params()
-    close_sidebar_param = (qp.get("close_sidebar", [""])[0] if isinstance(qp.get("close_sidebar", [""]), list) else qp.get("close_sidebar", ""))
-
-if str(close_sidebar_param) == "1":
-    st.session_state["sidebar_open"] = False
-    # Limpiar el query param para que no quede pegado en la URL
-    try:
-        st.query_params.clear()
-    except Exception:
-        st.experimental_set_query_params()
+# Se renderiza SOLO si el sidebar está abierto.
+# Al tocar fuera del menú (zona oscura), dispara un rerun y mantiene la sesión + menú seleccionado.
+if st.session_state["sidebar_open"]:
+    if st.button(" ", key="__overlay_close_btn__", help="__overlay_close__"):
+        st.session_state["sidebar_open"] = False
+        st.rerun()
 
 
 # =========================
@@ -108,11 +100,6 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 
 /* Header móvil */
 #mobile-header {{
-    display: none;
-}}
-
-/* Overlay (por defecto oculto) */
-#sidebar-overlay {{
     display: none;
 }}
 
@@ -160,20 +147,36 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         padding-top: 20px !important;
     }}
 
-    /* Overlay clickeable (click fuera del menú lo cierra) */
-    #sidebar-overlay {{
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 999998;
-        display: {'block' if sidebar_state == 'open' else 'none'};
-        cursor: pointer;
-        text-decoration: none !important;
+    /* Ocultar control nativo (la flechita gris) para que no confunda */
+    div[data-testid="collapsedControl"],
+    button[data-testid="stSidebarCollapseButton"],
+    button[data-testid="stSidebarExpandButton"],
+    button[title="Close sidebar"],
+    button[title="Open sidebar"] {{
+        display: none !important;
+    }}
+
+    /* OVERLAY clickeable (botón invisible a pantalla completa)
+       - NO recarga la página
+       - NO pierde sesión
+       - NO cambia radio_menu
+    */
+    button[title="__overlay_close__"] {{
+        display: {'block' if sidebar_state == 'open' else 'none'} !important;
+        position: fixed !important;
+        inset: 0 !important;                 /* top/right/bottom/left = 0 */
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 999998 !important;          /* debajo del sidebar (999999) */
+        background: rgba(0,0,0,0.5) !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
     }}
 }}
 </style>
-
-<a id="sidebar-overlay" href="?close_sidebar=1"></a>
 """, unsafe_allow_html=True)
 
 
