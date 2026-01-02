@@ -19,7 +19,7 @@ LOGIN_CSS = """
     /* Ocultar elementos de Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
+    header[data-testid="stHeader"] {visibility: hidden !important;}
     .stDeployButton {display: none;}
 
     /* Fondo con gradiente suave */
