@@ -165,47 +165,82 @@ def _sb_select(
 
 def _normalizar_articulos_df(df: pd.DataFrame) -> pd.DataFrame:
     """
-    ✅ MAPEO ESPECÍFICO PARA TU BASE DE DATOS
-    Columnas reales de Supabase -> columnas esperadas por el módulo
+    ✅ MAPEO SIMPLIFICADO - Versión que funciona con tu estructura
     """
     if df is None or df.empty:
         return pd.DataFrame(columns=ARTICULO_COLS)
     
-    # ========================================
-    # MAPEO DE COLUMNAS (según tu estructura)
-    # ========================================
-    mapeo = {
-        # Columnas que vi en tus capturas
-        "Id": "id",
-        "Descripción": "nombre",
-        "Familia": "familia",
-        "Código Int.": "codigo_interno",
-        "Código Ext.": "codigo_barra",
-        "Unidad": "unidad_base",
-        "Tipo Articulo": "tipo",
-        "Tipo Impuesto": "iva",
-        "Tipo Origen": "tipo",
-        "Proveedor": "proveedor_id",
-        "Activo": "activo",
-        "Mueve Stock": "fifo",
-        "e-Commerce": "activo",
-        "Stock Minimo": "stock_min",
-        "Stock Maximo": "stock_max",
-        "Cuenta Compra": "descripcion",
-        "Cuenta Venta": "descripcion",
-        "Cuenta Venta Exc.": "descripcion",
-        "Cuenta Costo Venta": "descripcion",
+    # Mapeo directo de columnas que sabemos que existen
+    if "Id" in df.columns:
+        df["id"] = df["Id"].astype(str)
+    
+    if "Descripción" in df.columns:
+        df["nombre"] = df["Descripción"].fillna("").astype(str)
+    else:
+        df["nombre"] = ""
+    
+    if "Familia" in df.columns:
+        df["familia"] = df["Familia"].fillna("").astype(str)
+    else:
+        df["familia"] = ""
+    
+    if "Código Int." in df.columns:
+        df["codigo_interno"] = df["Código Int."].fillna("").astype(str)
+    else:
+        df["codigo_interno"] = ""
+    
+    if "Código Ext." in df.columns:
+        df["codigo_barra"] = df["Código Ext."].fillna("").astype(str)
+    else:
+        df["codigo_barra"] = ""
+    
+    if "Unidad" in df.columns:
+        df["unidad_base"] = df["Unidad"].fillna("unidad").astype(str)
+    else:
+        df["unidad_base"] = "unidad"
+    
+    if "Tipo Articulo" in df.columns:
+        df["tipo"] = df["Tipo Articulo"].fillna("").astype(str)
+    else:
+        df["tipo"] = ""
+    
+    if "Activo" in df.columns:
+        df["activo"] = df["Activo"].fillna(True).astype(bool)
+    else:
+        df["activo"] = True
+    
+    # Agregar resto de columnas que faltan con valores por defecto
+    columnas_faltantes = {
+        "descripcion": None,
+        "subfamilia": None,
+        "equipo": None,
+        "proveedor_id": None,
+        "fifo": True,
+        "iva": "basico_22",
+        "tiene_lote": False,
+        "requiere_vencimiento": False,
+        "unidad_compra": "unidad",
+        "contenido_por_unidad_compra": 1.0,
+        "stock_min": 0.0,
+        "stock_max": 0.0,
+        "precio_actual": None,
+        "moneda_actual": None,
+        "precio_por_actual": None,
+        "fecha_precio_actual": None,
+        "precio_anterior": None,
+        "moneda_anterior": None,
+        "precio_por_anterior": None,
+        "fecha_precio_anterior": None,
+        "created_at": None,
+        "updated_at": None,
     }
     
-    # Renombrar columnas que existan
-    for old_name, new_name in mapeo.items():
-        if old_name in df.columns and new_name not in df.columns:
-            df[new_name] = df[old_name]
+    for col, valor_default in columnas_faltantes.items():
+        if col not in df.columns:
+            df[col] = valor_default
     
-    # Asegurar que existan TODAS las columnas esperadas
-    for c in ARTICULO_COLS:
-        if c not in df.columns:
-            df[c] = None
+    # Retornar solo las columnas esperadas
+    return df[ARTICULO_COLS].copy()
     
     # ========================================
     # CONVERSIÓN DE TIPOS
@@ -364,15 +399,28 @@ def _cache_articulos_por_tipo(tipo: Optional[str]) -> pd.DataFrame:
     """
     Cache de artículos filtrados por tipo
     """
-    # Traer TODOS los datos (sin filtro por tipo en server-side porque tu columna puede tener formato diferente)
+    # Traer TODOS los datos
     df_raw = _sb_select("articulos", "*")
 
+    # ========================================
+    # 🔍 DEBUG TEMPORAL - Ver estructura real de la tabla
+    # ========================================
+    if df_raw is not None and not df_raw.empty:
+        with st.sidebar:
+            with st.expander("🔍 DEBUG - Estructura de tabla", expanded=False):
+                st.write(f"**📊 Total registros:** {len(df_raw)}")
+                st.write("**📋 Columnas en Supabase:**")
+                st.code("\n".join(df_raw.columns.tolist()))
+                st.write("**📄 Primer registro:**")
+                st.json(df_raw.iloc[0].to_dict())
+    # ========================================
+    
     if df_raw is None or df_raw.empty:
         return pd.DataFrame(columns=ARTICULO_COLS)
 
     # Normalizar (mapea Descripción->nombre, etc)
     df = _normalizar_articulos_df(df_raw)
-
+    
     # Filtro local por tipo si es necesario
     if tipo and not df.empty and "tipo" in df.columns:
         try:
@@ -396,14 +444,14 @@ def _cache_articulos_por_tipo(tipo: Optional[str]) -> pd.DataFrame:
             
         except Exception:
             pass
-
+    
     # Ordenar por nombre
     try:
         if "nombre" in df.columns and not df.empty:
             df = df.sort_values("nombre", kind="stable")
     except Exception:
         pass
-
+    
     return df
 
 
@@ -876,3 +924,4 @@ def mostrar_articulos():
             if sel and sel.get("id"):
                 st.markdown("---")
                 _ui_archivos(str(sel["id"]))
+
