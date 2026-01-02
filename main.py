@@ -42,6 +42,7 @@ from orquestador import procesar_pregunta_router
 from ui_buscador import mostrar_buscador_ia
 from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo
 from ui_dashboard import mostrar_dashboard, mostrar_indicadores_ia, mostrar_resumen_compras_rotativo
+from ui_inicio import mostrar_inicio
 
 # =========================
 # CSS RESPONSIVE
@@ -174,7 +175,7 @@ with st.sidebar:
         st.session_state["menu_principal"] = "📄 Pedidos internos"
         st.session_state["ir_a_pedidos"] = False
 
-    default_opt = st.session_state.get("menu_principal", "🛒 Compras IA")
+    default_opt = st.session_state.get("menu_principal", "🏠 Inicio")
     if default_opt not in MENU_OPTIONS:
         default_opt = MENU_OPTIONS[0]
         st.session_state["menu_principal"] = default_opt
@@ -184,7 +185,10 @@ with st.sidebar:
 # =========================
 # ROUTER
 # =========================
-if menu == "🛒 Compras IA":
+if menu == "🏠 Inicio":
+    mostrar_inicio()
+
+elif menu == "🛒 Compras IA":
     mostrar_resumen_compras_rotativo()
     Compras_IA()
 
