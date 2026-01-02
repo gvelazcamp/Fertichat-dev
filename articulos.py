@@ -165,75 +165,68 @@ def _sb_select(
 
 def _normalizar_articulos_df(df: pd.DataFrame) -> pd.DataFrame:
     """
-    ✅ MAPEO SIMPLIFICADO - Versión que funciona con tu estructura
+    ✅ SIN MAPEO - USA COLUMNAS DIRECTAS DE SUPABASE
     """
     if df is None or df.empty:
         return pd.DataFrame(columns=ARTICULO_COLS)
     
-    # Mapeo directo de columnas que sabemos que existen
+    # Crear DataFrame de salida con todas las columnas esperadas
+    df_out = pd.DataFrame()
+    
+    # Copiar columnas directamente si existen (SIN renombrar)
     if "Id" in df.columns:
-        df["id"] = df["Id"].astype(str)
+        df_out["id"] = df["Id"].astype(str)
+    else:
+        df_out["id"] = ""
     
     if "Descripción" in df.columns:
-        df["nombre"] = df["Descripción"].fillna("").astype(str)
+        df_out["nombre"] = df["Descripción"].astype(str)
     else:
-        df["nombre"] = ""
+        df_out["nombre"] = ""
     
     if "Familia" in df.columns:
-        df["familia"] = df["Familia"].fillna("").astype(str)
+        df_out["familia"] = df["Familia"].astype(str)
     else:
-        df["familia"] = ""
+        df_out["familia"] = ""
     
     if "Código Int." in df.columns:
-        df["codigo_interno"] = df["Código Int."].fillna("").astype(str)
+        df_out["codigo_interno"] = df["Código Int."].astype(str)
     else:
-        df["codigo_interno"] = ""
+        df_out["codigo_interno"] = ""
     
     if "Código Ext." in df.columns:
-        df["codigo_barra"] = df["Código Ext."].fillna("").astype(str)
+        df_out["codigo_barra"] = df["Código Ext."].astype(str)
     else:
-        df["codigo_barra"] = ""
+        df_out["codigo_barra"] = ""
     
-    if "Unidad" in df.columns:
-        df["unidad_base"] = df["Unidad"].fillna("unidad").astype(str)
-    else:
-        df["unidad_base"] = "unidad"
+    # Resto de columnas con valores por defecto
+    df_out["descripcion"] = ""
+    df_out["subfamilia"] = ""
+    df_out["equipo"] = ""
+    df_out["proveedor_id"] = None
+    df_out["tipo"] = ""
+    df_out["fifo"] = True
+    df_out["iva"] = "basico_22"
+    df_out["tiene_lote"] = False
+    df_out["requiere_vencimiento"] = False
+    df_out["unidad_base"] = "unidad"
+    df_out["unidad_compra"] = "unidad"
+    df_out["contenido_por_unidad_compra"] = 1.0
+    df_out["stock_min"] = 0.0
+    df_out["stock_max"] = 0.0
+    df_out["precio_actual"] = None
+    df_out["moneda_actual"] = None
+    df_out["precio_por_actual"] = None
+    df_out["fecha_precio_actual"] = None
+    df_out["precio_anterior"] = None
+    df_out["moneda_anterior"] = None
+    df_out["precio_por_anterior"] = None
+    df_out["fecha_precio_anterior"] = None
+    df_out["activo"] = True
+    df_out["created_at"] = None
+    df_out["updated_at"] = None
     
-    if "Tipo Articulo" in df.columns:
-        df["tipo"] = df["Tipo Articulo"].fillna("").astype(str)
-    else:
-        df["tipo"] = ""
-    
-    if "Activo" in df.columns:
-        df["activo"] = df["Activo"].fillna(True).astype(bool)
-    else:
-        df["activo"] = True
-    
-    # Agregar resto de columnas que faltan con valores por defecto
-    columnas_faltantes = {
-        "descripcion": None,
-        "subfamilia": None,
-        "equipo": None,
-        "proveedor_id": None,
-        "fifo": True,
-        "iva": "basico_22",
-        "tiene_lote": False,
-        "requiere_vencimiento": False,
-        "unidad_compra": "unidad",
-        "contenido_por_unidad_compra": 1.0,
-        "stock_min": 0.0,
-        "stock_max": 0.0,
-        "precio_actual": None,
-        "moneda_actual": None,
-        "precio_por_actual": None,
-        "fecha_precio_actual": None,
-        "precio_anterior": None,
-        "moneda_anterior": None,
-        "precio_por_anterior": None,
-        "fecha_precio_anterior": None,
-        "created_at": None,
-        "updated_at": None,
-    }
+    return df_out
     
     for col, valor_default in columnas_faltantes.items():
         if col not in df.columns:
@@ -397,71 +390,29 @@ def _cache_proveedores() -> pd.DataFrame:
 @st.cache_data(ttl=30, show_spinner=False)
 def _cache_articulos_por_tipo(tipo: Optional[str]) -> pd.DataFrame:
     """
-    Cache de artículos filtrados por tipo
+    Cache de artículos - VERSIÓN SIMPLIFICADA
     """
-    # Traer TODOS los datos
+    # Traer todos los datos
     df_raw = _sb_select("articulos", "*")
-
-    # ========================================
-    # 🔍 DEBUG TEMPORAL - Ver estructura real de la tabla
-    # ========================================
-    if df_raw is not None and not df_raw.empty:
-        with st.sidebar:
-            with st.expander("🔍 DEBUG - Estructura de tabla", expanded=False):
-                st.write(f"**📊 Total registros:** {len(df_raw)}")
-                st.write("**📋 Columnas en Supabase:**")
-                st.code("\n".join(df_raw.columns.tolist()))
-                st.write("**📄 Primer registro:**")
-                st.json(df_raw.iloc[0].to_dict())
-    # ========================================
     
     if df_raw is None or df_raw.empty:
+        st.warning("⚠️ No se encontraron datos en la tabla 'articulos'")
         return pd.DataFrame(columns=ARTICULO_COLS)
-
-    # Normalizar (mapea Descripción->nombre, etc)
+    
+    st.success(f"✅ Se encontraron {len(df_raw)} registros en Supabase")
+    
+    # Normalizar
     df = _normalizar_articulos_df(df_raw)
     
-    # Filtro local por tipo si es necesario
-    if tipo and not df.empty and "tipo" in df.columns:
-        try:
-            # Limpiar y normalizar valores
-            df_copy = df.copy()
-            df_copy["tipo_norm"] = df_copy["tipo"].fillna("").astype(str).str.strip().str.lower()
-            
-            # Caso 1: coincide texto directo
-            df_tipo = df_copy[df_copy["tipo_norm"] == str(tipo).strip().lower()].copy()
-            
-            # Caso 2: mapeo numérico (si tu DB usa 1/2/3)
-            if df_tipo.empty:
-                map_num = {"ingreso": "1", "egreso": "2", "gasto_fijo": "3"}
-                target = map_num.get(tipo)
-                if target:
-                    df_tipo = df_copy[df_copy["tipo_norm"] == target].copy()
-            
-            # Si encontró matches, usarlo
-            if not df_tipo.empty:
-                df = df_tipo.drop(columns=["tipo_norm"])
-            
-        except Exception:
-            pass
+    if df.empty:
+        st.error("❌ Error al normalizar datos")
+        return pd.DataFrame(columns=ARTICULO_COLS)
     
     # Ordenar por nombre
-    try:
-        if "nombre" in df.columns and not df.empty:
-            df = df.sort_values("nombre", kind="stable")
-    except Exception:
-        pass
+    if "nombre" in df.columns and not df.empty:
+        df = df.sort_values("nombre", kind="stable")
     
     return df
-
-
-def _invalidate_caches():
-    """
-    Invalida todos los caches
-    """
-    _cache_proveedores.clear()
-    _cache_articulos_por_tipo.clear()
-
 
 # =====================================================================
 # LÓGICA DE PRECIO
@@ -924,4 +875,5 @@ def mostrar_articulos():
             if sel and sel.get("id"):
                 st.markdown("---")
                 _ui_archivos(str(sel["id"]))
+
 
