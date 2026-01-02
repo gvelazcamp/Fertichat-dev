@@ -59,13 +59,11 @@ def inject_css_responsive():
         <style>
         /* =========================
            OCULTAR BARRA SUPERIOR STREAMLIT (Share / menú / icons / barra blanca)
-           (NO ocultamos el botón de sidebar en mobile; lo estilizamos)
+           IMPORTANTE: NO ocultar stHeader con display:none, porque mata el botón del sidebar
         ========================= */
         div.stAppToolbar,
         div[data-testid="stToolbar"],
         div[data-testid="stToolbarActions"],
-        header,
-        header[data-testid="stHeader"],
         div[data-testid="stDecoration"],
         #MainMenu,
         footer{
@@ -74,6 +72,18 @@ def inject_css_responsive():
           min-height: 0 !important;
           padding: 0 !important;
           margin: 0 !important;
+        }
+
+        /* ✅ Header mínimo (necesario para que exista el botón de sidebar) */
+        header[data-testid="stHeader"]{
+          display: block !important;
+          height: 0 !important;
+          min-height: 0 !important;
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
 
         /* =========================
@@ -123,7 +133,7 @@ def inject_css_responsive():
             background-position: center bottom;
         }
 
-        /* ✅ Como ocultamos stHeader/stToolbar, dejamos padding-top normal */
+        /* ✅ Como dejamos stHeader en altura 0, padding-top normal */
         .block-container{
             max-width: 1240px;
             padding-top: 1.25rem;
@@ -240,6 +250,28 @@ def inject_css_responsive():
         }
 
         /* =========================
+           FIX: Input "Usuario" siempre blanco (móvil/auto-fill)
+        ========================= */
+        div[data-testid="stForm"] input,
+        div[data-testid="stForm"] textarea{
+            background-color: #f8fafc !important;
+            color: #1e293b !important;
+            -webkit-text-fill-color: #1e293b !important;
+        }
+
+        /* Autofill (Chrome/Android) */
+        div[data-testid="stForm"] input:-webkit-autofill,
+        div[data-testid="stForm"] input:-webkit-autofill:hover,
+        div[data-testid="stForm"] input:-webkit-autofill:focus,
+        div[data-testid="stForm"] input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+            box-shadow: 0 0 0 1000px #f8fafc inset !important;
+            -webkit-text-fill-color: #1e293b !important;
+            caret-color: #1e293b !important;
+            transition: background-color 9999s ease-in-out 0s !important;
+        }
+
+        /* =========================
            RESPONSIVE (MÓVIL)
            - Sidebar blanco como PC
            - Quita el “punto/radio” gigante
@@ -263,6 +295,7 @@ def inject_css_responsive():
             div[data-testid="stSidebarContent"]{
                 background: rgba(255,255,255,0.88) !important;
                 backdrop-filter: blur(10px) !important;
+                -webkit-backdrop-filter: blur(10px) !important;
             }
 
             /* Inputs del sidebar (evita que se vean “negros”) */
@@ -273,8 +306,11 @@ def inject_css_responsive():
                 border: 1px solid rgba(15,23,42,0.12) !important;
             }
 
-            /* ✅ Botón flotante para abrir sidebar (la “mancha blanca”) */
-            button[data-testid="stExpandSidebarButton"]{
+            /* ✅ Botón flotante para abrir sidebar (varía según versión) */
+            button[data-testid="stExpandSidebarButton"],
+            button[data-testid="stSidebarCollapsedControl"],
+            button[data-testid="stSidebarCollapseButton"]{
+                display: flex !important;
                 position: fixed !important;
                 top: 12px !important;
                 left: 12px !important;
@@ -287,7 +323,8 @@ def inject_css_responsive():
                 box-shadow: 0 10px 26px rgba(2, 6, 23, 0.12) !important;
             }
             button[data-testid="stExpandSidebarButton"] svg,
-            button[data-testid="stExpandSidebarButton"] span{
+            button[data-testid="stSidebarCollapsedControl"] svg,
+            button[data-testid="stSidebarCollapseButton"] svg{
                 color: #0f172a !important;
                 opacity: 1 !important;
             }
@@ -350,58 +387,54 @@ def inject_css_responsive():
         }
 
         /* =========================
-   FIX: Sidebar móvil visible (igual que PC)
-   - Fondo blanco / blur
-   - Texto negro (menú y labels)
-   ========================= */
-@media (max-width: 768px){
+           FIX: Sidebar móvil visible (igual que PC)
+           - Fondo blanco / blur
+           - Texto negro (menú y labels)
+        ========================= */
+        @media (max-width: 768px){
 
-  /* Fondo del drawer */
-  section[data-testid="stSidebar"],
-  section[data-testid="stSidebar"] > div,
-  div[data-testid="stSidebarContent"]{
-      background: rgba(255,255,255,0.90) !important;
-      backdrop-filter: blur(10px) !important;
-      -webkit-backdrop-filter: blur(10px) !important;
-      opacity: 1 !important;
-      visibility: visible !important;
-  }
+          section[data-testid="stSidebar"],
+          section[data-testid="stSidebar"] > div,
+          div[data-testid="stSidebarContent"]{
+              background: rgba(255,255,255,0.90) !important;
+              backdrop-filter: blur(10px) !important;
+              -webkit-backdrop-filter: blur(10px) !important;
+              opacity: 1 !important;
+              visibility: visible !important;
+          }
 
-  /* Bordes/sombra como PC */
-  section[data-testid="stSidebar"]{
-      border-right: 1px solid rgba(15, 23, 42, 0.10) !important;
-      box-shadow: 12px 0 28px rgba(2, 6, 23, 0.12) !important;
-  }
+          section[data-testid="stSidebar"]{
+              border-right: 1px solid rgba(15, 23, 42, 0.10) !important;
+              box-shadow: 12px 0 28px rgba(2, 6, 23, 0.12) !important;
+          }
 
-  /* Texto visible (solo sidebar) */
-  section[data-testid="stSidebar"] .stMarkdown,
-  section[data-testid="stSidebar"] .stMarkdown * ,
-  section[data-testid="stSidebar"] label,
-  section[data-testid="stSidebar"] label * ,
-  section[data-testid="stSidebar"] p,
-  section[data-testid="stSidebar"] span{
-      color: #0f172a !important;
-  }
+          section[data-testid="stSidebar"] .stMarkdown,
+          section[data-testid="stSidebar"] .stMarkdown * ,
+          section[data-testid="stSidebar"] label,
+          section[data-testid="stSidebar"] label * ,
+          section[data-testid="stSidebar"] p,
+          section[data-testid="stSidebar"] span{
+              color: #0f172a !important;
+          }
 
-  /* Radio: texto visible + mantiene tu estilo de seleccionado */
-  section[data-testid="stSidebar"] div[role="radiogroup"] label > div{
-      color: #0f172a !important;
-  }
-  section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) > div{
-      color: var(--fc-primary) !important;
-      font-weight: 700 !important;
-  }
+          section[data-testid="stSidebar"] div[role="radiogroup"] label > div{
+              color: #0f172a !important;
+          }
+          section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) > div{
+              color: var(--fc-primary) !important;
+              font-weight: 700 !important;
+          }
 
-  /* (por las dudas) sigue sin el punto/radio gigante */
-  section[data-testid="stSidebar"] div[role="radiogroup"] div[data-baseweb="radio"]{
-      display: none !important;
-  }
-}
+          section[data-testid="stSidebar"] div[role="radiogroup"] div[data-baseweb="radio"]{
+              display: none !important;
+          }
+        }
 
         </style>
         """,
         unsafe_allow_html=True
     )
+
 
 # =========================
 # INICIALIZACIÓN
