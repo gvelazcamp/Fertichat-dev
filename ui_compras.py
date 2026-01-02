@@ -14,6 +14,10 @@ from utils_graphs import _render_graficos_compras, _render_explicacion_compras
 from orquestador import (
     procesar_pregunta,
     procesar_pregunta_router,
+)
+
+# Importar de utils_openai
+from utils_openai import (
     obtener_sugerencia_ejecutable,
     recomendar_como_preguntar,
 )
