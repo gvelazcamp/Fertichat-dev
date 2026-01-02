@@ -1,7 +1,7 @@
 # =====================================================================
 # 🔐 PÁGINA DE LOGIN - FERTI CHAT
 # =====================================================================
-# Login por USUARIO
+# Login por USUARIO - Diseño Moderno
 # =====================================================================
 
 import streamlit as st
@@ -11,7 +11,7 @@ from auth import login_user, change_password, init_db
 init_db()
 
 # =====================================================================
-# 🎨 ESTILOS CSS (LOGIN OSCURO – ESTILO APP)
+# 🎨 ESTILOS CSS - DISEÑO MODERNO Y LUMINOSO
 # =====================================================================
 
 LOGIN_CSS = """
@@ -22,91 +22,181 @@ LOGIN_CSS = """
     header {visibility: hidden;}
     .stDeployButton {display: none;}
 
-    /* Fondo general */
+    /* Fondo con gradiente suave */
     .stApp {
-        background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
         min-height: 100vh;
     }
 
     /* Contenedor central */
     .block-container {
-        padding-top: 3rem !important;
+        padding-top: 2rem !important;
         padding-bottom: 1rem !important;
     }
 
-    /* Tarjeta del formulario */
+    /* Tarjeta del formulario - Glassmorphism */
     [data-testid="stForm"] {
-        background: #020617;
-        border-radius: 18px;
-        padding: 28px 32px;
-        border: 1px solid #1e293b;
-        box-shadow: 0 15px 45px rgba(0, 0, 0, 0.55);
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 24px;
+        padding: 32px 36px;
+        border: none;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(10px);
     }
 
     /* Inputs */
     input {
-        background-color: #020617 !important;
-        color: #e5e7eb !important;
-        border: 1px solid #1e293b !important;
-        border-radius: 10px !important;
+        background-color: #f8fafc !important;
+        color: #1e293b !important;
+        border: 2px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        padding: 12px 16px !important;
+        font-size: 16px !important;
+        transition: all 0.3s ease !important;
+    }
+
+    input:focus {
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2) !important;
+    }
+
+    input:disabled {
+        background-color: #f1f5f9 !important;
+        color: #64748b !important;
     }
 
     /* Labels */
     label {
-        color: #cbd5f5 !important;
-        font-weight: 500;
+        color: #374151 !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        margin-bottom: 6px !important;
     }
 
     /* Tabs */
+    [data-baseweb="tab-list"] {
+        background: #f1f5f9;
+        border-radius: 12px;
+        padding: 4px;
+        gap: 4px;
+    }
+
     button[data-baseweb="tab"] {
-        color: #94a3b8 !important;
+        color: #64748b !important;
+        font-weight: 600 !important;
+        border-radius: 10px !important;
+        padding: 10px 20px !important;
+        background: transparent !important;
     }
 
     button[data-baseweb="tab"][aria-selected="true"] {
-        color: #e5e7eb !important;
-        border-bottom: 2px solid #dc2626;
+        color: #667eea !important;
+        background: white !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
     }
 
     /* Botón principal */
-    button[kind="primary"] {
-        background: linear-gradient(180deg, #b91c1c, #7f1d1d) !important;
+    .stForm button[kind="secondaryFormSubmit"],
+    .stForm button[type="submit"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
         border-radius: 12px !important;
-        font-weight: 600;
-        border: none;
+        font-weight: 700 !important;
+        font-size: 16px !important;
+        padding: 14px 28px !important;
+        border: none !important;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+        transition: all 0.3s ease !important;
+        text-transform: none !important;
     }
 
-    button[kind="primary"]:hover {
-        background: linear-gradient(180deg, #dc2626, #991b1b) !important;
+    .stForm button[kind="secondaryFormSubmit"]:hover,
+    .stForm button[type="submit"]:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5) !important;
     }
 
-    /* Mensajes */
+    /* Mensajes de error/éxito */
     .stAlert {
-        border-radius: 10px;
+        border-radius: 12px !important;
+        border: none !important;
+    }
+
+    [data-testid="stAlert"] {
+        background: #fef2f2 !important;
+        border-left: 4px solid #ef4444 !important;
+    }
+
+    /* Success message */
+    [data-testid="stAlert"][data-baseweb="notification"] {
+        background: #f0fdf4 !important;
+        border-left: 4px solid #22c55e !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        [data-testid="stForm"] {
+            padding: 24px 20px;
+            border-radius: 20px;
+        }
+        
+        .block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
     }
 </style>
 """
 
 # =====================================================================
-# UI
+# UI COMPONENTS
 # =====================================================================
 
 def show_logo():
     st.markdown("""
-        <div style="text-align:center; padding:20px 0 18px 0;">
-            <h1 style="font-size:36px; font-weight:800; color:#e5e7eb;">
-                🦋 Ferti Chat
-            </h1>
-            <p style="color:#94a3b8; font-size:15px;">
-                Sistema de Gestión de Compras
-            </p>
+        <div style="text-align:center; padding:10px 0 30px 0;">
+            <div style="
+                display: inline-block;
+                background: rgba(255,255,255,0.9);
+                border-radius: 20px;
+                padding: 20px 40px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            ">
+                <h1 style="
+                    font-size: 42px;
+                    font-weight: 800;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    margin: 0;
+                    letter-spacing: -1px;
+                ">
+                    🦋 FertiChat
+                </h1>
+                <p style="
+                    color: #64748b;
+                    font-size: 15px;
+                    margin: 8px 0 0 0;
+                    font-weight: 500;
+                ">
+                    Sistema de Gestión de Compras
+                </p>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
 
 def show_footer():
     st.markdown("""
-        <div style="text-align:center; color:#64748b; font-size:12px; padding-top:22px;">
-            🦋 Ferti Chat © 2025
+        <div style="
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+            padding-top: 30px;
+            font-weight: 500;
+        ">
+            🦋 FertiChat © 2025 — Todos los derechos reservados
         </div>
     """, unsafe_allow_html=True)
 
@@ -116,82 +206,116 @@ def show_footer():
 
 def login_form():
     with st.form("login_form", clear_on_submit=False):
-        st.text_input("Empresa", value="Fertilab", disabled=True)
-        usuario = st.text_input("Usuario", placeholder="gvelazquez")
-        password = st.text_input("Contraseña", type="password")
+        st.markdown("""
+            <p style="
+                text-align: center;
+                color: #64748b;
+                font-size: 14px;
+                margin-bottom: 20px;
+            ">
+                Ingresá tus credenciales para continuar
+            </p>
+        """, unsafe_allow_html=True)
+        
+        st.text_input("🏢 Empresa", value="Fertilab", disabled=True)
+        usuario = st.text_input("👤 Usuario", placeholder="Ingresá tu usuario")
+        password = st.text_input("🔒 Contraseña", type="password", placeholder="Ingresá tu contraseña")
 
+        st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
+        
         submitted = st.form_submit_button("Ingresar", use_container_width=True)
 
         if submitted:
             if not usuario or not password:
-                st.error("⚠️ Completá todos los campos")
+                st.error("⚠️ Por favor completá todos los campos")
             else:
                 ok, msg, user_data = login_user(usuario, password)
                 if ok:
                     st.session_state["user"] = user_data
                     st.rerun()
                 else:
-                    st.error(msg)
+                    st.error(f"❌ {msg}")
 
 
 def change_password_form():
     with st.form("change_password_form", clear_on_submit=True):
-        usuario = st.text_input("Usuario")
-        old_password = st.text_input("Contraseña actual", type="password")
-        new_password = st.text_input("Nueva contraseña", type="password")
-        new_password2 = st.text_input("Confirmar nueva", type="password")
+        st.markdown("""
+            <p style="
+                text-align: center;
+                color: #64748b;
+                font-size: 14px;
+                margin-bottom: 20px;
+            ">
+                Actualizá tu contraseña de acceso
+            </p>
+        """, unsafe_allow_html=True)
+        
+        usuario = st.text_input("👤 Usuario", placeholder="Tu usuario")
+        old_password = st.text_input("🔑 Contraseña actual", type="password", placeholder="Contraseña actual")
+        new_password = st.text_input("🔒 Nueva contraseña", type="password", placeholder="Nueva contraseña")
+        new_password2 = st.text_input("🔒 Confirmar nueva", type="password", placeholder="Repetí la nueva contraseña")
 
+        st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
+        
         submitted = st.form_submit_button("Cambiar contraseña", use_container_width=True)
 
         if submitted:
             if not usuario or not old_password or not new_password:
-                st.error("⚠️ Completá todos los campos")
+                st.error("⚠️ Por favor completá todos los campos")
             elif new_password != new_password2:
-                st.error("⚠️ Las contraseñas no coinciden")
+                st.error("⚠️ Las contraseñas nuevas no coinciden")
+            elif len(new_password) < 4:
+                st.error("⚠️ La contraseña debe tener al menos 4 caracteres")
             else:
                 ok, msg = change_password(usuario, old_password, new_password)
                 if ok:
-                    st.success(msg)
+                    st.success(f"✅ {msg}")
                 else:
-                    st.error(msg)
+                    st.error(f"❌ {msg}")
 
 # =====================================================================
-# LOGIN PAGE
+# LOGIN PAGE PRINCIPAL
 # =====================================================================
 
 def show_login_page():
     st.markdown(LOGIN_CSS, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 1.25, 1])
+    col1, col2, col3 = st.columns([1, 1.4, 1])
     with col2:
         show_logo()
+        
         tab1, tab2 = st.tabs(["🔐 Ingresar", "🔑 Cambiar clave"])
         with tab1:
             login_form()
         with tab2:
             change_password_form()
+        
         show_footer()
 
 # =====================================================================
-# SESIÓN
+# GESTIÓN DE SESIÓN
 # =====================================================================
 
 def get_current_user() -> dict:
+    """Obtiene el usuario actual de la sesión"""
     return st.session_state.get("user")
 
 def logout():
+    """Cierra la sesión del usuario"""
     st.session_state["user"] = None
 
 def require_auth():
+    """Requiere autenticación - muestra login si no hay sesión"""
     if "user" not in st.session_state or st.session_state["user"] is None:
         show_login_page()
         st.stop()
 
 # =====================================================================
-# SIDEBAR
+# SIDEBAR INFO
 # =====================================================================
 
 def show_user_info_sidebar(user: dict):
+    """Muestra info del usuario en el sidebar"""
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"👤 **{user.get('nombre', '')}**")
     st.sidebar.markdown(f"🏢 {user.get('empresa', '')}")
