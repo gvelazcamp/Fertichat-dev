@@ -357,7 +357,16 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
         if not match.empty:
             current_row = match.iloc[0].to_dict()
 
+    # Prefill solo si es NUEVO
+    prefill = None
+    if (not is_edit) and ("articulos_prefill" in st.session_state):
+        prefill = st.session_state.get("articulos_prefill") or None
+
+    # Defaults del formulario
+    base = current_row or prefill or {}
+
     col1, col2 = st.columns(2)
+
 
     with col1:
         nombre = st.text_input("Nombre *", value=str((current_row or {}).get("nombre") or ""))
@@ -647,4 +656,5 @@ def mostrar_articulos():
             if sel and sel.get("id"):
                 st.markdown("---")
                 _ui_archivos(str(sel["id"]))
+
 
