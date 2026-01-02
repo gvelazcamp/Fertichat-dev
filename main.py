@@ -1,10 +1,10 @@
 # =========================
-# MAIN.PY - PC con SIDEBAR + MÓVIL con MENÚ PROPIO (ARREGLADO)
+# MAIN.PY - PC con SIDEBAR + MÓVIL con MENÚ PROPIO (SIN DUPLICADOS)
 # =========================
 
 import streamlit as st
 from datetime import datetime
-import hashlib
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="FertiChat",
@@ -46,25 +46,19 @@ user = get_current_user() or {}
 if "radio_menu" not in st.session_state:
     st.session_state["radio_menu"] = "🏠 Inicio"
 
-# Variable para controlar clicks del menú móvil
-if "mobile_menu_click" not in st.session_state:
-    st.session_state["mobile_menu_click"] = None
-
 
 # =========================
-# CSS + MENÚ MÓVIL
+# CSS + MENÚ MÓVIL CON COMUNICACIÓN JS
 # =========================
 def inject_css_and_mobile_menu(user: dict, menu_actual: str):
     # Generar items del menú móvil
     menu_items_html = ""
-    for opcion in MENU_OPTIONS:
+    for idx, opcion in enumerate(MENU_OPTIONS):
         active_class = "fc-active" if opcion == menu_actual else ""
-        # Crear un hash único para cada opción
-        opcion_id = hashlib.md5(opcion.encode()).hexdigest()[:8]
         menu_items_html += f'''
-        <label for="menu_{opcion_id}" class="fc-menu-item {active_class}">
+        <div class="fc-menu-item {active_class}" data-menu-idx="{idx}" data-menu-name="{opcion}">
             {opcion}
-        </label>
+        </div>
         '''
 
     html = f"""
@@ -143,8 +137,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
     #fc-menu-cb,
     #fc-mobile-header,
     #fc-mobile-menu,
-    #fc-mobile-overlay,
-    .fc-menu-radio {{
+    #fc-mobile-overlay {{
         display: none !important;
     }}
 }}
@@ -160,15 +153,6 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 
     .block-container {{
         padding-top: 70px !important;
-    }}
-
-    /* Ocultar radios del menú */
-    .fc-menu-radio {{
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
-        pointer-events: none;
     }}
 
     #fc-menu-cb {{
@@ -369,48 +353,63 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 
   {menu_items_html}
 
-  <label for="logout_trigger" class="fc-logout">
+  <div class="fc-logout" id="fc-logout-btn">
     🚪 Cerrar sesión
-  </label>
+  </div>
 </div>
+
+<script>
+// Manejador de clicks del menú móvil
+document.addEventListener('DOMContentLoaded', function() {{
+    const menuItems = document.querySelectorAll('.fc-menu-item');
+    const logoutBtn = document.getElementById('fc-logout-btn');
+    
+    menuItems.forEach(item => {{
+        item.addEventListener('click', function() {{
+            const menuName = this.getAttribute('data-menu-name');
+            // Enviar mensaje a Streamlit
+            window.parent.postMessage({{
+                type: 'streamlit:setComponentValue',
+                data: {{ menu: menuName }}
+            }}, '*');
+            
+            // Cerrar menú
+            document.getElementById('fc-menu-cb').checked = false;
+        }});
+    }});
+    
+    if (logoutBtn) {{
+        logoutBtn.addEventListener('click', function() {{
+            window.parent.postMessage({{
+                type: 'streamlit:setComponentValue',
+                data: {{ logout: true }}
+            }}, '*');
+        }});
+    }}
+}});
+</script>
 """
 
     html = "\n".join(line.lstrip() for line in html.splitlines())
-    st.markdown(html, unsafe_allow_html=True)
+    
+    # Usar componente HTML para capturar eventos
+    menu_click = components.html(html, height=0, scrolling=False)
+    
+    return menu_click
 
 
 # Inyectar CSS + menú móvil
-inject_css_and_mobile_menu(user=user, menu_actual=st.session_state["radio_menu"])
+menu_data = inject_css_and_mobile_menu(user=user, menu_actual=st.session_state["radio_menu"])
 
-
-# =========================
-# NAVEGACIÓN - Botones invisibles para mobile
-# =========================
-for opcion in MENU_OPTIONS:
-    opcion_id = hashlib.md5(opcion.encode()).hexdigest()[:8]
-    # Crear checkbox invisible que Streamlit puede detectar
-    clicked = st.checkbox("", key=f"menu_{opcion_id}", label_visibility="collapsed")
-    if clicked:
-        st.session_state["radio_menu"] = opcion
-        # Desmarcar inmediatamente para permitir siguiente click
-        st.session_state[f"menu_{opcion_id}"] = False
-        st.rerun()
-
-# Botón logout invisible
-logout_clicked = st.checkbox("", key="logout_trigger", label_visibility="collapsed")
-if logout_clicked:
-    logout()
-    st.rerun()
-
-# Ocultar checkboxes con CSS
-st.markdown("""
-<style>
-/* Ocultar todos los checkboxes de navegación */
-div[data-testid="column"] > div > div > div > label {
-    display: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
+# Procesar clicks del menú móvil
+if menu_data:
+    if isinstance(menu_data, dict):
+        if 'menu' in menu_data:
+            st.session_state["radio_menu"] = menu_data['menu']
+            st.rerun()
+        elif menu_data.get('logout'):
+            logout()
+            st.rerun()
 
 
 # =========================
