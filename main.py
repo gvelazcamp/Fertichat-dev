@@ -45,6 +45,7 @@ from ui_dashboard import mostrar_dashboard, mostrar_indicadores_ia, mostrar_resu
 from ui_inicio import mostrar_inicio
 from ficha_stock import mostrar_ficha_stock
 from articulos import mostrar_articulos
+from depositos import mostrar_depositos
 
 # =========================
 # CSS RESPONSIVE
