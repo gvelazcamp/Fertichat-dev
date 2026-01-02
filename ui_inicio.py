@@ -217,7 +217,7 @@ def mostrar_inicio():
     </script>
     """
 
-    components.html(html_cards, height=430, scrolling=False)
+    components.html(html_cards, height=640, scrolling=True)
 
     # =========================
     # TIP DEL DÍA
