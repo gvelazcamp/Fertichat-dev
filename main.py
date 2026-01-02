@@ -235,3 +235,6 @@ elif menu == "📒 Ficha de stock":
 
 elif menu == "📚 Artículos":
     mostrar_articulos()
+
+elif menu == "🏬 Depósitos":
+    mostrar_depositos()
