@@ -1,10 +1,10 @@
 # =========================
-# MAIN.PY - PC con SIDEBAR + MÓVIL con MENÚ PROPIO (SIN JS)
+# MAIN.PY - PC con SIDEBAR + MÓVIL con MENÚ PROPIO (SIN LINKS / SIN RECARGA)
 # =========================
 
 import streamlit as st
 from datetime import datetime
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote  # (se deja, no molesta aunque ya no se use)
 
 st.set_page_config(
     page_title="FertiChat",
@@ -35,383 +35,337 @@ from familias import mostrar_familias
 
 
 # =========================
-# CSS + MENÚ MÓVIL (SIN JS) - FIX: evita que el HTML se renderice como "code"
+# CSS GLOBAL (PC igual) + CSS MÓVIL (header + drawer)
 # =========================
-def inject_css_and_mobile_menu(user: dict, menu_actual: str):
-    # Menú móvil: links con query param URL-encoded
-    menu_items_html = ""
-    for opcion in MENU_OPTIONS:
-        active_class = "fc-active" if opcion == menu_actual else ""
-        href = f"?menu={quote(opcion)}"
-        menu_items_html += f'<a class="fc-menu-item {active_class}" href="{href}">{opcion}</a>\n'
+def inject_css():
+    st.markdown(
+        """
+        <style>
+        /* =========================
+           OCULTAR UI DE STREAMLIT
+        ========================= */
+        div.stAppToolbar,
+        div[data-testid="stToolbar"],
+        div[data-testid="stToolbarActions"],
+        div[data-testid="stDecoration"],
+        #MainMenu,
+        footer {
+          display: none !important;
+        }
 
-    html = f"""
-<style>
-/* =========================
-   OCULTAR UI DE STREAMLIT
-========================= */
-div.stAppToolbar,
-div[data-testid="stToolbar"],
-div[data-testid="stToolbarActions"],
-div[data-testid="stDecoration"],
-#MainMenu,
-footer {{
-  display: none !important;
-}}
+        header[data-testid="stHeader"]{
+          height: 0 !important;
+          background: transparent !important;
+        }
 
-header[data-testid="stHeader"] {{
-  height: 0 !important;
-  background: transparent !important;
-}}
+        /* =========================
+           THEME GENERAL
+        ========================= */
+        :root{
+            --fc-bg-1: #f6f4ef;
+            --fc-bg-2: #f3f6fb;
+            --fc-primary: #0b3b60;
+            --fc-accent: #f59e0b;
+            --fc-text: #0f172a;
+            --fc-muted: #64748b;
+        }
 
-/* =========================
-   THEME GENERAL
-========================= */
-:root {{
-    --fc-bg-1: #f6f4ef;
-    --fc-bg-2: #f3f6fb;
-    --fc-primary: #0b3b60;
-    --fc-accent: #f59e0b;
-}}
+        html, body{
+            font-family: Inter, system-ui, sans-serif;
+            color: var(--fc-text);
+        }
 
-html, body {{
-    font-family: Inter, system-ui, sans-serif;
-    color: #0f172a;
-}}
+        [data-testid="stAppViewContainer"]{
+            background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2));
+        }
 
-[data-testid="stAppViewContainer"] {{
-    background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2));
-}}
+        .block-container{
+            max-width: 1240px;
+            padding-top: 1.25rem;
+            padding-bottom: 2.25rem;
+        }
 
-.block-container {{
-    max-width: 1240px;
-    padding-top: 1.25rem;
-    padding-bottom: 2.25rem;
-}}
+        /* =========================
+           SIDEBAR PC (tu estilo)
+        ========================= */
+        section[data-testid="stSidebar"]{
+            border-right: 1px solid rgba(15, 23, 42, 0.08);
+        }
+        section[data-testid="stSidebar"] > div{
+            background: rgba(255,255,255,0.70);
+            backdrop-filter: blur(8px);
+        }
 
-/* =========================
-   SIDEBAR PC (tu estilo)
-========================= */
-section[data-testid="stSidebar"] {{
-    border-right: 1px solid rgba(15, 23, 42, 0.08);
-}}
-section[data-testid="stSidebar"] > div {{
-    background: rgba(255,255,255,0.70);
-    backdrop-filter: blur(8px);
-}}
+        div[data-testid="stSidebar"] div[role="radiogroup"] label{
+            border-radius: 12px;
+            padding: 8px 10px;
+            margin: 3px 0;
+            border: 1px solid transparent;
+        }
+        div[data-testid="stSidebar"] div[role="radiogroup"] label:hover{
+            background: rgba(37,99,235,0.06);
+        }
+        div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){
+            background: rgba(245,158,11,0.10);
+            border: 1px solid rgba(245,158,11,0.18);
+        }
 
-div[data-testid="stSidebar"] div[role="radiogroup"] label {{
-    border-radius: 12px;
-    padding: 8px 10px;
-    margin: 3px 0;
-    border: 1px solid transparent;
-}}
-div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
-    background: rgba(37,99,235,0.06);
-}}
-div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
-    background: rgba(245,158,11,0.10);
-    border: 1px solid rgba(245,158,11,0.18);
-}}
+        /* =========================
+           PC: ocultar header/drawer móvil
+        ========================= */
+        @media (min-width: 769px){
+            #fc_mobile_header_anchor,
+            #fc_mobile_drawer_anchor{
+                display: none !important;
+            }
+            #fc_mobile_header_anchor + div[data-testid="stHorizontalBlock"],
+            #fc_mobile_drawer_anchor + div[data-testid="stVerticalBlock"],
+            .fc-mobile-overlay{
+                display: none !important;
+            }
+        }
 
-/* =========================
-   PC: ocultar menú móvil
-========================= */
-@media (min-width: 769px) {{
-    #fc-menu-cb,
-    #fc-mobile-header,
-    #fc-mobile-menu,
-    #fc-mobile-overlay {{
-        display: none !important;
-    }}
-}}
+        /* =========================
+           MÓVIL: header fijo + drawer fijo
+        ========================= */
+        @media (max-width: 768px){
 
-/* =========================
-   MÓVIL: menú propio + ocultar sidebar nativo
-========================= */
-@media (max-width: 768px) {{
+            /* Ocultar sidebar nativo SOLO en móvil */
+            section[data-testid="stSidebar"]{
+                display: none !important;
+            }
 
-    /* Ocultar sidebar nativo SOLO en móvil */
-    section[data-testid="stSidebar"] {{
-        display: none !important;
-    }}
+            /* Dejar espacio para header móvil fijo */
+            .block-container{
+                padding-top: 70px !important;
+            }
 
-    /* Dejar espacio para header móvil fijo */
-    .block-container {{
-        padding-top: 70px !important;
-    }}
+            /* HEADER MÓVIL: bloque de columnas inmediatamente después del ancla */
+            #fc_mobile_header_anchor{
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
 
-    /* Checkbox escondido (controla open/close) */
-    #fc-menu-cb {{
-        position: fixed;
-        left: -9999px;
-        top: -9999px;
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }}
+            #fc_mobile_header_anchor + div[data-testid="stHorizontalBlock"]{
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                height: 56px !important;
+                background: #0b3b60 !important;
+                z-index: 999999 !important;
+                display: flex !important;
+                align-items: center !important;
+                padding: 6px 10px !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+            }
 
-    /* Header móvil fijo */
-    #fc-mobile-header {{
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 56px;
-        background: #0b3b60;
-        z-index: 999999;
-        display: flex;
-        align-items: center;
-        padding: 0 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }}
+            /* Botón hamburguesa (Streamlit) dentro del header */
+            #fc_mobile_header_anchor + div[data-testid="stHorizontalBlock"] .stButton > button{
+                background: transparent !important;
+                border: 0 !important;
+                color: white !important;
+                font-size: 22px !important;
+                padding: 6px 10px !important;
+                box-shadow: none !important;
+                border-radius: 10px !important;
+            }
 
-    /* Botón hamburguesa (es un LABEL del checkbox) */
-    #fc-menu-toggle {{
-        width: 44px;
-        height: 44px;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 5px;
-        padding: 0;
-        -webkit-tap-highlight-color: transparent;
-    }}
+            .fc-mobile-title{
+                color: white !important;
+                font-weight: 900 !important;
+                font-size: 18px !important;
+                letter-spacing: -0.01em !important;
+            }
 
-    #fc-menu-toggle span {{
-        width: 24px;
-        height: 3px;
-        background: white;
-        border-radius: 2px;
-        transition: all 0.20s;
-        display: block;
-    }}
+            .fc-mobile-sub{
+                color: rgba(255,255,255,0.75) !important;
+                font-size: 11px !important;
+                margin-top: -2px !important;
+            }
 
-    #fc-mobile-logo {{
-        color: white;
-        font-size: 18px;
-        font-weight: 800;
-        margin-left: 12px;
-        letter-spacing: -0.01em;
-    }}
+            /* OVERLAY (solo cuando existe en el DOM) */
+            .fc-mobile-overlay{
+                position: fixed !important;
+                top: 56px !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: rgba(0,0,0,0.45) !important;
+                z-index: 999998 !important;
+            }
 
-    /* Overlay (es un LABEL del checkbox para cerrar) */
-    #fc-mobile-overlay {{
-        position: fixed;
-        top: 56px;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 999998;
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.20s;
-    }}
+            /* DRAWER: contenedor inmediatamente después del ancla */
+            #fc_mobile_drawer_anchor{
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
 
-    /* Drawer */
-    #fc-mobile-menu {{
-        position: fixed;
-        top: 56px;
-        left: 0;
-        width: 290px;
-        height: calc(100vh - 56px);
-        height: calc(100dvh - 56px);
-        background: rgba(255,255,255,0.98);
-        box-shadow: 4px 0 12px rgba(0,0,0,0.15);
-        transform: translateX(-100%);
-        transition: transform 0.20s ease;
-        z-index: 999999;
-        overflow-y: auto;
-        padding: 16px;
-    }}
+            #fc_mobile_drawer_anchor + div[data-testid="stVerticalBlock"]{
+                position: fixed !important;
+                top: 56px !important;
+                left: 0 !important;
+                width: 290px !important;
+                height: calc(100dvh - 56px) !important;
+                background: rgba(255,255,255,0.98) !important;
+                z-index: 999999 !important;
+                overflow-y: auto !important;
+                padding: 14px !important;
+                box-shadow: 4px 0 12px rgba(0,0,0,0.15) !important;
+                border-right: 1px solid rgba(15,23,42,0.10) !important;
+            }
 
-    /* OPEN (controlado por checkbox) */
-    #fc-menu-cb:checked ~ #fc-mobile-overlay {{
-        opacity: 1;
-        visibility: visible;
-    }}
-    #fc-menu-cb:checked ~ #fc-mobile-menu {{
-        transform: translateX(0);
-    }}
+            /* Botones del drawer (menú) */
+            #fc_mobile_drawer_anchor + div[data-testid="stVerticalBlock"] .stButton > button{
+                width: 100% !important;
+                text-align: left !important;
+                padding: 12px 12px !important;
+                border-radius: 10px !important;
+                background: rgba(248,250,252,0.92) !important;
+                border: 1px solid rgba(15,23,42,0.10) !important;
+                color: #0f172a !important;
+                box-shadow: none !important;
+            }
 
-    /* Animación del icono a X */
-    #fc-menu-cb:checked ~ #fc-mobile-header #fc-menu-toggle span:nth-child(1) {{
-        transform: rotate(45deg) translate(6px, 6px);
-    }}
-    #fc-menu-cb:checked ~ #fc-mobile-header #fc-menu-toggle span:nth-child(2) {{
-        opacity: 0;
-    }}
-    #fc-menu-cb:checked ~ #fc-mobile-header #fc-menu-toggle span:nth-child(3) {{
-        transform: rotate(-45deg) translate(6px, -6px);
-    }}
+            #fc_mobile_drawer_anchor + div[data-testid="stVerticalBlock"] .stButton > button:hover{
+                background: rgba(245,158,11,0.10) !important;
+                border-color: rgba(245,158,11,0.20) !important;
+            }
 
-    /* Info usuario */
-    .fc-user-info {{
-        background: rgba(248,250,252,0.95);
-        padding: 14px;
-        border-radius: 12px;
-        margin-bottom: 14px;
-        border: 1px solid rgba(15,23,42,0.10);
-    }}
+            .fc-drawer-section{
+                color: #64748b !important;
+                font-size: 11px !important;
+                font-weight: 900 !important;
+                text-transform: uppercase !important;
+                margin: 10px 0 6px 4px !important;
+            }
 
-    .fc-user-line {{
-        color: #0f172a;
-        font-size: 14px;
-        margin: 4px 0;
-        line-height: 1.2;
-    }}
-
-    .fc-user-sub {{
-        color: #64748b;
-        font-size: 12px;
-    }}
-
-    .fc-section-label {{
-        color: #64748b;
-        font-size: 11px;
-        font-weight: 800;
-        text-transform: uppercase;
-        margin: 12px 0 8px 4px;
-    }}
-
-    /* Items menú */
-    .fc-menu-item {{
-        display: block;
-        padding: 14px 14px;
-        margin: 6px 0;
-        border-radius: 10px;
-        background: rgba(248,250,252,0.92);
-        border: 1px solid rgba(15,23,42,0.10);
-        cursor: pointer;
-        color: #0f172a !important;
-        font-size: 15px;
-        font-weight: 500;
-        text-decoration: none !important;
-        -webkit-tap-highlight-color: transparent;
-    }}
-
-    .fc-menu-item:active {{
-        background: rgba(245,158,11,0.10);
-        border-color: rgba(245,158,11,0.20);
-    }}
-
-    .fc-menu-item.fc-active {{
-        background: rgba(245,158,11,0.15);
-        border-color: rgba(245,158,11,0.30);
-        font-weight: 800;
-        color: #0b3b60 !important;
-    }}
-
-    .fc-logout {{
-        display: block;
-        padding: 14px 14px;
-        margin: 14px 0 6px 0;
-        border-radius: 10px;
-        background: rgba(244,63,94,0.08);
-        border: 1px solid rgba(244,63,94,0.20);
-        cursor: pointer;
-        color: #dc2626 !important;
-        font-size: 15px;
-        font-weight: 700;
-        text-decoration: none !important;
-    }}
-}}
-</style>
-
-<!-- CHECKBOX CONTROL -->
-<input type="checkbox" id="fc-menu-cb" />
-
-<!-- HEADER MÓVIL -->
-<div id="fc-mobile-header">
-  <label id="fc-menu-toggle" for="fc-menu-cb" aria-label="Abrir menú">
-    <span></span><span></span><span></span>
-  </label>
-  <div id="fc-mobile-logo">🦋 FertiChat</div>
-</div>
-
-<!-- OVERLAY (clic cierra) -->
-<label id="fc-mobile-overlay" for="fc-menu-cb"></label>
-
-<!-- MENÚ LATERAL -->
-<div id="fc-mobile-menu">
-  <div class="fc-user-info">
-    <div class="fc-user-line" style="font-weight:800;">👤 {user.get('nombre', 'Usuario')}</div>
-    <div class="fc-user-line fc-user-sub">🏢 {user.get('empresa', 'Empresa')}</div>
-    <div class="fc-user-line fc-user-sub">📧 {user.get('Usuario', user.get('usuario', ''))}</div>
-  </div>
-
-  <div class="fc-section-label">Menú</div>
-
-  {menu_items_html}
-
-  <a class="fc-logout" href="?logout=1">🚪 Cerrar sesión</a>
-</div>
-"""
-
-    # ✅ CLAVE: sin indentación -> no se muestra como bloque de código en móvil
-    html = "\n".join(line.lstrip() for line in html.splitlines())
-
-    st.markdown(html, unsafe_allow_html=True)
+            .fc-user-card{
+                background: rgba(248,250,252,0.95);
+                padding: 12px;
+                border-radius: 12px;
+                border: 1px solid rgba(15,23,42,0.10);
+                margin-bottom: 10px;
+            }
+            .fc-user-line{
+                margin: 2px 0;
+                color: #0f172a;
+                font-size: 13px;
+                line-height: 1.2;
+            }
+            .fc-user-subline{
+                color: #64748b;
+                font-size: 12px;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 # =========================
 # INICIALIZACIÓN
 # =========================
+inject_css()
 init_db()
 require_auth()
 
 user = get_current_user() or {}
 
-# Inicializar menú
+# Estado menú principal
 if "radio_menu" not in st.session_state:
     st.session_state["radio_menu"] = "🏠 Inicio"
 
+# Estado drawer móvil
+if "mobile_menu_open" not in st.session_state:
+    st.session_state["mobile_menu_open"] = False
+
 
 # =========================
-# NAVEGACIÓN POR QUERY PARAMS (MENÚ MÓVIL)
+# HEADER MÓVIL (SOLO SE VE EN CEL POR CSS)
 # =========================
-try:
-    menu_param = st.query_params.get("menu")
-    if isinstance(menu_param, list):
-        menu_param = menu_param[0] if menu_param else None
+st.markdown("<div id='fc_mobile_header_anchor'></div>", unsafe_allow_html=True)
+mcol_btn, mcol_title, mcol_notif = st.columns([1, 6, 1])
 
-    if menu_param:
-        menu_decoded = unquote(menu_param)
-        if menu_decoded in MENU_OPTIONS:
-            st.session_state["radio_menu"] = menu_decoded
-            st.query_params.clear()
-            st.rerun()
-
-    logout_param = st.query_params.get("logout")
-    if isinstance(logout_param, list):
-        logout_param = logout_param[0] if logout_param else None
-
-    if logout_param == "1":
-        logout()
-        st.query_params.clear()
+with mcol_btn:
+    if st.button("☰", key="fc_mobile_toggle"):
+        st.session_state["mobile_menu_open"] = not st.session_state["mobile_menu_open"]
         st.rerun()
 
-except Exception:
-    pass
+with mcol_title:
+    st.markdown(
+        """
+        <div>
+          <div class="fc-mobile-title">🦋 FertiChat</div>
+          <div class="fc-mobile-sub">Sistema de Gestión</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-
-# Inyectar CSS + menú móvil
-inject_css_and_mobile_menu(user=user, menu_actual=st.session_state["radio_menu"])
-
-
-# =========================
-# TÍTULO Y CAMPANITA
-# =========================
+# campanita en móvil (opcional)
 usuario_actual = user.get("usuario", user.get("email", ""))
 cant_pendientes = 0
 if usuario_actual:
     cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
 
+with mcol_notif:
+    if cant_pendientes > 0:
+        if st.button(f"🔔 {cant_pendientes}", key="fc_mobile_notif"):
+            st.session_state["radio_menu"] = "📄 Pedidos internos"
+            st.session_state["mobile_menu_open"] = False
+            st.rerun()
+    else:
+        st.markdown("<div style='text-align:right; font-size:18px; color:white; padding-top:6px;'>🔔</div>", unsafe_allow_html=True)
+
+
+# =========================
+# DRAWER MÓVIL (SOLO SI ESTÁ ABIERTO)
+# =========================
+if st.session_state["mobile_menu_open"]:
+
+    # overlay visual (sin click-close; se cierra con ☰ o con botón Cerrar)
+    st.markdown("<div class='fc-mobile-overlay'></div>", unsafe_allow_html=True)
+
+    st.markdown("<div id='fc_mobile_drawer_anchor'></div>", unsafe_allow_html=True)
+    with st.container():
+
+        if st.button("✕ Cerrar menú", key="fc_mobile_close", use_container_width=True):
+            st.session_state["mobile_menu_open"] = False
+            st.rerun()
+
+        st.markdown(
+            f"""
+            <div class="fc-user-card">
+              <div class="fc-user-line" style="font-weight:900;">👤 {user.get('nombre', 'Usuario')}</div>
+              <div class="fc-user-line fc-user-subline">🏢 {user.get('empresa', 'Empresa')}</div>
+              <div class="fc-user-line fc-user-subline">📧 {user.get('Usuario', user.get('usuario', ''))}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        st.markdown("<div class='fc-drawer-section'>Menú</div>", unsafe_allow_html=True)
+
+        # Botones del menú (NO recargan, NO rompen sesión)
+        for i, opcion in enumerate(MENU_OPTIONS):
+            if st.button(opcion, key=f"fc_m_{i}", use_container_width=True):
+                st.session_state["radio_menu"] = opcion
+                st.session_state["mobile_menu_open"] = False
+                st.rerun()
+
+        st.markdown("<div class='fc-drawer-section'>Sesión</div>", unsafe_allow_html=True)
+        if st.button("🚪 Cerrar sesión", key="fc_m_logout", use_container_width=True):
+            logout()
+            st.rerun()
+
+
+# =========================
+# HEADER NORMAL (TUYO, QUEDA IGUAL)
+# =========================
 col_logo, col_spacer, col_notif = st.columns([7, 2, 1])
 
 with col_logo:
