@@ -49,6 +49,7 @@ from articulos import mostrar_articulos
 from depositos import mostrar_depositos
 from familias import mostrar_familias
 
+
 # =========================
 # CSS RESPONSIVE + TEMA CORPORATIVO
 # =========================
@@ -57,21 +58,70 @@ def inject_css_responsive():
         """
         <style>
         /* =========================
-           OCULTAR BARRA SUPERIOR STREAMLIT (Share / menú / icons / barra blanca)
+           IMPORTANTE:
+           NO ocultar stToolbar/stAppToolbar porque ahí está el botón del sidebar (PC y móvil)
+           Ocultamos SOLO acciones (Share / iconos) + menú y dejamos todo transparente
         ========================= */
-        div.stAppToolbar,
-        div[data-testid="stToolbar"],
-        div[data-testid="stToolbarActions"],
+
+        /* Quita la "línea blanca" / decoración superior */
+        div[data-testid="stDecoration"]{
+          display: none !important;
+          height: 0 !important;
+        }
+
+        /* Header transparente (no lo ocultamos) */
         header,
-        header[data-testid="stHeader"],
-        div[data-testid="stDecoration"],
-        #MainMenu,
+        header[data-testid="stHeader"]{
+          background: transparent !important;
+          box-shadow: none !important;
+          border-bottom: 0 !important;
+        }
+
+        /* Toolbar transparente (no la ocultamos) */
+        div.stAppToolbar,
+        div[data-testid="stToolbar"]{
+          background: transparent !important;
+          box-shadow: none !important;
+          border: 0 !important;
+        }
+
+        /* Oculta acciones del toolbar (Share / iconos) */
+        div[data-testid="stToolbarActions"]{
+          display: none !important;
+        }
+
+        /* Oculta menú 3 puntitos */
+        #MainMenu{
+          display: none !important;
+        }
+
+        /* Oculta footer */
         footer{
           display: none !important;
           height: 0 !important;
-          min-height: 0 !important;
-          padding: 0 !important;
-          margin: 0 !important;
+        }
+
+        /* =========================
+           BOTÓN SIDEBAR (móvil/PC cuando está colapsado)
+        ========================= */
+
+        /* Contenedor del botón cuando sidebar está colapsado */
+        div[data-testid="stSidebarCollapsedControl"]{
+          display: flex !important;
+          position: fixed !important;
+          top: 12px !important;
+          left: 12px !important;
+          z-index: 10050 !important;
+        }
+
+        /* Botón (algunas versiones usan stExpandSidebarButton) */
+        button[data-testid="stExpandSidebarButton"],
+        div[data-testid="stSidebarCollapsedControl"] button{
+          background: rgba(255,255,255,0.92) !important;
+          border: 1px solid rgba(15,23,42,0.16) !important;
+          border-radius: 12px !important;
+          padding: 6px 8px !important;
+          box-shadow: 0 10px 24px rgba(2,6,23,0.12) !important;
         }
 
         /* =========================
@@ -121,7 +171,6 @@ def inject_css_responsive():
             background-position: center bottom;
         }
 
-        /* ✅ Como ocultamos stHeader/stToolbar, dejamos padding-top normal */
         .block-container{
             max-width: 1240px;
             padding-top: 1.25rem;
@@ -172,7 +221,7 @@ def inject_css_responsive():
             margin: 14px 0;
         }
 
-        /* (queda por compatibilidad si algún módulo usa fc-header) */
+        /* (compatibilidad si algún módulo usa fc-header) */
         .fc-header{
             background: rgba(255,255,255,0.70);
             border: 1px solid rgba(15,23,42,0.10);
@@ -208,7 +257,7 @@ def inject_css_responsive():
             padding: 16px 18px !important;
         }
 
-        /* Por si quedó algún fc-header vacío viejo, lo mata */
+        /* Si quedó algún fc-header vacío viejo, lo mata */
         div.fc-header:empty{
             display: none !important;
             padding: 0 !important;
@@ -218,7 +267,7 @@ def inject_css_responsive():
             height: 0 !important;
         }
 
-        /* ✅ Más negro el texto default (por ejemplo "Fertilab") y placeholders en móvil */
+        /* ✅ Texto default más oscuro en inputs */
         .stApp input,
         .stApp input:disabled{
             color: #0f172a !important;
@@ -232,7 +281,6 @@ def inject_css_responsive():
             opacity: 1 !important;
         }
 
-        /* Labels más oscuros */
         .stApp label{
             color: #0f172a !important;
         }
@@ -341,6 +389,7 @@ with col_notif:
 
 st.markdown("<hr>", unsafe_allow_html=True)
 
+
 # =========================
 # SIDEBAR
 # =========================
@@ -364,7 +413,6 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
-    # Buscador visual (no afecta la lógica del menú)
     st.text_input("Buscar...", value="", key="sidebar_search", label_visibility="collapsed", placeholder="Buscar...")
 
     st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
@@ -385,12 +433,10 @@ with st.sidebar:
         st.session_state["radio_menu"] = "📄 Pedidos internos"
         st.session_state["ir_a_pedidos"] = False
 
-    # Manejar navegación desde pantalla de inicio (ANTES de crear el radio)
     if st.session_state.get("navegacion_destino"):
         st.session_state["radio_menu"] = st.session_state["navegacion_destino"]
         del st.session_state["navegacion_destino"]
 
-    # Si no hay valor previo, usar Inicio
     if "radio_menu" not in st.session_state:
         st.session_state["radio_menu"] = "🏠 Inicio"
 
@@ -399,6 +445,7 @@ with st.sidebar:
         MENU_OPTIONS,
         key="radio_menu"
     )
+
 
 # =========================
 # ROUTER
