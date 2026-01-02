@@ -158,86 +158,41 @@ def _sb_select(
 
 def _normalizar_articulos_df(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Mapea columnas reales de tu tabla public.articulos (ej: 'Descripción', 'Código Int.')
-    a las columnas esperadas por el módulo (nombre, codigo_interno, etc).
-    NO borra columnas existentes; solo agrega/deriva.
+    ✅ CORREGIDO: Versión simplificada que asume que las columnas en Supabase
+    ya tienen los nombres correctos (nombre, codigo_interno, etc.)
+    Si tu tabla usa nombres diferentes, ajustá el mapeo aquí.
     """
     if df is None or df.empty:
-        return df
-
-    # Helper: encontrar columna alternativa existente
-    def _first_col(cands: List[str]) -> Optional[str]:
-        for c in cands:
-            if c in df.columns:
-                return c
-        return None
-
-    # Nombre
-    if "nombre" not in df.columns:
-        src = _first_col(["Descripción", "Descripcion", "descripcion", "Articulo", "Artículo", "Nombre", "nombre"])
-        if src:
-            df["nombre"] = df[src].astype(str)
-
-    # Familia / Subfamilia / Equipo
-    if "familia" not in df.columns:
-        src = _first_col(["Familia", "familia"])
-        if src:
-            df["familia"] = df[src].astype(str)
-
-    if "subfamilia" not in df.columns:
-        src = _first_col(["Subfamilia", "subfamilia"])
-        if src:
-            df["subfamilia"] = df[src].astype(str)
-
-    if "equipo" not in df.columns:
-        src = _first_col(["Equipo", "equipo"])
-        if src:
-            df["equipo"] = df[src].astype(str)
-
-    # Códigos
-    if "codigo_interno" not in df.columns:
-        src = _first_col(["Código Int.", "Codigo Int.", "codigo_int", "codigo_interno", "Código Interno"])
-        if src:
-            df["codigo_interno"] = df[src].astype(str)
-
-    if "codigo_barra" not in df.columns:
-        src = _first_col(["Código Ext.", "Codigo Ext.", "codigo_ext", "codigo_barra", "Código Barra"])
-        if src:
-            df["codigo_barra"] = df[src].astype(str)
-
-    # Unidad (si existe)
-    if "unidad_base" not in df.columns:
-        src = _first_col(["Unidad", "unidad"])
-        if src:
-            df["unidad_base"] = df[src].astype(str)
-
-    if "unidad_compra" not in df.columns:
-        src = _first_col(["Unidad", "unidad"])
-        if src:
-            df["unidad_compra"] = df[src].astype(str)
-
-    # Tipo (si tu tabla trae 'Tipo Articulo' numérico o texto)
-    if "tipo" not in df.columns:
-        src = _first_col(['Tipo Articulo', 'Tipo Artículo', 'tipo'])
-        if src:
-            df["tipo"] = df[src]
-
-    # Campos que tu tabla probablemente no tenga -> dejarlos como None (para no romper el resto)
+        return pd.DataFrame(columns=ARTICULO_COLS)
+    
+    # Asegurar que existan todas las columnas esperadas (rellena con None las faltantes)
     for c in ARTICULO_COLS:
         if c not in df.columns:
             df[c] = None
-
+    
     # Asegurar id como string si existe
     if "id" in df.columns:
         df["id"] = df["id"].astype(str)
-
+    
+    # Convertir tipos básicos
+    if "activo" in df.columns:
+        df["activo"] = df["activo"].fillna(True).astype(bool)
+    
+    if "fifo" in df.columns:
+        df["fifo"] = df["fifo"].fillna(True).astype(bool)
+        
+    if "tiene_lote" in df.columns:
+        df["tiene_lote"] = df["tiene_lote"].fillna(False).astype(bool)
+        
+    if "requiere_vencimiento" in df.columns:
+        df["requiere_vencimiento"] = df["requiere_vencimiento"].fillna(False).astype(bool)
+    
     # Reordenar a estructura esperada del módulo
-    df = df[ARTICULO_COLS].copy()
-    return df
+    return df[ARTICULO_COLS].copy()
 
 
 # =====================================================================
-# C see? no. Keep as given
+# CACHE FUNCTIONS
 # =====================================================================
 @st.cache_data(ttl=30)
 def _cache_proveedores() -> pd.DataFrame:
@@ -261,86 +216,50 @@ def _cache_proveedores() -> pd.DataFrame:
 @st.cache_data(ttl=30)
 def _cache_articulos_por_tipo(tipo: Optional[str]) -> pd.DataFrame:
     """
-    - Si existe columna 'tipo' real en DB y coincide, filtra server-side.
-    - Si NO existe o falla, trae todo y filtra local (si puede).
-    - Normaliza columnas (Descripción -> nombre, etc) para que el listado muestre algo.
+    ✅ CORREGIDO: Trae artículos y normaliza correctamente
     """
-    # Intento 1: server-side (puede fallar si la columna no existe)
+    # Intento traer datos de Supabase
     if tipo:
-        df_raw = _sb_select("articulos", "*", filters=[("tipo", "eq", tipo)], order=("nombre", True))
+        df_raw = _sb_select("articulos", "*", filters=[("tipo", "eq", tipo)])
     else:
-        df_raw = _sb_select("articulos", "*", order=("nombre", True))
+        df_raw = _sb_select("articulos", "*")
 
-    # ✅ AGREGADO: Debug para ver qué columnas trae realmente
+    # Debug temporal (comentá esto después de verificar)
     if df_raw is not None and not df_raw.empty:
-        st.sidebar.write("DEBUG - Columnas en DB:", df_raw.columns.tolist())
-        st.sidebar.write("DEBUG - Primeras 3 filas:", df_raw.head(3))
+        st.sidebar.write("🔍 DEBUG - Columnas en DB:", df_raw.columns.tolist())
+        st.sidebar.write(f"🔍 DEBUG - Total filas: {len(df_raw)}")
     
     if df_raw is None or df_raw.empty:
+        st.sidebar.warning("⚠️ No se encontraron artículos en la base de datos")
         return pd.DataFrame(columns=ARTICULO_COLS)
 
     # Normalizar columnas al formato del módulo
     df = _normalizar_articulos_df(df_raw)
 
-    # Si pediste tipo y no se pudo filtrar server-side (porque tu DB usa otro campo o numérico),
-    # intentamos filtrar local usando df['tipo'] si trae algo.
+    # Filtro adicional por tipo si no se pudo hacer server-side
     if tipo and df is not None and not df.empty and "tipo" in df.columns:
         try:
             # Caso 1: coincide texto directo
             df_tipo = df[df["tipo"].astype(str).str.strip().str.lower() == str(tipo).strip().lower()].copy()
 
-            # Caso 2: si en tu tabla 'Tipo Articulo' es 1/2/3, probamos mapeo típico
+            # Caso 2: si en tu tabla 'tipo' es numérico (1/2/3)
             if df_tipo.empty:
                 map_num = {"ingreso": "1", "egreso": "2", "gasto_fijo": "3"}
                 target = map_num.get(tipo)
                 if target is not None:
                     df_tipo = df[df["tipo"].astype(str).str.strip() == target].copy()
 
-            # Si no matchea nada, devolvemos igual el df sin filtrar (para que al menos veas listado)
             if not df_tipo.empty:
                 df = df_tipo
-        except Exception:
-            pass
+        except Exception as e:
+            st.sidebar.error(f"Error filtrando por tipo: {e}")
 
     # Orden local por nombre si existe
     try:
-        if "nombre" in df.columns:
+        if "nombre" in df.columns and not df.empty:
             df = df.sort_values("nombre", kind="stable")
     except Exception:
         pass
-
-    return df
-
-
-@st.cache_data(ttl=60)
-def _cache_unicos_chatbot_raw() -> pd.DataFrame:
-    """
-    Devuelve listado único desde public.chatbot_raw:
-    - Articulo (único)
-    - Familia
-    - Tipo Articulo (si existe)
-    """
-    try:
-        # OJO: "Tipo Articulo" tiene espacio -> va entre comillas
-        df = _sb_select("chatbot_raw", 'Articulo,Familia,"Tipo Articulo"', order=("Articulo", True))
-    except Exception:
-        return pd.DataFrame(columns=["Articulo", "Familia", "Tipo Articulo"])
-
-    if df is None or df.empty:
-        return pd.DataFrame(columns=["Articulo", "Familia", "Tipo Articulo"])
-
-    # Normalizar strings
-    for c in ["Articulo", "Familia", "Tipo Articulo"]:
-        if c in df.columns:
-            df[c] = df[c].astype(str).fillna("").str.strip()
-
-    # Filtrar vacíos
-    df = df[df["Articulo"].astype(str).str.strip() != ""].copy()
-    if df.empty:
-        return pd.DataFrame(columns=["Articulo", "Familia", "Tipo Articulo"])
-
-    # Únicos por Articulo
-    df = df.drop_duplicates(subset=["Articulo"], keep="first").reset_index(drop=True)
 
     return df
 
@@ -352,7 +271,7 @@ def _cache_sugerencias_desde_chatbot_raw() -> pd.DataFrame:
     (y trae Familia / Tipo Articulo si existen).
     """
     try:
-        df = _sb_select("chatbot_raw", "Articulo,Familia,Tipo Articulo", order=("Articulo", True))
+        df = _sb_select("chatbot_raw", '"Articulo","Familia","Tipo Articulo"')
     except Exception:
         return pd.DataFrame(columns=["Articulo", "Familia", "Tipo Articulo"])
 
@@ -377,6 +296,63 @@ def _invalidate_caches():
     _cache_proveedores.clear()
     _cache_articulos_por_tipo.clear()
     _cache_sugerencias_desde_chatbot_raw.clear()
+
+
+# =====================================================================
+# SUPABASE UPSERT/INSERT HELPERS
+# =====================================================================
+def _sb_upsert_articulo(payload: Dict[str, Any]) -> Tuple[bool, str, Optional[Dict]]:
+    """
+    Inserta o actualiza un artículo.
+    Retorna: (success, mensaje, row)
+    """
+    try:
+        # Si tiene id, es UPDATE
+        if payload.get("id"):
+            art_id = payload.pop("id")
+            payload["updated_at"] = datetime.utcnow().isoformat()
+            
+            res = supabase.table("articulos").update(payload).eq("id", art_id).execute()
+            data = getattr(res, "data", None) or []
+            if data:
+                return True, "Actualizado correctamente", data[0]
+            return False, "No se encontró el artículo", None
+        else:
+            # INSERT
+            payload["created_at"] = datetime.utcnow().isoformat()
+            payload["updated_at"] = datetime.utcnow().isoformat()
+            
+            res = supabase.table("articulos").insert(payload).execute()
+            data = getattr(res, "data", None) or []
+            if data:
+                return True, "Creado correctamente", data[0]
+            return False, "Error al crear", None
+            
+    except Exception as e:
+        return False, f"Error: {str(e)}", None
+
+
+def _sb_insert_archivo(payload: Dict[str, Any]) -> bool:
+    """
+    Inserta registro en articulo_archivos (opcional).
+    Si la tabla no existe, no hace nada.
+    """
+    try:
+        supabase.table("articulo_archivos").insert(payload).execute()
+        return True
+    except Exception:
+        return False
+
+
+def _sb_upload_storage(bucket: str, path: str, data: bytes, mime_type: str) -> Tuple[bool, str]:
+    """
+    Sube archivo a Supabase Storage.
+    """
+    try:
+        supabase.storage.from_(bucket).upload(path, data, {"content-type": mime_type})
+        return True, ""
+    except Exception as e:
+        return False, str(e)
 
 
 # =====================================================================
@@ -433,16 +409,18 @@ def _aplicar_historial_precio_minimo(payload: Dict[str, Any], current_row: Optio
         # Setear fecha del nuevo actual
         payload["fecha_precio_actual"] = datetime.utcnow().isoformat()
 
-    # Si NO cambió, NO toques fechas.
     return payload
 
 
 # =====================================================================
-# UI
+# UI COMPONENTS
 # =====================================================================
 def _grid(df: pd.DataFrame) -> Optional[Dict[str, Any]]:
+    """
+    ✅ CORREGIDO: Muestra grid con validación mejorada
+    """
     if df is None or df.empty:
-        st.info("Sin artículos para mostrar.")
+        st.info("📭 Sin artículos para mostrar")
         return None
 
     # Vista para listado (columna id solo para selección)
@@ -461,6 +439,8 @@ def _grid(df: pd.DataFrame) -> Optional[Dict[str, Any]]:
         "updated_at",
         "id",
     ]
+    
+    # Asegurar que existen todas las columnas
     for c in view_cols:
         if c not in df.columns:
             df[c] = None
@@ -468,7 +448,7 @@ def _grid(df: pd.DataFrame) -> Optional[Dict[str, Any]]:
     vdf = df[view_cols].copy()
 
     # Mostrar cantidad
-    st.caption(f"Mostrando {len(vdf)} artículo(s).")
+    st.caption(f"📊 Mostrando {len(vdf)} artículo(s)")
 
     # Sin AgGrid: solo tabla (sin selección)
     if AgGrid is None:
@@ -498,7 +478,7 @@ def _grid(df: pd.DataFrame) -> Optional[Dict[str, Any]]:
 def _selector_proveedor(current_id: Optional[str]) -> Optional[str]:
     dfp = _cache_proveedores()
     if dfp.empty:
-        st.caption("Sin proveedores (tabla proveedores vacía o no existe).")
+        st.caption("⚠️ Sin proveedores (tabla proveedores vacía o no existe)")
         return current_id
 
     options = ["(sin proveedor)"] + dfp["nombre"].tolist()
@@ -517,8 +497,11 @@ def _selector_proveedor(current_id: Optional[str]) -> Optional[str]:
 
 
 def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[str]:
+    """
+    ✅ CORREGIDO: Form mejorado con mejor manejo de datos
+    """
     is_edit = bool(selected and selected.get("id"))
-    st.subheader("Editar artículo" if is_edit else "Nuevo artículo")
+    st.subheader("✏️ Editar artículo" if is_edit else "➕ Nuevo artículo")
 
     # Valores actuales (si edita): traemos fila completa desde df cache para comparar precio
     current_row = None
@@ -568,7 +551,6 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
             subfamilia = st.text_input("Subfamilia", value=str(base.get("subfamilia") or ""))
             equipo = st.text_input("Equipo", value=str(base.get("equipo") or ""))
 
-            # Proveedor: si no existe tabla, _cache_proveedores devuelve vacío y no rompe
             proveedor_id = _selector_proveedor(str(base.get("proveedor_id") or "") or None)
 
         with col2:
@@ -667,7 +649,7 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
         return None
 
     if not nombre.strip():
-        st.error("Nombre es obligatorio.")
+        st.error("❌ Nombre es obligatorio")
         return None
 
     payload: Dict[str, Any] = {
@@ -708,11 +690,11 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
 
     ok, msg, row = _sb_upsert_articulo(payload)
     if not ok:
-        st.error(f"No se pudo guardar: {msg}")
+        st.error(f"❌ No se pudo guardar: {msg}")
         return None
 
     _invalidate_caches()
-    st.success("Guardado.")
+    st.success(f"✅ {msg}")
     st.session_state["articulos_prefill"] = None
 
     # Devolver ID guardado
@@ -724,7 +706,10 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
 
 
 def _ui_archivos(articulo_id: str):
-    st.markdown("### Archivos (imágenes / manuales)")
+    """
+    UI para subir archivos (imágenes/manuales)
+    """
+    st.markdown("### 📎 Archivos (imágenes / manuales)")
 
     col1, col2 = st.columns(2)
 
@@ -732,7 +717,7 @@ def _ui_archivos(articulo_id: str):
         img = st.file_uploader("Subir imagen", type=["png", "jpg", "jpeg", "webp"], key=f"up_img_{articulo_id}")
         if st.button("⬆️ Subir imagen", key=f"btn_img_{articulo_id}", use_container_width=True):
             if img is None:
-                st.error("Seleccioná una imagen.")
+                st.error("❌ Seleccioná una imagen")
             else:
                 raw = img.getvalue()
                 ext = ""
@@ -741,9 +726,8 @@ def _ui_archivos(articulo_id: str):
                 path = f"{articulo_id}/imagen_{uuid.uuid4().hex}{ext}"
                 ok, err = _sb_upload_storage(BUCKET_ARTICULOS, path, raw, getattr(img, "type", "") or "")
                 if not ok:
-                    st.error(f"Error storage: {err}")
+                    st.error(f"❌ Error storage: {err}")
                 else:
-                    # Registrar si existe tabla articulo_archivos (opcional)
                     payload = {
                         "articulo_id": articulo_id,
                         "tipo": "imagen",
@@ -755,19 +739,19 @@ def _ui_archivos(articulo_id: str):
                         "created_at": datetime.utcnow().isoformat(),
                     }
                     _sb_insert_archivo(payload)
-                    st.success("Imagen subida.")
+                    st.success("✅ Imagen subida")
 
     with col2:
         pdf = st.file_uploader("Subir manual (PDF)", type=["pdf"], key=f"up_pdf_{articulo_id}")
         if st.button("⬆️ Subir manual", key=f"btn_pdf_{articulo_id}", use_container_width=True):
             if pdf is None:
-                st.error("Seleccioná un PDF.")
+                st.error("❌ Seleccioná un PDF")
             else:
                 raw = pdf.getvalue()
                 path = f"{articulo_id}/manual_{uuid.uuid4().hex}.pdf"
                 ok, err = _sb_upload_storage(BUCKET_ARTICULOS, path, raw, getattr(pdf, "type", "") or "application/pdf")
                 if not ok:
-                    st.error(f"Error storage: {err}")
+                    st.error(f"❌ Error storage: {err}")
                 else:
                     payload = {
                         "articulo_id": articulo_id,
@@ -780,23 +764,26 @@ def _ui_archivos(articulo_id: str):
                         "created_at": datetime.utcnow().isoformat(),
                     }
                     _sb_insert_archivo(payload)
-                    st.success("Manual subido.")
+                    st.success("✅ Manual subido")
 
     # Listado si existe tabla articulo_archivos
     try:
-        df = _sb_select("articulo_archivos", "*", filters=[("articulo_id", "eq", articulo_id)], order=("created_at", False))
+        df = _sb_select("articulo_archivos", "*", filters=[("articulo_id", "eq", articulo_id)])
         if not df.empty:
             st.dataframe(df[["tipo", "nombre_archivo", "storage_path", "created_at"]], use_container_width=True)
         else:
-            st.caption("Sin registros en articulo_archivos (o tabla vacía).")
+            st.caption("📭 Sin registros en articulo_archivos")
     except Exception:
-        st.caption("Tabla articulo_archivos no disponible (opcional).")
+        st.caption("⚠️ Tabla articulo_archivos no disponible (opcional)")
 
 
 # =====================================================================
 # FUNCIÓN PRINCIPAL DEL MÓDULO
 # =====================================================================
 def mostrar_articulos():
+    """
+    ✅ FUNCIÓN PRINCIPAL - Mejorada con mejor debugging
+    """
     st.title("📚 Artículos")
 
     if "articulos_sel" not in st.session_state:
@@ -809,10 +796,10 @@ def mostrar_articulos():
     tipo_label = st.radio("Categoría", list(TIPOS.keys()), horizontal=True)
     tipo = TIPOS[tipo_label]
 
-    # ✅ AGREGADO: clave segura para keys cuando tipo es None
+    # ✅ Clave segura para keys cuando tipo es None
     tipo_key = tipo if tipo else "todos"
 
-    # Tabs para que no quede “desparramado”
+    # Tabs para que no quede "desparramado"
     tab_listado, tab_form = st.tabs(["📋 Listado", "📝 Nuevo / Editar"])
 
     # -------------------------
@@ -822,7 +809,7 @@ def mostrar_articulos():
         c1, c2 = st.columns([0.86, 0.14])
         with c1:
             filtro = st.text_input(
-                "Buscar (nombre / códigos / familia / subfamilia / equipo)",
+                "🔍 Buscar (nombre / códigos / familia / subfamilia / equipo)",
                 key="articulos_busqueda",
                 placeholder="Vacío = muestra todos",
             )
@@ -844,7 +831,6 @@ def mostrar_articulos():
             def _col_as_str(s: pd.Series) -> pd.Series:
                 return s.fillna("").astype(str).str.lower()
 
-            # Columnas donde buscar (incluye campos numéricos pasados a str)
             cols_busqueda = [
                 "nombre",
                 "codigo_interno",
@@ -856,18 +842,12 @@ def mostrar_articulos():
                 "unidad_compra",
                 "iva",
                 "moneda_actual",
-                "precio_actual",
-                "stock_min",
-                "stock_max",
             ]
-
-            for c in cols_busqueda:
-                if c not in df.columns:
-                    df[c] = ""
 
             mask = False
             for c in cols_busqueda:
-                mask = mask | _col_as_str(df[c]).str.contains(t, na=False, regex=False)
+                if c in df.columns:
+                    mask = mask | _col_as_str(df[c]).str.contains(t, na=False, regex=False)
 
             df = df[mask].copy()
 
@@ -875,7 +855,7 @@ def mostrar_articulos():
 
         if selected_row and selected_row.get("id"):
             st.session_state["articulos_sel"] = {"id": selected_row["id"]}
-            st.info("Artículo seleccionado. Abrí la pestaña “Nuevo / Editar” para modificarlo.")
+            st.info("✅ Artículo seleccionado. Abrí la pestaña "Nuevo / Editar" para modificarlo.")
 
     # -------------------------
     # TAB FORM
@@ -891,7 +871,7 @@ def mostrar_articulos():
                 _invalidate_caches()
                 st.rerun()
 
-        # ✅ AGREGADO: si estás en "Todos", el form necesita un tipo real para crear/editar
+        # Si estás en "Todos", el form necesita un tipo real para crear/editar
         tipo_form = tipo if tipo else "ingreso"
 
         saved_id = _form_articulo(tipo_form, st.session_state.get("articulos_sel"))
@@ -905,5 +885,3 @@ def mostrar_articulos():
             if sel and sel.get("id"):
                 st.markdown("---")
                 _ui_archivos(str(sel["id"]))
-
-
