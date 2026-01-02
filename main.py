@@ -57,21 +57,59 @@ def inject_css_responsive():
         """
         <style>
         /* =========================
-           OCULTAR BARRA SUPERIOR STREAMLIT (Share / menú / icons / barra blanca)
+           OCULTAR TOP BAR (Share / menú / icons) PERO DEJAR BOTÓN SIDEBAR (móvil)
         ========================= */
-        div.stAppToolbar,
-        div[data-testid="stToolbar"],
-        div[data-testid="stToolbarActions"],
+
+        /* Oculta acciones (Share / icons) */
+        div[data-testid="stToolbarActions"]{
+          display: none !important;
+        }
+
+        /* Oculta menú de 3 puntitos */
+        #MainMenu{
+          display: none !important;
+        }
+
+        /* Oculta header y footer */
         header,
         header[data-testid="stHeader"],
-        div[data-testid="stDecoration"],
-        #MainMenu,
         footer{
           display: none !important;
           height: 0 !important;
           min-height: 0 !important;
           padding: 0 !important;
           margin: 0 !important;
+        }
+
+        /* Oculta la barrita/decoration */
+        div[data-testid="stDecoration"]{
+          display: none !important;
+          height: 0 !important;
+          min-height: 0 !important;
+        }
+
+        /* NO ocultamos stToolbar porque ahí vive el botón del sidebar.
+           La dejamos sin “franja” visible */
+        div[data-testid="stToolbar"]{
+          background: transparent !important;
+          height: 0 !important;
+          min-height: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        /* Botón abrir/cerrar sidebar visible en móvil */
+        button[data-testid="stExpandSidebarButton"],
+        div[data-testid="stSidebarCollapsedControl"] button{
+          position: fixed !important;
+          top: 12px !important;
+          left: 12px !important;
+          z-index: 10001 !important;
+          background: rgba(255,255,255,0.90) !important;
+          border: 1px solid rgba(15,23,42,0.14) !important;
+          border-radius: 12px !important;
+          padding: 6px 8px !important;
+          box-shadow: 0 10px 24px rgba(2,6,23,0.12) !important;
         }
 
         /* =========================
@@ -121,7 +159,6 @@ def inject_css_responsive():
             background-position: center bottom;
         }
 
-        /* ✅ Como ocultamos stHeader/stToolbar, dejamos padding-top normal */
         .block-container{
             max-width: 1240px;
             padding-top: 1.25rem;
@@ -291,7 +328,6 @@ def inject_css_responsive():
         """,
         unsafe_allow_html=True
     )
-
 
 # =========================
 # INICIALIZACIÓN
