@@ -237,6 +237,28 @@ require_auth()
 
 user = get_current_user() or {}
 
+/* Ocultar toolbar superior (Share / menú / icons) */
+div[data-testid="stToolbar"]{
+  display: none !important;
+  height: 0 !important;
+}
+
+/* Ocultar el menú de 3 puntitos (MainMenu) si quedara */
+#MainMenu{
+  display: none !important;
+}
+
+/* Ocultar footer/branding si aparece */
+footer{
+  display: none !important;
+}
+
+/* Opcional: si queda un “espacio” arriba, lo eliminamos */
+header{
+  visibility: hidden !important;
+  height: 0 !important;
+}
+
 # =========================
 # TÍTULO Y CAMPANITA
 # =========================
