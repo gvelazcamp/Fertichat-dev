@@ -1,5 +1,5 @@
 # =========================
-# MAIN.PY - MENÚ HAMBURGUESA ARRIBA (ARREGLADO PARA MÓVIL)
+# MAIN.PY - MENÚ MÓVIL SIN IFRAME
 # =========================
 
 import streamlit as st
@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="FertiChat",
     page_icon="🦋",
     layout="wide",
-    initial_sidebar_state="expanded"  # Solo para PC
+    initial_sidebar_state="expanded"
 )
 
 # =========================
@@ -34,143 +34,128 @@ from familias import mostrar_familias
 
 
 # =========================
-# CSS + MENÚ MÓVIL HAMBURGUESA
+# CSS GLOBAL + MENÚ MÓVIL
 # =========================
-def inject_css():
+def inject_css_and_mobile_menu():
+    user = st.session_state.get("user", {})
+    menu_actual = st.session_state.get("radio_menu", "🏠 Inicio")
+    
+    # Generar items del menú
+    menu_items_html = ""
+    for opcion in MENU_OPTIONS:
+        active_class = "fc-active" if opcion == menu_actual else ""
+        menu_items_html += f'''
+            <a href="?menu={opcion}" class="fc-menu-item {active_class}">{opcion}</a>
+        '''
+    
     st.markdown(
-        """
+        f"""
         <style>
-        /* Ocultar elementos de Streamlit */
+        /* =========================
+           OCULTAR UI DE STREAMLIT
+        ========================= */
         div.stAppToolbar,
         div[data-testid="stToolbar"],
         div[data-testid="stToolbarActions"],
         div[data-testid="stDecoration"],
         #MainMenu,
-        footer{
+        footer {{
           display: none !important;
-        }
+        }}
 
-        header[data-testid="stHeader"]{
+        header[data-testid="stHeader"] {{
           height: 0 !important;
           background: transparent !important;
-        }
+        }}
 
-        /* Theme */
-        :root{
+        /* =========================
+           THEME GENERAL
+        ========================= */
+        :root {{
             --fc-bg-1: #f6f4ef;
             --fc-bg-2: #f3f6fb;
             --fc-primary: #0b3b60;
             --fc-accent: #f59e0b;
-        }
+        }}
 
-        html, body{
+        html, body {{
             font-family: Inter, system-ui, sans-serif;
             color: #0f172a;
-        }
+        }}
 
-        [data-testid="stAppViewContainer"]{
+        [data-testid="stAppViewContainer"] {{
             background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2));
-        }
+        }}
 
-        .block-container{
+        .block-container {{
             max-width: 1240px;
-            padding-top: 1.25rem;
             padding-bottom: 2.25rem;
-        }
+        }}
 
-        /* Sidebar PC */
-        section[data-testid="stSidebar"]{
+        /* =========================
+           SIDEBAR PC
+        ========================= */
+        section[data-testid="stSidebar"] {{
             border-right: 1px solid rgba(15, 23, 42, 0.08);
-        }
-        section[data-testid="stSidebar"] > div{
+        }}
+        section[data-testid="stSidebar"] > div {{
             background: rgba(255,255,255,0.70);
             backdrop-filter: blur(8px);
-        }
+        }}
 
-        div[data-testid="stSidebar"] div[role="radiogroup"] label{
+        div[data-testid="stSidebar"] div[role="radiogroup"] label {{
             border-radius: 12px;
             padding: 8px 10px;
             margin: 3px 0;
             border: 1px solid transparent;
-        }
-        div[data-testid="stSidebar"] div[role="radiogroup"] label:hover{
+        }}
+        div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
             background: rgba(37,99,235,0.06);
-        }
-        div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){
+        }}
+        div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
             background: rgba(245,158,11,0.10);
             border: 1px solid rgba(245,158,11,0.18);
-        }
+        }}
 
-        /* ========================================
-           MÓVIL - Ocultar sidebar y ajustar padding
-        ======================================== */
-        @media (max-width: 768px){
-            
-            /* Ocultar sidebar de Streamlit en móvil */
-            section[data-testid="stSidebar"]{
-                display: none !important;
-            }
-
-            /* Padding para el header móvil */
-            .block-container{
-                padding-top: 70px !important;
-            }
-        }
-
-        /* PC - Normal */
-        @media (min-width: 769px){
-            .block-container{
+        /* =========================
+           PC - NORMAL
+        ========================= */
+        @media (min-width: 769px) {{
+            .block-container {{
                 padding-top: 1.25rem !important;
-            }
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-# =========================
-# MENÚ MÓVIL HTML - ARREGLADO
-# =========================
-def render_mobile_menu():
-    import streamlit.components.v1 as components
-    
-    user = st.session_state.get("user", {})
-    menu_actual = st.session_state.get("radio_menu", "🏠 Inicio")
-    
-    # Generar items del menú como string
-    menu_items_html = ""
-    for opcion in MENU_OPTIONS:
-        active_class = "active" if opcion == menu_actual else ""
-        # Escapar comillas simples en la opción
-        opcion_safe = opcion.replace("'", "\\'")
-        menu_items_html += f"""
-            <div class="mobile-menu-item {active_class}" onclick="navegarMenu('{opcion_safe}')">
-                {opcion}
-            </div>
-        """
-    
-    menu_html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            
-            body {{
-                font-family: Inter, system-ui, sans-serif;
             }}
             
-            /* Header móvil fijo arriba */
-            #mobile-header{{
+            /* Ocultar menú móvil en PC */
+            #fc-mobile-header,
+            #fc-mobile-menu,
+            #fc-mobile-overlay {{
+                display: none !important;
+            }}
+        }}
+
+        /* =========================
+           MÓVIL
+        ========================= */
+        @media (max-width: 768px) {{
+            /* Ocultar sidebar */
+            section[data-testid="stSidebar"] {{
+                display: none !important;
+            }}
+
+            /* Espacio para el header fijo */
+            .block-container {{
+                padding-top: 70px !important;
+            }}
+
+            /* Header móvil fijo */
+            #fc-mobile-header {{
                 position: fixed;
                 top: 0;
                 left: 0;
                 right: 0;
                 height: 56px;
                 background: #0b3b60;
-                z-index: 99999;
+                z-index: 999999;
                 display: flex;
                 align-items: center;
                 padding: 0 12px;
@@ -178,7 +163,7 @@ def render_mobile_menu():
             }}
 
             /* Botón hamburguesa */
-            #menu-toggle{{
+            #fc-menu-toggle {{
                 width: 44px;
                 height: 44px;
                 background: transparent;
@@ -193,7 +178,7 @@ def render_mobile_menu():
                 -webkit-tap-highlight-color: transparent;
             }}
 
-            #menu-toggle span{{
+            #fc-menu-toggle span {{
                 width: 24px;
                 height: 3px;
                 background: white;
@@ -202,95 +187,65 @@ def render_mobile_menu():
                 display: block;
             }}
 
-            /* Animación del botón cuando está abierto */
-            #menu-toggle.open span:nth-child(1){{
+            #fc-menu-toggle.open span:nth-child(1) {{
                 transform: rotate(45deg) translate(6px, 6px);
             }}
-            #menu-toggle.open span:nth-child(2){{
+            #fc-menu-toggle.open span:nth-child(2) {{
                 opacity: 0;
             }}
-            #menu-toggle.open span:nth-child(3){{
+            #fc-menu-toggle.open span:nth-child(3) {{
                 transform: rotate(-45deg) translate(6px, -6px);
             }}
 
-            /* Logo en el header */
-            #mobile-logo{{
+            #fc-mobile-logo {{
                 color: white;
                 font-size: 20px;
                 font-weight: 800;
                 margin-left: 12px;
             }}
 
-            /* Menú desplegable */
-            #mobile-menu{{
-                position: fixed;
-                top: 56px;
-                left: 0;
-                width: 280px;
-                height: calc(100vh - 56px);
-                background: rgba(255,255,255,0.98);
-                backdrop-filter: blur(12px);
-                box-shadow: 4px 0 12px rgba(0,0,0,0.15);
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-                z-index: 99998;
-                overflow-y: auto;
-                padding: 16px;
-            }}
-
-            #mobile-menu.open{{
-                transform: translateX(0);
-            }}
-
             /* Overlay */
-            #mobile-overlay{{
+            #fc-mobile-overlay {{
                 position: fixed;
                 top: 56px;
                 left: 0;
                 right: 0;
                 bottom: 0;
                 background: rgba(0,0,0,0.5);
-                z-index: 99997;
+                z-index: 999998;
                 opacity: 0;
                 visibility: hidden;
                 transition: all 0.3s;
             }}
 
-            #mobile-overlay.open{{
+            #fc-mobile-overlay.open {{
                 opacity: 1;
                 visibility: visible;
             }}
 
-            /* Items del menú móvil */
-            .mobile-menu-item{{
-                padding: 14px 16px;
-                margin: 6px 0;
-                border-radius: 10px;
-                background: rgba(248,250,252,0.8);
-                border: 1px solid rgba(15,23,42,0.1);
-                cursor: pointer;
-                color: #0f172a;
-                font-size: 15px;
-                font-weight: 500;
-                transition: all 0.15s;
-                -webkit-tap-highlight-color: transparent;
+            /* Menú lateral */
+            #fc-mobile-menu {{
+                position: fixed;
+                top: 56px;
+                left: 0;
+                width: 280px;
+                height: calc(100vh - 56px);
+                height: calc(100dvh - 56px);
+                background: rgba(255,255,255,0.98);
+                box-shadow: 4px 0 12px rgba(0,0,0,0.15);
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 999999;
+                overflow-y: auto;
+                padding: 16px;
             }}
 
-            .mobile-menu-item:hover,
-            .mobile-menu-item:active{{
-                background: rgba(245,158,11,0.1);
-                border-color: rgba(245,158,11,0.2);
+            #fc-mobile-menu.open {{
+                transform: translateX(0);
             }}
 
-            .mobile-menu-item.active{{
-                background: rgba(245,158,11,0.15);
-                border-color: rgba(245,158,11,0.3);
-                font-weight: 700;
-                color: #0b3b60;
-            }}
-
-            /* Info del usuario en menú móvil */
-            .mobile-user-info{{
+            /* Info usuario */
+            .fc-user-info {{
                 background: rgba(248,250,252,0.9);
                 padding: 14px;
                 border-radius: 12px;
@@ -298,117 +253,112 @@ def render_mobile_menu():
                 border: 1px solid rgba(15,23,42,0.1);
             }}
 
-            .mobile-user-info div{{
+            .fc-user-info div {{
                 color: #0f172a;
                 font-size: 14px;
                 margin: 4px 0;
             }}
-            
-            .mobile-logout{{
+
+            .fc-section-label {{
+                color: #64748b;
+                font-size: 11px;
+                font-weight: 800;
+                text-transform: uppercase;
+                margin: 12px 0 8px 4px;
+            }}
+
+            /* Items del menú */
+            .fc-menu-item {{
+                display: block;
+                padding: 14px 16px;
+                margin: 6px 0;
+                border-radius: 10px;
+                background: rgba(248,250,252,0.8);
+                border: 1px solid rgba(15,23,42,0.1);
+                cursor: pointer;
+                color: #0f172a !important;
+                font-size: 15px;
+                font-weight: 500;
+                text-decoration: none !important;
+                -webkit-tap-highlight-color: transparent;
+            }}
+
+            .fc-menu-item:active {{
+                background: rgba(245,158,11,0.1);
+                border-color: rgba(245,158,11,0.2);
+            }}
+
+            .fc-menu-item.fc-active {{
+                background: rgba(245,158,11,0.15);
+                border-color: rgba(245,158,11,0.3);
+                font-weight: 700;
+                color: #0b3b60 !important;
+            }}
+
+            .fc-logout {{
+                display: block;
                 padding: 14px 16px;
                 margin: 16px 0 6px 0;
                 border-radius: 10px;
                 background: rgba(244,63,94,0.08);
                 border: 1px solid rgba(244,63,94,0.2);
                 cursor: pointer;
-                color: #dc2626;
+                color: #dc2626 !important;
                 font-size: 15px;
                 font-weight: 600;
+                text-decoration: none !important;
                 -webkit-tap-highlight-color: transparent;
             }}
-            
-            .mobile-logout:active{{
+
+            .fc-logout:active {{
                 background: rgba(244,63,94,0.15);
             }}
-            
-            /* Ocultar en PC */
-            @media (min-width: 769px) {{
-                #mobile-header,
-                #mobile-menu,
-                #mobile-overlay {{
-                    display: none !important;
-                }}
-            }}
+        }}
         </style>
-    </head>
-    <body>
-        <!-- Header móvil -->
-        <div id="mobile-header">
-            <button id="menu-toggle" onclick="toggleMenu()">
+
+        <!-- HEADER MÓVIL -->
+        <div id="fc-mobile-header">
+            <button id="fc-menu-toggle" onclick="fcToggleMenu()">
                 <span></span>
                 <span></span>
                 <span></span>
             </button>
-            <div id="mobile-logo">🦋 FertiChat</div>
+            <div id="fc-mobile-logo">🦋 FertiChat</div>
         </div>
 
-        <!-- Overlay -->
-        <div id="mobile-overlay" onclick="toggleMenu()"></div>
+        <!-- OVERLAY -->
+        <div id="fc-mobile-overlay" onclick="fcToggleMenu()"></div>
 
-        <!-- Menú desplegable -->
-        <div id="mobile-menu">
-            <div class="mobile-user-info">
+        <!-- MENÚ LATERAL -->
+        <div id="fc-mobile-menu">
+            <div class="fc-user-info">
                 <div style="font-weight:700;">👤 {user.get('nombre', 'Usuario')}</div>
                 <div style="font-size:12px;color:#64748b;">🏢 {user.get('empresa', 'Empresa')}</div>
                 <div style="font-size:12px;color:#64748b;">📧 {user.get('Usuario', '')}</div>
             </div>
 
-            <div style="color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase;margin:12px 0 8px 4px;">
-                📌 Menú
-            </div>
+            <div class="fc-section-label">📌 Menú</div>
             
             {menu_items_html}
             
-            <div class="mobile-logout" onclick="cerrarSesion()">
-                🚪 Cerrar sesión
-            </div>
+            <a href="?logout=1" class="fc-logout">🚪 Cerrar sesión</a>
         </div>
 
         <script>
-            function toggleMenu() {{
-                document.getElementById('menu-toggle').classList.toggle('open');
-                document.getElementById('mobile-menu').classList.toggle('open');
-                document.getElementById('mobile-overlay').classList.toggle('open');
-            }}
-            
-            // *** CLAVE: usar window.parent para salir del iframe ***
-            function navegarMenu(opcion) {{
-                try {{
-                    var parentUrl = window.parent.location.href;
-                    var url = new URL(parentUrl);
-                    // Limpiar otros params
-                    url.search = '';
-                    url.searchParams.set('menu', opcion);
-                    window.parent.location.href = url.toString();
-                }} catch(e) {{
-                    window.parent.location.href = '/?menu=' + encodeURIComponent(opcion);
-                }}
-            }}
-            
-            function cerrarSesion() {{
-                try {{
-                    var parentUrl = window.parent.location.href;
-                    var url = new URL(parentUrl);
-                    url.search = '';
-                    url.searchParams.set('logout', '1');
-                    window.parent.location.href = url.toString();
-                }} catch(e) {{
-                    window.parent.location.href = '/?logout=1';
-                }}
+            function fcToggleMenu() {{
+                document.getElementById('fc-menu-toggle').classList.toggle('open');
+                document.getElementById('fc-mobile-menu').classList.toggle('open');
+                document.getElementById('fc-mobile-overlay').classList.toggle('open');
             }}
         </script>
-    </body>
-    </html>
-    """
-    
-    # IMPORTANTE: height mayor que 0 para que funcione el fixed positioning
-    components.html(menu_html, height=60, scrolling=False)
+        """,
+        unsafe_allow_html=True
+    )
 
 
 # =========================
 # INICIALIZACIÓN
 # =========================
-inject_css()
 init_db()
 require_auth()
 
@@ -418,7 +368,7 @@ user = get_current_user() or {}
 if "radio_menu" not in st.session_state:
     st.session_state["radio_menu"] = "🏠 Inicio"
 
-# Manejar navegación desde menú móvil y tarjetas
+# Manejar navegación desde menú móvil
 try:
     menu_param = st.query_params.get("menu")
     if menu_param and menu_param in MENU_OPTIONS:
@@ -433,8 +383,8 @@ try:
 except:
     pass
 
-# Renderizar menú móvil
-render_mobile_menu()
+# Inyectar CSS y menú móvil
+inject_css_and_mobile_menu()
 
 # =========================
 # TÍTULO Y CAMPANITA
