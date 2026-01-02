@@ -22,6 +22,9 @@ from utils_openai import (
     recomendar_como_preguntar,
 )
 
+# Importar de intent_detector
+from intent_detector import normalizar_texto
+
 
 def render_orquestador_output(pregunta_original: str, respuesta: str, df: Optional[pd.DataFrame]):
     """
