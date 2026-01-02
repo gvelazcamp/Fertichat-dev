@@ -140,7 +140,6 @@ def _sb_select(
         if ("42703" in msg) or ("does not exist" in msg.lower()) or ("undefined_column" in msg.lower()):
             pass
         else:
-            st.error(f"Error en _sb_select: {msg}")
             return pd.DataFrame()
 
     # 2) Reintento sin order
@@ -153,7 +152,6 @@ def _sb_select(
         if ("42703" in msg2) or ("does not exist" in msg2.lower()) or ("undefined_column" in msg2.lower()):
             pass
         else:
-            st.error(f"Error en _sb_select (sin order): {msg2}")
             return pd.DataFrame()
 
     # 3) Reintento sin filtros ni order
@@ -161,71 +159,148 @@ def _sb_select(
         res = _build_query(None, None).execute()
         data = getattr(res, "data", None) or []
         return pd.DataFrame(data)
-    except Exception as e3:
-        st.error(f"Error crítico en _sb_select: {str(e3)}")
+    except Exception:
         return pd.DataFrame()
 
 
 def _normalizar_articulos_df(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Normaliza el DataFrame para que tenga todas las columnas esperadas
+    ✅ MAPEO ESPECÍFICO PARA TU BASE DE DATOS
+    Columnas reales de Supabase -> columnas esperadas por el módulo
     """
     if df is None or df.empty:
         return pd.DataFrame(columns=ARTICULO_COLS)
     
-    # Asegurar que existan todas las columnas esperadas
+    # ========================================
+    # MAPEO DE COLUMNAS (según tu estructura)
+    # ========================================
+    mapeo = {
+        # Columnas que vi en tus capturas
+        "Id": "id",
+        "Descripción": "nombre",
+        "Familia": "familia",
+        "Código Int.": "codigo_interno",
+        "Código Ext.": "codigo_barra",
+        "Unidad": "unidad_base",
+        "Tipo Articulo": "tipo",
+        "Tipo Impuesto": "iva",
+        "Tipo Origen": "tipo",
+        "Proveedor": "proveedor_id",
+        "Activo": "activo",
+        "Mueve Stock": "fifo",
+        "e-Commerce": "activo",
+        "Stock Minimo": "stock_min",
+        "Stock Maximo": "stock_max",
+        "Cuenta Compra": "descripcion",
+        "Cuenta Venta": "descripcion",
+        "Cuenta Venta Exc.": "descripcion",
+        "Cuenta Costo Venta": "descripcion",
+    }
+    
+    # Renombrar columnas que existan
+    for old_name, new_name in mapeo.items():
+        if old_name in df.columns and new_name not in df.columns:
+            df[new_name] = df[old_name]
+    
+    # Asegurar que existan TODAS las columnas esperadas
     for c in ARTICULO_COLS:
         if c not in df.columns:
             df[c] = None
     
-    # Convertir tipos
+    # ========================================
+    # CONVERSIÓN DE TIPOS
+    # ========================================
+    
+    # ID como string
     if "id" in df.columns:
         df["id"] = df["id"].astype(str)
     
+    # Booleanos con valores por defecto
     if "activo" in df.columns:
         df["activo"] = df["activo"].fillna(True).astype(bool)
+    else:
+        df["activo"] = True
     
     if "fifo" in df.columns:
         df["fifo"] = df["fifo"].fillna(True).astype(bool)
+    else:
+        df["fifo"] = True
         
     if "tiene_lote" in df.columns:
         df["tiene_lote"] = df["tiene_lote"].fillna(False).astype(bool)
+    else:
+        df["tiene_lote"] = False
         
     if "requiere_vencimiento" in df.columns:
         df["requiere_vencimiento"] = df["requiere_vencimiento"].fillna(False).astype(bool)
+    else:
+        df["requiere_vencimiento"] = False
     
     # Normalizar strings
     for col in ["nombre", "codigo_interno", "codigo_barra", "familia", "subfamilia", "equipo"]:
         if col in df.columns:
             df[col] = df[col].fillna("").astype(str)
     
+    # Normalizar tipo (puede venir como número o texto)
+    if "tipo" in df.columns:
+        df["tipo"] = df["tipo"].fillna("").astype(str).str.strip()
+    
+    # Valores por defecto para campos opcionales
+    if df["unidad_base"].isna().all():
+        df["unidad_base"] = "unidad"
+    
+    if df["unidad_compra"].isna().all():
+        df["unidad_compra"] = "unidad"
+    
+    if df["contenido_por_unidad_compra"].isna().all():
+        df["contenido_por_unidad_compra"] = 1.0
+    
+    if df["iva"].isna().all():
+        df["iva"] = "basico_22"
+    
+    # Retornar solo las columnas esperadas
     return df[ARTICULO_COLS].copy()
 
 
 def _sb_upsert_articulo(payload: Dict[str, Any]) -> Tuple[bool, str, Optional[Dict]]:
     """
     Inserta o actualiza un artículo
+    MAPEO INVERSO: columnas del módulo -> columnas de Supabase
     """
     if supabase is None:
         return False, "Supabase no disponible", None
     
+    # ========================================
+    # MAPEO INVERSO PARA GUARDAR
+    # ========================================
+    payload_db = {
+        "Descripción": payload.get("nombre"),
+        "Familia": payload.get("familia"),
+        "Código Int.": payload.get("codigo_interno"),
+        "Código Ext.": payload.get("codigo_barra"),
+        "Unidad": payload.get("unidad_base"),
+        "Tipo Articulo": payload.get("tipo"),
+        "Activo": payload.get("activo"),
+        "Stock Minimo": payload.get("stock_min"),
+        "Stock Maximo": payload.get("stock_max"),
+    }
+    
+    # Eliminar None values
+    payload_db = {k: v for k, v in payload_db.items() if v is not None}
+    
     try:
         if payload.get("id"):
             # UPDATE
-            art_id = payload.pop("id")
-            payload["updated_at"] = datetime.utcnow().isoformat()
+            art_id = payload.get("id")
             
-            res = supabase.table("articulos").update(payload).eq("id", art_id).execute()
+            res = supabase.table("articulos").update(payload_db).eq("Id", art_id).execute()
             data = getattr(res, "data", None) or []
             if data:
                 return True, "Actualizado correctamente", data[0]
             return False, "No se encontró el artículo", None
         else:
             # INSERT
-            payload["created_at"] = datetime.utcnow().isoformat()
-            payload["updated_at"] = datetime.utcnow().isoformat()
-            
-            res = supabase.table("articulos").insert(payload).execute()
+            res = supabase.table("articulos").insert(payload_db).execute()
             data = getattr(res, "data", None) or []
             if data:
                 return True, "Creado correctamente", data[0]
@@ -272,7 +347,7 @@ def _cache_proveedores() -> pd.DataFrame:
     Cache de proveedores
     """
     try:
-        df = _sb_select("proveedores", "id,nombre", order=("nombre", True))
+        df = _sb_select("proveedores", "id,nombre")
     except Exception:
         return pd.DataFrame(columns=["id", "nombre"])
 
@@ -289,36 +364,40 @@ def _cache_articulos_por_tipo(tipo: Optional[str]) -> pd.DataFrame:
     """
     Cache de artículos filtrados por tipo
     """
-    # Traer datos de Supabase
-    if tipo:
-        df_raw = _sb_select("articulos", "*", filters=[("tipo", "eq", tipo)])
-    else:
-        df_raw = _sb_select("articulos", "*")
+    # Traer TODOS los datos (sin filtro por tipo en server-side porque tu columna puede tener formato diferente)
+    df_raw = _sb_select("articulos", "*")
 
     if df_raw is None or df_raw.empty:
         return pd.DataFrame(columns=ARTICULO_COLS)
 
-    # Normalizar
+    # Normalizar (mapea Descripción->nombre, etc)
     df = _normalizar_articulos_df(df_raw)
 
-    # Filtro adicional por tipo si no se pudo hacer server-side
+    # Filtro local por tipo si es necesario
     if tipo and not df.empty and "tipo" in df.columns:
         try:
-            df_tipo = df[df["tipo"].astype(str).str.strip().str.lower() == str(tipo).strip().lower()].copy()
+            # Limpiar y normalizar valores
+            df_copy = df.copy()
+            df_copy["tipo_norm"] = df_copy["tipo"].fillna("").astype(str).str.strip().str.lower()
             
+            # Caso 1: coincide texto directo
+            df_tipo = df_copy[df_copy["tipo_norm"] == str(tipo).strip().lower()].copy()
+            
+            # Caso 2: mapeo numérico (si tu DB usa 1/2/3)
             if df_tipo.empty:
-                # Intento con mapeo numérico
                 map_num = {"ingreso": "1", "egreso": "2", "gasto_fijo": "3"}
                 target = map_num.get(tipo)
                 if target:
-                    df_tipo = df[df["tipo"].astype(str).str.strip() == target].copy()
+                    df_tipo = df_copy[df_copy["tipo_norm"] == target].copy()
             
+            # Si encontró matches, usarlo
             if not df_tipo.empty:
-                df = df_tipo
+                df = df_tipo.drop(columns=["tipo_norm"])
+            
         except Exception:
             pass
 
-    # Ordenar
+    # Ordenar por nombre
     try:
         if "nombre" in df.columns and not df.empty:
             df = df.sort_values("nombre", kind="stable")
@@ -478,7 +557,7 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
 
     current_row = None
     if is_edit:
-        df_all = _cache_articulos_por_tipo(tipo)
+        df_all = _cache_articulos_por_tipo(None)  # Traer todos para buscar por ID
         match = df_all[df_all["id"].astype(str) == str(selected["id"])]
         if not match.empty:
             current_row = match.iloc[0].to_dict()
@@ -647,8 +726,8 @@ def _form_articulo(tipo: str, selected: Optional[Dict[str, Any]]) -> Optional[st
     st.success(f"✅ {msg}")
     st.session_state["articulos_prefill"] = None
 
-    if row and row.get("id"):
-        return str(row["id"])
+    if row and row.get("Id"):
+        return str(row["Id"])
     if is_edit:
         return str(selected["id"])
     return None
