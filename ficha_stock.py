@@ -42,21 +42,29 @@ def _fmt_num(x, dec=2) -> str:
 
 def _fetch_articulos(q: str, limit: int = 50) -> List[Dict[str, Any]]:
     """
-    Requiere tabla 'articulos' con al menos: id, nombre.
+    Requiere tabla 'articulos' con al menos: (id o Id), nombre.
     Opcionales: codigo_interno.
     """
     q = (q or "").strip()
-    try:
-        query = supabase.table("articulos").select("id,nombre,codigo_interno")
+
+    def _run_select(select_str: str) -> List[Dict[str, Any]]:
+        query = supabase.table("articulos").select(select_str)
         if q:
-            # Busca por nombre o código interno
             query = query.or_(f"nombre.ilike.%{q}%,codigo_interno.ilike.%{q}%")
         resp = query.limit(limit).execute()
-        data = resp.data or []
-        return data
-    except Exception as e:
-        st.error(f"No pude leer 'articulos' desde Supabase. Error: {e}")
-        return []
+        return resp.data or []
+
+    try:
+        # Caso normal (columna id)
+        return _run_select("id,nombre,codigo_interno")
+    except Exception:
+        try:
+            # Caso Supabase con Id (I mayúscula) -> alias a id
+            # PostgREST permite alias: "Id:id"
+            return _run_select("Id:id,nombre,codigo_interno")
+        except Exception as e:
+            st.error(f"No pude leer 'articulos' desde Supabase. Error: {e}")
+            return []
 
 
 def _fetch_movimientos(articulo_id: Any, fecha_desde: Optional[date], fecha_hasta: Optional[date]) -> List[Dict[str, Any]]:
