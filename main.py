@@ -1,16 +1,15 @@
 # =========================
-# MAIN.PY - PC SIDEBAR NORMAL / MÓVIL: ☰ FIJO + CIERRE TOCANDO AFUERA
+# MAIN.PY - SIDEBAR NATIVO (PC) + FLECHITA NATIVA (MÓVIL)
 # =========================
 
 import streamlit as st
-import streamlit.components.v1 as components
 from datetime import datetime
 
 st.set_page_config(
     page_title="FertiChat",
     page_icon="🦋",
     layout="wide",
-    initial_sidebar_state="auto"  # ✅ PC abierto / móvil colapsado (nativo)
+    initial_sidebar_state="auto"  # ✅ PC abierto / Móvil colapsado (nativo)
 )
 
 # =========================
@@ -46,17 +45,21 @@ if "radio_menu" not in st.session_state:
 
 
 # =========================
-# CSS
+# CSS (NO TOCA EL SIDEBAR CON TRANSFORM NI FIXED)
 # =========================
 st.markdown(r"""
 <style>
-/* Ocultar UI de Streamlit */
+/* Ocultar UI de Streamlit (sin romper controles del sidebar) */
 div.stAppToolbar, div[data-testid="stToolbar"], div[data-testid="stToolbarActions"],
 div[data-testid="stDecoration"], #MainMenu, footer {
   display: none !important;
 }
-/* NO colapsar el header a height:0 porque puede ocultar el control nativo */
-header[data-testid="stHeader"] { background: transparent !important; }
+
+/* IMPORTANTE:
+   NO poner height:0 al header, porque puede afectar los controles del sidebar en móvil */
+header[data-testid="stHeader"] {
+  background: transparent !important;
+}
 
 /* Theme general */
 :root {
@@ -83,26 +86,15 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.18);
 }
 
-/* Header móvil (visual) */
+/* Header visual móvil (no tapa la flechita / botón nativo) */
 #mobile-header { display: none; }
 
-/* ---------------------------------------------------------
-   DESKTOP: SIN botón nativo ☰ (sidebar tradicional)
---------------------------------------------------------- */
+/* PC: ocultar el control ☰ nativo (collapsedControl) para que quede “sidebar tradicional” */
 @media (min-width: 768px) {
   div[data-testid="collapsedControl"] { display: none !important; }
-  [data-testid="baseButton-header"],
-  button[data-testid="stSidebarCollapseButton"],
-  button[data-testid="stSidebarExpandButton"],
-  button[title="Close sidebar"],
-  button[title="Open sidebar"] {
-    display: none !important;
-  }
 }
 
-/* ---------------------------------------------------------
-   MÓVIL: header fijo + sidebar arriba del overlay + ocultar flecha gris
---------------------------------------------------------- */
+/* Móvil: mostrar header fijo solo visual y dejar espacio arriba */
 @media (max-width: 767px) {
   .block-container { padding-top: 70px !important; }
 
@@ -112,177 +104,39 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     top: 0; left: 0; right: 0;
     height: 60px;
     background: #0b3b60;
-    z-index: 999998;
+    z-index: 999996;            /* debajo de controles nativos */
     align-items: center;
-    padding: 0 16px;
+    padding: 0 16px 0 56px;     /* deja lugar al botón nativo de Streamlit */
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    pointer-events: none;       /* no bloquea clicks del botón nativo */
   }
+
   #mobile-header .logo {
     color: white;
     font-size: 20px;
     font-weight: 800;
-    margin-left: 12px;
   }
 
-  /* Sidebar por arriba del overlay */
-  section[data-testid="stSidebar"] {
+  /* Asegurar que el control nativo quede clickeable */
+  div[data-testid="collapsedControl"] {
     position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    height: 100vh !important;
-    z-index: 999999 !important;
+    top: 12px !important;
+    left: 12px !important;
+    z-index: 1000000 !important;
   }
-  section[data-testid="stSidebar"] > div {
-    height: 100% !important;
-    overflow-y: auto !important;
-  }
-
-  /* Ocultar flecha gris + texto "Cerrar menú" */
-  [data-testid="baseButton-header"] { display: none !important; }
 }
 </style>
 """, unsafe_allow_html=True)
 
 
 # =========================
-# HEADER MÓVIL (visual)
+# HEADER MÓVIL (solo visual)
 # =========================
 st.markdown("""
 <div id="mobile-header">
     <div class="logo">🦋 FertiChat</div>
 </div>
 """, unsafe_allow_html=True)
-
-
-# =========================
-# ☰ FIJO + OVERLAY (SOLO MÓVIL) - abre/cierra sidebar + cierra tocando afuera
-# =========================
-components.html(
-    """
-    <script>
-    (function () {
-      const doc = parent.document;
-      const isMobile = parent.window.matchMedia("(max-width: 767px)").matches;
-
-      const BTN_ID = "fc_mobile_hamburger_fixed";
-      const OVERLAY_ID = "fc_sidebar_overlay_clickout";
-
-      function qs(sel) { return doc.querySelector(sel); }
-
-      function findOpenBtn() {
-        return qs('div[data-testid="collapsedControl"] button')
-            || qs('div[data-testid="collapsedControl"]')
-            || qs('button[title="Open sidebar"]')
-            || qs('button[data-testid="stSidebarExpandButton"]');
-      }
-
-      function findCloseBtn() {
-        return qs('[data-testid="baseButton-header"]')
-            || qs('button[title="Close sidebar"]')
-            || qs('button[data-testid="stSidebarCollapseButton"]');
-      }
-
-      function sidebarIsOpen() {
-        // Si existe botón de cerrar (aunque esté oculto), normalmente significa "open"
-        const closeBtn = findCloseBtn();
-        if (closeBtn) return true;
-
-        // Fallback: si no hay closeBtn, asumimos "closed"
-        return false;
-      }
-
-      function removeOverlay() {
-        const ov = doc.getElementById(OVERLAY_ID);
-        if (ov) ov.remove();
-      }
-
-      function ensureOverlay(show) {
-        let ov = doc.getElementById(OVERLAY_ID);
-        if (!show) { removeOverlay(); return; }
-
-        if (!ov) {
-          ov = doc.createElement("div");
-          ov.id = OVERLAY_ID;
-          ov.style.position = "fixed";
-          ov.style.inset = "0";
-          ov.style.width = "100vw";
-          ov.style.height = "100vh";
-          ov.style.background = "rgba(0,0,0,0.5)";
-          ov.style.zIndex = "999998"; // debajo del sidebar (999999)
-          ov.style.cursor = "pointer";
-
-          ov.addEventListener("click", function () {
-            const closeBtn = findCloseBtn();
-            if (closeBtn) closeBtn.click();
-            setTimeout(removeOverlay, 50);
-          });
-
-          doc.body.appendChild(ov);
-        }
-      }
-
-      function toggleSidebar() {
-        // Si está abierto: cerrar. Si está cerrado: abrir.
-        const closeBtn = findCloseBtn();
-        const openBtn = findOpenBtn();
-
-        if (closeBtn) {
-          closeBtn.click();
-          setTimeout(removeOverlay, 80);
-          return;
-        }
-        if (openBtn) {
-          openBtn.click();
-          // dar tiempo a que aparezca el sidebar antes de overlay
-          setTimeout(function(){ ensureOverlay(true); }, 120);
-        }
-      }
-
-      // Limpieza en desktop
-      if (!isMobile) {
-        const b = doc.getElementById(BTN_ID);
-        if (b) b.remove();
-        removeOverlay();
-        return;
-      }
-
-      // Crear botón ☰ fijo si no existe
-      if (!doc.getElementById(BTN_ID)) {
-        const b = doc.createElement("button");
-        b.id = BTN_ID;
-        b.type = "button";
-        b.textContent = "☰";
-
-        b.style.position = "fixed";
-        b.style.top = "12px";
-        b.style.left = "12px";
-        b.style.zIndex = "1000001";
-        b.style.borderRadius = "12px";
-        b.style.border = "1px solid rgba(255,255,255,0.35)";
-        b.style.background = "rgba(11,59,96,0.92)";
-        b.style.color = "#fff";
-        b.style.fontSize = "18px";
-        b.style.fontWeight = "800";
-        b.style.padding = "10px 12px";
-        b.style.lineHeight = "1";
-        b.style.boxShadow = "0 6px 16px rgba(0,0,0,0.18)";
-
-        b.addEventListener("click", toggleSidebar);
-        doc.body.appendChild(b);
-      }
-
-      // Cada rerun: si está abierto, overlay; si está cerrado, sin overlay.
-      // (No toca tu session_state, solo UI)
-      setTimeout(function () {
-        ensureOverlay(sidebarIsOpen());
-      }, 80);
-
-    })();
-    </script>
-    """,
-    height=0,
-    width=0,
-)
 
 
 # =========================
@@ -321,10 +175,10 @@ st.markdown("<hr>", unsafe_allow_html=True)
 
 
 # =========================
-# SIDEBAR
+# SIDEBAR (NATIVO)
 # =========================
 with st.sidebar:
-    st.markdown(f"""
+    st.markdown("""
         <div style='
             background: rgba(255,255,255,0.85);
             padding: 16px;
@@ -343,7 +197,7 @@ with st.sidebar:
     st.text_input("Buscar...", key="sidebar_search", label_visibility="collapsed", placeholder="Buscar...")
 
     st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
-    if user.get('empresa'):
+    if user.get("empresa"):
         st.markdown(f"🏢 {user.get('empresa')}")
     st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
 
