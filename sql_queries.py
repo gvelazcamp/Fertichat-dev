@@ -271,7 +271,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
           AND "Mes" = %s
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT 200
+      
     """
     
     return ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
@@ -308,7 +308,7 @@ def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int, moneda: s
           AND "Año"::int = %s
           {moneda_sql}
         ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT 200
+      
     """
     return ejecutar_consulta(sql, (f"%{proveedor_like}%", anio))
 
@@ -412,7 +412,7 @@ def get_detalle_compras_articulo_mes(articulo_like: str, mes_key: str) -> pd.Dat
           AND "Mes" = %s
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT 200
+     
     """
     
     return ejecutar_consulta(sql, (f"%{articulo_like}%", mes_key))
@@ -422,7 +422,7 @@ def get_detalle_compras_articulo_mes(articulo_like: str, mes_key: str) -> pd.Dat
 # DETALLE COMPRAS: ARTÍCULO + AÑO
 # =====================================================================
 
-def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: int = 200) -> pd.DataFrame:
+def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: None = None) -> pd.DataFrame:
     """Detalle de compras de un artículo en un año."""
     
     total_expr = _sql_total_num_expr_general()
@@ -684,7 +684,7 @@ def get_comparacion_articulo_meses(mes1: str, mes2: str, label1: str, label2: st
         HAVING SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) > 0
             OR SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) > 0
         ORDER BY Diferencia DESC
-        LIMIT 200
+    
     """
 
     params = (mes1, mes2, mes2, mes1, mes1, mes2, *art_params, mes1, mes2)
@@ -950,7 +950,7 @@ def get_detalle_compras(where_clause: str, params: tuple) -> pd.DataFrame:
         FROM chatbot_raw
         WHERE {where_clause}
         ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT 200
+      
     """
     
     return ejecutar_consulta(sql, params)
@@ -1542,7 +1542,6 @@ def get_stock_por_familia() -> pd.DataFrame:
             FROM ({base}) s
             GROUP BY COALESCE(NULLIF(TRIM("FAMILIA"), ''), 'SIN FAMILIA')
             ORDER BY stock_total DESC
-            LIMIT 200
         """
         return ejecutar_consulta(sql, ())
     except Exception:
@@ -1560,7 +1559,7 @@ def get_stock_por_deposito() -> pd.DataFrame:
             FROM ({base}) s
             GROUP BY COALESCE(NULLIF(TRIM("DEPOSITO"), ''), 'SIN DEPÓSITO')
             ORDER BY stock_total DESC
-            LIMIT 200
+      
         """
         return ejecutar_consulta(sql, ())
     except Exception:
@@ -1575,7 +1574,7 @@ def get_stock_articulo(articulo: str) -> pd.DataFrame:
             FROM ({base}) s
             WHERE LOWER(COALESCE("ARTICULO", '')) LIKE %s
             ORDER BY "VENCIMIENTO" ASC NULLS LAST, "LOTE" ASC
-            LIMIT 2000
+           
         """
         return ejecutar_consulta(sql, (f"%{articulo.lower().strip()}%",))
     except Exception:
@@ -1593,7 +1592,7 @@ def get_lotes_por_vencer(dias: int = 90) -> pd.DataFrame:
               AND "VENCIMIENTO" <= (CURRENT_DATE + (%s || ' days')::interval)
               AND COALESCE("STOCK", 0) > 0
             ORDER BY "VENCIMIENTO" ASC
-            LIMIT 2000
+         
         """
         return ejecutar_consulta(sql, (int(dias),))
     except Exception:
@@ -1610,7 +1609,7 @@ def get_lotes_vencidos() -> pd.DataFrame:
               AND "VENCIMIENTO" < CURRENT_DATE
               AND COALESCE("STOCK", 0) > 0
             ORDER BY "VENCIMIENTO" DESC
-            LIMIT 2000
+            
         """
         return ejecutar_consulta(sql, ())
     except Exception:
@@ -1630,7 +1629,7 @@ def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
             WHERE "STOCK" IS NOT NULL
               AND "STOCK" <= %s
             ORDER BY "STOCK" ASC NULLS LAST, "ARTICULO" ASC
-            LIMIT 2000
+          
         """
         return ejecutar_consulta(sql, (int(minimo),))
     except Exception:
@@ -1645,7 +1644,7 @@ def get_stock_lote_especifico(lote: str) -> pd.DataFrame:
             FROM ({base}) s
             WHERE LOWER(COALESCE("LOTE", '')) LIKE %s
             ORDER BY "VENCIMIENTO" ASC NULLS LAST, "ARTICULO" ASC
-            LIMIT 2000
+          
         """
         return ejecutar_consulta(sql, (f"%{lote.lower().strip()}%",))
     except Exception:
@@ -1660,7 +1659,7 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
             FROM ({base}) s
             WHERE LOWER(COALESCE("FAMILIA", '')) LIKE %s
             ORDER BY "ARTICULO" ASC, "VENCIMIENTO" ASC NULLS LAST
-            LIMIT 2000
+           
         """
         return ejecutar_consulta(sql, (f"%{familia.lower().strip()}%",))
     except Exception:
