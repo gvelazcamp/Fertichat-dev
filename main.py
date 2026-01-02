@@ -1,9 +1,10 @@
 # =========================
-# MAIN.PY - MENÚ PC (SIDEBAR) + MENÚ PROPIO MÓVIL (HAMBURGUESA)
+# MAIN.PY - PC con SIDEBAR + MÓVIL con MENÚ PROPIO (SIN JS)
 # =========================
 
 import streamlit as st
 from datetime import datetime
+from urllib.parse import quote, unquote
 
 st.set_page_config(
     page_title="FertiChat",
@@ -34,25 +35,23 @@ from familias import mostrar_familias
 
 
 # =========================
-# CSS + MENÚ MÓVIL (PROPIO)
-# - PC: sidebar normal (tu st.sidebar)
-# - Móvil: ocultamos sidebar nativo y usamos drawer propio
+# CSS + MENÚ MÓVIL (SIN JS)
 # =========================
 def inject_css_and_mobile_menu(user: dict, menu_actual: str):
-    # Generar items del menú (mismo texto que tu MENU_OPTIONS)
+    # Menú móvil: links con query param URL-encoded
     menu_items_html = ""
     for opcion in MENU_OPTIONS:
         active_class = "fc-active" if opcion == menu_actual else ""
-        # Nota: usamos query param menu=... para setear st.session_state["radio_menu"]
+        href = f"?menu={quote(opcion)}"
         menu_items_html += f"""
-            <a class="fc-menu-item {active_class}" href="?menu={opcion}">{opcion}</a>
+            <a class="fc-menu-item {active_class}" href="{href}">{opcion}</a>
         """
 
     st.markdown(
         f"""
         <style>
         /* =========================
-           OCULTAR UI DE STREAMLIT (solo lo que molesta)
+           OCULTAR UI DE STREAMLIT
         ========================= */
         div.stAppToolbar,
         div[data-testid="stToolbar"],
@@ -63,7 +62,6 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
           display: none !important;
         }}
 
-        /* Header nativo: lo ocultamos (usamos header propio en móvil) */
         header[data-testid="stHeader"] {{
           height: 0 !important;
           background: transparent !important;
@@ -95,7 +93,7 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
         }}
 
         /* =========================
-           SIDEBAR PC (se mantiene tu estilo)
+           SIDEBAR PC (tu estilo)
         ========================= */
         section[data-testid="stSidebar"] {{
             border-right: 1px solid rgba(15, 23, 42, 0.08);
@@ -123,6 +121,7 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
            PC: ocultar menú móvil
         ========================= */
         @media (min-width: 769px) {{
+            #fc-menu-cb,
             #fc-mobile-header,
             #fc-mobile-menu,
             #fc-mobile-overlay {{
@@ -145,6 +144,16 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
                 padding-top: 70px !important;
             }}
 
+            /* Checkbox escondido (controla open/close) */
+            #fc-menu-cb {{
+                position: fixed;
+                left: -9999px;
+                top: -9999px;
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }}
+
             /* Header móvil fijo */
             #fc-mobile-header {{
                 position: fixed;
@@ -160,7 +169,7 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
                 box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             }}
 
-            /* Botón hamburguesa */
+            /* Botón hamburguesa (es un LABEL del checkbox) */
             #fc-menu-toggle {{
                 width: 44px;
                 height: 44px;
@@ -181,18 +190,8 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
                 height: 3px;
                 background: white;
                 border-radius: 2px;
-                transition: all 0.25s;
+                transition: all 0.20s;
                 display: block;
-            }}
-
-            #fc-menu-toggle.open span:nth-child(1) {{
-                transform: rotate(45deg) translate(6px, 6px);
-            }}
-            #fc-menu-toggle.open span:nth-child(2) {{
-                opacity: 0;
-            }}
-            #fc-menu-toggle.open span:nth-child(3) {{
-                transform: rotate(-45deg) translate(6px, -6px);
             }}
 
             #fc-mobile-logo {{
@@ -203,7 +202,7 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
                 letter-spacing: -0.01em;
             }}
 
-            /* Overlay */
+            /* Overlay (es un LABEL del checkbox para cerrar) */
             #fc-mobile-overlay {{
                 position: fixed;
                 top: 56px;
@@ -214,12 +213,7 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
                 z-index: 999998;
                 opacity: 0;
                 visibility: hidden;
-                transition: all 0.25s;
-            }}
-
-            #fc-mobile-overlay.open {{
-                opacity: 1;
-                visibility: visible;
+                transition: all 0.20s;
             }}
 
             /* Drawer */
@@ -233,14 +227,30 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
                 background: rgba(255,255,255,0.98);
                 box-shadow: 4px 0 12px rgba(0,0,0,0.15);
                 transform: translateX(-100%);
-                transition: transform 0.25s ease;
+                transition: transform 0.20s ease;
                 z-index: 999999;
                 overflow-y: auto;
                 padding: 16px;
             }}
 
-            #fc-mobile-menu.open {{
+            /* OPEN (controlado por checkbox) */
+            #fc-menu-cb:checked ~ #fc-mobile-overlay {{
+                opacity: 1;
+                visibility: visible;
+            }}
+            #fc-menu-cb:checked ~ #fc-mobile-menu {{
                 transform: translateX(0);
+            }}
+
+            /* Animación del icono a X */
+            #fc-menu-cb:checked ~ #fc-mobile-header #fc-menu-toggle span:nth-child(1) {{
+                transform: rotate(45deg) translate(6px, 6px);
+            }}
+            #fc-menu-cb:checked ~ #fc-mobile-header #fc-menu-toggle span:nth-child(2) {{
+                opacity: 0;
+            }}
+            #fc-menu-cb:checked ~ #fc-mobile-header #fc-menu-toggle span:nth-child(3) {{
+                transform: rotate(-45deg) translate(6px, -6px);
             }}
 
             /* Info usuario */
@@ -272,7 +282,7 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
                 margin: 12px 0 8px 4px;
             }}
 
-            /* Items del menú */
+            /* Items menú */
             .fc-menu-item {{
                 display: block;
                 padding: 14px 14px;
@@ -313,25 +323,24 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
                 font-weight: 700;
                 text-decoration: none !important;
             }}
-
-            .fc-logout:active {{
-                background: rgba(244,63,94,0.15);
-            }}
         }}
         </style>
 
+        <!-- CHECKBOX CONTROL -->
+        <input type="checkbox" id="fc-menu-cb" />
+
         <!-- HEADER MÓVIL -->
         <div id="fc-mobile-header">
-            <button id="fc-menu-toggle" onclick="fcToggleMenu()">
+            <label id="fc-menu-toggle" for="fc-menu-cb" aria-label="Abrir menú">
                 <span></span><span></span><span></span>
-            </button>
+            </label>
             <div id="fc-mobile-logo">🦋 FertiChat</div>
         </div>
 
-        <!-- OVERLAY -->
-        <div id="fc-mobile-overlay" onclick="fcToggleMenu()"></div>
+        <!-- OVERLAY (clic cierra) -->
+        <label id="fc-mobile-overlay" for="fc-menu-cb"></label>
 
-        <!-- MENÚ LATERAL MÓVIL -->
+        <!-- MENÚ LATERAL -->
         <div id="fc-mobile-menu">
             <div class="fc-user-info">
                 <div class="fc-user-line" style="font-weight:800;">👤 {user.get('nombre', 'Usuario')}</div>
@@ -345,18 +354,6 @@ def inject_css_and_mobile_menu(user: dict, menu_actual: str):
 
             <a class="fc-logout" href="?logout=1">🚪 Cerrar sesión</a>
         </div>
-
-        <script>
-            function fcToggleMenu() {{
-                var btn = document.getElementById('fc-menu-toggle');
-                var menu = document.getElementById('fc-mobile-menu');
-                var ov  = document.getElementById('fc-mobile-overlay');
-                if (!btn || !menu || !ov) return;
-                btn.classList.toggle('open');
-                menu.classList.toggle('open');
-                ov.classList.toggle('open');
-            }}
-        </script>
         """,
         unsafe_allow_html=True
     )
@@ -379,24 +376,34 @@ if "radio_menu" not in st.session_state:
 # =========================
 try:
     menu_param = st.query_params.get("menu")
-    if menu_param and menu_param in MENU_OPTIONS:
-        st.session_state["radio_menu"] = menu_param
-        st.query_params.clear()
-        st.rerun()
+    if isinstance(menu_param, list):
+        menu_param = menu_param[0] if menu_param else None
 
-    if st.query_params.get("logout") == "1":
+    if menu_param:
+        menu_decoded = unquote(menu_param)
+        if menu_decoded in MENU_OPTIONS:
+            st.session_state["radio_menu"] = menu_decoded
+            st.query_params.clear()
+            st.rerun()
+
+    logout_param = st.query_params.get("logout")
+    if isinstance(logout_param, list):
+        logout_param = logout_param[0] if logout_param else None
+
+    if logout_param == "1":
         logout()
         st.query_params.clear()
         st.rerun()
+
 except Exception:
     pass
 
-# Inyectar CSS + menú móvil (usa radio_menu actual para resaltar)
+# Inyectar CSS + menú móvil
 inject_css_and_mobile_menu(user=user, menu_actual=st.session_state["radio_menu"])
 
 
 # =========================
-# TÍTULO Y CAMPANITA (TU HEADER NORMAL)
+# TÍTULO Y CAMPANITA
 # =========================
 usuario_actual = user.get("usuario", user.get("email", ""))
 cant_pendientes = 0
@@ -431,7 +438,8 @@ st.markdown("<hr>", unsafe_allow_html=True)
 
 
 # =========================
-# SIDEBAR (SOLO PC VISUALMENTE; EN MÓVIL SE OCULTA POR CSS)
+# SIDEBAR (PC)
+# (En móvil queda oculto por CSS, pero el código queda igual)
 # =========================
 with st.sidebar:
     st.markdown(f"""
