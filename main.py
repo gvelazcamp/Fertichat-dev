@@ -95,7 +95,16 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 /* Móvil */
 @media (max-width: 768px) {{
     .block-container {{ padding-top: 70px !important; }}
-    
+
+    /* Ocultar flecha/collapse nativo de Streamlit en móvil (no controla sidebar_open) */
+    button[title="Close sidebar"],
+    button[title="Open sidebar"],
+    button[data-testid="stSidebarCollapseButton"],
+    button[data-testid="stSidebarExpandButton"],
+    div[data-testid="collapsedControl"] {{
+        display: none !important;
+    }}
+
     /* Header fijo */
     #mobile-header {{
         display: flex !important;
@@ -108,14 +117,14 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         padding: 0 16px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }}
-    
+
     #mobile-header .logo {{
         color: white;
         font-size: 20px;
         font-weight: 800;
         margin-left: 12px;
     }}
-    
+
     /* Sidebar móvil */
     section[data-testid="stSidebar"] {{
         position: fixed !important;
@@ -129,14 +138,14 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         transform: translateX({'-100%' if sidebar_state == 'closed' else '0'});
         transition: transform 0.3s ease;
     }}
-    
+
     section[data-testid="stSidebar"] > div {{
         overflow-y: auto !important;
         height: 100% !important;
         padding-top: 20px !important;
     }}
-    
-    /* Overlay */
+
+    /* Overlay visual */
     #sidebar-overlay {{
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -209,6 +218,14 @@ st.markdown("<hr>", unsafe_allow_html=True)
 # SIDEBAR
 # =========================
 with st.sidebar:
+    # ✅ Botón de cierre para MÓVIL cuando el sidebar está abierto
+    # (Soluciona el caso: abrís, el sidebar tapa el ☰ y la flecha nativa no cierra tu sidebar_open)
+    if st.session_state.get("sidebar_open", False):
+        if st.button("✕ Cerrar menú", key="btn_close_sidebar_mobile", use_container_width=True):
+            st.session_state["sidebar_open"] = False
+            st.rerun()
+        st.markdown("---")
+
     st.markdown(f"""
         <div style='
             background: rgba(255,255,255,0.85);
@@ -244,7 +261,7 @@ with st.sidebar:
     # Al seleccionar una opción, cerrar el sidebar en móvil
     old_menu = st.session_state["radio_menu"]
     menu = st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
-    
+
     # Si cambió el menú, cerrar sidebar en móvil
     if menu != old_menu and st.session_state["sidebar_open"]:
         st.session_state["sidebar_open"] = False
