@@ -61,6 +61,11 @@ header[data-testid="stHeader"] {
   background: transparent !important;
 }
 
+header, header[data-testid="stHeader"] {
+  visibility: visible !important;
+  height: auto !important;
+}
+
 /* Theme general */
 :root {
     --fc-bg-1: #f6f4ef; --fc-bg-2: #f3f6fb;
