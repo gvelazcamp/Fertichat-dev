@@ -395,42 +395,79 @@ def _aplicar_historial_precio_minimo(payload: Dict[str, Any], current_row: Optio
 # =====================================================================
 def _grid(df: pd.DataFrame) -> Optional[Dict[str, Any]]:
     """
-    Muestra grid de artículos
+    Muestra grid de artículos con columnas expandidas
     """
     if df is None or df.empty:
         st.info("📭 Sin artículos para mostrar")
         return None
 
+    # Columnas para mostrar en el grid
     view_cols = [
         "nombre",
+        "familia",
         "codigo_interno",
         "codigo_barra",
-        "familia",
-        "subfamilia",
-        "equipo",
-        "unidad_compra",
         "unidad_base",
-        "precio_actual",
-        "moneda_actual",
         "activo",
-        "updated_at",
         "id",
     ]
     
+    # Asegurar que existan todas las columnas
     for c in view_cols:
         if c not in df.columns:
             df[c] = None
 
     vdf = df[view_cols].copy()
+    
+    # Renombrar columnas para mejor legibilidad
+    vdf = vdf.rename(columns={
+        "nombre": "Descripción",
+        "familia": "Familia",
+        "codigo_interno": "Cód. Interno",
+        "codigo_barra": "Cód. Barra",
+        "unidad_base": "Unidad",
+        "activo": "Activo",
+        "id": "ID",
+    })
+    
     st.caption(f"📊 Mostrando {len(vdf)} artículo(s)")
 
     if not AGGRID_AVAILABLE:
-        st.dataframe(vdf.drop(columns=["id"], errors="ignore"), use_container_width=True, height=350)
+        # Sin AgGrid: usar dataframe nativo con columnas configuradas
+        st.dataframe(
+            vdf.drop(columns=["ID"], errors="ignore"),
+            use_container_width=True,
+            height=500,
+            column_config={
+                "Descripción": st.column_config.TextColumn("Descripción", width="large"),
+                "Familia": st.column_config.TextColumn("Familia", width="medium"),
+                "Cód. Interno": st.column_config.TextColumn("Cód. Interno", width="small"),
+                "Cód. Barra": st.column_config.TextColumn("Cód. Barra", width="small"),
+                "Unidad": st.column_config.TextColumn("Unidad", width="small"),
+                "Activo": st.column_config.CheckboxColumn("Activo", width="small"),
+            }
+        )
         return None
 
+    # Con AgGrid: configuración mejorada
     gb = GridOptionsBuilder.from_dataframe(vdf)
+    
+    # Configurar columnas individualmente
+    gb.configure_column("Descripción", width=300, wrapText=True, autoHeight=True)
+    gb.configure_column("Familia", width=150)
+    gb.configure_column("Cód. Interno", width=120)
+    gb.configure_column("Cód. Barra", width=120)
+    gb.configure_column("Unidad", width=100)
+    gb.configure_column("Activo", width=80)
+    gb.configure_column("ID", hide=True)  # Ocultar ID pero mantenerlo para selección
+    
+    # Habilitar filtros y ordenamiento
     gb.configure_default_column(filter=True, sortable=True, resizable=True)
     gb.configure_selection("single", use_checkbox=True)
+    
+    # Paginación
+    gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=50)
+    
     grid_options = gb.build()
 
     resp = AgGrid(
@@ -438,15 +475,17 @@ def _grid(df: pd.DataFrame) -> Optional[Dict[str, Any]]:
         gridOptions=grid_options,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.SELECTION_CHANGED,
-        fit_columns_on_grid_load=True,
-        height=350,
+        fit_columns_on_grid_load=False,  # Usar anchos configurados
+        height=500,
+        theme="streamlit",  # Tema más limpio
     )
 
     sel = resp.get("selected_rows") or []
     if not sel:
         return None
-    return sel[0]
-
+    
+    # Devolver con el ID original
+    return {"id": sel[0]["ID"]}
 
 def _selector_proveedor(current_id: Optional[str]) -> Optional[str]:
     """
@@ -801,3 +840,4 @@ def mostrar_articulos():
             if sel and sel.get("id"):
                 st.markdown("---")
                 _ui_archivos(str(sel["id"]))
+
