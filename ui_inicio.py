@@ -1,11 +1,12 @@
 # =========================
 # UI_INICIO.PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
-# LAS TARJETAS HERMOSAS - SIN IFRAME, CON ONCLICK DIRECTO
+# LAS TARJETAS HERMOSAS CON ONCLICK FUNCIONANDO
 # =========================
 
 import streamlit as st
 from datetime import datetime
 import random
+import streamlit.components.v1 as components
 
 
 def mostrar_inicio():
@@ -43,9 +44,9 @@ def mostrar_inicio():
     )
 
     # =========================
-    # Cards HTML CON ONCLICK DIRECTO (COMO GNS)
+    # Cards HTML CON ONCLICK DIRECTO
     # =========================
-    st.markdown("""
+    html_cards = """
     <style>
       .fc-home-wrap{max-width:1100px;margin:0 auto;}
       .fc-section-title{
@@ -111,28 +112,28 @@ def mostrar_inicio():
     <div class="fc-home-wrap">
       <div class="fc-section-title">📌 Módulos principales</div>
       <div class="fc-grid">
-        <div class="fc-card" onclick="navegarA('compras')">
+        <div class="fc-card" onclick="window.parent.location.href='?go=compras'">
           <div class="fc-row">
             <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
             <div class="fc-txt"><h3>Compras IA</h3><p>Consultas inteligentes</p></div>
           </div>
         </div>
 
-        <div class="fc-card" onclick="navegarA('buscador')">
+        <div class="fc-card" onclick="window.parent.location.href='?go=buscador'">
           <div class="fc-row">
             <div class="fc-tile tile-buscador"><div class="fc-ico">🔎</div></div>
             <div class="fc-txt"><h3>Buscador IA</h3><p>Buscar facturas / lotes</p></div>
           </div>
         </div>
 
-        <div class="fc-card" onclick="navegarA('stock')">
+        <div class="fc-card" onclick="window.parent.location.href='?go=stock'">
           <div class="fc-row">
             <div class="fc-tile tile-stock"><div class="fc-ico">📦</div></div>
             <div class="fc-txt"><h3>Stock IA</h3><p>Consultar inventario</p></div>
           </div>
         </div>
 
-        <div class="fc-card" onclick="navegarA('dashboard')">
+        <div class="fc-card" onclick="window.parent.location.href='?go=dashboard'">
           <div class="fc-row">
             <div class="fc-tile tile-dashboard"><div class="fc-ico">📊</div></div>
             <div class="fc-txt"><h3>Dashboard</h3><p>Ver estadísticas</p></div>
@@ -144,28 +145,28 @@ def mostrar_inicio():
       
       <div class="fc-section-title">📋 Gestión</div>
       <div class="fc-grid">
-        <div class="fc-card" onclick="navegarA('pedidos')">
+        <div class="fc-card" onclick="window.parent.location.href='?go=pedidos'">
           <div class="fc-row">
             <div class="fc-tile tile-pedidos"><div class="fc-ico">📄</div></div>
             <div class="fc-txt"><h3>Pedidos internos</h3><p>Gestionar pedidos</p></div>
           </div>
         </div>
 
-        <div class="fc-card" onclick="navegarA('baja')">
+        <div class="fc-card" onclick="window.parent.location.href='?go=baja'">
           <div class="fc-row">
             <div class="fc-tile tile-baja"><div class="fc-ico">🧾</div></div>
             <div class="fc-txt"><h3>Baja de stock</h3><p>Registrar bajas</p></div>
           </div>
         </div>
 
-        <div class="fc-card" onclick="navegarA('ordenes')">
+        <div class="fc-card" onclick="window.parent.location.href='?go=ordenes'">
           <div class="fc-row">
             <div class="fc-tile tile-ordenes"><div class="fc-ico">📦</div></div>
             <div class="fc-txt"><h3>Órdenes de compra</h3><p>Crear órdenes</p></div>
           </div>
         </div>
 
-        <div class="fc-card" onclick="navegarA('indicadores')">
+        <div class="fc-card" onclick="window.parent.location.href='?go=indicadores'">
           <div class="fc-row">
             <div class="fc-tile tile-indicadores"><div class="fc-ico">📈</div></div>
             <div class="fc-txt"><h3>Indicadores</h3><p>Power BI</p></div>
@@ -173,13 +174,9 @@ def mostrar_inicio():
         </div>
       </div>
     </div>
+    """
 
-    <script>
-      function navegarA(destino) {
-        window.location.href = '?go=' + destino;
-      }
-    </script>
-    """, unsafe_allow_html=True)
+    components.html(html_cards, height=640, scrolling=True)
 
     # =========================
     # TIP DEL DÍA
