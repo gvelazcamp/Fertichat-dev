@@ -1,835 +1,580 @@
 # =====================================================================
-# 📑 MÓDULO COMPROBANTES - FERTI CHAT
-# Archivo: comprobantes.py
+# 📥 MÓDULO: INGRESO DE COMPROBANTES - FERTI CHAT
+# Archivo: ingreso_comprobantes.py
 # =====================================================================
 
 import streamlit as st
 import pandas as pd
 from datetime import date
-from typing import Optional, Dict, Any, List
+import os
+import re
+import io
 
-from supabase_client import supabase
+from supabase import create_client
+
+# PDF (ReportLab) - opcional (no rompe si no está instalado)
+try:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib import colors
+    REPORTLAB_OK = True
+except Exception:
+    REPORTLAB_OK = False
 
 # =====================================================================
-# CONFIG
+# CONFIGURACIÓN SUPABASE
 # =====================================================================
 
-DEPOSITOS = ["Casa Central", "ANDA", "Platinum"]
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+if not SUPABASE_URL or not SUPABASE_KEY:
+    supabase = None
+else:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+TABLA_COMPROBANTES = "comprobantes_compras"
+TABLA_DETALLE = "comprobantes_detalle"
+TABLA_STOCK = "stock"
+TABLA_PROVEEDORES = "proveedores"
+TABLA_ARTICULOS = "articulos"
 
 # =====================================================================
-# HELPERS (NO ROMPEN LO EXISTENTE)
+# HELPERS
 # =====================================================================
 
-def _safe_float(x) -> float:
+def _safe_float(x, default=0.0) -> float:
     try:
-        if x is None:
-            return 0.0
-        s = str(x).strip().replace(".", "").replace(",", ".")
-        if s == "":
-            return 0.0
-        return float(s)
+        if x is None or x == "":
+            return float(default)
+        return float(x)
     except Exception:
-        try:
-            return float(x)
-        except Exception:
-            return 0.0
+        return float(default)
 
-
-def _to_date_safe(x) -> Optional[date]:
-    if x is None:
-        return None
-    s = str(x).strip()
-    if s == "":
-        return None
+def _safe_int(x, default=0) -> int:
     try:
-        d = pd.to_datetime(s, dayfirst=True, errors="coerce")
-        if pd.isna(d):
-            return None
-        return d.date()
+        if x is None or x == "":
+            return int(default)
+        return int(x)
     except Exception:
-        return None
+        return int(default)
 
+def _iva_rate_from_tipo(iva_tipo: str) -> float:
+    if iva_tipo == "Exento":
+        return 0.0
+    if iva_tipo == "10%":
+        return 0.10
+    if iva_tipo == "22%":
+        return 0.22
+    return 0.0
 
-def _fmt_lote_row(lote: str, venc: str, stock: str) -> str:
-    lote_s = (lote or "").strip()
-    venc_s = (venc or "").strip()
-    stk = _safe_float(stock)
-    lote_txt = lote_s if lote_s else "(sin lote)"
-    venc_txt = venc_s if venc_s else "(sin venc.)"
-    return f"{lote_txt} | {venc_txt} | Stock: {stk:g}"
-
-
-def _fetch_all_table(table_name: str, page_size: int = 1000, max_pages: int = 50) -> pd.DataFrame:
+def _map_iva_tipo_from_articulo_row(row: dict) -> str:
     """
-    Trae todas las filas paginando con range().
-    Evita depender de nombres raros de columnas (articulos tiene columnas con espacios/acentos).
+    Lee IVA desde la fila del artículo, especialmente desde:
+    - "Tipo Impuesto" (ej: "1- Exento 0%", "IVA 10%", "IVA 22%")
+    Devuelve: "Exento" / "10%" / "22%"
     """
-    rows: List[Dict[str, Any]] = []
-    for i in range(max_pages):
-        start = i * page_size
-        end = start + page_size - 1
-        resp = supabase.table(table_name).select("*").range(start, end).execute()
-        batch = resp.data or []
-        rows.extend(batch)
-        if len(batch) < page_size:
+    if not row:
+        return "22%"
+
+    candidates = [
+        "Tipo Impuesto", "tipo impuesto", "tipo_impuesto",
+        "iva_tipo", "IVA", "iva", "tasa_iva", "Tasa IVA"
+    ]
+
+    val = None
+    for k in candidates:
+        if k in row and row.get(k) not in (None, ""):
+            val = row.get(k)
             break
-    return pd.DataFrame(rows)
 
+    if val is None:
+        return "22%"
 
-@st.cache_data(ttl=300)
-def _cache_articulos() -> pd.DataFrame:
-    return _fetch_all_table("articulos")
+    if isinstance(val, (int, float)):
+        f = _safe_float(val, 0.0)
+        if abs(f - 0.0) < 1e-9:
+            return "Exento"
+        if abs(f - 0.10) < 1e-6:
+            return "10%"
+        return "22%"
 
+    v = str(val).strip().lower()
 
-@st.cache_data(ttl=120)
-def _cache_stock() -> pd.DataFrame:
-    return _fetch_all_table("stock")
+    if "exent" in v or "exento" in v or "0%" in v:
+        return "Exento"
+    if "10%" in v or re.search(r"\b10\b", v):
+        return "10%"
+    if "22%" in v or re.search(r"\b22\b", v):
+        return "22%"
 
+    # fallback típico: "1- Exento 0%"
+    if re.match(r"^\s*1\s*[-]", v):
+        return "Exento"
 
-def _articulos_preparados() -> pd.DataFrame:
+    return "22%"
+
+def _map_precio_sin_iva_from_articulo_row(row: dict) -> float:
     """
-    Devuelve df con columnas: _id, _codigo_int, _desc, _familia
-    usando los nombres reales que existan en Supabase.
+    Intenta leer precio unitario SIN IVA desde la fila del artículo.
     """
-    df = _cache_articulos()
-    if df.empty:
-        return df
+    if not row:
+        return 0.0
 
-    cols = list(df.columns)
+    candidates = [
+        "precio_unit_sin_iva", "precio_unitario_sin_iva", "precio_sin_iva",
+        "precio_unitario", "precio",
+        "costo", "costo_unitario"
+    ]
 
-    def pick_col(prefer: List[str]) -> Optional[str]:
-        for c in prefer:
-            if c in cols:
-                return c
-        return None
+    for k in candidates:
+        if k in row and row.get(k) not in (None, ""):
+            return _safe_float(row.get(k), 0.0)
 
-    col_id = pick_col(["Id", "id", "ID"])
-    col_desc = pick_col(["Descripción", "Descripcion", "descripcion", "ARTICULO", "Articulo", "articulo", "Nombre", "nombre"])
-    col_fam = pick_col(["Familia", "FAMILIA", "familia"])
-    col_cod_int = pick_col(["Código Int.", "Codigo Int.", "Código Int", "Codigo Int", "codigo_int", "CODIGO_INT", "codigo interno", "CODIGO"])
+    return 0.0
 
-    # Si no encuentra, igual intenta seguir con lo que haya
-    if col_id is None:
-        # fallback: primer columna
-        col_id = cols[0]
+def _articulo_desc_from_row(row: dict) -> str:
+    if not row:
+        return ""
+    candidates = ["descripción", "Descripción", "descripcion", "nombre", "articulo", "Artículo", "detalle", "Detalle"]
+    for k in candidates:
+        if k in row and row.get(k) not in (None, ""):
+            return str(row.get(k)).strip()
+    return ""
 
-    out = pd.DataFrame()
-    out["_id"] = df[col_id].astype(str)
+def _articulo_label(row: dict) -> str:
+    desc = _articulo_desc_from_row(row) or ""
+    rid = str(row.get("id", "") or "")
+    rid8 = rid[:8] if rid else ""
+    return f"{desc} [{rid8}]" if rid8 else desc
 
-    out["_desc"] = df[col_desc].astype(str) if col_desc else ""
-    out["_familia"] = df[col_fam].astype(str) if col_fam else ""
-    out["_codigo_int"] = df[col_cod_int].astype(str) if col_cod_int else ""
+def _calc_linea(cantidad: int, precio_unit_sin_iva: float, iva_rate: float, descuento_pct: float) -> dict:
+    cantidad = _safe_int(cantidad, 0)
+    precio_unit_sin_iva = _safe_float(precio_unit_sin_iva, 0.0)
+    iva_rate = _safe_float(iva_rate, 0.0)
+    descuento_pct = _safe_float(descuento_pct, 0.0)
 
-    # limpieza
-    out["_desc"] = out["_desc"].fillna("").astype(str)
-    out["_familia"] = out["_familia"].fillna("").astype(str)
-    out["_codigo_int"] = out["_codigo_int"].fillna("").astype(str)
+    base = float(cantidad) * float(precio_unit_sin_iva)
+    desc_monto = base * (descuento_pct / 100.0)
+    subtotal = base - desc_monto
+    iva_monto = subtotal * iva_rate
+    total = subtotal + iva_monto
 
-    return out
-
-
-def _stock_preparado() -> pd.DataFrame:
-    """
-    stock: columnas esperadas (según tu tabla): FAMILIA, CODIGO, ARTICULO, DEPOSITO, LOTE, VENCIMIENTO, STOCK
-    """
-    df = _cache_stock()
-    if df.empty:
-        return df
-
-    # aseguramos columnas (por si vinieran en minúsculas)
-    ren = {}
-    for c in df.columns:
-        cu = str(c).upper()
-        if cu in ["FAMILIA", "CODIGO", "ARTICULO", "DEPOSITO", "LOTE", "VENCIMIENTO", "STOCK"]:
-            ren[c] = cu
-    df = df.rename(columns=ren)
-
-    for need in ["FAMILIA", "CODIGO", "ARTICULO", "DEPOSITO", "LOTE", "VENCIMIENTO", "STOCK"]:
-        if need not in df.columns:
-            df[need] = ""
-
-    # estandariza nulos
-    for c in ["FAMILIA", "CODIGO", "ARTICULO", "DEPOSITO", "LOTE", "VENCIMIENTO", "STOCK"]:
-        df[c] = df[c].fillna("").astype(str)
-
-    return df
-
-
-def _upsert_stock_row(
-    deposito: str,
-    familia: str,
-    codigo: str,
-    articulo: str,
-    lote: str,
-    vencimiento: str,
-    delta_stock: float,
-) -> None:
-    """
-    Inserta o actualiza en stock sumando delta_stock (puede ser + o -).
-    Clave práctica: DEPOSITO + CODIGO + LOTE + VENCIMIENTO.
-    """
-    lote_val = (lote or "").strip()
-    venc_val = (vencimiento or "").strip()
-
-    # Traigo la fila existente (si existe)
-    q = (
-        supabase.table("stock")
-        .select("*")
-        .eq("DEPOSITO", deposito)
-        .eq("CODIGO", codigo)
-        .eq("LOTE", lote_val)
-        .eq("VENCIMIENTO", venc_val)
-    )
-    resp = q.execute()
-    rows = resp.data or []
-
-    if rows:
-        current = _safe_float(rows[0].get("STOCK", "0"))
-        new_val = current + float(delta_stock)
-        if new_val < 0:
-            new_val = 0
-
-        supabase.table("stock").update(
-            {
-                "FAMILIA": familia,
-                "ARTICULO": articulo,
-                "STOCK": str(new_val),
-            }
-        ).eq("DEPOSITO", deposito).eq("CODIGO", codigo).eq("LOTE", lote_val).eq("VENCIMIENTO", venc_val).execute()
-    else:
-        # si delta es negativo y no existe fila, no insertamos (sería incoherente)
-        if float(delta_stock) <= 0:
-            return
-
-        supabase.table("stock").insert(
-            {
-                "FAMILIA": familia,
-                "CODIGO": codigo,
-                "ARTICULO": articulo,
-                "DEPOSITO": deposito,
-                "LOTE": lote_val,
-                "VENCIMIENTO": venc_val,
-                "STOCK": str(float(delta_stock)),
-            }
-        ).execute()
-
-    # refresca cache
-    _cache_stock.clear()
-
-
-# =====================================================================
-# UI: COMPONENTE FILTRO ARTÍCULOS (DESDE TABLA ARTICULOS)
-# =====================================================================
-
-def _selector_articulo_articulos(row_idx: int, df_art: pd.DataFrame) -> Optional[Dict[str, str]]:
-    """
-    Selector por Id desde 'articulos' con búsqueda por código interno o descripción.
-    Devuelve dict: {id, codigo_int, desc, familia} o None.
-    """
-    if df_art.empty:
-        st.warning("No hay artículos en Supabase (tabla articulos vacía).")
-        return None
-
-    buscar = st.text_input(
-        "Buscar (código interno o descripción)",
-        key=f"alta_buscar_{row_idx}",
-        placeholder="Ej: 12345 o 'tubo'...",
-    ).strip().lower()
-
-    tmp = df_art.copy()
-    if buscar:
-        tmp = tmp[
-            tmp["_codigo_int"].str.lower().str.contains(buscar, na=False)
-            | tmp["_desc"].str.lower().str.contains(buscar, na=False)
-        ].head(50)
-    else:
-        tmp = tmp.head(50)
-
-    # Siempre incluir el seleccionado actual si existe, para no romper el selectbox
-    current_id = st.session_state.get(f"alta_art_id_{row_idx}", "")
-    if current_id:
-        if not (tmp["_id"] == str(current_id)).any():
-            cur_row = df_art[df_art["_id"] == str(current_id)]
-            if not cur_row.empty:
-                tmp = pd.concat([cur_row, tmp], ignore_index=True)
-
-    options = tmp["_id"].astype(str).tolist()
-    if not options:
-        st.info("Sin resultados para esa búsqueda.")
-        return None
-
-    label_map = {}
-    for _, r in tmp.iterrows():
-        cod = (r["_codigo_int"] or "").strip()
-        desc = (r["_desc"] or "").strip()
-        fam = (r["_familia"] or "").strip()
-        cod_txt = cod if cod else "(sin código int.)"
-        fam_txt = f" | {fam}" if fam else ""
-        label_map[str(r["_id"])] = f"{cod_txt} - {desc}{fam_txt}"
-
-    sel = st.selectbox(
-        "Artículo",
-        options=options,
-        index=options.index(str(current_id)) if str(current_id) in options else 0,
-        format_func=lambda x: label_map.get(str(x), str(x)),
-        key=f"alta_art_id_{row_idx}",
-    )
-
-    row = df_art[df_art["_id"] == str(sel)]
-    if row.empty:
-        return None
-
-    r0 = row.iloc[0]
     return {
-        "id": str(r0["_id"]),
-        "codigo_int": str(r0["_codigo_int"] or "").strip(),
-        "desc": str(r0["_desc"] or "").strip(),
-        "familia": str(r0["_familia"] or "").strip(),
+        "descuento_monto": desc_monto,
+        "subtotal_sin_iva": subtotal,
+        "iva_monto": iva_monto,
+        "total_con_iva": total,
     }
 
+def _fmt_money(v: float, moneda: str) -> str:
+    v = _safe_float(v, 0.0)
+    s = f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{moneda} {s}"
 
 # =====================================================================
-# ALTA DE STOCK (DESDE ARTICULOS)
+# CACHE SUPABASE
 # =====================================================================
 
-def mostrar_comprobante_alta_stock():
-    st.subheader("⬆️ Alta de stock")
+@st.cache_data(ttl=600)
+def _cache_proveedores() -> list:
+    if not supabase:
+        return []
+    res = supabase.table(TABLA_PROVEEDORES).select("*").order("nombre").execute()
+    return res.data or []
 
-    deposito_destino = st.selectbox(
-        "Depósito destino",
-        DEPOSITOS,
-        key="alta_deposito_destino",
-    )
+@st.cache_data(ttl=600)
+def _cache_articulos() -> list:
+    if not supabase:
+        return []
+    res = supabase.table(TABLA_ARTICULOS).select("*").execute()
+    return res.data or []
 
-    df_art = _articulos_preparados()
+def _get_proveedor_options() -> tuple[list, dict]:
+    data = _cache_proveedores()
+    name_to_id = {}
+    options = [""]
+    for r in data:
+        nombre = str(r.get("nombre", "") or "").strip()
+        if nombre:
+            options.append(nombre)
+            name_to_id[nombre] = r.get("id")
+    return options, name_to_id
 
-    if "alta_items_count" not in st.session_state:
-        st.session_state.alta_items_count = 1
+def _get_articulo_options() -> tuple[list, dict]:
+    data = _cache_articulos()
+    label_to_row = {}
+    options = [""]
+    for r in data:
+        label = _articulo_label(r)
+        if label:
+            options.append(label)
+            label_to_row[label] = r
+    return options, label_to_row
 
-    col_add, col_clear = st.columns([1, 1])
-    with col_add:
-        if st.button("➕ Agregar línea", use_container_width=True, key="alta_add_line"):
-            st.session_state.alta_items_count += 1
-    with col_clear:
-        if st.button("🧹 Limpiar líneas", use_container_width=True, key="alta_clear_lines"):
-            st.session_state.alta_items_count = 1
-            # No borramos keys a la fuerza para no romper Streamlit; solo reducimos count
+# =====================================================================
+# STOCK
+# =====================================================================
 
-    st.markdown("### Artículos")
+def _impactar_stock(articulo: str, cantidad: int) -> None:
+    if not supabase:
+        return
 
-    items_to_process: List[Dict[str, Any]] = []
+    articulo = (articulo or "").strip()
+    if not articulo:
+        return
 
-    for i in range(int(st.session_state.alta_items_count)):
-        with st.container(border=True):
-            top = st.columns([5, 1])
-            with top[0]:
-                st.markdown(f"**Línea #{i + 1}**")
-            with top[1]:
-                if st.button("🗑️", key=f"alta_del_{i}", help="Eliminar esta línea"):
-                    # Re-armado simple: decrementa count y mueve el último sobre este
-                    if st.session_state.alta_items_count > 1:
-                        st.session_state.alta_items_count -= 1
-                        st.rerun()
+    existe = supabase.table(TABLA_STOCK).select("id,cantidad").eq("articulo", articulo).execute()
 
-            art = _selector_articulo_articulos(i, df_art)
+    if existe.data:
+        stock_id = existe.data[0]["id"]
+        cant_actual = existe.data[0].get("cantidad", 0) or 0
+        nueva_cant = int(cant_actual) + int(cantidad)
+        supabase.table(TABLA_STOCK).update({"cantidad": nueva_cant}).eq("id", stock_id).execute()
+    else:
+        supabase.table(TABLA_STOCK).insert({"articulo": articulo, "cantidad": int(cantidad)}).execute()
 
-            usa_lote = st.checkbox(
-                "Este artículo usa Lote y Vencimiento",
-                value=bool(st.session_state.get(f"alta_usa_lote_{i}", False)),
-                key=f"alta_usa_lote_{i}",
-            )
+# =====================================================================
+# INSERTS CON FALLBACK
+# =====================================================================
 
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                cantidad = st.number_input(
-                    "Cantidad",
-                    min_value=0.0,
-                    step=1.0,
-                    value=float(st.session_state.get(f"alta_cant_{i}", 0.0)),
-                    key=f"alta_cant_{i}",
-                )
-            with c2:
-                precio = st.number_input(
-                    "Precio unitario (obligatorio para FIFO)",
-                    min_value=0.0,
-                    step=0.01,
-                    value=float(st.session_state.get(f"alta_precio_{i}", 0.0)),
-                    key=f"alta_precio_{i}",
-                )
-            with c3:
-                st.caption("")
+def _insert_cabecera_con_fallback(cabecera_full: dict) -> dict:
+    try:
+        return supabase.table(TABLA_COMPROBANTES).insert(cabecera_full).execute()
+    except Exception:
+        cabecera_min = {
+            "fecha": cabecera_full.get("fecha"),
+            "proveedor": cabecera_full.get("proveedor"),
+            "tipo_comprobante": cabecera_full.get("tipo_comprobante"),
+            "nro_comprobante": cabecera_full.get("nro_comprobante"),
+            "total": cabecera_full.get("total", 0.0),
+            "usuario": cabecera_full.get("usuario"),
+        }
+        return supabase.table(TABLA_COMPROBANTES).insert(cabecera_min).execute()
 
-            lote_val = ""
-            venc_val = ""
+def _insert_detalle_con_fallback(detalle_full: dict) -> None:
+    try:
+        supabase.table(TABLA_DETALLE).insert(detalle_full).execute()
+    except Exception:
+        detalle_min = {
+            "comprobante_id": detalle_full.get("comprobante_id"),
+            "articulo": detalle_full.get("articulo"),
+            "cantidad": detalle_full.get("cantidad"),
+            "lote": detalle_full.get("lote", ""),
+            "vencimiento": detalle_full.get("vencimiento", ""),
+            "usuario": detalle_full.get("usuario"),
+        }
+        supabase.table(TABLA_DETALLE).insert(detalle_min).execute()
 
-            if usa_lote:
-                c4, c5 = st.columns(2)
-                with c4:
-                    lote_val = st.text_input(
-                        "Lote",
-                        value=str(st.session_state.get(f"alta_lote_{i}", "")),
-                        key=f"alta_lote_{i}",
-                    ).strip()
-                with c5:
-                    venc_date = st.date_input(
-                        "Vencimiento",
-                        value=st.session_state.get(f"alta_venc_{i}", None),
-                        key=f"alta_venc_{i}",
-                    )
-                    if venc_date:
-                        venc_val = venc_date.isoformat()
+# =====================================================================
+# FUNCIÓN PRINCIPAL
+# =====================================================================
 
-            items_to_process.append(
-                {
-                    "art": art,
-                    "cantidad": float(cantidad),
-                    "precio": float(precio),
-                    "usa_lote": bool(usa_lote),
-                    "lote": lote_val,
-                    "venc": venc_val,
+def mostrar_ingreso_comprobantes():
+    st.title("📥 Ingreso de comprobantes")
+
+    usuario_actual = st.session_state.get("usuario", st.session_state.get("user", "desconocido"))
+
+    if not supabase:
+        st.warning("Supabase no configurado.")
+        st.stop()
+
+    # -------------------------
+    # Estado inicial (defaults)
+    # -------------------------
+    if "comp_items" not in st.session_state:
+        st.session_state["comp_items"] = []
+
+    if "comp_next_rid" not in st.session_state:
+        st.session_state["comp_next_rid"] = 1
+
+    if "comp_reset_line" not in st.session_state:
+        st.session_state["comp_reset_line"] = False
+
+    # Defaults de widgets (solo si no existen)
+    if "comp_fecha" not in st.session_state:
+        st.session_state["comp_fecha"] = date.today()
+    if "comp_proveedor_sel" not in st.session_state:
+        st.session_state["comp_proveedor_sel"] = ""
+    if "comp_nro" not in st.session_state:
+        st.session_state["comp_nro"] = ""
+    if "comp_tipo" not in st.session_state:
+        st.session_state["comp_tipo"] = "Factura"
+    if "comp_moneda" not in st.session_state:
+        st.session_state["comp_moneda"] = "UYU"
+    if "comp_condicion" not in st.session_state:
+        st.session_state["comp_condicion"] = "Contado"
+
+    if "comp_articulo_sel" not in st.session_state:
+        st.session_state["comp_articulo_sel"] = ""
+    if "comp_articulo_prev" not in st.session_state:
+        st.session_state["comp_articulo_prev"] = ""
+
+    if "comp_cantidad" not in st.session_state:
+        st.session_state["comp_cantidad"] = 1
+    if "comp_precio" not in st.session_state:
+        st.session_state["comp_precio"] = 0.0
+    if "comp_desc" not in st.session_state:
+        st.session_state["comp_desc"] = 0.0
+    if "comp_lote" not in st.session_state:
+        st.session_state["comp_lote"] = ""
+    if "comp_venc" not in st.session_state:
+        st.session_state["comp_venc"] = date.today()
+
+    # Reset del renglón (se ejecuta ANTES de crear widgets)
+    if st.session_state["comp_reset_line"]:
+        st.session_state["comp_articulo_sel"] = ""
+        st.session_state["comp_articulo_prev"] = ""
+        st.session_state["comp_cantidad"] = 1
+        st.session_state["comp_precio"] = 0.0
+        st.session_state["comp_desc"] = 0.0
+        st.session_state["comp_lote"] = ""
+        st.session_state["comp_venc"] = date.today()
+        st.session_state["comp_reset_line"] = False
+
+    # -------------------------
+    # Datos Supabase
+    # -------------------------
+    proveedores_options, prov_name_to_id = _get_proveedor_options()
+    articulos_options, art_label_to_row = _get_articulo_options()
+
+    # Sanitizar selectbox si quedó un valor viejo
+    if st.session_state["comp_proveedor_sel"] not in proveedores_options:
+        st.session_state["comp_proveedor_sel"] = ""
+    if st.session_state["comp_articulo_sel"] not in articulos_options:
+        st.session_state["comp_articulo_sel"] = ""
+
+    # =========================
+    # CABECERA
+    # =========================
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.date_input("Fecha", key="comp_fecha")
+
+        cprov, cnro = st.columns([2, 1])
+        with cprov:
+            st.selectbox("Proveedor", proveedores_options, key="comp_proveedor_sel")
+        with cnro:
+            st.text_input("Nº Comprobante", key="comp_nro")
+
+    with c2:
+        st.selectbox("Tipo", ["Factura", "Remito", "Nota de Crédito"], key="comp_tipo")
+        st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion")
+
+    with c3:
+        st.selectbox("Moneda", ["UYU", "USD"], key="comp_moneda")
+
+    st.markdown("### 📦 Artículos")
+
+    # =========================
+    # RENGLÓN DE CARGA
+    # =========================
+    i1, i2, i3, i4, i5, i6, i7 = st.columns([2.6, 1, 1.2, 1.1, 1.1, 1.2, 1.4])
+
+    with i1:
+        st.selectbox("Artículo", articulos_options, key="comp_articulo_sel")
+
+    # Autocargar precio/IVA cuando cambia el artículo (ANTES de crear los otros widgets)
+    art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {}) if st.session_state["comp_articulo_sel"] else {}
+    iva_tipo_sugerido = _map_iva_tipo_from_articulo_row(art_row) if art_row else "22%"
+    precio_db = _map_precio_sin_iva_from_articulo_row(art_row) if art_row else 0.0
+
+    if st.session_state["comp_articulo_sel"] != st.session_state["comp_articulo_prev"]:
+        st.session_state["comp_articulo_prev"] = st.session_state["comp_articulo_sel"]
+        st.session_state["comp_precio"] = float(precio_db or 0.0)
+        st.session_state["comp_cantidad"] = 1
+        st.session_state["comp_desc"] = 0.0
+        st.session_state["comp_lote"] = ""
+        st.session_state["comp_venc"] = date.today()
+
+    with i2:
+        st.number_input("Cantidad", min_value=1, step=1, key="comp_cantidad")
+    with i3:
+        st.number_input("Precio unit. s/IVA", min_value=0.0, step=0.01, key="comp_precio")
+    with i4:
+        st.text_input("IVA", value=iva_tipo_sugerido, disabled=True)
+    with i5:
+        st.number_input("Desc. %", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc")
+    with i6:
+        st.text_input("Lote", key="comp_lote")
+    with i7:
+        st.date_input("Vencimiento", key="comp_venc")
+
+    badd, bsave = st.columns([1, 1])
+
+    # =========================
+    # ➕ AGREGAR ARTÍCULO
+    # =========================
+    if badd.button("➕ Agregar artículo", use_container_width=True):
+        if not st.session_state["comp_proveedor_sel"]:
+            st.error("Seleccioná un proveedor.")
+        elif not st.session_state["comp_articulo_sel"]:
+            st.error("Seleccioná un artículo.")
+        else:
+            art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {})
+            art_desc = _articulo_desc_from_row(art_row) or st.session_state["comp_articulo_sel"]
+            art_id = art_row.get("id")
+
+            iva_tipo_final = _map_iva_tipo_from_articulo_row(art_row)
+            iva_rate = _iva_rate_from_tipo(iva_tipo_final)
+
+            cantidad = int(st.session_state["comp_cantidad"] or 1)
+            precio_unit = float(st.session_state["comp_precio"] or 0.0)
+            desc_pct = float(st.session_state["comp_desc"] or 0.0)
+
+            calc = _calc_linea(cantidad, precio_unit, iva_rate, desc_pct)
+
+            rid = int(st.session_state["comp_next_rid"])
+            st.session_state["comp_next_rid"] = rid + 1
+
+            st.session_state["comp_items"].append({
+                "_rid": rid,
+                "articulo": art_desc,
+                "articulo_id": art_id,
+                "cantidad": cantidad,
+                "precio_unit_sin_iva": float(precio_unit),
+                "iva_tipo": iva_tipo_final,
+                "iva_rate": float(iva_rate),
+                "descuento_pct": float(desc_pct),
+                "descuento_monto": float(calc["descuento_monto"]),
+                "subtotal_sin_iva": float(calc["subtotal_sin_iva"]),
+                "iva_monto": float(calc["iva_monto"]),
+                "total_con_iva": float(calc["total_con_iva"]),
+                "lote": (st.session_state["comp_lote"] or "").strip(),
+                "vencimiento": str(st.session_state["comp_venc"]),
+                "moneda": st.session_state["comp_moneda"],
+            })
+
+            # Pediste: al agregar, que quede listo para una nueva línea
+            st.session_state["comp_reset_line"] = True
+            st.rerun()
+
+    # =========================
+    # TABLA ÚNICA + BORRAR
+    # =========================
+    if st.session_state["comp_items"]:
+        df_items = pd.DataFrame(st.session_state["comp_items"]).copy()
+
+        if "🗑 Eliminar" not in df_items.columns:
+            df_items["🗑 Eliminar"] = False
+
+        show_cols = [
+            "_rid",
+            "articulo",
+            "cantidad",
+            "precio_unit_sin_iva",
+            "iva_tipo",
+            "descuento_pct",
+            "subtotal_sin_iva",
+            "iva_monto",
+            "total_con_iva",
+            "lote",
+            "vencimiento",
+            "🗑 Eliminar",
+        ]
+
+        edited = st.data_editor(
+            df_items[show_cols],
+            use_container_width=True,
+            hide_index=True,
+            height=240,
+            disabled=[c for c in show_cols if c != "🗑 Eliminar"],
+            key="comp_editor"
+        )
+
+        cdel1, _ = st.columns([1, 3])
+        if cdel1.button("🗑 Quitar seleccionados", use_container_width=True):
+            to_del = set(edited.loc[edited["🗑 Eliminar"] == True, "_rid"].tolist())
+            st.session_state["comp_items"] = [it for it in st.session_state["comp_items"] if it.get("_rid") not in to_del]
+            st.rerun()
+
+        # Totales
+        moneda_actual = st.session_state["comp_moneda"]
+        subtotal = float(df_items["subtotal_sin_iva"].sum())
+        iva_total = float(df_items["iva_monto"].sum())
+        total_calculado = float(df_items["total_con_iva"].sum())
+        desc_total = float(df_items["descuento_monto"].sum()) if "descuento_monto" in df_items.columns else 0.0
+
+        t1, t2, t3, t4 = st.columns([2.2, 2.2, 2.2, 2.4])
+        with t1:
+            st.caption("SUB TOTAL")
+            st.text_input("SUB TOTAL", value=_fmt_money(subtotal, moneda_actual), disabled=True, label_visibility="collapsed")
+        with t2:
+            st.caption("DESC./REC.")
+            st.text_input("DESC./REC.", value=_fmt_money(desc_total, moneda_actual), disabled=True, label_visibility="collapsed")
+        with t3:
+            st.caption("IMPUESTOS")
+            st.text_input("IMPUESTOS", value=_fmt_money(iva_total, moneda_actual), disabled=True, label_visibility="collapsed")
+        with t4:
+            st.caption("TOTAL")
+            st.text_input("TOTAL", value=_fmt_money(total_calculado, moneda_actual), disabled=True, label_visibility="collapsed")
+
+    # =========================
+    # 💾 GUARDAR COMPROBANTE
+    # =========================
+    if bsave.button("💾 Guardar comprobante", use_container_width=True):
+        if not st.session_state["comp_proveedor_sel"] or not st.session_state["comp_nro"] or not st.session_state["comp_items"]:
+            st.error("Faltan datos obligatorios (Proveedor, Nº Comprobante y al menos 1 artículo).")
+            st.stop()
+
+        proveedor_nombre = str(st.session_state["comp_proveedor_sel"]).strip()
+        proveedor_id = prov_name_to_id.get(proveedor_nombre)
+        nro_norm = str(st.session_state["comp_nro"]).strip()
+
+        try:
+            df_items = pd.DataFrame(st.session_state["comp_items"])
+            subtotal = float(df_items["subtotal_sin_iva"].sum())
+            iva_total = float(df_items["iva_monto"].sum())
+            total_calculado = float(df_items["total_con_iva"].sum())
+
+            cabecera_full = {
+                "fecha": str(st.session_state["comp_fecha"]),
+                "proveedor": proveedor_nombre,
+                "proveedor_id": proveedor_id,
+                "tipo_comprobante": st.session_state["comp_tipo"],
+                "nro_comprobante": nro_norm,
+                "condicion_pago": st.session_state["comp_condicion"],
+                "usuario": str(usuario_actual),
+                "moneda": st.session_state["comp_moneda"],
+                "subtotal": subtotal,
+                "iva_total": iva_total,
+                "total": total_calculado,
+            }
+
+            res = _insert_cabecera_con_fallback(cabecera_full)
+            comprobante_id = res.data[0]["id"]
+
+            for item in st.session_state["comp_items"]:
+                detalle_full = {
+                    "comprobante_id": comprobante_id,
+                    "articulo": item["articulo"],
+                    "articulo_id": item.get("articulo_id"),
+                    "cantidad": int(item["cantidad"]),
+                    "lote": item.get("lote", ""),
+                    "vencimiento": item.get("vencimiento", ""),
+                    "usuario": str(usuario_actual),
+
+                    "moneda": st.session_state["comp_moneda"],
+                    "precio_unit_sin_iva": float(item.get("precio_unit_sin_iva", 0.0)),
+                    "iva_tipo": item.get("iva_tipo", "22%"),
+                    "iva_rate": float(item.get("iva_rate", 0.22)),
+                    "descuento_pct": float(item.get("descuento_pct", 0.0)),
+                    "descuento_monto": float(item.get("descuento_monto", 0.0)),
+                    "subtotal_sin_iva": float(item.get("subtotal_sin_iva", 0.0)),
+                    "iva_monto": float(item.get("iva_monto", 0.0)),
+                    "total_con_iva": float(item.get("total_con_iva", 0.0)),
                 }
-            )
 
-    st.markdown("---")
+                _insert_detalle_con_fallback(detalle_full)
+                _impactar_stock(detalle_full["articulo"], detalle_full["cantidad"])
 
-    if st.button("✅ Confirmar alta", use_container_width=True, key="alta_confirmar"):
-        errores = []
-        for idx, it in enumerate(items_to_process, start=1):
-            if not it["art"]:
-                errores.append(f"Línea #{idx}: falta seleccionar artículo.")
-                continue
-            if it["cantidad"] <= 0:
-                errores.append(f"Línea #{idx}: cantidad debe ser > 0.")
-            # Precio “siempre”: dejo pasar 0 pero avisamos (por si querés cargar sin costo)
-            if it["precio"] <= 0:
-                errores.append(f"Línea #{idx}: precio debe ser > 0 (lo pediste como obligatorio para FIFO).")
-            if it["usa_lote"]:
-                if (it["lote"] or "").strip() == "":
-                    errores.append(f"Línea #{idx}: marcaste lote/vencimiento pero falta Lote.")
-                if (it["venc"] or "").strip() == "":
-                    errores.append(f"Línea #{idx}: marcaste lote/vencimiento pero falta Vencimiento.")
+            st.success("Comprobante guardado correctamente.")
+            st.session_state["comp_items"] = []
+            st.rerun()
 
-        if errores:
-            st.error("No se puede confirmar:\n- " + "\n- ".join(errores))
-            return
-
-        ok = 0
-        for it in items_to_process:
-            art = it["art"]
-            if not art:
-                continue
-
-            codigo = art.get("codigo_int", "").strip()
-            desc = art.get("desc", "").strip()
-            fam = art.get("familia", "").strip()
-
-            if codigo == "":
-                # si no hay código interno, usamos el Id como código “de sistema”
-                codigo = f"ID:{art.get('id', '')}"
-
-            lote = it["lote"] if it["usa_lote"] else ""
-            venc = it["venc"] if it["usa_lote"] else ""
-
-            # Alta impacta en stock (cantidad)
-            _upsert_stock_row(
-                deposito=deposito_destino,
-                familia=fam,
-                codigo=codigo,
-                articulo=desc,
-                lote=lote,
-                vencimiento=venc,
-                delta_stock=float(it["cantidad"]),
-            )
-
-            ok += 1
-
-        st.success(f"Alta confirmada. Líneas procesadas: {ok}")
-        st.info("Nota: el precio se está capturando en la UI (obligatorio), pero tu tabla 'stock' no tiene columna de precio. "
-                "Cuando definas dónde persistir el precio (tabla de movimientos / comprobantes / costo por lote), lo conectamos sin cambiar esta lógica.")
-
-
-# =====================================================================
-# BAJA DE STOCK (DESDE STOCK)
-# =====================================================================
-
-def mostrar_comprobante_baja_stock():
-    st.subheader("⬇️ Baja de stock")
-
-    deposito_origen = st.selectbox(
-        "Depósito origen",
-        DEPOSITOS,
-        key="baja_deposito_origen",
-    )
-
-    motivo = st.selectbox(
-        "Motivo de baja",
-        ["Salida no declarada", "Rotura", "Pérdida", "Recuento", "Otro"],
-        key="baja_motivo",
-    )
-
-    df_stock = _stock_preparado()
-    df_dep = df_stock[df_stock["DEPOSITO"] == deposito_origen].copy()
-
-    if df_dep.empty:
-        st.info("No hay stock para ese depósito.")
-        return
-
-    # Selector de artículo por CODIGO / ARTICULO
-    buscar = st.text_input(
-        "Buscar (código interno o artículo)",
-        key="baja_buscar",
-        placeholder="Ej: 12345 o 'tubo'...",
-    ).strip().lower()
-
-    df_art = df_dep[["CODIGO", "ARTICULO", "FAMILIA"]].drop_duplicates().copy()
-    if buscar:
-        df_art = df_art[
-            df_art["CODIGO"].str.lower().str.contains(buscar, na=False)
-            | df_art["ARTICULO"].str.lower().str.contains(buscar, na=False)
-        ].head(50)
-    else:
-        df_art = df_art.head(50)
-
-    if df_art.empty:
-        st.info("Sin resultados para esa búsqueda.")
-        return
-
-    options = df_art["CODIGO"].astype(str).tolist()
-    label_map = {r["CODIGO"]: f'{r["CODIGO"]} - {r["ARTICULO"]} | {r["FAMILIA"]}' for _, r in df_art.iterrows()}
-
-    cod_sel = st.selectbox(
-        "Artículo (desde stock)",
-        options=options,
-        format_func=lambda x: label_map.get(str(x), str(x)),
-        key="baja_codigo_sel",
-    )
-
-    df_lotes = df_dep[df_dep["CODIGO"].astype(str) == str(cod_sel)].copy()
-    if df_lotes.empty:
-        st.warning("No se encontró stock para ese código en este depósito.")
-        return
-
-    # Determina si tiene lote/venc
-    has_lote = ((df_lotes["LOTE"].astype(str).str.strip() != "") | (df_lotes["VENCIMIENTO"].astype(str).str.strip() != "")).any()
-
-    # Orden FIFO por vencimiento (más viejo = vencimiento más cercano / menor fecha)
-    df_lotes["_vdate"] = df_lotes["VENCIMIENTO"].apply(_to_date_safe)
-    df_lotes["_v_sort"] = df_lotes["_vdate"].apply(lambda d: d if d else date(2100, 1, 1))
-    df_lotes = df_lotes.sort_values(by=["_v_sort", "LOTE"], ascending=[True, True]).reset_index(drop=True)
-
-    modo = st.radio(
-        "Selección de lote",
-        ["FIFO (más viejo)", "Más nuevo", "Elegir manual"],
-        horizontal=True,
-        key="baja_modo_lote",
-    )
-
-    chosen_idx = 0
-    if modo == "FIFO (más viejo)":
-        chosen_idx = 0
-    elif modo == "Más nuevo":
-        chosen_idx = len(df_lotes) - 1
-    else:
-        # manual
-        idx_opt = list(range(len(df_lotes)))
-        chosen_idx = st.selectbox(
-            "Elegir lote",
-            options=idx_opt,
-            format_func=lambda ix: _fmt_lote_row(
-                df_lotes.loc[ix, "LOTE"],
-                df_lotes.loc[ix, "VENCIMIENTO"],
-                df_lotes.loc[ix, "STOCK"],
-            ),
-            key="baja_lote_manual_idx",
-        )
-
-    chosen = df_lotes.loc[int(chosen_idx)]
-    stock_actual = _safe_float(chosen.get("STOCK", "0"))
-
-    st.markdown("#### Lote seleccionado")
-    if has_lote:
-        st.write(_fmt_lote_row(chosen.get("LOTE", ""), chosen.get("VENCIMIENTO", ""), chosen.get("STOCK", "")))
-    else:
-        st.write(f'Stock disponible: {stock_actual:g} (sin lote/vencimiento)')
-
-    # Alerta si elige "más nuevo" y existe uno más viejo
-    requiere_confirm = False
-    if modo == "Más nuevo" and len(df_lotes) > 1:
-        requiere_confirm = True
-        st.warning("Estás eligiendo el lote MÁS NUEVO, pero existe un lote más viejo (FIFO).")
-        confirmar = st.checkbox(
-            "Sí, estoy seguro: quiero bajar el lote más nuevo",
-            key="baja_confirm_no_fifo",
-        )
-        if not confirmar:
-            st.info("Para continuar, confirmá la excepción FIFO.")
+        except Exception as e:
+            st.error("No se pudo guardar en Supabase (RLS / columnas / permisos).")
+            st.write(str(e))
             st.stop()
-
-    cant = st.number_input(
-        "Cantidad a dar de baja",
-        min_value=0.0,
-        max_value=float(stock_actual) if stock_actual > 0 else 0.0,
-        step=1.0,
-        value=0.0,
-        key="baja_cantidad",
-    )
-
-    if st.button("✅ Confirmar baja", use_container_width=True, key="baja_confirmar"):
-        if cant <= 0:
-            st.error("La cantidad debe ser > 0.")
-            return
-        if cant > stock_actual:
-            st.error("No podés bajar más que el stock disponible.")
-            return
-
-        delta = -float(cant)
-
-        _upsert_stock_row(
-            deposito=deposito_origen,
-            familia=str(chosen.get("FAMILIA", "") or ""),
-            codigo=str(chosen.get("CODIGO", "") or ""),
-            articulo=str(chosen.get("ARTICULO", "") or ""),
-            lote=str(chosen.get("LOTE", "") or ""),
-            vencimiento=str(chosen.get("VENCIMIENTO", "") or ""),
-            delta_stock=delta,
-        )
-
-        st.success("Baja confirmada y aplicada a stock.")
-
-
-# =====================================================================
-# MOVIMIENTO ENTRE DEPÓSITOS (DESDE STOCK)
-# =====================================================================
-
-def mostrar_comprobante_movimiento():
-    st.subheader("🔁 Movimiento entre depósitos")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        deposito_origen = st.selectbox(
-            "Depósito origen",
-            DEPOSITOS,
-            key="mov_deposito_origen",
-        )
-
-    with col2:
-        deposito_destino = st.selectbox(
-            "Depósito destino",
-            DEPOSITOS,
-            key="mov_deposito_destino",
-        )
-
-    if deposito_origen == deposito_destino:
-        st.warning("El depósito destino debe ser distinto al origen.")
-        return
-
-    df_stock = _stock_preparado()
-    df_dep = df_stock[df_stock["DEPOSITO"] == deposito_origen].copy()
-
-    if df_dep.empty:
-        st.info("No hay stock para el depósito origen.")
-        return
-
-    buscar = st.text_input(
-        "Buscar (código interno o artículo)",
-        key="mov_buscar",
-        placeholder="Ej: 12345 o 'tubo'...",
-    ).strip().lower()
-
-    df_art = df_dep[["CODIGO", "ARTICULO", "FAMILIA"]].drop_duplicates().copy()
-    if buscar:
-        df_art = df_art[
-            df_art["CODIGO"].str.lower().str.contains(buscar, na=False)
-            | df_art["ARTICULO"].str.lower().str.contains(buscar, na=False)
-        ].head(50)
-    else:
-        df_art = df_art.head(50)
-
-    if df_art.empty:
-        st.info("Sin resultados para esa búsqueda.")
-        return
-
-    options = df_art["CODIGO"].astype(str).tolist()
-    label_map = {r["CODIGO"]: f'{r["CODIGO"]} - {r["ARTICULO"]} | {r["FAMILIA"]}' for _, r in df_art.iterrows()}
-
-    cod_sel = st.selectbox(
-        "Artículo (desde stock origen)",
-        options=options,
-        format_func=lambda x: label_map.get(str(x), str(x)),
-        key="mov_codigo_sel",
-    )
-
-    df_lotes = df_dep[df_dep["CODIGO"].astype(str) == str(cod_sel)].copy()
-    if df_lotes.empty:
-        st.warning("No se encontró stock para ese código en el depósito origen.")
-        return
-
-    has_lote = ((df_lotes["LOTE"].astype(str).str.strip() != "") | (df_lotes["VENCIMIENTO"].astype(str).str.strip() != "")).any()
-
-    df_lotes["_vdate"] = df_lotes["VENCIMIENTO"].apply(_to_date_safe)
-    df_lotes["_v_sort"] = df_lotes["_vdate"].apply(lambda d: d if d else date(2100, 1, 1))
-    df_lotes = df_lotes.sort_values(by=["_v_sort", "LOTE"], ascending=[True, True]).reset_index(drop=True)
-
-    modo = st.radio(
-        "Selección de lote a mover",
-        ["FIFO (más viejo)", "Más nuevo", "Elegir manual"],
-        horizontal=True,
-        key="mov_modo_lote",
-    )
-
-    chosen_idx = 0
-    if modo == "FIFO (más viejo)":
-        chosen_idx = 0
-    elif modo == "Más nuevo":
-        chosen_idx = len(df_lotes) - 1
-    else:
-        idx_opt = list(range(len(df_lotes)))
-        chosen_idx = st.selectbox(
-            "Elegir lote",
-            options=idx_opt,
-            format_func=lambda ix: _fmt_lote_row(
-                df_lotes.loc[ix, "LOTE"],
-                df_lotes.loc[ix, "VENCIMIENTO"],
-                df_lotes.loc[ix, "STOCK"],
-            ),
-            key="mov_lote_manual_idx",
-        )
-
-    chosen = df_lotes.loc[int(chosen_idx)]
-    stock_actual = _safe_float(chosen.get("STOCK", "0"))
-
-    st.markdown("#### Lote seleccionado (origen)")
-    if has_lote:
-        st.write(_fmt_lote_row(chosen.get("LOTE", ""), chosen.get("VENCIMIENTO", ""), chosen.get("STOCK", "")))
-    else:
-        st.write(f'Stock disponible: {stock_actual:g} (sin lote/vencimiento)')
-
-    # Alerta FIFO si elige más nuevo
-    if modo == "Más nuevo" and len(df_lotes) > 1:
-        st.warning("Estás eligiendo el lote MÁS NUEVO, pero existe un lote más viejo (FIFO).")
-        confirmar = st.checkbox(
-            "Sí, estoy seguro: quiero mover el lote más nuevo",
-            key="mov_confirm_no_fifo",
-        )
-        if not confirmar:
-            st.info("Para continuar, confirmá la excepción FIFO.")
-            st.stop()
-
-    cant = st.number_input(
-        "Cantidad a mover",
-        min_value=0.0,
-        max_value=float(stock_actual) if stock_actual > 0 else 0.0,
-        step=1.0,
-        value=0.0,
-        key="mov_cantidad",
-    )
-
-    if st.button("✅ Confirmar movimiento", use_container_width=True, key="mov_confirmar"):
-        if cant <= 0:
-            st.error("La cantidad debe ser > 0.")
-            return
-        if cant > stock_actual:
-            st.error("No podés mover más que el stock disponible.")
-            return
-
-        # resta origen
-        _upsert_stock_row(
-            deposito=deposito_origen,
-            familia=str(chosen.get("FAMILIA", "") or ""),
-            codigo=str(chosen.get("CODIGO", "") or ""),
-            articulo=str(chosen.get("ARTICULO", "") or ""),
-            lote=str(chosen.get("LOTE", "") or ""),
-            vencimiento=str(chosen.get("VENCIMIENTO", "") or ""),
-            delta_stock=-float(cant),
-        )
-
-        # suma destino (mismo lote/venc)
-        _upsert_stock_row(
-            deposito=deposito_destino,
-            familia=str(chosen.get("FAMILIA", "") or ""),
-            codigo=str(chosen.get("CODIGO", "") or ""),
-            articulo=str(chosen.get("ARTICULO", "") or ""),
-            lote=str(chosen.get("LOTE", "") or ""),
-            vencimiento=str(chosen.get("VENCIMIENTO", "") or ""),
-            delta_stock=float(cant),
-        )
-
-        st.success("Movimiento confirmado y aplicado a stock.")
-
-
-# =====================================================================
-# BAJA POR VENCIMIENTO (SE DEJA COMO PLACEHOLDER + REGLA)
-# =====================================================================
-
-def mostrar_comprobante_baja_vencimiento():
-    st.subheader("⏰ Baja por vencimiento")
-
-    deposito_origen = st.selectbox(
-        "Depósito",
-        DEPOSITOS,
-        key="venc_deposito_origen",
-    )
-
-    st.warning("Solo se permiten artículos vencidos (pendiente de completar lógica).")
-
-
-# =====================================================================
-# AJUSTE POR RECUENTO (SE DEJA COMO PLACEHOLDER)
-# =====================================================================
-
-def mostrar_comprobante_ajuste_recuento():
-    st.subheader("⚖️ Ajuste por recuento")
-
-    deposito = st.selectbox(
-        "Depósito",
-        DEPOSITOS,
-        key="recuento_deposito",
-    )
-
-    tipo_ajuste = st.radio(
-        "Tipo de ajuste",
-        ["Alta", "Baja"],
-        horizontal=True,
-        key="recuento_tipo",
-    )
-
-    st.markdown("### Artículos")
-    st.info("Permite ajustar stock real contra sistema (pendiente de completar lógica).")
-
-
-# =====================================================================
-# MENÚ PRINCIPAL COMPROBANTES
-# =====================================================================
-
-def mostrar_menu_comprobantes():
-
-    st.title("📑 Comprobantes")
-
-    opcion = st.radio(
-        "Tipo de comprobante",
-        [
-            "⬆️ Alta de stock",
-            "⬇️ Baja de stock",
-            "🔁 Movimiento entre depósitos",
-            "⏰ Baja por vencimiento",
-            "⚖️ Ajuste por recuento"
-        ],
-        key="menu_comprobantes_opcion",
-    )
-
-    if opcion == "⬆️ Alta de stock":
-        mostrar_comprobante_alta_stock()
-
-    elif opcion == "⬇️ Baja de stock":
-        mostrar_comprobante_baja_stock()
-
-    elif opcion == "🔁 Movimiento entre depósitos":
-        mostrar_comprobante_movimiento()
-
-    elif opcion == "⏰ Baja por vencimiento":
-        mostrar_comprobante_baja_vencimiento()
-
-    elif opcion == "⚖️ Ajuste por recuento":
-        mostrar_comprobante_ajuste_recuento()
