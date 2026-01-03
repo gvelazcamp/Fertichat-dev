@@ -1,328 +1,257 @@
 # =========================
-# MAIN.PY - SIDEBAR NATIVO (PC OK) + CONTROL NATIVO EN MÓVIL (Z FLIP 5)
+# BAJASTOCK.PY - Baja de stock con historial
 # =========================
 
 import streamlit as st
+import pandas as pd
 from datetime import datetime
-
-st.set_page_config(
-    page_title="FertiChat",
-    page_icon="🦋",
-    layout="wide",
-    initial_sidebar_state="auto"  # ✅ PC abierto / móvil auto (nativo)
-)
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 # =========================
-# IMPORTS
+# CONEXIÓN A POSTGRESQL
 # =========================
-from config import MENU_OPTIONS, DEBUG_MODE
-from auth import init_db
-from login_page import require_auth, get_current_user, logout
-from pedidos import mostrar_pedidos_internos, contar_notificaciones_no_leidas
-from bajastock import mostrar_baja_stock
-from ordenes_compra import mostrar_ordenes_compra
-from ui_compras import Compras_IA
-from ui_buscador import mostrar_buscador_ia
-from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo
-from ui_dashboard import mostrar_dashboard, mostrar_indicadores_ia, mostrar_resumen_compras_rotativo
-from ingreso_comprobantes import mostrar_ingreso_comprobantes
-from ui_inicio import mostrar_inicio
-from ficha_stock import mostrar_ficha_stock
-from articulos import mostrar_articulos
-from depositos import mostrar_depositos
-from familias import mostrar_familias
+DATABASE_URL = "postgresql://postgres.ytmpjhdjecocoitptvjn:TU_PASSWORD_ACA@aws-0-us-west-2.pooler.supabase.com:5432/postgres"
+
+def get_connection():
+    """Obtiene conexión a PostgreSQL"""
+    return psycopg2.connect(DATABASE_URL)
 
 
-# =========================
-# INICIALIZACIÓN
-# =========================
-init_db()
-require_auth()
+def crear_tabla_historial():
+    """Crea la tabla de historial de bajas si no existe"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS historial_bajas (
+            id SERIAL PRIMARY KEY,
+            usuario VARCHAR(100),
+            fecha DATE,
+            hora TIME,
+            codigo_interno VARCHAR(50),
+            articulo VARCHAR(255),
+            cantidad DECIMAL(10,2),
+            motivo VARCHAR(255),
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
 
-user = get_current_user() or {}
 
-if "radio_menu" not in st.session_state:
-    st.session_state["radio_menu"] = "🏠 Inicio"
+def buscar_articulo(busqueda):
+    """Busca artículo por código de barras, interno o descripción"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # Buscar por coincidencia exacta primero, luego por LIKE
+    cur.execute("""
+        SELECT * FROM chatbot_raw 
+        WHERE CAST(interno AS TEXT) = %s 
+           OR codigo_barras = %s 
+           OR LOWER(articulo) LIKE LOWER(%s)
+        LIMIT 20
+    """, (busqueda, busqueda, f"%{busqueda}%"))
+    
+    resultados = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    return resultados
 
 
-# =========================
-# CSS (CLAVE: NO OCULTAR stToolbar EN MÓVIL)
-# =========================
-st.markdown(r"""
-<style>
-/* Ocultar elementos (sin romper el control nativo del sidebar) */
-#MainMenu, footer { display: none !important; }
-div[data-testid="stDecoration"] { display: none !important; }
+def registrar_baja(usuario, codigo_interno, articulo, cantidad, motivo):
+    """Registra una baja en el historial"""
+    conn = get_connection()
+    cur = conn.cursor()
+    
+    ahora = datetime.now()
+    
+    cur.execute("""
+        INSERT INTO historial_bajas (usuario, fecha, hora, codigo_interno, articulo, cantidad, motivo)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (usuario, ahora.date(), ahora.time(), codigo_interno, articulo, cantidad, motivo))
+    
+    conn.commit()
+    cur.close()
+    conn.close()
 
-/* ✅ NO ocultar stToolbar ni stHeader globalmente */
-/* Si ocultás stToolbar, en Z Flip 5 desaparece el botón ☰/flecha */
 
-/* Theme general */
-:root {
-    --fc-bg-1: #f6f4ef; --fc-bg-2: #f3f6fb;
-    --fc-primary: #0b3b60; --fc-accent: #f59e0b;
-}
-
-html, body { font-family: Inter, system-ui, sans-serif; color: #0f172a; }
-[data-testid="stAppViewContainer"] { background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2)); }
-.block-container { max-width: 1240px; padding-top: 1.25rem; padding-bottom: 2.25rem; }
-
-/* Sidebar look */
-section[data-testid="stSidebar"] { border-right: 1px solid rgba(15, 23, 42, 0.08); }
-section[data-testid="stSidebar"] > div {
-    background: rgba(255,255,255,0.70);
-    backdrop-filter: blur(8px);
-}
-div[data-testid="stSidebar"] div[role="radiogroup"] label {
-    border-radius: 12px; padding: 8px 10px; margin: 3px 0; border: 1px solid transparent;
-}
-div[data-testid="stSidebar"] div[role="radiogroup"] label:hover { background: rgba(37,99,235,0.06); }
-div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-    background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.18);
-}
-
-/* Header móvil visual (solo estética) */
-#mobile-header { display: none; }
-
-/* =========================================================
-   DESKTOP REAL (mouse/trackpad):
-   - sidebar siempre visible
-   - oculto controles de colapsar/expandir para que no lo puedan cerrar en PC
-   - puedo ocultar toolbar actions sin romper nada
-========================================================= */
-@media (hover: hover) and (pointer: fine) {
-  div[data-testid="stToolbarActions"] { display: none !important; }
-
-  /* No permitir colapsar sidebar en PC */
-  div[data-testid="collapsedControl"] { display: none !important; }
-  [data-testid="baseButton-header"],
-  button[data-testid="stSidebarCollapseButton"],
-  button[data-testid="stSidebarExpandButton"],
-  button[title="Close sidebar"],
-  button[title="Open sidebar"] {
-    display: none !important;
-  }
-}
-
-/* =========================================================
-   MÓVIL REAL (touch):
-   - mostrar SI o SI el control nativo (☰ / flecha)
-   - mantener visible el botón de cerrar del sidebar
-========================================================= */
-@media (hover: none) and (pointer: coarse) {
-  .block-container { padding-top: 70px !important; }
-
-  #mobile-header {
-    display: flex !important;
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 60px;
-    background: #0b3b60;
-    z-index: 999996;           /* debajo del control nativo */
-    align-items: center;
-    padding: 0 16px 0 56px;    /* deja lugar al control nativo */
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    pointer-events: none;      /* no bloquea clicks */
-  }
-
-  #mobile-header .logo {
-    color: white;
-    font-size: 20px;
-    font-weight: 800;
-  }
-
-  /* ✅ Abrir sidebar (nativo) */
-  div[data-testid="collapsedControl"],
-  button[data-testid="stSidebarExpandButton"],
-  button[title="Open sidebar"] {
-    display: inline-flex !important;
-    position: fixed !important;
-    top: 12px !important;
-    left: 12px !important;
-    z-index: 1000000 !important;
-  }
-
-  /* ✅ Cerrar sidebar (nativo) */
-  [data-testid="baseButton-header"],
-  button[data-testid="stSidebarCollapseButton"],
-  button[title="Close sidebar"] {
-    display: inline-flex !important;
-  }
-
-  /* Ocultar título FertiChat y Sistema de Gestión en móvil */
-  [data-testid="stMarkdownContainer"]:has(h1#ferti-chat) {
-    display: none !important;
-  }
-
-  /* =========================================================
-     SIDEBAR MÓVIL - FONDO BLANCO Y LETRAS NEGRAS
-  ========================================================= */
-  section[data-testid="stSidebar"] {
-    background: #ffffff !important;
-  }
-  
-  section[data-testid="stSidebar"] > div {
-    background: #ffffff !important;
-  }
-  
-  section[data-testid="stSidebar"] > div > div {
-    background: #ffffff !important;
-  }
-  
-  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-    background: #ffffff !important;
-  }
-  
-  section[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] {
-    background: #ffffff !important;
-  }
-  
-  /* Letras negras en todo el sidebar */
-  section[data-testid="stSidebar"] * {
-    color: #0f172a !important;
-  }
-  
-  section[data-testid="stSidebar"] p,
-  section[data-testid="stSidebar"] span,
-  section[data-testid="stSidebar"] label,
-  section[data-testid="stSidebar"] h1,
-  section[data-testid="stSidebar"] h2,
-  section[data-testid="stSidebar"] h3 {
-    color: #0f172a !important;
-  }
-  
-  /* Input buscar */
-  section[data-testid="stSidebar"] input {
-    background: #f8fafc !important;
-    color: #0f172a !important;
-  }
-  
-  /* Botón cerrar sesión */
-  section[data-testid="stSidebar"] button {
-    background: #f1f5f9 !important;
-    color: #0f172a !important;
-  }
-}
-</style>
-""", unsafe_allow_html=True)
+def obtener_historial(limite=50):
+    """Obtiene el historial de bajas"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cur.execute("""
+        SELECT * FROM historial_bajas 
+        ORDER BY created_at DESC 
+        LIMIT %s
+    """, (limite,))
+    
+    resultados = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    return resultados
 
 
 # =========================
-# HEADER MÓVIL (visual)
+# INTERFAZ STREAMLIT
 # =========================
-st.markdown("""
-<div id="mobile-header">
-    <div class="logo">🦋 FertiChat</div>
-</div>
-""", unsafe_allow_html=True)
-
-
-# =========================
-# TÍTULO Y CAMPANITA
-# =========================
-usuario_actual = user.get("usuario", user.get("email", ""))
-cant_pendientes = 0
-if usuario_actual:
-    cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
-
-col_logo, col_spacer, col_notif = st.columns([7, 2, 1])
-
-with col_logo:
-    st.markdown("""
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <div>
-                <h1 style="margin: 0; font-size: 38px; font-weight: 900; color: #0f172a;">
-                    FertiChat
-                </h1>
-                <p style="margin: 4px 0 0 0; font-size: 15px; color: #64748b;">
-                    Sistema de Gestión de Compras
-                </p>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-with col_notif:
-    if cant_pendientes > 0:
-        if st.button(f"🔔 {cant_pendientes}", key="campanita_global"):
-            st.session_state["radio_menu"] = "📄 Pedidos internos"
-            st.rerun()
-    else:
-        st.markdown("<div style='text-align:right; font-size:26px;'>🔔</div>", unsafe_allow_html=True)
-
-st.markdown("<hr>", unsafe_allow_html=True)
-
-
-# =========================
-# SIDEBAR
-# =========================
-with st.sidebar:
-    st.markdown(f"""
-        <div style='
-            background: rgba(255,255,255,0.85);
-            padding: 16px;
-            border-radius: 18px;
-            margin-bottom: 14px;
-            border: 1px solid rgba(15, 23, 42, 0.10);
-            box-shadow: 0 10px 26px rgba(2, 6, 23, 0.06);
-        '>
-            <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
-                <div style='font-size: 26px;'>🦋</div>
-                <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.text_input("Buscar...", key="sidebar_search", label_visibility="collapsed", placeholder="Buscar...")
-
-    st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
-    if user.get('empresa'):
-        st.markdown(f"🏢 {user.get('empresa')}")
-    st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
-
+def mostrar_baja_stock():
+    """Muestra la pantalla de baja de stock"""
+    
+    # Crear tabla si no existe
+    try:
+        crear_tabla_historial()
+    except:
+        pass
+    
+    st.markdown("## 🧾 Baja de Stock")
+    st.markdown("Registrá las bajas de inventario buscando por código de barras, interno o nombre del artículo.")
+    
     st.markdown("---")
-
-    if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar", use_container_width=True):
-        logout()
-        st.rerun()
-
+    
+    # Obtener usuario actual
+    user = st.session_state.get("user", {})
+    usuario_actual = user.get("nombre", user.get("Usuario", "Usuario"))
+    
+    # =========================
+    # BÚSQUEDA DE ARTÍCULO
+    # =========================
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        busqueda = st.text_input(
+            "🔍 Buscar artículo",
+            placeholder="Ingresá código de barras, interno o nombre...",
+            key="busqueda_baja"
+        )
+    
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        btn_buscar = st.button("Buscar", type="primary", use_container_width=True)
+    
+    # =========================
+    # RESULTADOS DE BÚSQUEDA
+    # =========================
+    if busqueda and (btn_buscar or "articulo_seleccionado" not in st.session_state):
+        with st.spinner("Buscando..."):
+            try:
+                resultados = buscar_articulo(busqueda)
+                
+                if resultados:
+                    st.success(f"Se encontraron {len(resultados)} artículo(s)")
+                    
+                    # Mostrar resultados en una tabla seleccionable
+                    for i, art in enumerate(resultados):
+                        with st.container():
+                            col_info, col_btn = st.columns([4, 1])
+                            
+                            with col_info:
+                                interno = art.get('interno', 'N/A')
+                                nombre = art.get('articulo', art.get('descripcion', 'Sin nombre'))
+                                stock = art.get('stock', art.get('cantidad', 0))
+                                
+                                st.markdown(f"""
+                                    **{interno}** - {nombre}  
+                                    📦 Stock actual: **{stock}**
+                                """)
+                            
+                            with col_btn:
+                                if st.button("Seleccionar", key=f"sel_{i}"):
+                                    st.session_state["articulo_seleccionado"] = art
+                                    st.rerun()
+                            
+                            st.markdown("---")
+                else:
+                    st.warning("No se encontraron artículos con ese criterio")
+                    
+            except Exception as e:
+                st.error(f"Error al buscar: {str(e)}")
+    
+    # =========================
+    # FORMULARIO DE BAJA
+    # =========================
+    if "articulo_seleccionado" in st.session_state:
+        art = st.session_state["articulo_seleccionado"]
+        
+        st.markdown("### 📝 Registrar Baja")
+        
+        interno = art.get('interno', 'N/A')
+        nombre = art.get('articulo', art.get('descripcion', 'Sin nombre'))
+        stock_actual = art.get('stock', art.get('cantidad', 0))
+        
+        st.info(f"**Artículo seleccionado:** {interno} - {nombre} | Stock actual: {stock_actual}")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            cantidad = st.number_input(
+                "Cantidad a bajar",
+                min_value=0.01,
+                value=1.0,
+                step=1.0,
+                key="cantidad_baja"
+            )
+        
+        with col2:
+            motivo = st.selectbox(
+                "Motivo de la baja",
+                ["Vencimiento", "Rotura", "Pérdida", "Ajuste de inventario", "Consumo interno", "Otro"],
+                key="motivo_baja"
+            )
+        
+        observacion = st.text_input("Observación (opcional)", key="obs_baja")
+        
+        col_guardar, col_cancelar = st.columns(2)
+        
+        with col_guardar:
+            if st.button("✅ Confirmar Baja", type="primary", use_container_width=True):
+                try:
+                    motivo_final = f"{motivo} - {observacion}" if observacion else motivo
+                    registrar_baja(usuario_actual, str(interno), nombre, cantidad, motivo_final)
+                    st.success(f"✅ Baja registrada: {cantidad} unidad(es) de {nombre}")
+                    del st.session_state["articulo_seleccionado"]
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al registrar baja: {str(e)}")
+        
+        with col_cancelar:
+            if st.button("❌ Cancelar", use_container_width=True):
+                del st.session_state["articulo_seleccionado"]
+                st.rerun()
+    
+    # =========================
+    # HISTORIAL DE BAJAS
+    # =========================
     st.markdown("---")
-    st.markdown("## 📌 Menú")
-
-    st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
-
-
-# =========================
-# ROUTER
-# =========================
-menu_actual = st.session_state["radio_menu"]
-
-if menu_actual == "🏠 Inicio":
-    mostrar_inicio()
-elif menu_actual == "🛒 Compras IA":
-    mostrar_resumen_compras_rotativo()
-    Compras_IA()
-elif menu_actual == "📦 Stock IA":
-    mostrar_resumen_stock_rotativo()
-    mostrar_stock_ia()
-elif menu_actual == "🔎 Buscador IA":
-    mostrar_buscador_ia()
-elif menu_actual == "📥 Ingreso de comprobantes":
-    mostrar_ingreso_comprobantes()
-elif menu_actual == "📊 Dashboard":
-    mostrar_dashboard()
-elif menu_actual == "📄 Pedidos internos":
-    mostrar_pedidos_internos()
-elif menu_actual == "🧾 Baja de stock":
-    mostrar_baja_stock()
-elif menu_actual == "📈 Indicadores (Power BI)":
-    mostrar_indicadores_ia()
-elif menu_actual == "📦 Órdenes de compra":
-    mostrar_ordenes_compra()
-elif menu_actual == "📒 Ficha de stock":
-    mostrar_ficha_stock()
-elif menu_actual == "📚 Artículos":
-    mostrar_articulos()
-elif menu_actual == "🏬 Depósitos":
-    mostrar_depositos()
-elif menu_actual == "🧩 Familias":
-    mostrar_familias()
+    st.markdown("### 📋 Historial de Bajas")
+    
+    try:
+        historial = obtener_historial(50)
+        
+        if historial:
+            df = pd.DataFrame(historial)
+            
+            # Formatear columnas
+            if 'fecha' in df.columns:
+                df['fecha'] = pd.to_datetime(df['fecha']).dt.strftime('%d/%m/%Y')
+            if 'hora' in df.columns:
+                df['hora'] = df['hora'].astype(str).str[:8]
+            
+            # Seleccionar columnas a mostrar
+            columnas_mostrar = ['fecha', 'hora', 'usuario', 'codigo_interno', 'articulo', 'cantidad', 'motivo']
+            columnas_existentes = [c for c in columnas_mostrar if c in df.columns]
+            
+            st.dataframe(
+                df[columnas_existentes],
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("No hay registros de bajas todavía")
+            
+    except Exception as e:
+        st.warning(f"No se pudo cargar el historial: {str(e)}")
