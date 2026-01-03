@@ -337,6 +337,10 @@ def Compras_IA():
                 enable_chart=True,
                 enable_explain=True
             )
+# =========================
+# FUNCIÓN COMPRAS_IA() COMPLETA
+# =========================
+
 def Compras_IA():
     """
     ✅ Chat mejorado con estado persistente del detalle
@@ -353,19 +357,10 @@ def Compras_IA():
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # Input del usuario (compatible móvil) - CON FORM PARA ENTER
-    with st.form(key="form_compras_ia", clear_on_submit=True):
-        prompt = st.text_input(
-            "Escribí tu consulta de compras:",
-            placeholder="Ej: compras roche noviembre 2025",
-            key="input_compras_ia",
-            label_visibility="collapsed"
-        )
-        
-        # Submit button (oculto visualmente pero funcional con Enter)
-        enviar = st.form_submit_button("🔍 Consultar", use_container_width=True)
+    # Input del usuario
+    prompt = st.chat_input("Escribí tu consulta… (ej: compras roche noviembre 2025)")
 
-    if prompt and enviar:
+    if prompt:
         # Agregar mensaje del usuario
         st.session_state.chat_historial.append({"role": "user", "content": prompt})
 
@@ -395,3 +390,31 @@ def Compras_IA():
                 enable_chart=True,
                 enable_explain=True
             )
+
+
+# =========================
+# CSS PARA AGREGAR EN MAIN.PY
+# =========================
+# Agregar esto al final del @media (max-width: 768px) en main.py
+# JUSTO ANTES del cierre }
+
+"""
+  /* ULTRA FIX CHAT INPUT MÓVIL */
+  [data-testid="stChatInput"],
+  [data-testid="stChatInput"] > div,
+  [data-testid="stChatInput"] > div > div {
+    background: #f8fafc !important;
+  }
+
+  [data-testid="stChatInput"] input,
+  [data-testid="stChatInput"] textarea {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    font-size: 14px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 10px 12px !important;
+  }
+}
+"""
