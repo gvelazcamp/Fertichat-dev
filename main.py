@@ -511,7 +511,6 @@ st.markdown(f"""
 </a>
 """, unsafe_allow_html=True)
 
-
 # =========================
 # MANEJAR CLICK EN CAMPANA MÓVIL
 # =========================
