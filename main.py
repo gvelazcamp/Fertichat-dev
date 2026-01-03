@@ -393,7 +393,23 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #0f172a !important;
   }
   
-  /* FIX INPUTS MÓVIL */
+  /* FIX INPUTS/TEXTAREA - TAMAÑO Y FONDO BEIGE */
+  .block-container input[type="text"],
+  .block-container textarea,
+  [data-baseweb="input"] input,
+  [data-baseweb="textarea"] textarea {
+    font-size: 14px !important;
+    padding: 10px 12px !important;
+    min-height: 42px !important;
+  }
+
+  .block-container input::placeholder,
+  .block-container textarea::placeholder {
+    font-size: 14px !important;
+    opacity: 0.6;
+    color: #64748b !important;
+  }
+
   .block-container [data-testid="stChatInput"] input,
   .block-container [data-testid="stChatInput"] textarea,
   .block-container [data-testid="stChatInput"] [data-baseweb="input"],
@@ -408,8 +424,12 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
   .block-container [data-testid="stChatInput"] > div {
     background: #f8fafc !important;
   }
-}
 
+  .block-container [data-testid="stChatInput"] button {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+}
   /* =========================================================
      FIX INPUTS/TEXTAREA - TAMAÑO Y FONDO BEIGE
      ======================================================== */
@@ -573,6 +593,7 @@ st.markdown(f"""
     <hr style="margin-top:16px; border:none; border-top:1px solid #e2e8f0;">
 </div>
 """, unsafe_allow_html=True)
+
 # =========================
 # SIDEBAR
 # =========================
