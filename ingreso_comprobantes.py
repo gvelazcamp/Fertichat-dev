@@ -181,15 +181,57 @@ def _fmt_money(v: float, moneda: str) -> str:
 def _cache_proveedores() -> list:
     if not supabase:
         return []
-    res = supabase.table(TABLA_PROVEEDORES).select("*").order("nombre").execute()
-    return res.data or []
+
+    out = []
+    start = 0
+    page = 1000
+    max_rows = 50000
+
+    while start < max_rows:
+        end = start + page - 1
+        res = (
+            supabase.table(TABLA_PROVEEDORES)
+            .select("*")
+            .order("nombre")
+            .range(start, end)
+            .execute()
+        )
+        batch = res.data or []
+        out.extend(batch)
+        if len(batch) < page:
+            break
+        start += page
+
+    return out
+
 
 @st.cache_data(ttl=600)
 def _cache_articulos() -> list:
     if not supabase:
         return []
-    res = supabase.table(TABLA_ARTICULOS).select("*").execute()
-    return res.data or []
+
+    out = []
+    start = 0
+    page = 1000
+    max_rows = 50000
+
+    while start < max_rows:
+        end = start + page - 1
+        # OJO: no ordeno por "descripción" porque puede no existir exactamente con ese nombre
+        res = (
+            supabase.table(TABLA_ARTICULOS)
+            .select("*")
+            .range(start, end)
+            .execute()
+        )
+        batch = res.data or []
+        out.extend(batch)
+        if len(batch) < page:
+            break
+        start += page
+
+    return out
+
 
 def _get_proveedor_options() -> tuple[list, dict]:
     data = _cache_proveedores()
