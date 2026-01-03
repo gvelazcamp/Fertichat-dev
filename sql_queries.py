@@ -1665,5 +1665,60 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
     except Exception:
         return pd.DataFrame()
 
+# =====================================================================
+# COMPRAS POR AÑO (SIN FILTRO DE PROVEEDOR/ARTÍCULO)
+# Agregar en sql_queries.py ANTES de get_detalle_compras_proveedor_anio
+# =====================================================================
 
+def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
+    """Todas las compras de un año."""
+    
+    total_expr = _sql_total_num_expr_general()
+
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            TRIM("Nro. Comprobante") AS Nro_Factura,
+            "Fecha",
+            "Cantidad",
+            "Moneda",
+            {total_expr} AS Total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año"::int = %s
+        ORDER BY "Fecha" DESC NULLS LAST
+        LIMIT %s
+    """
+    return ejecutar_consulta(sql, (anio, limite))
+
+
+def get_total_compras_anio(anio: int) -> dict:
+    """Total de compras de un año (resumen)."""
+    
+    total_pesos = _sql_total_num_expr()
+    total_usd = _sql_total_num_expr_usd()
+
+    sql = f"""
+        SELECT
+            COUNT(*) AS registros,
+            COALESCE(SUM(CASE WHEN TRIM("Moneda") = '$' THEN {total_pesos} ELSE 0 END), 0) AS total_pesos,
+            COALESCE(SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'U$$') THEN {total_usd} ELSE 0 END), 0) AS total_usd,
+            COUNT(DISTINCT TRIM("Cliente / Proveedor")) AS proveedores,
+            COUNT(DISTINCT TRIM("Articulo")) AS articulos
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año"::int = %s
+    """
+    df = ejecutar_consulta(sql, (anio,))
+    
+    if df is not None and not df.empty:
+        return {
+            "registros": int(df["registros"].iloc[0] or 0),
+            "total_pesos": float(df["total_pesos"].iloc[0] or 0),
+            "total_usd": float(df["total_usd"].iloc[0] or 0),
+            "proveedores": int(df["proveedores"].iloc[0] or 0),
+            "articulos": int(df["articulos"].iloc[0] or 0)
+        }
+    return {"registros": 0, "total_pesos": 0.0, "total_usd": 0.0, "proveedores": 0, "articulos": 0}
 # FIN DEL ARCHIVO
