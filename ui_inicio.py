@@ -1,15 +1,46 @@
 # =========================
 # UI_INICIO.PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
-# TARJETAS HERMOSAS CON BOTONES STREAMLIT CONFIABLES
+# LAS TARJETAS HERMOSAS ORIGINALES - FUNCIONANDO 100%
 # =========================
 
 import streamlit as st
 from datetime import datetime
 import random
+import streamlit.components.v1 as components
 
 
 def mostrar_inicio():
     """Pantalla de inicio con accesos rápidos a los módulos (look corporativo)"""
+
+    # =========================
+    # SISTEMA DE NAVEGACIÓN CON KEY SEPARADA
+    # =========================
+    try:
+        go = st.query_params.get("go")
+        if go:
+            mapping = {
+                "compras": "🛒 Compras IA",
+                "buscador": "🔎 Buscador IA",
+                "stock": "📦 Stock IA",
+                "dashboard": "📊 Dashboard",
+                "pedidos": "📄 Pedidos internos",
+                "baja": "🧾 Baja de stock",
+                "ordenes": "📦 Órdenes de compra",
+                "indicadores": "📈 Indicadores (Power BI)",
+            }
+            destino = mapping.get(go.lower())
+            if destino:
+                # Usar key separada para evitar conflicto
+                st.session_state["nav_target"] = destino
+                st.query_params.clear()
+    except:
+        pass
+
+    # Sincronizar nav_target con radio_menu
+    if "nav_target" in st.session_state and st.session_state["nav_target"]:
+        st.session_state["radio_menu"] = st.session_state["nav_target"]
+        st.session_state["nav_target"] = None
+        st.rerun()
 
     # =========================
     # Datos usuario / saludo
@@ -43,117 +74,147 @@ def mostrar_inicio():
     )
 
     # =========================
-    # CSS PARA TARJETAS HERMOSAS
+    # Cards HTML ORIGINALES (LAS HERMOSAS)
     # =========================
-    st.markdown("""
+    html_cards = """
     <style>
+      .fc-home-wrap{max-width:1100px;margin:0 auto;}
       .fc-section-title{
         color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;
         letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;
       }
-      
-      /* Ocultar labels y resetear botones */
-      div[data-testid="column"] button[kind="secondary"] {
-        border: 1px solid rgba(15,23,42,0.10) !important;
-        background: rgba(255,255,255,0.72) !important;
-        border-radius: 18px !important;
-        padding: 0 !important;
-        box-shadow: 0 10px 26px rgba(2,6,23,0.06) !important;
-        cursor: pointer !important;
-        transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease !important;
-        user-select: none !important;
-        width: 100% !important;
-        height: 90px !important;
-        text-align: left !important;
-        color: #0f172a !important;
+      .fc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;}
+      .fc-card{
+        border:1px solid rgba(15,23,42,0.10);
+        background:rgba(255,255,255,0.72);
+        border-radius:18px;
+        padding:16px 16px;
+        box-shadow:0 10px 26px rgba(2,6,23,0.06);
+        cursor:pointer;
+        transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+        user-select:none;
+        height:100%;
       }
-      
-      div[data-testid="column"] button[kind="secondary"]:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 14px 34px rgba(2,6,23,0.09) !important;
-        border-color: rgba(37,99,235,0.20) !important;
+      .fc-card:hover{
+        transform:translateY(-2px);
+        box-shadow:0 14px 34px rgba(2,6,23,0.09);
+        border-color:rgba(37,99,235,0.20);
       }
-      
-      div[data-testid="column"] button[kind="secondary"]:active {
-        transform: translateY(0) !important;
-        box-shadow: 0 10px 26px rgba(2,6,23,0.06) !important;
+      .fc-card:active{
+        transform:translateY(0);
+        box-shadow:0 10px 26px rgba(2,6,23,0.06);
       }
+      .fc-row{display:flex;align-items:center;gap:14px;}
+      .fc-tile{
+        width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+        border:1px solid rgba(15,23,42,0.08);background:rgba(255,255,255,0.70);
+        flex:0 0 54px;
+      }
+      .fc-ico{font-size:26px;line-height:1;}
+      .fc-txt h3{
+        margin:0;color:#0f172a;font-size:16px;font-weight:800;letter-spacing:-0.01em;
+      }
+      .fc-txt p{margin:3px 0 0 0;color:#64748b;font-size:13px;}
 
-      div[data-testid="column"] button[kind="secondary"] p {
-        margin: 0 !important;
-        padding: 16px !important;
-        font-size: 14px !important;
-        line-height: 1.4 !important;
-        text-align: left !important;
-      }
+      /* tiles */
+      .tile-compras{background:rgba(16,185,129,0.10);border-color:rgba(16,185,129,0.18);}
+      .tile-buscador{background:rgba(59,130,246,0.10);border-color:rgba(59,130,246,0.18);}
+      .tile-stock{background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.22);}
+      .tile-dashboard{background:rgba(139,92,246,0.10);border-color:rgba(139,92,246,0.18);}
 
-      @media (max-width: 768px) {
-        div[data-testid="column"] button[kind="secondary"] {
-          height: 85px !important;
-        }
-        div[data-testid="column"] button[kind="secondary"] p {
-          padding: 14px !important;
-          font-size: 13px !important;
-        }
+      .tile-pedidos{background:rgba(2,132,199,0.10);border-color:rgba(2,132,199,0.18);}
+      .tile-baja{background:rgba(244,63,94,0.10);border-color:rgba(244,63,94,0.18);}
+      .tile-ordenes{background:rgba(100,116,139,0.10);border-color:rgba(100,116,139,0.18);}
+      .tile-indicadores{background:rgba(34,197,94,0.10);border-color:rgba(34,197,94,0.18);}
+
+      @media (max-width: 980px){
+        .fc-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+      }
+      @media (max-width: 520px){
+        .fc-grid{grid-template-columns:1fr;}
+        .fc-tile{width:50px;height:50px;border-radius:14px;flex:0 0 50px;}
+        .fc-ico{font-size:24px;}
+        .fc-txt h3{font-size:15px;}
+        .fc-txt p{font-size:12px;}
       }
     </style>
-    """, unsafe_allow_html=True)
 
-    # =========================
-    # MÓDULOS PRINCIPALES
-    # =========================
-    st.markdown('<div class="fc-section-title">📌 Módulos principales</div>', unsafe_allow_html=True)
+    <div class="fc-home-wrap">
+      <div class="fc-section-title">📌 Módulos principales</div>
+      <div class="fc-grid">
+        <div class="fc-card" onclick="go('compras')">
+          <div class="fc-row">
+            <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
+            <div class="fc-txt"><h3>Compras IA</h3><p>Consultas inteligentes</p></div>
+          </div>
+        </div>
 
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        if st.button("🛒 **Compras IA**\n\nConsultas inteligentes", key="card_compras", type="secondary", use_container_width=True):
-            st.session_state["radio_menu"] = "🛒 Compras IA"
-            st.rerun()
-    
-    with col2:
-        if st.button("🔎 **Buscador IA**\n\nBuscar facturas / lotes", key="card_buscador", type="secondary", use_container_width=True):
-            st.session_state["radio_menu"] = "🔎 Buscador IA"
-            st.rerun()
-    
-    with col3:
-        if st.button("📦 **Stock IA**\n\nConsultar inventario", key="card_stock", type="secondary", use_container_width=True):
-            st.session_state["radio_menu"] = "📦 Stock IA"
-            st.rerun()
-    
-    with col4:
-        if st.button("📊 **Dashboard**\n\nVer estadísticas", key="card_dashboard", type="secondary", use_container_width=True):
-            st.session_state["radio_menu"] = "📊 Dashboard"
-            st.rerun()
+        <div class="fc-card" onclick="go('buscador')">
+          <div class="fc-row">
+            <div class="fc-tile tile-buscador"><div class="fc-ico">🔎</div></div>
+            <div class="fc-txt"><h3>Buscador IA</h3><p>Buscar facturas / lotes</p></div>
+          </div>
+        </div>
 
-    st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
+        <div class="fc-card" onclick="go('stock')">
+          <div class="fc-row">
+            <div class="fc-tile tile-stock"><div class="fc-ico">📦</div></div>
+            <div class="fc-txt"><h3>Stock IA</h3><p>Consultar inventario</p></div>
+          </div>
+        </div>
 
-    # =========================
-    # GESTIÓN
-    # =========================
-    st.markdown('<div class="fc-section-title">📋 Gestión</div>', unsafe_allow_html=True)
+        <div class="fc-card" onclick="go('dashboard')">
+          <div class="fc-row">
+            <div class="fc-tile tile-dashboard"><div class="fc-ico">📊</div></div>
+            <div class="fc-txt"><h3>Dashboard</h3><p>Ver estadísticas</p></div>
+          </div>
+        </div>
+      </div>
 
-    col5, col6, col7, col8 = st.columns(4)
-    
-    with col5:
-        if st.button("📄 **Pedidos internos**\n\nGestionar pedidos", key="card_pedidos", type="secondary", use_container_width=True):
-            st.session_state["radio_menu"] = "📄 Pedidos internos"
-            st.rerun()
-    
-    with col6:
-        if st.button("🧾 **Baja de stock**\n\nRegistrar bajas", key="card_baja", type="secondary", use_container_width=True):
-            st.session_state["radio_menu"] = "🧾 Baja de stock"
-            st.rerun()
-    
-    with col7:
-        if st.button("📦 **Órdenes de compra**\n\nCrear órdenes", key="card_ordenes", type="secondary", use_container_width=True):
-            st.session_state["radio_menu"] = "📦 Órdenes de compra"
-            st.rerun()
-    
-    with col8:
-        if st.button("📈 **Indicadores**\n\nPower BI", key="card_indicadores", type="secondary", use_container_width=True):
-            st.session_state["radio_menu"] = "📈 Indicadores (Power BI)"
-            st.rerun()
+      <div style="height:22px;"></div>
+      
+      <div class="fc-section-title">📋 Gestión</div>
+      <div class="fc-grid">
+        <div class="fc-card" onclick="go('pedidos')">
+          <div class="fc-row">
+            <div class="fc-tile tile-pedidos"><div class="fc-ico">📄</div></div>
+            <div class="fc-txt"><h3>Pedidos internos</h3><p>Gestionar pedidos</p></div>
+          </div>
+        </div>
+
+        <div class="fc-card" onclick="go('baja')">
+          <div class="fc-row">
+            <div class="fc-tile tile-baja"><div class="fc-ico">🧾</div></div>
+            <div class="fc-txt"><h3>Baja de stock</h3><p>Registrar bajas</p></div>
+          </div>
+        </div>
+
+        <div class="fc-card" onclick="go('ordenes')">
+          <div class="fc-row">
+            <div class="fc-tile tile-ordenes"><div class="fc-ico">📦</div></div>
+            <div class="fc-txt"><h3>Órdenes de compra</h3><p>Crear órdenes</p></div>
+          </div>
+        </div>
+
+        <div class="fc-card" onclick="go('indicadores')">
+          <div class="fc-row">
+            <div class="fc-tile tile-indicadores"><div class="fc-ico">📈</div></div>
+            <div class="fc-txt"><h3>Indicadores</h3><p>Power BI</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function go(dest){
+        const url = new URL(window.parent.location.href);
+        url.searchParams.set('go', dest);
+        window.parent.location.href = url.toString();
+      }
+    </script>
+    """
+
+    components.html(html_cards, height=640, scrolling=True)
 
     # =========================
     # TIP DEL DÍA
