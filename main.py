@@ -189,10 +189,6 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
    CAMBIOS VISUALES MÓVIL (max-width para asegurar)
 ========================================================= */
 @media (max-width: 768px) {
-  /* Ocultar TODO el header desktop (título + campana + hr) */
-  #header-desktop {
-    display: none !important;
-  }
 
   /* SIDEBAR - FONDO BLANCO */
   section[data-testid="stSidebar"],
@@ -285,36 +281,29 @@ except:
 
 
 # =========================
-# TÍTULO Y CAMPANITA (SOLO PC)
+# TÍTULO Y CAMPANITA (SOLO PC - todo en HTML para poder ocultar)
 # =========================
+campana_html = f'<span style="font-size:26px;">🔔</span>'
+if cant_pendientes > 0:
+    campana_html = f'<a href="?ir_notif=1" style="text-decoration:none;font-size:18px;background:#0b3b60;color:white;padding:6px 12px;border-radius:8px;">🔔 {cant_pendientes}</a>'
 
-st.markdown('<div id="header-desktop">', unsafe_allow_html=True)
-
-col_logo, col_spacer, col_notif = st.columns([7, 2, 1])
-
-with col_logo:
-    st.markdown("""
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <div>
-                <h1 style="margin: 0; font-size: 38px; font-weight: 900; color: #0f172a;">
-                    FertiChat
-                </h1>
-                <p style="margin: 4px 0 0 0; font-size: 15px; color: #64748b;">
-                    Sistema de Gestión de Compras
-                </p>
-            </div>
+st.markdown(f"""
+<style>
+@media (max-width: 768px) {{
+  .header-desktop-wrapper {{ display: none !important; }}
+}}
+</style>
+<div class="header-desktop-wrapper">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <h1 style="margin:0; font-size:38px; font-weight:900; color:#0f172a;">FertiChat</h1>
+            <p style="margin:4px 0 0 0; font-size:15px; color:#64748b;">Sistema de Gestión de Compras</p>
         </div>
-    """, unsafe_allow_html=True)
-
-with col_notif:
-    if cant_pendientes > 0:
-        if st.button(f"🔔 {cant_pendientes}", key="campanita_global"):
-            st.session_state["radio_menu"] = "📄 Pedidos internos"
-            st.rerun()
-    else:
-        st.markdown("<div style='text-align:right; font-size:26px;'>🔔</div>", unsafe_allow_html=True)
-
-st.markdown('<hr></div>', unsafe_allow_html=True)
+        <div>{campana_html}</div>
+    </div>
+    <hr style="margin-top:16px; border:none; border-top:1px solid #e2e8f0;">
+</div>
+""", unsafe_allow_html=True)
 
 
 # =========================
