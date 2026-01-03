@@ -149,6 +149,11 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     display: inline-flex !important;
   }
 
+  /* Ocultar título FertiChat y Sistema de Gestión en móvil */
+  [data-testid="stMarkdownContainer"]:has(h1#ferti-chat) {
+    display: none !important;
+  }
+
   /* =========================================================
      SIDEBAR MÓVIL - FONDO BLANCO Y LETRAS NEGRAS
   ========================================================= */
