@@ -207,7 +207,61 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
   [data-testid="stCaption"] * {
     color: #0f172a !important;
   }
-  
+
+  /* =========================================================
+   FIX PARA INPUTS/TEXTAREA EN MÓVIL - AGREGAR AL FINAL DEL CSS EN MAIN.PY
+   (dentro del @media (max-width: 768px) existente)
+========================================================= */
+
+/* Ajustar tamaño de inputs y textareas en contenido principal */
+.block-container input[type="text"],
+.block-container textarea,
+[data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea {
+  font-size: 14px !important;
+  padding: 10px 12px !important;
+  min-height: 42px !important;
+  height: auto !important;
+  line-height: 1.4 !important;
+}
+
+/* Contenedor del input */
+[data-baseweb="input"],
+[data-baseweb="textarea"],
+[data-baseweb="input"] > div,
+[data-baseweb="textarea"] > div {
+  min-height: auto !important;
+  height: auto !important;
+}
+
+/* Placeholder text más pequeño */
+.block-container input::placeholder,
+.block-container textarea::placeholder {
+  font-size: 14px !important;
+  opacity: 0.6;
+}
+
+/* Text inputs específicos */
+.block-container [data-testid="stTextInput"] input {
+  font-size: 14px !important;
+  padding: 10px 12px !important;
+  height: 42px !important;
+}
+
+/* Text area específico */
+.block-container [data-testid="stTextArea"] textarea {
+  font-size: 14px !important;
+  padding: 10px 12px !important;
+  min-height: 80px !important;
+  line-height: 1.4 !important;
+}
+
+/* Botón de envío del input también proporcional */
+.block-container button {
+  font-size: 14px !important;
+  padding: 10px 16px !important;
+  min-height: 42px !important;
+}
   /* TARJETAS/CARDS - fondo beige */
   .block-container div[style*="background"],
   .block-container div[style*="border-radius"],
