@@ -1,5 +1,5 @@
 # =========================
-# MAIN.PY - SIDEBAR NATIVO (PC OK) + CONTROL NATIVO EN MÓVIL (Z FLIP 5)
+# MAIN.PY - SIDEBAR NATIVO (PC OK) + MÓVIL Z FLIP 5
 # =========================
 
 import streamlit as st
@@ -56,7 +56,7 @@ if usuario_actual:
 # =========================
 st.markdown(f"""
 <style>
-/* Ocultar elementos (sin romper el control nativo del sidebar) */
+/* Ocultar elementos de Streamlit */
 #MainMenu, footer {{ display: none !important; }}
 div[data-testid="stDecoration"] {{ display: none !important; }}
 
@@ -84,25 +84,47 @@ html, body {{
 }}
 
 /* ==========================================
-   SIDEBAR - ESTILOS BASE (PC Y MÓVIL)
+   SIDEBAR BASE - FONDO BLANCO SIEMPRE
 ========================================== */
 section[data-testid="stSidebar"] {{ 
-    border-right: 1px solid rgba(15, 23, 42, 0.08); 
+    border-right: 1px solid rgba(15, 23, 42, 0.08);
+    background: #ffffff !important;
 }}
 
 section[data-testid="stSidebar"] > div {{
-    background: rgba(255,255,255,0.95) !important;
-    backdrop-filter: blur(8px);
+    background: #ffffff !important;
 }}
 
-/* Forzar fondo blanco en TODOS los elementos del sidebar */
-section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],
-section[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"],
-section[data-testid="stSidebar"] .stMarkdown,
-section[data-testid="stSidebar"] .stTextInput,
-section[data-testid="stSidebar"] .stButton,
-section[data-testid="stSidebar"] .stRadio {{
+section[data-testid="stSidebar"] > div > div {{
+    background: #ffffff !important;
+}}
+
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{
+    background: #ffffff !important;
+}}
+
+section[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] {{
     background: transparent !important;
+}}
+
+/* Texto del sidebar SIEMPRE negro */
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] .stMarkdown p,
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {{
+    color: #0f172a !important;
+}}
+
+/* Input de búsqueda */
+section[data-testid="stSidebar"] input {{
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
+}}
+
+section[data-testid="stSidebar"] input::placeholder {{
+    color: #94a3b8 !important;
 }}
 
 /* Radio buttons del menú */
@@ -111,7 +133,12 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label {{
     padding: 8px 10px; 
     margin: 3px 0; 
     border: 1px solid transparent;
-    background: rgba(255,255,255,0.5) !important;
+    background: #f8fafc !important;
+    color: #0f172a !important;
+}}
+
+div[data-testid="stSidebar"] div[role="radiogroup"] label span {{
+    color: #0f172a !important;
 }}
 
 div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{ 
@@ -119,8 +146,15 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
 }}
 
 div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
-    background: rgba(245,158,11,0.10) !important; 
-    border: 1px solid rgba(245,158,11,0.18);
+    background: rgba(245,158,11,0.15) !important; 
+    border: 1px solid rgba(245,158,11,0.3) !important;
+}}
+
+/* Botón cerrar sesión */
+section[data-testid="stSidebar"] button {{
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
 }}
 
 /* Header móvil - oculto por defecto */
@@ -129,28 +163,25 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 }}
 
 /* ==========================================
-   DESKTOP (mouse/trackpad)
+   DESKTOP (más de 768px)
 ========================================== */
-@media (hover: hover) and (pointer: fine) {{
+@media (min-width: 769px) {{
     div[data-testid="stToolbarActions"] {{ display: none !important; }}
 
     /* No permitir colapsar sidebar en PC */
     div[data-testid="collapsedControl"] {{ display: none !important; }}
-    [data-testid="baseButton-header"],
     button[data-testid="stSidebarCollapseButton"],
-    button[data-testid="stSidebarExpandButton"],
-    button[title="Close sidebar"],
-    button[title="Open sidebar"] {{
+    button[data-testid="stSidebarExpandButton"] {{
         display: none !important;
     }}
 }}
 
 /* ==========================================
-   MÓVIL (touch) - Z FLIP 5 y similares
+   MÓVIL (768px o menos) - Z FLIP 5
 ========================================== */
-@media (hover: none) and (pointer: coarse) {{
+@media (max-width: 768px) {{
     
-    /* Ocultar título y campana del contenido principal en móvil */
+    /* OCULTAR título y campana del contenido principal */
     #desktop-header {{
         display: none !important;
     }}
@@ -160,7 +191,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         padding-top: 70px !important; 
     }}
 
-    /* Header móvil con campana */
+    /* HEADER MÓVIL con logo y campana */
     #mobile-header {{
         display: flex !important;
         position: fixed;
@@ -169,10 +200,10 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         right: 0;
         height: 56px;
         background: #0b3b60;
-        z-index: 999996;
+        z-index: 999999;
         align-items: center;
         justify-content: space-between;
-        padding: 0 16px 0 56px;  /* deja lugar al control nativo a la izquierda */
+        padding: 0 16px 0 56px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }}
 
@@ -180,24 +211,19 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
         color: white;
         font-size: 20px;
         font-weight: 800;
-        display: flex;
-        align-items: center;
-        gap: 8px;
     }}
 
     #mobile-header .notif {{
-        background: transparent;
-        border: none;
         font-size: 24px;
-        cursor: pointer;
+        text-decoration: none;
         position: relative;
         padding: 8px;
     }}
     
     #mobile-header .notif-badge {{
         position: absolute;
-        top: 2px;
-        right: 2px;
+        top: 0px;
+        right: 0px;
         background: #ef4444;
         color: white;
         font-size: 11px;
@@ -213,67 +239,36 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 
     /* Control nativo para abrir sidebar */
     div[data-testid="collapsedControl"],
-    button[data-testid="stSidebarExpandButton"],
-    button[title="Open sidebar"] {{
+    button[data-testid="stSidebarExpandButton"] {{
         display: inline-flex !important;
         position: fixed !important;
-        top: 12px !important;
-        left: 12px !important;
-        z-index: 1000000 !important;
+        top: 10px !important;
+        left: 10px !important;
+        z-index: 9999999 !important;
+        background: white !important;
+        border-radius: 8px !important;
     }}
 
     /* Control nativo para cerrar sidebar */
-    [data-testid="baseButton-header"],
-    button[data-testid="stSidebarCollapseButton"],
-    button[title="Close sidebar"] {{
+    button[data-testid="stSidebarCollapseButton"] {{
         display: inline-flex !important;
     }}
 
-    /* ==========================================
-       SIDEBAR MÓVIL - FONDO BLANCO
-    ========================================== */
-    section[data-testid="stSidebar"] {{
-        background: white !important;
-    }}
-    
-    section[data-testid="stSidebar"] > div {{
-        background: white !important;
-    }}
-    
-    section[data-testid="stSidebar"] > div > div {{
-        background: white !important;
-    }}
-    
-    /* Forzar blanco en todos los contenedores internos */
-    section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{
-        background: white !important;
-    }}
-    
-    section[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] {{
-        background: white !important;
-    }}
-    
-    /* Texto del sidebar legible */
-    section[data-testid="stSidebar"] * {{
-        color: #0f172a !important;
-    }}
-    
-    section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] span,
-    section[data-testid="stSidebar"] label {{
-        color: #0f172a !important;
-    }}
-
-    /* Ocultar la barra negra de Streamlit en móvil (Share, estrella, etc) */
+    /* OCULTAR la barra de Streamlit (Share, estrella, GitHub) */
     header[data-testid="stHeader"] {{
-        background: transparent !important;
-        height: 0 !important;
-        min-height: 0 !important;
-        padding: 0 !important;
+        display: none !important;
     }}
     
     div[data-testid="stToolbar"] {{
         display: none !important;
+    }}
+
+    /* SIDEBAR MÓVIL - asegurar fondo blanco */
+    section[data-testid="stSidebar"],
+    section[data-testid="stSidebar"] > div,
+    section[data-testid="stSidebar"] > div > div,
+    section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {{
+        background: #ffffff !important;
     }}
 }}
 </style>
@@ -281,7 +276,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
 
 
 # =========================
-# HEADER MÓVIL CON CAMPANA (HTML)
+# HEADER MÓVIL CON CAMPANA
 # =========================
 badge_html = ""
 if cant_pendientes > 0:
@@ -290,7 +285,7 @@ if cant_pendientes > 0:
 st.markdown(f"""
 <div id="mobile-header">
     <div class="logo">🦋 FertiChat</div>
-    <a href="?ir_notif=1" class="notif" style="text-decoration:none;">
+    <a href="?ir_notif=1" class="notif">
         🔔
         {badge_html}
     </a>
@@ -311,7 +306,7 @@ except:
 
 
 # =========================
-# TÍTULO Y CAMPANITA (SOLO PC - se oculta en móvil con CSS)
+# TÍTULO Y CAMPANITA (SOLO PC)
 # =========================
 st.markdown('<div id="desktop-header">', unsafe_allow_html=True)
 
@@ -348,7 +343,7 @@ st.markdown('<hr></div>', unsafe_allow_html=True)
 with st.sidebar:
     st.markdown(f"""
         <div style='
-            background: rgba(255,255,255,0.85);
+            background: #ffffff;
             padding: 16px;
             border-radius: 18px;
             margin-bottom: 14px;
@@ -364,10 +359,10 @@ with st.sidebar:
 
     st.text_input("Buscar...", key="sidebar_search", label_visibility="collapsed", placeholder="Buscar...")
 
-    st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
+    st.markdown(f"<p style='color:#0f172a !important;'>👤 <strong>{user.get('nombre', 'Usuario')}</strong></p>", unsafe_allow_html=True)
     if user.get('empresa'):
-        st.markdown(f"🏢 {user.get('empresa')}")
-    st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
+        st.markdown(f"<p style='color:#0f172a !important;'>🏢 {user.get('empresa')}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#0f172a !important;'>📧 <em>{user.get('Usuario', user.get('usuario', ''))}</em></p>", unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -376,9 +371,9 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown("## 📌 Menú")
+    st.markdown("<h2 style='color:#0f172a !important;'>📌 Menú</h2>", unsafe_allow_html=True)
 
-    st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
+    st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
 
 
 # =========================
