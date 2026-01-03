@@ -85,12 +85,12 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
 #mobile-header { display: none; }
 
 /* =========================================================
-   DESKTOP (más de 768px):
+   DESKTOP REAL (mouse/trackpad):
    - sidebar siempre visible
    - oculto controles de colapsar/expandir para que no lo puedan cerrar en PC
    - puedo ocultar toolbar actions sin romper nada
 ========================================================= */
-@media (min-width: 769px) {
+@media (hover: hover) and (pointer: fine) {
   div[data-testid="stToolbarActions"] { display: none !important; }
 
   /* No permitir colapsar sidebar en PC */
@@ -105,11 +105,11 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
 }
 
 /* =========================================================
-   MÓVIL (max-width 768px):
+   MÓVIL REAL (touch):
    - mostrar SI o SI el control nativo (☰ / flecha)
    - mantener visible el botón de cerrar del sidebar
 ========================================================= */
-@media (max-width: 768px) {
+@media (hover: none) and (pointer: coarse) {
   .block-container { padding-top: 70px !important; }
 
   #mobile-header {
@@ -148,49 +148,27 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
   button[title="Close sidebar"] {
     display: inline-flex !important;
   }
+}
 
-  /* Ocultar título FertiChat y Sistema de Gestión en móvil */
-  [data-testid="stMarkdownContainer"]:has(h1#ferti-chat) {
-    display: none !important;
-  }
-  
-  /* Selectores adicionales por si :has() no funciona */
-  h1#ferti-chat {
-    display: none !important;
-  }
-  
-  [data-testid="stHeadingWithActionElements"]:has(h1#ferti-chat) {
-    display: none !important;
-  }
-  
-  /* Ocultar el contenedor principal del título */
-  .block-container > div:first-child [data-testid="stHorizontalBlock"]:first-of-type {
-    display: none !important;
-  }
-  
-  /* Ocultar el hr debajo del título */
-  .block-container > div:first-child hr:first-of-type {
+/* =========================================================
+   CAMBIOS VISUALES MÓVIL (max-width para asegurar)
+========================================================= */
+@media (max-width: 768px) {
+  /* Ocultar título FertiChat y Sistema de Gestión */
+  #titulo-desktop {
     display: none !important;
   }
 
-  /* =========================================================
-     SIDEBAR MÓVIL - FONDO BLANCO Y LETRAS NEGRAS
-  ========================================================= */
+  /* SIDEBAR - FONDO BLANCO */
   section[data-testid="stSidebar"],
   section[data-testid="stSidebar"] > div,
   section[data-testid="stSidebar"] > div > div,
-  section[data-testid="stSidebar"] > div > div > div,
-  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],
-  section[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"],
-  section[data-testid="stSidebar"] [data-testid="stSidebarContent"],
-  section[data-testid="stSidebar"] .st-emotion-cache-1cypcdb,
-  section[data-testid="stSidebar"] [class*="st-emotion-cache"] {
+  section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
     background: #ffffff !important;
     background-color: #ffffff !important;
   }
   
-  /* Letras negras en TODO el sidebar */
-  section[data-testid="stSidebar"] *,
+  /* SIDEBAR - LETRAS NEGRAS */
   section[data-testid="stSidebar"] p,
   section[data-testid="stSidebar"] span,
   section[data-testid="stSidebar"] label,
@@ -199,16 +177,13 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
   section[data-testid="stSidebar"] h3,
   section[data-testid="stSidebar"] div,
   section[data-testid="stSidebar"] strong,
-  section[data-testid="stSidebar"] em,
-  section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
-  section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+  section[data-testid="stSidebar"] em {
     color: #0f172a !important;
   }
   
-  /* Radio buttons con fondo claro */
+  /* Radio buttons */
   section[data-testid="stSidebar"] div[role="radiogroup"] label {
     background: #f8fafc !important;
-    color: #0f172a !important;
   }
   
   section[data-testid="stSidebar"] div[role="radiogroup"] label span {
@@ -219,14 +194,12 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
   section[data-testid="stSidebar"] input {
     background: #f8fafc !important;
     color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
   }
   
   /* Botón cerrar sesión */
   section[data-testid="stSidebar"] button {
     background: #f1f5f9 !important;
     color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
   }
   
   section[data-testid="stSidebar"] button span {
@@ -248,12 +221,14 @@ st.markdown("""
 
 
 # =========================
-# TÍTULO Y CAMPANITA
+# TÍTULO Y CAMPANITA (con ID para ocultar en móvil)
 # =========================
 usuario_actual = user.get("usuario", user.get("email", ""))
 cant_pendientes = 0
 if usuario_actual:
     cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
+
+st.markdown('<div id="titulo-desktop">', unsafe_allow_html=True)
 
 col_logo, col_spacer, col_notif = st.columns([7, 2, 1])
 
@@ -279,7 +254,7 @@ with col_notif:
     else:
         st.markdown("<div style='text-align:right; font-size:26px;'>🔔</div>", unsafe_allow_html=True)
 
-st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown('<hr></div>', unsafe_allow_html=True)
 
 
 # =========================
