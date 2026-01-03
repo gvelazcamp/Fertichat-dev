@@ -207,16 +207,75 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #0f172a !important;
   }
   
+  /* TARJETAS/CARDS - fondo beige */
+  .block-container div[style*="background"],
+  .block-container div[style*="border-radius"],
+  [data-testid="stMetric"],
+  [data-testid="metric-container"],
+  [data-testid="stVerticalBlock"] div[style*="padding"],
+  [data-testid="stHorizontalBlock"] div[style*="padding"] {
+    background: #f6f4ef !important;
+    background-color: #f6f4ef !important;
+    color: #0f172a !important;
+  }
+  
+  /* SELECTBOX/DROPDOWN - fondo claro */
+  [data-baseweb="select"],
+  [data-baseweb="select"] > div,
+  [data-baseweb="select"] > div > div,
+  [data-baseweb="popover"],
+  [data-baseweb="popover"] > div,
+  [data-baseweb="menu"],
+  [data-baseweb="menu"] > div,
+  div[data-baseweb="select"] div[class*="container"],
+  div[data-baseweb="select"] div[class*="control"],
+  div[data-baseweb="select"] div[class*="value"],
+  div[data-baseweb="select"] input {
+    background: #f8fafc !important;
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
+  }
+  
+  /* Selectbox texto */
+  [data-baseweb="select"] span,
+  [data-baseweb="select"] div,
+  [data-baseweb="select"] p {
+    color: #0f172a !important;
+  }
+  
   /* Inputs con fondo claro y texto negro */
   .block-container input,
   .block-container textarea,
-  .block-container select {
+  .block-container select,
+  [data-baseweb="input"],
+  [data-baseweb="input"] > div,
+  [data-baseweb="base-input"],
+  [data-baseweb="base-input"] > div {
+    background: #f8fafc !important;
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
+  }
+  
+  /* Textarea */
+  [data-baseweb="textarea"],
+  [data-baseweb="textarea"] > div,
+  [data-baseweb="textarea"] textarea {
     background: #f8fafc !important;
     color: #0f172a !important;
   }
   
-  /* Selectbox */
-  [data-baseweb="select"] * {
+  /* Radio buttons con fondo claro */
+  .block-container [role="radiogroup"] label {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+  }
+  
+  /* Date input */
+  [data-baseweb="datepicker"],
+  [data-baseweb="datepicker"] > div {
+    background: #f8fafc !important;
     color: #0f172a !important;
   }
 
