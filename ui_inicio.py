@@ -1,6 +1,6 @@
 # =========================
 # UI_INICIO.PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
-# LAS TARJETAS HERMOSAS ORIGINALES - NAVEGACIÓN MANEJADA EN MAIN.PY
+# LAS TARJETAS HERMOSAS ORIGINALES - CON ENLACES FUNCIONALES
 # =========================
 
 import streamlit as st
@@ -44,7 +44,7 @@ def mostrar_inicio():
     )
 
     # =========================
-    # Cards HTML ORIGINALES (LAS HERMOSAS)
+    # Cards HTML HERMOSAS CON ENLACES FUNCIONALES
     # =========================
     html_cards = """
     <style>
@@ -64,6 +64,9 @@ def mostrar_inicio():
         transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
         user-select:none;
         height:100%;
+        text-decoration:none;
+        display:block;
+        color:inherit;
       }
       .fc-card:hover{
         transform:translateY(-2px);
@@ -112,76 +115,68 @@ def mostrar_inicio():
     <div class="fc-home-wrap">
       <div class="fc-section-title">📌 Módulos principales</div>
       <div class="fc-grid">
-        <div class="fc-card" onclick="go('compras')">
+        <a class="fc-card" href="?go=compras" target="_parent">
           <div class="fc-row">
             <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
             <div class="fc-txt"><h3>Compras IA</h3><p>Consultas inteligentes</p></div>
           </div>
-        </div>
+        </a>
 
-        <div class="fc-card" onclick="go('buscador')">
+        <a class="fc-card" href="?go=buscador" target="_parent">
           <div class="fc-row">
             <div class="fc-tile tile-buscador"><div class="fc-ico">🔎</div></div>
             <div class="fc-txt"><h3>Buscador IA</h3><p>Buscar facturas / lotes</p></div>
           </div>
-        </div>
+        </a>
 
-        <div class="fc-card" onclick="go('stock')">
+        <a class="fc-card" href="?go=stock" target="_parent">
           <div class="fc-row">
             <div class="fc-tile tile-stock"><div class="fc-ico">📦</div></div>
             <div class="fc-txt"><h3>Stock IA</h3><p>Consultar inventario</p></div>
           </div>
-        </div>
+        </a>
 
-        <div class="fc-card" onclick="go('dashboard')">
+        <a class="fc-card" href="?go=dashboard" target="_parent">
           <div class="fc-row">
             <div class="fc-tile tile-dashboard"><div class="fc-ico">📊</div></div>
             <div class="fc-txt"><h3>Dashboard</h3><p>Ver estadísticas</p></div>
           </div>
-        </div>
+        </a>
       </div>
 
       <div style="height:22px;"></div>
       
       <div class="fc-section-title">📋 Gestión</div>
       <div class="fc-grid">
-        <div class="fc-card" onclick="go('pedidos')">
+        <a class="fc-card" href="?go=pedidos" target="_parent">
           <div class="fc-row">
             <div class="fc-tile tile-pedidos"><div class="fc-ico">📄</div></div>
             <div class="fc-txt"><h3>Pedidos internos</h3><p>Gestionar pedidos</p></div>
           </div>
-        </div>
+        </a>
 
-        <div class="fc-card" onclick="go('baja')">
+        <a class="fc-card" href="?go=baja" target="_parent">
           <div class="fc-row">
             <div class="fc-tile tile-baja"><div class="fc-ico">🧾</div></div>
             <div class="fc-txt"><h3>Baja de stock</h3><p>Registrar bajas</p></div>
           </div>
-        </div>
+        </a>
 
-        <div class="fc-card" onclick="go('ordenes')">
+        <a class="fc-card" href="?go=ordenes" target="_parent">
           <div class="fc-row">
             <div class="fc-tile tile-ordenes"><div class="fc-ico">📦</div></div>
             <div class="fc-txt"><h3>Órdenes de compra</h3><p>Crear órdenes</p></div>
           </div>
-        </div>
+        </a>
 
-        <div class="fc-card" onclick="go('indicadores')">
+        <a class="fc-card" href="?go=indicadores" target="_parent">
           <div class="fc-row">
             <div class="fc-tile tile-indicadores"><div class="fc-ico">📈</div></div>
             <div class="fc-txt"><h3>Indicadores</h3><p>Power BI</p></div>
           </div>
-        </div>
+        </a>
       </div>
     </div>
-
-    <script>
-      function go(dest){
-        const url = new URL(window.parent.location.href);
-        url.searchParams.set('go', dest);
-        window.parent.location.href = url.toString();
-      }
-    </script>
     """
 
     components.html(html_cards, height=640, scrolling=True)
