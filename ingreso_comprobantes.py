@@ -47,7 +47,6 @@ def _safe_int(x, default=0) -> int:
         return int(default)
 
 def _iva_rate_from_tipo(iva_tipo: str) -> float:
-    # Uruguay: Exento / 10% / 22%
     if iva_tipo == "Exento":
         return 0.0
     if iva_tipo == "10%":
@@ -68,7 +67,6 @@ def _calc_linea(cantidad: int, precio_unit_sin_iva: float, iva_rate: float, desc
     iva_monto = subtotal * iva_rate
     total = subtotal + iva_monto
 
-    # Precio unitario con descuento (sin IVA) a modo informativo
     precio_unit_desc = precio_unit_sin_iva * (1.0 - (descuento_pct / 100.0))
 
     return {
@@ -98,18 +96,12 @@ def _fetch_articulo_info(articulo_texto: str) -> dict:
     if not a:
         return {}
 
-    # Intentos de columnas típicas (sin asumir tu esquema real)
-    # - búsqueda por ilike en 'articulo' o 'descripcion'
-    # - campos de precio posibles: precio_sin_iva / precio_unitario_sin_iva / precio / costo
-    # - iva posible: iva_tipo / iva / tasa_iva
     candidates_search_cols = ["articulo", "descripcion", "detalle", "codigo"]
     candidates_price_cols = ["precio_sin_iva", "precio_unitario_sin_iva", "precio", "costo", "precio_unitario"]
     candidates_iva_cols = ["iva_tipo", "iva", "tasa_iva"]
 
     for search_col in candidates_search_cols:
         try:
-            # Pedimos un set amplio para luego mapear
-            # (si alguna columna no existe, puede fallar; por eso está en try)
             res = (
                 supabase.table(TABLA_ARTICULOS)
                 .select("*")
@@ -120,18 +112,14 @@ def _fetch_articulo_info(articulo_texto: str) -> dict:
             if not res.data:
                 continue
 
-            row = res.data[0]  # primer match
+            row = res.data[0]
             out = {}
 
-            # precio
             for pc in candidates_price_cols:
                 if pc in row and row.get(pc) not in (None, ""):
                     out["precio_unit_sin_iva"] = _safe_float(row.get(pc), 0.0)
                     break
 
-            # iva
-            # Si viene texto: "Exento"/"10%"/"22%"
-            # Si viene numérico: 0, 0.1, 0.22
             for ic in candidates_iva_cols:
                 if ic in row and row.get(ic) not in (None, ""):
                     val = row.get(ic)
@@ -144,7 +132,6 @@ def _fetch_articulo_info(articulo_texto: str) -> dict:
                         elif "22" in v or "20" in v:
                             out["iva_tipo"] = "22%"
                         else:
-                            # fallback
                             out["iva_tipo"] = "22%"
                     else:
                         f = _safe_float(val, 0.0)
@@ -159,7 +146,6 @@ def _fetch_articulo_info(articulo_texto: str) -> dict:
             return out
 
         except Exception:
-            # Si falla por columna inexistente u otra cosa, probamos con otro search_col
             continue
 
     return {}
@@ -198,37 +184,26 @@ def _impactar_stock(articulo: str, cantidad: int) -> None:
         }).execute()
 
 # =====================================================================
-# INSERTS CON FALLBACK (NO ROMPE SI TU TABLA NO TIENE TODAS LAS COLUMNAS)
+# INSERTS CON FALLBACK
 # =====================================================================
 
 def _insert_cabecera_con_fallback(cabecera_full: dict) -> dict:
-    """
-    Intenta insertar con campos nuevos (moneda/subtotal/iva_total/total_calculado).
-    Si falla por esquema, inserta solo lo mínimo que ya venías usando.
-    """
-    # Intento 1: full
     try:
         return supabase.table(TABLA_COMPROBANTES).insert(cabecera_full).execute()
     except Exception:
         pass
 
-    # Fallback mínimo (compatibilidad)
     cabecera_min = {
         "fecha": cabecera_full.get("fecha"),
         "proveedor": cabecera_full.get("proveedor"),
         "tipo_comprobante": cabecera_full.get("tipo_comprobante"),
         "nro_comprobante": cabecera_full.get("nro_comprobante"),
-        # si tu tabla tiene 'total', lo dejamos con el total calculado
         "total": cabecera_full.get("total_calculado", cabecera_full.get("total", 0.0)),
         "usuario": cabecera_full.get("usuario"),
     }
     return supabase.table(TABLA_COMPROBANTES).insert(cabecera_min).execute()
 
 def _insert_detalle_con_fallback(detalle_full: dict) -> None:
-    """
-    Intenta insertar detalle con campos nuevos (precio/iva/descuento/totales).
-    Si falla por esquema, inserta solo lo mínimo.
-    """
     try:
         supabase.table(TABLA_DETALLE).insert(detalle_full).execute()
         return
@@ -261,30 +236,26 @@ def mostrar_ingreso_comprobantes():
         st.warning("Supabase no configurado.")
         st.stop()
 
-    # Moneda del comprobante (arriba)
-    col_top1, col_top2 = st.columns([2, 1])
-    with col_top1:
-        menu = st.radio(
-            "Modo:",
-            ["🧾 Ingreso manual", "📄 Carga por archivo (CSV/PDF)"],
-            horizontal=True
-        )
-    with col_top2:
-        moneda = st.selectbox("Moneda", ["UYU", "USD"], index=0)
+    if "comp_items" not in st.session_state:
+        st.session_state.comp_items = []
+
+    if "comp_moneda" not in st.session_state:
+        st.session_state.comp_moneda = "UYU"
+
+    menu = st.radio(
+        "Modo:",
+        ["🧾 Ingreso manual", "📄 Carga por archivo (CSV/PDF)"],
+        horizontal=True
+    )
 
     # =========================
     # INGRESO MANUAL
     # =========================
     if menu == "🧾 Ingreso manual":
 
-        if "comp_items" not in st.session_state:
-            st.session_state.comp_items = []
-
-        if "comp_autocargar" not in st.session_state:
-            st.session_state.comp_autocargar = True
-
         with st.form("form_comprobante"):
 
+            # Cabecera: dejamos Moneda al lado de Tipo
             col1, col2, col3 = st.columns(3)
 
             with col1:
@@ -296,17 +267,19 @@ def mostrar_ingreso_comprobantes():
                     "Tipo",
                     ["Factura", "Remito", "Nota de Crédito"]
                 )
-                nro_comprobante = st.text_input("Nº Comprobante")
 
             with col3:
-                st.session_state.comp_autocargar = st.checkbox(
-                    "Autocargar precio/IVA desde Artículos",
-                    value=st.session_state.comp_autocargar
+                moneda = st.selectbox(
+                    "Moneda",
+                    ["UYU", "USD"],
+                    index=0 if st.session_state.comp_moneda == "UYU" else 1,
+                    key="comp_moneda"
                 )
+
+            nro_comprobante = st.text_input("Nº Comprobante")
 
             st.markdown("### 📦 Artículos")
 
-            # Línea de carga (agregados: precio, iva, descuento, moneda ya está arriba)
             c1, c2, c3, c4, c5, c6, c7 = st.columns([2.3, 1, 1.2, 1.1, 1.1, 1.2, 1.4])
             with c1:
                 articulo = st.text_input("Artículo")
@@ -327,7 +300,7 @@ def mostrar_ingreso_comprobantes():
             guardar = st.form_submit_button("💾 Guardar comprobante")
 
         # ----------------------------------
-        # Agregar artículo (fuera del form para poder recalcular)
+        # Agregar artículo
         # ----------------------------------
         if btn_add:
             if not (articulo or "").strip():
@@ -335,17 +308,12 @@ def mostrar_ingreso_comprobantes():
             else:
                 art = articulo.strip()
 
-                # Autocarga (si está activada). Si encuentra, pisa el precio/iva si venían en 0 o default.
-                if st.session_state.comp_autocargar:
-                    info = _fetch_articulo_info(art)
-                else:
-                    info = {}
+                # Autocarga silenciosa (sin checkbox)
+                info = _fetch_articulo_info(art)
 
-                # Si vino precio y el usuario tenía 0, lo aplicamos
                 if "precio_unit_sin_iva" in info and _safe_float(precio_unit_sin_iva, 0.0) <= 0.0:
                     precio_unit_sin_iva = float(info["precio_unit_sin_iva"])
 
-                # Si vino iva_tipo, lo aplicamos
                 if "iva_tipo" in info:
                     iva_tipo = info["iva_tipo"]
 
@@ -365,7 +333,7 @@ def mostrar_ingreso_comprobantes():
                     "total_con_iva": float(calc["total_con_iva"]),
                     "lote": (lote or "").strip(),
                     "vencimiento": str(vencimiento),
-                    "moneda": moneda,
+                    "moneda": st.session_state.comp_moneda,
                 })
 
         # ----------------------------------
@@ -374,7 +342,6 @@ def mostrar_ingreso_comprobantes():
         if st.session_state.comp_items:
             df_items = pd.DataFrame(st.session_state.comp_items)
 
-            # Para que se vea lindo en la grilla
             show_cols = [
                 "articulo", "cantidad",
                 "precio_unit_sin_iva", "iva_tipo", "descuento_pct",
@@ -387,20 +354,21 @@ def mostrar_ingreso_comprobantes():
 
             st.dataframe(df_items[show_cols], use_container_width=True)
 
+            moneda_actual = st.session_state.comp_moneda
             subtotal = float(df_items["subtotal_sin_iva"].sum()) if "subtotal_sin_iva" in df_items.columns else 0.0
             iva_total = float(df_items["iva_monto"].sum()) if "iva_monto" in df_items.columns else 0.0
             total_calculado = float(df_items["total_con_iva"].sum()) if "total_con_iva" in df_items.columns else 0.0
 
             ctot1, ctot2, ctot3 = st.columns(3)
             with ctot1:
-                st.metric("Subtotal", _fmt_money(subtotal, moneda))
+                st.metric("Subtotal", _fmt_money(subtotal, moneda_actual))
             with ctot2:
-                st.metric("IVA", _fmt_money(iva_total, moneda))
+                st.metric("IVA", _fmt_money(iva_total, moneda_actual))
             with ctot3:
-                st.metric("Total", _fmt_money(total_calculado, moneda))
+                st.metric("Total", _fmt_money(total_calculado, moneda_actual))
 
         # ----------------------------------
-        # Guardar comprobante (usa el total calculado)
+        # Guardar comprobante
         # ----------------------------------
         if guardar:
             if not proveedor or not nro_comprobante or not st.session_state.comp_items:
@@ -422,11 +390,12 @@ def mostrar_ingreso_comprobantes():
                 st.warning("Comprobante duplicado.")
                 st.stop()
 
-            # Recalcular totales por seguridad
             df_items = pd.DataFrame(st.session_state.comp_items)
             subtotal = float(df_items["subtotal_sin_iva"].sum()) if "subtotal_sin_iva" in df_items.columns else 0.0
             iva_total = float(df_items["iva_monto"].sum()) if "iva_monto" in df_items.columns else 0.0
             total_calculado = float(df_items["total_con_iva"].sum()) if "total_con_iva" in df_items.columns else 0.0
+
+            moneda_actual = st.session_state.comp_moneda
 
             cabecera_full = {
                 "fecha": str(fecha),
@@ -434,12 +403,10 @@ def mostrar_ingreso_comprobantes():
                 "tipo_comprobante": tipo_comprobante,
                 "nro_comprobante": nro_norm,
                 "usuario": str(usuario_actual),
-                # Nuevos (si tu tabla los tiene)
-                "moneda": moneda,
+                "moneda": moneda_actual,
                 "subtotal": subtotal,
                 "iva_total": iva_total,
                 "total_calculado": total_calculado,
-                # Para compatibilidad (si existe "total")
                 "total": total_calculado,
             }
 
@@ -455,8 +422,7 @@ def mostrar_ingreso_comprobantes():
                     "vencimiento": item.get("vencimiento", ""),
                     "usuario": str(usuario_actual),
 
-                    # Nuevos por artículo (si tu tabla los tiene)
-                    "moneda": moneda,
+                    "moneda": moneda_actual,
                     "precio_unit_sin_iva": float(item.get("precio_unit_sin_iva", 0.0)),
                     "iva_tipo": item.get("iva_tipo", "22%"),
                     "iva_rate": float(item.get("iva_rate", 0.22)),
@@ -484,23 +450,17 @@ def mostrar_ingreso_comprobantes():
             st.dataframe(df, use_container_width=True)
 
             if st.button("Importar CSV"):
-                # Columnas mínimas: fecha, proveedor, tipo, nro_comprobante, articulo, cantidad
-                # Nuevas opcionales: moneda, precio_unit_sin_iva, iva_tipo (o iva_rate), descuento_pct, lote, vencimiento
                 for _, row in df.iterrows():
                     proveedor_norm = str(row.get("proveedor", "")).strip().upper()
                     nro_norm = str(row.get("nro_comprobante", "")).strip()
 
-                    # Cabecera: por cada fila (simple). Si querés agrupar por comprobante lo hacemos después.
-                    moneda_row = str(row.get("moneda", moneda)).strip().upper()
+                    moneda_row = str(row.get("moneda", st.session_state.comp_moneda)).strip().upper()
                     if moneda_row not in ("UYU", "USD"):
-                        moneda_row = moneda
+                        moneda_row = st.session_state.comp_moneda
 
                     iva_tipo_row = str(row.get("iva_tipo", "22%")).strip()
                     iva_rate_row = _safe_float(row.get("iva_rate", _iva_rate_from_tipo(iva_tipo_row)), 0.0)
-                    if iva_rate_row in (0.0, 0.1, 0.22):
-                        pass
-                    else:
-                        # si vino raro, derivamos de iva_tipo
+                    if iva_rate_row not in (0.0, 0.1, 0.22):
                         iva_rate_row = _iva_rate_from_tipo(iva_tipo_row)
 
                     cantidad_row = _safe_int(row.get("cantidad", 0), 0)
@@ -515,9 +475,7 @@ def mostrar_ingreso_comprobantes():
                         "tipo_comprobante": str(row.get("tipo", "")),
                         "nro_comprobante": nro_norm,
                         "usuario": str(usuario_actual),
-
                         "moneda": moneda_row,
-                        # para CSV simple (1 línea = 1 comprobante): totales = línea
                         "subtotal": float(calc["subtotal_sin_iva"]),
                         "iva_total": float(calc["iva_monto"]),
                         "total_calculado": float(calc["total_con_iva"]),
@@ -534,7 +492,6 @@ def mostrar_ingreso_comprobantes():
                         "lote": str(row.get("lote", "")).strip(),
                         "vencimiento": str(row.get("vencimiento", "")).strip(),
                         "usuario": str(usuario_actual),
-
                         "moneda": moneda_row,
                         "precio_unit_sin_iva": float(precio_row),
                         "iva_tipo": iva_tipo_row,
