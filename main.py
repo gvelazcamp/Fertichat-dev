@@ -1,5 +1,5 @@
 # =========================
-# MAIN.PY - SIDEBAR NATIVO (PC OK) + CONTROL NATIVO EN MÓVIL (Z FLIP 5)
+# MAIN.PY - PC OK + MÓVIL: SIN HERO + CAMPANITA EN TOOLBAR + SIDEBAR COMO PC
 # =========================
 
 import streamlit as st
@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="FertiChat",
     page_icon="🦋",
     layout="wide",
-    initial_sidebar_state="auto"  # ✅ PC abierto / móvil auto (nativo)
+    initial_sidebar_state="auto"  # PC abierto / móvil colapsado (nativo)
 )
 
 # =========================
@@ -46,107 +46,116 @@ if "radio_menu" not in st.session_state:
 
 
 # =========================
-# CSS (CLAVE: NO OCULTAR stToolbar EN MÓVIL)
+# CAMPANITA (dato)
+# =========================
+usuario_actual = user.get("usuario", user.get("email", ""))
+cant_pendientes = 0
+if usuario_actual:
+    cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
+
+
+# =========================
+# CSS
 # =========================
 st.markdown(r"""
 <style>
-/* Ocultar elementos (sin romper el control nativo del sidebar) */
+/* Ocultar UI (sin romper toolbar del cel) */
 #MainMenu, footer { display: none !important; }
 div[data-testid="stDecoration"] { display: none !important; }
 
-/* ✅ NO ocultar stToolbar ni stHeader globalmente */
-/* Si ocultás stToolbar, en Z Flip 5 desaparece el botón ☰/flecha */
+/* ✅ IMPORTANTÍSIMO: no ocultar stToolbar en móvil (ahí vive el control ☰/flechita) */
+div[data-testid="stToolbar"], div.stAppToolbar {
+  display: flex !important;
+  visibility: visible !important;
+}
+
+/* Header visible (por si login_page dejó header hidden) */
+header, header[data-testid="stHeader"] {
+  visibility: visible !important;
+  height: auto !important;
+  background: transparent !important;
+}
 
 /* Theme general */
 :root {
-    --fc-bg-1: #f6f4ef; --fc-bg-2: #f3f6fb;
-    --fc-primary: #0b3b60; --fc-accent: #f59e0b;
+  --fc-bg-1: #f6f4ef; --fc-bg-2: #f3f6fb;
+  --fc-primary: #0b3b60; --fc-accent: #f59e0b;
 }
 
 html, body { font-family: Inter, system-ui, sans-serif; color: #0f172a; }
 [data-testid="stAppViewContainer"] { background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2)); }
 .block-container { max-width: 1240px; padding-top: 1.25rem; padding-bottom: 2.25rem; }
 
-/* Sidebar look */
+/* Sidebar estilo “PC” */
 section[data-testid="stSidebar"] { border-right: 1px solid rgba(15, 23, 42, 0.08); }
 section[data-testid="stSidebar"] > div {
-    background: rgba(255,255,255,0.70);
-    backdrop-filter: blur(8px);
+  background: rgba(255,255,255,0.70);
+  backdrop-filter: blur(8px);
 }
 div[data-testid="stSidebar"] div[role="radiogroup"] label {
-    border-radius: 12px; padding: 8px 10px; margin: 3px 0; border: 1px solid transparent;
+  border-radius: 12px; padding: 8px 10px; margin: 3px 0;
+  border: 1px solid transparent;
 }
 div[data-testid="stSidebar"] div[role="radiogroup"] label:hover { background: rgba(37,99,235,0.06); }
 div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-    background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.18);
+  background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.18);
 }
 
-/* Header móvil visual (solo estética) */
-#mobile-header { display: none; }
-
-/* =========================================================
-   DESKTOP REAL (mouse/trackpad):
-   - sidebar siempre visible
-   - oculto controles de colapsar/expandir para que no lo puedan cerrar en PC
-   - puedo ocultar toolbar actions sin romper nada
-========================================================= */
+/* =========================
+   DESKTOP REAL (mouse)
+   ========================= */
 @media (hover: hover) and (pointer: fine) {
+  /* Ocultar solo acciones del toolbar (Share, etc.) si querés limpiar */
   div[data-testid="stToolbarActions"] { display: none !important; }
-
-  /* No permitir colapsar sidebar en PC */
-  div[data-testid="collapsedControl"] { display: none !important; }
-  [data-testid="baseButton-header"],
-  button[data-testid="stSidebarCollapseButton"],
-  button[data-testid="stSidebarExpandButton"],
-  button[title="Close sidebar"],
-  button[title="Open sidebar"] {
-    display: none !important;
-  }
 }
 
-/* =========================================================
-   MÓVIL REAL (touch):
-   - mostrar SI o SI el control nativo (☰ / flecha)
-   - mantener visible el botón de cerrar del sidebar
-========================================================= */
+/* =========================
+   MÓVIL REAL (touch) — SOLO ACÁ CAMBIAMOS COSAS
+   ========================= */
 @media (hover: none) and (pointer: coarse) {
-  .block-container { padding-top: 70px !important; }
 
-  #mobile-header {
-    display: flex !important;
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 60px;
-    background: #0b3b60;
-    z-index: 999996;           /* debajo del control nativo */
-    align-items: center;
-    padding: 0 16px 0 56px;    /* deja lugar al control nativo */
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    pointer-events: none;      /* no bloquea clicks */
-  }
+  /* 1) Ocultar “FertiChat / Sistema de Gestión…” solo en móvil */
+  #page-hero, #hero-sep { display: none !important; }
 
-  #mobile-header .logo {
-    color: white;
-    font-size: 20px;
-    font-weight: 800;
-  }
-
-  /* ✅ Abrir sidebar (nativo) */
-  div[data-testid="collapsedControl"],
-  button[data-testid="stSidebarExpandButton"],
-  button[title="Open sidebar"] {
-    display: inline-flex !important;
+  /* 2) Campanita fija arriba derecha (se ve “en la barra negra”) */
+  .mobile-bell {
+    display: block !important;
     position: fixed !important;
-    top: 12px !important;
-    left: 12px !important;
-    z-index: 1000000 !important;
+    top: 8px !important;
+    right: 10px !important;
+    z-index: 1000002 !important;
   }
 
-  /* ✅ Cerrar sidebar (nativo) */
-  [data-testid="baseButton-header"],
-  button[data-testid="stSidebarCollapseButton"],
-  button[title="Close sidebar"] {
-    display: inline-flex !important;
+  /* Estilo del botón (más “toolbar”) */
+  .mobile-bell button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 6px 10px !important;
+    font-size: 16px !important;
+  }
+
+  /* 3) Sidebar en móvil igual al de PC (forzar porque en Android a veces mete gris) */
+  section[data-testid="stSidebar"],
+  section[data-testid="stSidebar"] > div,
+  section[data-testid="stSidebar"] > div:first-child {
+    background: rgba(255,255,255,0.85) !important;
+  }
+
+  section[data-testid="stSidebar"] * {
+    color: #0f172a !important;
+  }
+
+  /* Input búsqueda y radios más prolijos en móvil */
+  div[data-testid="stSidebar"] input {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border-radius: 12px !important;
+  }
+  div[data-testid="stSidebar"] input::placeholder {
+    color: rgba(255,255,255,0.7) !important;
+    -webkit-text-fill-color: rgba(255,255,255,0.7) !important;
   }
 }
 </style>
@@ -154,22 +163,22 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
 
 
 # =========================
-# HEADER MÓVIL (visual)
+# CAMPANITA “EN TOOLBAR” (solo se muestra en móvil por CSS)
 # =========================
-st.markdown("""
-<div id="mobile-header">
-    <div class="logo">🦋 FertiChat</div>
-</div>
-""", unsafe_allow_html=True)
+st.markdown('<div class="mobile-bell">', unsafe_allow_html=True)
+if cant_pendientes > 0:
+    if st.button(f"🔔 {cant_pendientes}", key="mobile_bell_btn"):
+        st.session_state["radio_menu"] = "📄 Pedidos internos"
+        st.rerun()
+else:
+    st.button("🔔", key="mobile_bell_btn_empty", disabled=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 
 # =========================
-# TÍTULO Y CAMPANITA
+# HERO (PC sí, MÓVIL no — se oculta por CSS)
 # =========================
-usuario_actual = user.get("usuario", user.get("email", ""))
-cant_pendientes = 0
-if usuario_actual:
-    cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
+st.markdown('<div id="page-hero">', unsafe_allow_html=True)
 
 col_logo, col_spacer, col_notif = st.columns([7, 2, 1])
 
@@ -188,6 +197,7 @@ with col_logo:
     """, unsafe_allow_html=True)
 
 with col_notif:
+    # En móvil se usa la campanita fija (arriba). En PC queda esta.
     if cant_pendientes > 0:
         if st.button(f"🔔 {cant_pendientes}", key="campanita_global"):
             st.session_state["radio_menu"] = "📄 Pedidos internos"
@@ -195,14 +205,16 @@ with col_notif:
     else:
         st.markdown("<div style='text-align:right; font-size:26px;'>🔔</div>", unsafe_allow_html=True)
 
-st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div id="hero-sep"><hr></div>', unsafe_allow_html=True)
 
 
 # =========================
 # SIDEBAR
 # =========================
 with st.sidebar:
-    st.markdown(f"""
+    st.markdown("""
         <div style='
             background: rgba(255,255,255,0.85);
             padding: 16px;
