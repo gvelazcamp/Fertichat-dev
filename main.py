@@ -365,49 +365,43 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #64748b !important;
   }
 
-  /* FIX CHAT INPUT - BEIGE Y TAMAÑO CORRECTO */
-  .block-container [data-testid="stChatInput"],
-  .block-container [data-testid="stChatInput"] > div,
-  .block-container [data-testid="stChatInput"] [data-baseweb="input"],
-  .block-container [data-testid="stChatInput"] [data-baseweb="base-input"] {
-    background: #f8fafc !important;
-    background-color: #f8fafc !important;
-  }
-
-  .block-container [data-testid="stChatInput"] input,
-  .block-container [data-testid="stChatInput"] textarea {
-    font-size: 14px !important;
-    padding: 10px 12px !important;
-    min-height: 42px !important;
-    height: 42px !important;
-    max-height: 42px !important;
+  /* FORZAR CHAT INPUT BEIGE EN MÓVIL - ULTRA AGRESIVO */
+  [data-testid="stChatInput"] *,
+  [data-testid="stChatInput"],
+  [data-testid="stChatInput"] > div,
+  [data-testid="stChatInput"] > div > div,
+  [data-testid="stChatInput"] input,
+  [data-testid="stChatInput"] textarea,
+  [data-testid="stChatInput"] div {
     background: #f8fafc !important;
     background-color: #f8fafc !important;
     color: #0f172a !important;
   }
+
+  [data-testid="stChatInput"] input,
+  [data-testid="stChatInput"] textarea {
+    font-size: 14px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 10px 12px !important;
+    border: 1px solid #e2e8f0 !important;
+  }
   
-  .block-container [data-testid="stChatInput"] input::placeholder,
-  .block-container [data-testid="stChatInput"] textarea::placeholder {
+  [data-testid="stChatInput"] input::placeholder,
+  [data-testid="stChatInput"] textarea::placeholder {
     color: #64748b !important;
     font-size: 14px !important;
   }
 
-  .block-container [data-testid="stChatInput"] button {
+  [data-testid="stChatInput"] button {
     background: #f8fafc !important;
     background-color: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
-    min-height: 42px !important;
-    max-height: 42px !important;
-  }
-  
-  /* FORZAR TODO DENTRO DEL CHAT INPUT */
-  [data-testid="stChatInput"] * {
-    background: #f8fafc !important;
   }
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 # =========================
 # OBTENER NOTIFICACIONES
