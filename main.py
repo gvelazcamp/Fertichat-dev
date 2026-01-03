@@ -517,6 +517,35 @@ with st.sidebar:
 
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
 
+# =========================
+# DETECCIÓN DE NAVEGACIÓN DESDE TARJETAS (ANTES DEL ROUTER)
+# =========================
+try:
+    go = st.query_params.get("go")
+    if go:
+        mapping = {
+            "compras": "🛒 Compras IA",
+            "buscador": "🔎 Buscador IA",
+            "stock": "📦 Stock IA",
+            "dashboard": "📊 Dashboard",
+            "pedidos": "📄 Pedidos internos",
+            "baja": "🧾 Baja de stock",
+            "ordenes": "📦 Órdenes de compra",
+            "indicadores": "📈 Indicadores (Power BI)",
+        }
+        destino = mapping.get(go.lower())
+        if destino:
+            st.session_state["radio_menu"] = destino
+            st.query_params.clear()
+            st.rerun()
+except:
+    pass
+
+
+# =========================
+# ROUTER
+# =========================
+menu_actual = st.session_state["radio_menu"]
 
 # =========================
 # ROUTER
