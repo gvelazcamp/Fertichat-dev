@@ -189,6 +189,36 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
    CAMBIOS VISUALES MÓVIL (max-width para asegurar)
 ========================================================= */
 @media (max-width: 768px) {
+  /* CONTENIDO PRINCIPAL - LETRAS NEGRAS */
+  .block-container h1,
+  .block-container h2,
+  .block-container h3,
+  .block-container h4,
+  .block-container p,
+  .block-container span,
+  .block-container label,
+  .block-container div,
+  .block-container li,
+  .block-container td,
+  .block-container th,
+  [data-testid="stMarkdownContainer"] *,
+  [data-testid="stText"] *,
+  [data-testid="stCaption"] * {
+    color: #0f172a !important;
+  }
+  
+  /* Inputs con fondo claro y texto negro */
+  .block-container input,
+  .block-container textarea,
+  .block-container select {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+  }
+  
+  /* Selectbox */
+  [data-baseweb="select"] * {
+    color: #0f172a !important;
+  }
 
   /* SIDEBAR - FONDO BLANCO */
   section[data-testid="stSidebar"],
