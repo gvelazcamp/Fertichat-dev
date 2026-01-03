@@ -167,52 +167,142 @@ def _upsert_stock_row(
 ) -> None:
     """
     Inserta o actualiza en stock sumando delta_stock (puede ser + o -).
-    Clave práctica: DEPOSITO + CODIGO + LOTE + VENCIMIENTO.
+    Detecta nombres reales de columnas en Supabase (mayúsculas/acentos) para evitar APIError.
     """
+
+    def _norm(s: str) -> str:
+        if s is None:
+            return ""
+        s = str(s).strip().lower()
+        # quitar acentos básico
+        s = (s.replace("á", "a").replace("é", "e").replace("í", "i")
+               .replace("ó", "o").replace("ú", "u").replace("ñ", "n"))
+        # dejar solo alfanum
+        out = []
+        for ch in s:
+            if ch.isalnum():
+                out.append(ch)
+        return "".join(out)
+
+    # -------------------------
+    # Resolver mapeo de columnas reales (una vez por sesión)
+    # -------------------------
+    if "_stock_colmap" not in st.session_state:
+        keys: List[str] = []
+        try:
+            sample = supabase.table("stock").select("*").limit(1).execute().data or []
+            if sample:
+                keys = list(sample[0].keys())
+        except Exception:
+            keys = []
+
+        nk = {_norm(k): k for k in keys}
+
+        def resolve(logical: str, candidates: List[str]) -> str:
+            # match exacto
+            for c in candidates:
+                if c in keys:
+                    return c
+            # match normalizado
+            for c in candidates:
+                nc = _norm(c)
+                if nc in nk:
+                    return nk[nc]
+            # fallback: probar logical tal cual
+            return logical
+
+        st.session_state["_stock_colmap"] = {
+            "FAMILIA": resolve("FAMILIA", ["FAMILIA", "familia", "Familia"]),
+            "CODIGO": resolve("CODIGO", ["CODIGO", "codigo", "Código", "Codigo"]),
+            "ARTICULO": resolve("ARTICULO", ["ARTICULO", "articulo", "Artículo", "Articulo"]),
+            "DEPOSITO": resolve("DEPOSITO", ["DEPOSITO", "deposito", "Depósito", "Deposito"]),
+            "LOTE": resolve("LOTE", ["LOTE", "lote", "Lote"]),
+            "VENCIMIENTO": resolve("VENCIMIENTO", ["VENCIMIENTO", "vencimiento", "Vencimiento"]),
+            "STOCK": resolve("STOCK", ["STOCK", "stock", "Stock"]),
+        }
+
+    colmap = st.session_state["_stock_colmap"]
+
+    cFAM = colmap["FAMILIA"]
+    cCOD = colmap["CODIGO"]
+    cART = colmap["ARTICULO"]
+    cDEP = colmap["DEPOSITO"]
+    cLOT = colmap["LOTE"]
+    cVEN = colmap["VENCIMIENTO"]
+    cSTK = colmap["STOCK"]
+
     lote_val = (lote or "").strip()
     venc_val = (vencimiento or "").strip()
 
-    # Traigo la fila existente (si existe)
-    q = (
-        supabase.table("stock")
-        .select("*")
-        .eq("DEPOSITO", deposito)
-        .eq("CODIGO", codigo)
-        .eq("LOTE", lote_val)
-        .eq("VENCIMIENTO", venc_val)
-    )
-    resp = q.execute()
-    rows = resp.data or []
+    # -------------------------
+    # Buscar fila existente (si existe)
+    # -------------------------
+    try:
+        q = (
+            supabase.table("stock")
+            .select("*")
+            .eq(cDEP, deposito)
+            .eq(cCOD, codigo)
+            .eq(cLOT, lote_val)
+            .eq(cVEN, venc_val)
+        )
+        resp = q.execute()
+        rows = resp.data or []
+    except Exception as e:
+        raise Exception(
+            "Error consultando 'stock' en Supabase. "
+            "Probable: nombres de columnas distintos o RLS bloqueando SELECT. "
+            f"Detalle: {e}"
+        ) from e
 
+    # -------------------------
+    # Update o Insert
+    # -------------------------
     if rows:
-        current = _safe_float(rows[0].get("STOCK", "0"))
-        new_val = current + float(delta_stock)
-        if new_val < 0:
-            new_val = 0
+        try:
+            current = _safe_float(rows[0].get(cSTK, "0"))
+            new_val = current + float(delta_stock)
+            if new_val < 0:
+                new_val = 0.0
 
-        supabase.table("stock").update(
-            {
-                "FAMILIA": familia,
-                "ARTICULO": articulo,
-                "STOCK": str(new_val),
-            }
-        ).eq("DEPOSITO", deposito).eq("CODIGO", codigo).eq("LOTE", lote_val).eq("VENCIMIENTO", venc_val).execute()
+            supabase.table("stock").update(
+                {
+                    cFAM: familia,
+                    cART: articulo,
+                    cSTK: new_val,
+                }
+            ).eq(cDEP, deposito).eq(cCOD, codigo).eq(cLOT, lote_val).eq(cVEN, venc_val).execute()
+
+        except Exception as e:
+            raise Exception(
+                "Error actualizando 'stock' en Supabase. "
+                "Probable: RLS bloqueando UPDATE o tipos/columnas no coinciden. "
+                f"Detalle: {e}"
+            ) from e
+
     else:
-        # si delta es negativo y no existe fila, no insertamos (sería incoherente)
+        # si delta es negativo y no existe fila, no insertamos
         if float(delta_stock) <= 0:
             return
 
-        supabase.table("stock").insert(
-            {
-                "FAMILIA": familia,
-                "CODIGO": codigo,
-                "ARTICULO": articulo,
-                "DEPOSITO": deposito,
-                "LOTE": lote_val,
-                "VENCIMIENTO": venc_val,
-                "STOCK": str(float(delta_stock)),
-            }
-        ).execute()
+        try:
+            supabase.table("stock").insert(
+                {
+                    cFAM: familia,
+                    cCOD: codigo,
+                    cART: articulo,
+                    cDEP: deposito,
+                    cLOT: lote_val,
+                    cVEN: venc_val,
+                    cSTK: float(delta_stock),
+                }
+            ).execute()
+        except Exception as e:
+            raise Exception(
+                "Error insertando en 'stock' en Supabase. "
+                "Probable: RLS bloqueando INSERT o columnas NOT NULL faltantes. "
+                f"Detalle: {e}"
+            ) from e
 
     # refresca cache
     _cache_stock.clear()
