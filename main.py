@@ -31,6 +31,7 @@ from ficha_stock import mostrar_ficha_stock
 from articulos import mostrar_articulos
 from depositos import mostrar_depositos
 from familias import mostrar_familias
+from comprobantes import mostrar_menu_comprobantes
 
 
 # =========================
@@ -535,3 +536,6 @@ elif menu_actual == "🏬 Depósitos":
     mostrar_depositos()
 elif menu_actual == "🧩 Familias":
     mostrar_familias()
+elif menu == "📑 Comprobantes":
+    mostrar_menu_comprobantes()
+
