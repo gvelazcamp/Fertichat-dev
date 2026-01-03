@@ -568,7 +568,7 @@ if cant_pendientes > 0:
     campana_html = '<a href="?ir_notif=1" style="text-decoration:none;font-size:18px;background:#0b3b60;color:white;padding:6px 12px;border-radius:8px;">&#128276; ' + str(cant_pendientes) + '</a>'
 
 st.markdown(
-    """
+    r"""
     <style>
     @media (max-width: 768px) {
         .header-desktop-wrapper {
