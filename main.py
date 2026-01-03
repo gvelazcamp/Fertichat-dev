@@ -503,10 +503,10 @@ if cant_pendientes > 0:
 
 st.markdown(f"""
 <div id="mobile-header">
-    <div class="logo">🦋 FertiChat</div>
+    <div class="logo">&#129419; FertiChat</div>
 </div>
 <a id="campana-mobile" href="?ir_notif=1">
-    🔔
+    &#128276;
     {badge_html}
 </a>
 """, unsafe_allow_html=True)
