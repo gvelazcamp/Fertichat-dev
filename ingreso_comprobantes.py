@@ -255,12 +255,17 @@ def mostrar_ingreso_comprobantes():
 
         with st.form("form_comprobante"):
 
-            # Cabecera: dejamos Moneda al lado de Tipo
+            # Cabecera: Moneda al lado de Tipo + N° Comprobante al lado de Proveedor
             col1, col2, col3 = st.columns(3)
 
             with col1:
                 fecha = st.date_input("Fecha", value=date.today())
-                proveedor = st.text_input("Proveedor")
+
+                cprov, cnro = st.columns([2, 1])
+                with cprov:
+                    proveedor = st.text_input("Proveedor")
+                with cnro:
+                    nro_comprobante = st.text_input("Nº Comprobante")
 
             with col2:
                 tipo_comprobante = st.selectbox(
@@ -275,8 +280,6 @@ def mostrar_ingreso_comprobantes():
                     index=0 if st.session_state.comp_moneda == "UYU" else 1,
                     key="comp_moneda"
                 )
-
-            nro_comprobante = st.text_input("Nº Comprobante")
 
             st.markdown("### 📦 Artículos")
 
@@ -298,6 +301,7 @@ def mostrar_ingreso_comprobantes():
 
             btn_add = st.form_submit_button("➕ Agregar artículo")
             guardar = st.form_submit_button("💾 Guardar comprobante")
+
 
         # ----------------------------------
         # Agregar artículo
