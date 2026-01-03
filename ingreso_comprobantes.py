@@ -24,7 +24,8 @@ else:
 TABLA_COMPROBANTES = "comprobantes_compras"
 TABLA_DETALLE = "comprobantes_detalle"
 TABLA_STOCK = "stock"
-TABLA_ARTICULOS = "articulos"  # Se usa para intentar autocargar precio/IVA (si existe)
+TABLA_PROVEEDORES = "proveedores"
+TABLA_ARTICULOS = "articulos"
 
 # =====================================================================
 # HELPERS
@@ -55,6 +56,191 @@ def _iva_rate_from_tipo(iva_tipo: str) -> float:
         return 0.22
     return 0.0
 
+def _map_iva_tipo_from_articulo_row(row: dict) -> str:
+    """
+    Intenta leer el IVA desde la fila del artículo.
+    Soporta múltiples nombres posibles de columna.
+    Devuelve: "Exento" / "10%" / "22%"
+    """
+    if not row:
+        return "22%"
+
+    candidates = [
+        "tipo_impuesto", "Tipo Impuesto",
+        "iva_tipo", "IVA", "iva",
+        "tasa_iva", "Tasa IVA"
+    ]
+
+    val = None
+    for k in candidates:
+        if k in row and row.get(k) not in (None, ""):
+            val = row.get(k)
+            break
+
+    if val is None:
+        return "22%"
+
+    # Si viene numérico (0 / 0.1 / 0.22)
+    if isinstance(val, (int, float)):
+        f = _safe_float(val, 0.0)
+        if abs(f - 0.0) < 1e-9:
+            return "Exento"
+        if abs(f - 0.10) < 1e-6:
+            return "10%"
+        return "22%"
+
+    # Si viene texto
+    v = str(val).strip().lower()
+
+    if "exent" in v or v in ("0", "0%", "sin iva"):
+        return "Exento"
+    if "10" in v:
+        return "10%"
+    if "22" in v or "20" in v:
+        return "22%"
+
+    return "22%"
+
+def _map_precio_sin_iva_from_articulo_row(row: dict) -> float:
+    """
+    Intenta leer precio unitario SIN IVA desde la fila del artículo.
+    Soporta múltiples nombres posibles de columna.
+    """
+    if not row:
+        return 0.0
+
+    candidates = [
+        "precio_unit_sin_iva", "precio_unitario_sin_iva", "precio_sin_iva",
+        "precio_unitario", "precio",
+        "costo", "costo_unitario"
+    ]
+
+    for k in candidates:
+        if k in row and row.get(k) not in (None, ""):
+            return _safe_float(row.get(k), 0.0)
+
+    return 0.0
+
+def _articulo_desc_from_row(row: dict) -> str:
+    """
+    Devuelve una descripción usable del artículo para guardar en detalle["articulo"].
+    """
+    if not row:
+        return ""
+
+    candidates = [
+        "descripcion", "Descripción",
+        "nombre", "articulo", "Artículo",
+        "detalle", "Detalle"
+    ]
+    for k in candidates:
+        if k in row and row.get(k) not in (None, ""):
+            return str(row.get(k)).strip()
+
+    # fallback
+    if "id" in row and row.get("id"):
+        return str(row.get("id"))
+    return ""
+
+def _articulo_label(row: dict) -> str:
+    """
+    Label visible en el selectbox (incluye id corto para evitar duplicados).
+    """
+    desc = _articulo_desc_from_row(row) or ""
+    rid = str(row.get("id", "") or "")
+    rid8 = rid[:8] if rid else ""
+    if rid8:
+        return f"{desc} [{rid8}]"
+    return desc
+
+@st.cache_data(ttl=600)
+def _cache_proveedores() -> list:
+    """
+    Devuelve lista de dicts con proveedores (id, nombre).
+    Cache 10 min.
+    """
+    if not supabase:
+        return []
+    out = []
+    start = 0
+    page = 1000
+    max_rows = 20000
+
+    while start < max_rows:
+        end = start + page - 1
+        res = (
+            supabase.table(TABLA_PROVEEDORES)
+            .select("*")
+            .order("nombre")
+            .range(start, end)
+            .execute()
+        )
+        batch = res.data or []
+        out.extend(batch)
+        if len(batch) < page:
+            break
+        start += page
+
+    return out
+
+@st.cache_data(ttl=600)
+def _cache_articulos() -> list:
+    """
+    Devuelve lista de dicts con artículos (select * para no adivinar columnas).
+    Cache 10 min.
+    """
+    if not supabase:
+        return []
+    out = []
+    start = 0
+    page = 1000
+    max_rows = 20000
+
+    while start < max_rows:
+        end = start + page - 1
+        res = (
+            supabase.table(TABLA_ARTICULOS)
+            .select("*")
+            .range(start, end)
+            .execute()
+        )
+        batch = res.data or []
+        out.extend(batch)
+        if len(batch) < page:
+            break
+        start += page
+
+    return out
+
+def _get_proveedor_options() -> tuple[list, dict]:
+    data = _cache_proveedores()
+    name_to_id = {}
+    options = [""]
+
+    for r in data:
+        nombre = str(r.get("nombre", "") or "").strip()
+        if not nombre:
+            continue
+        options.append(nombre)
+        name_to_id[nombre] = r.get("id")
+
+    return options, name_to_id
+
+def _get_articulo_options() -> tuple[list, dict]:
+    data = _cache_articulos()
+    label_to_row = {}
+    options = [""]
+
+    for r in data:
+        label = _articulo_label(r)
+        if not label:
+            continue
+        # si duplica, el label trae [id8], entonces suele quedar único
+        options.append(label)
+        label_to_row[label] = r
+
+    return options, label_to_row
+
 def _calc_linea(cantidad: int, precio_unit_sin_iva: float, iva_rate: float, descuento_pct: float) -> dict:
     cantidad = _safe_int(cantidad, 0)
     precio_unit_sin_iva = _safe_float(precio_unit_sin_iva, 0.0)
@@ -67,88 +253,18 @@ def _calc_linea(cantidad: int, precio_unit_sin_iva: float, iva_rate: float, desc
     iva_monto = subtotal * iva_rate
     total = subtotal + iva_monto
 
-    precio_unit_desc = precio_unit_sin_iva * (1.0 - (descuento_pct / 100.0))
-
     return {
         "base_sin_iva": base,
         "descuento_monto": desc_monto,
         "subtotal_sin_iva": subtotal,
         "iva_monto": iva_monto,
         "total_con_iva": total,
-        "precio_unit_desc_sin_iva": precio_unit_desc,
     }
 
 def _fmt_money(v: float, moneda: str) -> str:
     v = _safe_float(v, 0.0)
     s = f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return f"{moneda} {s}"
-
-def _fetch_articulo_info(articulo_texto: str) -> dict:
-    """
-    Intenta autocargar precio_unit_sin_iva e iva_tipo desde TABLA_ARTICULOS.
-    Si no encuentra o la tabla/columnas no existen, devuelve {}.
-    NO rompe: todo en try/except.
-    """
-    if not supabase:
-        return {}
-
-    a = (articulo_texto or "").strip()
-    if not a:
-        return {}
-
-    candidates_search_cols = ["articulo", "descripcion", "detalle", "codigo"]
-    candidates_price_cols = ["precio_sin_iva", "precio_unitario_sin_iva", "precio", "costo", "precio_unitario"]
-    candidates_iva_cols = ["iva_tipo", "iva", "tasa_iva"]
-
-    for search_col in candidates_search_cols:
-        try:
-            res = (
-                supabase.table(TABLA_ARTICULOS)
-                .select("*")
-                .ilike(search_col, f"%{a}%")
-                .limit(5)
-                .execute()
-            )
-            if not res.data:
-                continue
-
-            row = res.data[0]
-            out = {}
-
-            for pc in candidates_price_cols:
-                if pc in row and row.get(pc) not in (None, ""):
-                    out["precio_unit_sin_iva"] = _safe_float(row.get(pc), 0.0)
-                    break
-
-            for ic in candidates_iva_cols:
-                if ic in row and row.get(ic) not in (None, ""):
-                    val = row.get(ic)
-                    if isinstance(val, str):
-                        v = val.strip()
-                        if v in ("Exento", "0", "0%"):
-                            out["iva_tipo"] = "Exento"
-                        elif "10" in v:
-                            out["iva_tipo"] = "10%"
-                        elif "22" in v or "20" in v:
-                            out["iva_tipo"] = "22%"
-                        else:
-                            out["iva_tipo"] = "22%"
-                    else:
-                        f = _safe_float(val, 0.0)
-                        if abs(f - 0.0) < 1e-9:
-                            out["iva_tipo"] = "Exento"
-                        elif abs(f - 0.10) < 1e-6:
-                            out["iva_tipo"] = "10%"
-                        else:
-                            out["iva_tipo"] = "22%"
-                    break
-
-            return out
-
-        except Exception:
-            continue
-
-    return {}
 
 # =====================================================================
 # FUNCIÓN: IMPACTO STOCK
@@ -184,7 +300,7 @@ def _impactar_stock(articulo: str, cantidad: int) -> None:
         }).execute()
 
 # =====================================================================
-# INSERTS CON FALLBACK
+# INSERTS CON FALLBACK (NO ROMPE SI TU TABLA NO TIENE TODAS LAS COLUMNAS)
 # =====================================================================
 
 def _insert_cabecera_con_fallback(cabecera_full: dict) -> dict:
@@ -253,6 +369,9 @@ def mostrar_ingreso_comprobantes():
     # =========================
     if menu == "🧾 Ingreso manual":
 
+        proveedores_options, prov_name_to_id = _get_proveedor_options()
+        articulos_options, art_label_to_row = _get_articulo_options()
+
         with st.form("form_comprobante"):
 
             # Cabecera: Moneda al lado de Tipo + N° Comprobante al lado de Proveedor
@@ -263,7 +382,12 @@ def mostrar_ingreso_comprobantes():
 
                 cprov, cnro = st.columns([2, 1])
                 with cprov:
-                    proveedor = st.text_input("Proveedor")
+                    proveedor_sel = st.selectbox(
+                        "Proveedor",
+                        proveedores_options,
+                        index=0,
+                        key="comp_proveedor_sel"
+                    )
                 with cnro:
                     nro_comprobante = st.text_input("Nº Comprobante")
 
@@ -283,9 +407,14 @@ def mostrar_ingreso_comprobantes():
 
             st.markdown("### 📦 Artículos")
 
-            c1, c2, c3, c4, c5, c6, c7 = st.columns([2.3, 1, 1.2, 1.1, 1.1, 1.2, 1.4])
+            c1, c2, c3, c4, c5, c6, c7 = st.columns([2.6, 1, 1.2, 1.1, 1.1, 1.2, 1.4])
             with c1:
-                articulo = st.text_input("Artículo")
+                articulo_sel = st.selectbox(
+                    "Artículo",
+                    articulos_options,
+                    index=0,
+                    key="comp_articulo_sel"
+                )
             with c2:
                 cantidad = st.number_input("Cantidad", min_value=1, step=1)
             with c3:
@@ -302,30 +431,34 @@ def mostrar_ingreso_comprobantes():
             btn_add = st.form_submit_button("➕ Agregar artículo")
             guardar = st.form_submit_button("💾 Guardar comprobante")
 
-
         # ----------------------------------
-        # Agregar artículo
+        # Agregar artículo (IVA y precio salen del artículo si existen)
         # ----------------------------------
         if btn_add:
-            if not (articulo or "").strip():
-                st.error("El artículo no puede estar vacío.")
+            if not proveedor_sel:
+                st.error("Seleccioná un proveedor.")
+            elif not articulo_sel:
+                st.error("Seleccioná un artículo.")
             else:
-                art = articulo.strip()
+                art_row = art_label_to_row.get(articulo_sel, {})
+                art_desc = _articulo_desc_from_row(art_row) or articulo_sel
+                art_id = art_row.get("id")
 
-                # Autocarga silenciosa (sin checkbox)
-                info = _fetch_articulo_info(art)
-
-                if "precio_unit_sin_iva" in info and _safe_float(precio_unit_sin_iva, 0.0) <= 0.0:
-                    precio_unit_sin_iva = float(info["precio_unit_sin_iva"])
-
-                if "iva_tipo" in info:
-                    iva_tipo = info["iva_tipo"]
-
+                # IVA desde artículo (siempre)
+                iva_tipo = _map_iva_tipo_from_articulo_row(art_row)
                 iva_rate = _iva_rate_from_tipo(iva_tipo)
+
+                # Precio desde artículo SOLO si el usuario dejó 0
+                if _safe_float(precio_unit_sin_iva, 0.0) <= 0.0:
+                    precio_db = _map_precio_sin_iva_from_articulo_row(art_row)
+                    if precio_db > 0:
+                        precio_unit_sin_iva = float(precio_db)
+
                 calc = _calc_linea(int(cantidad), float(precio_unit_sin_iva), float(iva_rate), float(descuento_pct))
 
                 st.session_state.comp_items.append({
-                    "articulo": art,
+                    "articulo": art_desc,
+                    "articulo_id": art_id,
                     "cantidad": int(cantidad),
                     "precio_unit_sin_iva": float(precio_unit_sin_iva),
                     "iva_tipo": iva_tipo,
@@ -375,17 +508,20 @@ def mostrar_ingreso_comprobantes():
         # Guardar comprobante
         # ----------------------------------
         if guardar:
-            if not proveedor or not nro_comprobante or not st.session_state.comp_items:
+            # Nota: proveedor_sel y nro_comprobante vienen del último submit del form
+            if not proveedor_sel or not nro_comprobante or not st.session_state.comp_items:
                 st.error("Faltan datos obligatorios.")
                 st.stop()
 
-            proveedor_norm = proveedor.strip().upper()
-            nro_norm = nro_comprobante.strip()
+            proveedor_nombre = str(proveedor_sel).strip()
+            proveedor_id = prov_name_to_id.get(proveedor_nombre)
+
+            nro_norm = str(nro_comprobante).strip()
 
             existe = (
                 supabase.table(TABLA_COMPROBANTES)
                 .select("id")
-                .eq("proveedor", proveedor_norm)
+                .eq("proveedor", proveedor_nombre)
                 .eq("nro_comprobante", nro_norm)
                 .execute()
             )
@@ -403,7 +539,8 @@ def mostrar_ingreso_comprobantes():
 
             cabecera_full = {
                 "fecha": str(fecha),
-                "proveedor": proveedor_norm,
+                "proveedor": proveedor_nombre,
+                "proveedor_id": proveedor_id,
                 "tipo_comprobante": tipo_comprobante,
                 "nro_comprobante": nro_norm,
                 "usuario": str(usuario_actual),
@@ -421,6 +558,7 @@ def mostrar_ingreso_comprobantes():
                 detalle_full = {
                     "comprobante_id": comprobante_id,
                     "articulo": item["articulo"],
+                    "articulo_id": item.get("articulo_id"),
                     "cantidad": int(item["cantidad"]),
                     "lote": item.get("lote", ""),
                     "vencimiento": item.get("vencimiento", ""),
@@ -455,7 +593,7 @@ def mostrar_ingreso_comprobantes():
 
             if st.button("Importar CSV"):
                 for _, row in df.iterrows():
-                    proveedor_norm = str(row.get("proveedor", "")).strip().upper()
+                    proveedor_norm = str(row.get("proveedor", "")).strip()
                     nro_norm = str(row.get("nro_comprobante", "")).strip()
 
                     moneda_row = str(row.get("moneda", st.session_state.comp_moneda)).strip().upper()
