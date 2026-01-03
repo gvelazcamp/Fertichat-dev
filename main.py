@@ -65,6 +65,19 @@ html, body { font-family: Inter, system-ui, sans-serif; color: #0f172a; }
 [data-testid="stAppViewContainer"] { background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2)); }
 .block-container { max-width: 1240px; padding-top: 1.25rem; padding-bottom: 2.25rem; }
 
+/* HEADER BEIGE EN PC */
+[data-testid="stHeader"] {
+    background-color: #f5f5dc !important;
+}
+
+.stAppHeader {
+    background-color: #f5f5dc !important;
+}
+
+[data-testid="stToolbar"] {
+    background-color: #f5f5dc !important;
+}
+
 /* Sidebar look */
 section[data-testid="stSidebar"] { border-right: 1px solid rgba(15, 23, 42, 0.08); }
 section[data-testid="stSidebar"] > div {
