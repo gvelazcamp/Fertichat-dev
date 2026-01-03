@@ -341,70 +341,82 @@ def _crear_comprobante_historial(
     notas: str = "",
 ) -> int:
     """
-    IMPORTANTE: PostgREST a veces devuelve INSERT con data vacía (return=minimal).
-    Para que SIEMPRE tengamos el id, forzamos .select("id") y si aun así viene vacío,
-    hacemos fallback consultando el último id que matchee el payload.
+    Tu cliente Supabase/PostgREST NO soporta .select() encadenado luego de .insert().
+    Entonces:
+      1) Intento INSERT pidiendo returning='representation' (si está soportado).
+      2) Si no, hago INSERT normal y recupero el id con una consulta por created_at + campos.
     """
+    created_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
     payload = {
         "tipo": (tipo or "").upper(),
-        "usuario": (_get_usuario_actual() or None),
-        "deposito_origen": (deposito_origen or None),
-        "deposito_destino": (deposito_destino or None),
-        "motivo": (motivo or None),
-        "notas": (notas or None),
+        "created_at": created_at,
+        "usuario": _get_usuario_actual() or None,
+        "deposito_origen": deposito_origen or None,
+        "deposito_destino": deposito_destino or None,
+        "motivo": motivo or None,
+        "notas": notas or None,
     }
 
-    # 1) Intento normal: INSERT devolviendo id
+    # 1) INSERT intentando que devuelva el id (según versión)
     try:
-        resp = (
-            supabase.table("comprobantes_stock")
-            .insert(payload)
-            .select("id")
-            .execute()
-        )
+        try:
+            resp = supabase.table("comprobantes_stock").insert(payload, returning="representation").execute()
+        except TypeError:
+            # versiones que no aceptan el parámetro returning
+            resp = supabase.table("comprobantes_stock").insert(payload).execute()
+
         row = (resp.data or [None])[0]
-        if row and "id" in row:
+        if row and isinstance(row, dict) and "id" in row:
             return int(row["id"])
+
     except Exception as e:
         raise Exception(f"Error insertando cabecera en 'comprobantes_stock'. Detalle: {e}") from e
 
-    # 2) Fallback: si PostgREST devolvió data vacía, buscamos el último id que matchee
+    # 2) Fallback: si insertó pero no devolvió data, buscamos el id recién insertado
     try:
-        q = supabase.table("comprobantes_stock").select("id").eq("tipo", payload["tipo"])
+        q = (
+            supabase.table("comprobantes_stock")
+            .select("id")
+            .eq("tipo", payload["tipo"])
+            .eq("created_at", payload["created_at"])
+        )
 
-        if payload["usuario"] is not None:
-            q = q.eq("usuario", payload["usuario"])
-        else:
+        # match de nulls / valores para evitar agarrar otro registro
+        if payload["usuario"] is None:
             q = q.is_("usuario", "null")
-
-        if payload["deposito_origen"] is not None:
-            q = q.eq("deposito_origen", payload["deposito_origen"])
         else:
+            q = q.eq("usuario", payload["usuario"])
+
+        if payload["deposito_origen"] is None:
             q = q.is_("deposito_origen", "null")
-
-        if payload["deposito_destino"] is not None:
-            q = q.eq("deposito_destino", payload["deposito_destino"])
         else:
+            q = q.eq("deposito_origen", payload["deposito_origen"])
+
+        if payload["deposito_destino"] is None:
             q = q.is_("deposito_destino", "null")
-
-        if payload["motivo"] is not None:
-            q = q.eq("motivo", payload["motivo"])
         else:
+            q = q.eq("deposito_destino", payload["deposito_destino"])
+
+        if payload["motivo"] is None:
             q = q.is_("motivo", "null")
-
-        if payload["notas"] is not None:
-            q = q.eq("notas", payload["notas"])
         else:
+            q = q.eq("motivo", payload["motivo"])
+
+        if payload["notas"] is None:
             q = q.is_("notas", "null")
+        else:
+            q = q.eq("notas", payload["notas"])
 
         resp2 = q.order("id", desc=True).limit(1).execute()
         row2 = (resp2.data or [None])[0]
-        if row2 and "id" in row2:
+        if row2 and isinstance(row2, dict) and "id" in row2:
             return int(row2["id"])
-    except Exception as e:
-        raise Exception(f"Insertó pero no pude recuperar el id del comprobante. Detalle: {e}") from e
 
-    raise Exception("No se pudo obtener el id del comprobante (insert historial).")
+    except Exception as e:
+        raise Exception(f"Insertó cabecera pero no pude recuperar el id. Detalle: {e}") from e
+
+    raise Exception("Insertó cabecera pero PostgREST no devolvió el id y el fallback no lo encontró.")
 
 
 def _crear_items_historial(comprobante_id: int, items: List[Dict[str, Any]]) -> None:
