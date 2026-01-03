@@ -340,20 +340,71 @@ def _crear_comprobante_historial(
     motivo: str = "",
     notas: str = "",
 ) -> int:
+    """
+    IMPORTANTE: PostgREST a veces devuelve INSERT con data vacía (return=minimal).
+    Para que SIEMPRE tengamos el id, forzamos .select("id") y si aun así viene vacío,
+    hacemos fallback consultando el último id que matchee el payload.
+    """
     payload = {
         "tipo": (tipo or "").upper(),
-        "created_at": datetime.utcnow().isoformat(),
-        "usuario": _get_usuario_actual() or None,
-        "deposito_origen": deposito_origen or None,
-        "deposito_destino": deposito_destino or None,
-        "motivo": motivo or None,
-        "notas": notas or None,
+        "usuario": (_get_usuario_actual() or None),
+        "deposito_origen": (deposito_origen or None),
+        "deposito_destino": (deposito_destino or None),
+        "motivo": (motivo or None),
+        "notas": (notas or None),
     }
-    resp = supabase.table("comprobantes_stock").insert(payload).execute()
-    row = (resp.data or [None])[0]
-    if not row or "id" not in row:
-        raise Exception("No se pudo obtener el id del comprobante (insert historial).")
-    return int(row["id"])
+
+    # 1) Intento normal: INSERT devolviendo id
+    try:
+        resp = (
+            supabase.table("comprobantes_stock")
+            .insert(payload)
+            .select("id")
+            .execute()
+        )
+        row = (resp.data or [None])[0]
+        if row and "id" in row:
+            return int(row["id"])
+    except Exception as e:
+        raise Exception(f"Error insertando cabecera en 'comprobantes_stock'. Detalle: {e}") from e
+
+    # 2) Fallback: si PostgREST devolvió data vacía, buscamos el último id que matchee
+    try:
+        q = supabase.table("comprobantes_stock").select("id").eq("tipo", payload["tipo"])
+
+        if payload["usuario"] is not None:
+            q = q.eq("usuario", payload["usuario"])
+        else:
+            q = q.is_("usuario", "null")
+
+        if payload["deposito_origen"] is not None:
+            q = q.eq("deposito_origen", payload["deposito_origen"])
+        else:
+            q = q.is_("deposito_origen", "null")
+
+        if payload["deposito_destino"] is not None:
+            q = q.eq("deposito_destino", payload["deposito_destino"])
+        else:
+            q = q.is_("deposito_destino", "null")
+
+        if payload["motivo"] is not None:
+            q = q.eq("motivo", payload["motivo"])
+        else:
+            q = q.is_("motivo", "null")
+
+        if payload["notas"] is not None:
+            q = q.eq("notas", payload["notas"])
+        else:
+            q = q.is_("notas", "null")
+
+        resp2 = q.order("id", desc=True).limit(1).execute()
+        row2 = (resp2.data or [None])[0]
+        if row2 and "id" in row2:
+            return int(row2["id"])
+    except Exception as e:
+        raise Exception(f"Insertó pero no pude recuperar el id del comprobante. Detalle: {e}") from e
+
+    raise Exception("No se pudo obtener el id del comprobante (insert historial).")
 
 
 def _crear_items_historial(comprobante_id: int, items: List[Dict[str, Any]]) -> None:
@@ -396,6 +447,7 @@ def _fetch_historial_items(comprobante_id: int) -> pd.DataFrame:
         .execute()
     )
     return pd.DataFrame(resp.data or [])
+
 
 
 # =====================================================================
