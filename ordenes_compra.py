@@ -11,7 +11,8 @@ from datetime import datetime, date
 # =====================================================================
 
 TIPOS_OC = [
-    "Normal inmediata",
+    "Normal" 
+    "Inmediata"
     "Programada"
 ]
 
