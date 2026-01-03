@@ -639,6 +639,8 @@ def mostrar_comprobante_alta_stock():
         # HISTORIAL + MENSAJE FINAL
         # -------------------------
         comp_id = None
+        historial_ok = False
+
         try:
             comp_id = _crear_comprobante_historial(
                 tipo="ALTA",
@@ -648,17 +650,26 @@ def mostrar_comprobante_alta_stock():
                 notas="Alta de stock",
             )
             _crear_items_historial(comp_id, hist_items)
+            historial_ok = True
         except Exception as e:
             st.warning(f"Alta aplicada a STOCK, pero no se pudo guardar historial. Detalle: {e}")
 
-        codigo_txt = _codigo_comprobante("ALTA", comp_id) if comp_id else "ALTA (sin código)"
-        st.success(f"Felicitaciones: Alta {codigo_txt} cargada. Líneas procesadas: {ok}")
+        if comp_id:
+            codigo_txt = _codigo_comprobante("ALTA", comp_id)
+            st.success(f"Felicitaciones: Alta {codigo_txt} cargada. Líneas procesadas: {ok}")
+        else:
+            st.success(f"Alta confirmada. Líneas procesadas: {ok}")
 
-        st.info(
-            "El precio quedó guardado en el historial del comprobante (comprobantes_stock_items). "
-            "Tu tabla 'stock' no tiene columna de precio, por eso no se guarda ahí."
-        )
-
+        if historial_ok:
+            st.info(
+                "El precio quedó guardado en el historial del comprobante (comprobantes_stock_items). "
+                "Tu tabla 'stock' no tiene columna de precio, por eso no se guarda ahí."
+            )
+        else:
+            st.info(
+                "El precio se capturó en la UI, pero NO se guardó historial (falló el insert del comprobante). "
+                "Cuando existan las tablas/policies, queda registrado automáticamente."
+            )
 
 # =====================================================================
 # BAJA DE STOCK (DESDE STOCK)
