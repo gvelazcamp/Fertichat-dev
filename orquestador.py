@@ -104,14 +104,12 @@ def es_comando_estandar(texto: str) -> bool:
 
 
 def resolver_a_comando(pregunta_original: str) -> str:
-    # Si ya es comando, no tocamos nada
     if es_comando_estandar(pregunta_original):
         return pregunta_original
 
     sug = obtener_sugerencia_ejecutable(pregunta_original)
     cmd = (sug or {}).get("sugerencia", "").strip()
 
-    # Si OpenAI no pudo armar comando, devolvemos original
     return cmd if cmd else pregunta_original
 
 
@@ -303,6 +301,15 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
 
     if DEBUG_MODE and pregunta != pregunta_original:
         print(f"🧠 REWRITE: '{pregunta_original}'  →  '{pregunta}'")
+
+        # =====================================================================
+    # ✅ REWRITE: si viene "humano", lo paso a comando estándar antes de detectar intención
+    # =====================================================================
+    pregunta_original = pregunta
+    pregunta = resolver_a_comando(pregunta)
+
+    if pregunta != pregunta_original:
+        print(f"🧠 REWRITE: {pregunta_original}  →  {pregunta}")
 
     # =====================================================================
     # PASO 3: Detectar intención (REGLAS)
