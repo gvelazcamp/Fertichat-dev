@@ -48,9 +48,9 @@ user = get_current_user() or {}
 if "radio_menu" not in st.session_state:
     st.session_state["radio_menu"] = "🏠 Inicio"
 
-
 # =========================
 # CSS COMPLETO CORREGIDO
+# (TODO el CSS en UN SOLO st.markdown)
 # =========================
 st.markdown(r"""
 <style>
@@ -144,7 +144,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
 }
 
 /* =============================================
-   MÓVIL
+   MÓVIL (touch)
    ============================================= */
 @media (hover: none) and (pointer: coarse) {
     .block-container {
@@ -218,225 +218,154 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     button[title="Close sidebar"] {
         display: inline-flex !important;
     }
-}
-</style>
-""", unsafe_allow_html=True)
 
-  
-  /* ============================================= */
-  /* 🔥 SELECTBOX MÓVIL - NUCLEAR MODE 🔥 */
-  /* ============================================= */
-  
-  /* Nivel 1: Container principal del selectbox */
-  div[data-testid="stSelectbox"] {
-    background: #ffffff !important;
-  }
-  
-  div[data-testid="stSelectbox"] > div {
-    background: #ffffff !important;
-  }
-  
-  div[data-testid="stSelectbox"] > div > div {
-    background: #ffffff !important;
-  }
-  
-  /* Nivel 2: Baseweb select root */
-  div[data-baseweb="select"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  /* Nivel 3: Control container (el clickeable) */
-  div[data-baseweb="select"] > div {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-  }
-  
-  /* Nivel 4: Value container (donde va el texto) */
-  div[data-baseweb="select"] > div > div {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  /* Nivel 5: Single value (el texto seleccionado) */
-  div[data-baseweb="select"] > div > div > div {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  /* Nivel 6: Input dentro del select */
-  div[data-baseweb="select"] input {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border: none !important;
-  }
-  
-  /* Nivel 7: Popover (dropdown que se abre) */
-  div[data-baseweb="popover"] {
-    background: #ffffff !important;
-  }
-  
-  div[data-baseweb="popover"] > div {
-    background: #ffffff !important;
-  }
-  
-  /* Nivel 8: Menu (lista de opciones) */
-  div[data-baseweb="menu"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  div[data-baseweb="menu"] ul {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  div[data-baseweb="menu"] li {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  div[data-baseweb="menu"] li:hover {
-    background: #f1f5f9 !important;
-    background-color: #f1f5f9 !important;
-  }
-  
-  /* Nivel 9: Todas las clases con StyledXXX */
-  [class*="StyledControl"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  [class*="StyledControlContainer"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  [class*="StyledValueContainer"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  [class*="StyledSingleValue"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  [class*="StyledInput"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  /* Nivel 10: Placeholder */
-  [class*="StyledPlaceholder"] {
-    color: #64748b !important;
-  }
-  
-  /* Nivel 11: Iconos (flechita) */
-  div[data-baseweb="select"] svg {
-    fill: #64748b !important;
-  }
-  
-  /* ============================================= */
-  /* 🔥 TEXT INPUT 🔥 */
-  /* ============================================= */
-  
-  div[data-testid="stTextInput"] {
-    background: transparent !important;
-  }
-  
-  div[data-testid="stTextInput"] > div {
-    background: #ffffff !important;
-  }
-  
-  div[data-testid="stTextInput"] input[type="text"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
-  }
-  
-  /* ============================================= */
-  /* 🔥 CHAT INPUT 🔥 */
-  /* ============================================= */
-  
-  div[data-testid="stChatInput"] {
-    background: transparent !important;
-  }
-  
-  div[data-testid="stChatInput"] > div {
-    background: #ffffff !important;
-  }
-  
-  textarea[data-testid="stChatInputTextArea"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
-  }
+    /* ============================================= */
+    /* 🔥 SELECTBOX MÓVIL - FORZAR BLANCO + TEXTO NEGRO */
+    /* ============================================= */
+    div[data-testid="stSelectbox"],
+    div[data-testid="stSelectbox"] > div,
+    div[data-testid="stSelectbox"] > div > div {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+    }
+
+    div[data-baseweb="select"],
+    div[data-baseweb="select"] > div,
+    div[data-baseweb="select"] > div > div,
+    div[data-baseweb="select"] > div > div > div {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+    }
+
+    div[data-baseweb="select"] input {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: none !important;
+    }
+
+    div[data-baseweb="select"] svg {
+        fill: #64748b !important;
+    }
+
+    div[data-baseweb="popover"],
+    div[data-baseweb="popover"] > div,
+    div[data-baseweb="menu"],
+    div[data-baseweb="menu"] ul,
+    div[data-baseweb="menu"] li {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+    }
+
+    div[data-baseweb="menu"] li:hover {
+        background: #f1f5f9 !important;
+        background-color: #f1f5f9 !important;
+    }
+
+    [class*="StyledControl"],
+    [class*="StyledControlContainer"],
+    [class*="StyledValueContainer"],
+    [class*="StyledSingleValue"],
+    [class*="StyledInput"] {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+    }
+
+    [class*="StyledPlaceholder"] {
+        color: #64748b !important;
+    }
+
+    /* ============================================= */
+    /* TEXT INPUT (móvil) */
+    /* ============================================= */
+    div[data-testid="stTextInput"] {
+        background: transparent !important;
+    }
+
+    div[data-testid="stTextInput"] > div {
+        background: #ffffff !important;
+    }
+
+    div[data-testid="stTextInput"] input[type="text"] {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+
+    /* ============================================= */
+    /* CHAT INPUT (móvil) */
+    /* ============================================= */
+    div[data-testid="stChatInput"] {
+        background: transparent !important;
+    }
+
+    div[data-testid="stChatInput"] > div {
+        background: #ffffff !important;
+    }
+
+    textarea[data-testid="stChatInputTextArea"] {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #e2e8f0 !important;
+    }
 }
 
 /* ============================================= */
 /* ESTILOS MÓVIL GENERALES (768px) */
 /* ============================================= */
 @media (max-width: 768px) {
-  /* Textos oscuros */
-  .block-container h1,
-  .block-container h2,
-  .block-container h3,
-  .block-container p,
-  .block-container span,
-  .block-container label {
-    color: #0f172a !important;
-  }
-  
-  /* Botones blancos */
-  .block-container button {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
-  }
-  
-  /* 🔥 REFUERZO SELECTBOX PARA 768px 🔥 */
-  div[data-testid="stSelectbox"],
-  div[data-testid="stSelectbox"] > div,
-  div[data-testid="stSelectbox"] > div > div,
-  div[data-baseweb="select"],
-  div[data-baseweb="select"] > div,
-  div[data-baseweb="select"] > div > div,
-  div[data-baseweb="select"] > div > div > div {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  div[data-baseweb="select"] input {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  /* Todo el texto dentro de selectbox */
-  div[data-baseweb="select"] span,
-  div[data-baseweb="select"] div,
-  [class*="StyledSingleValue"] {
-    color: #0f172a !important;
-  }
-  
-  /* Dropdown/menu */
-  div[data-baseweb="popover"],
-  div[data-baseweb="popover"] *,
-  div[data-baseweb="menu"],
-  div[data-baseweb="menu"] * {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
+    .block-container h1,
+    .block-container h2,
+    .block-container h3,
+    .block-container p,
+    .block-container span,
+    .block-container label {
+        color: #0f172a !important;
+    }
+
+    .block-container button {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+
+    /* Refuerzo extra por si el dispositivo no cae en pointer:coarse */
+    div[data-testid="stSelectbox"],
+    div[data-testid="stSelectbox"] > div,
+    div[data-testid="stSelectbox"] > div > div,
+    div[data-baseweb="select"],
+    div[data-baseweb="select"] > div,
+    div[data-baseweb="select"] > div > div,
+    div[data-baseweb="select"] > div > div > div {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+    }
+
+    div[data-baseweb="select"] input {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+    }
+
+    div[data-baseweb="select"] span,
+    div[data-baseweb="select"] div,
+    [class*="StyledSingleValue"] {
+        color: #0f172a !important;
+    }
+
+    div[data-baseweb="popover"],
+    div[data-baseweb="popover"] *,
+    div[data-baseweb="menu"],
+    div[data-baseweb="menu"] * {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -448,7 +377,6 @@ usuario_actual = user.get("usuario", user.get("email", ""))
 cant_pendientes = 0
 if usuario_actual:
     cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
-
 
 # =========================
 # DETECCIÓN DE NAVEGACIÓN DESDE TARJETAS
@@ -471,9 +399,8 @@ try:
             st.session_state["radio_menu"] = destino
             st.query_params.clear()
             st.rerun()
-except:
+except Exception:
     pass
-
 
 # =========================
 # MANEJAR CLICK CAMPANA
@@ -483,9 +410,8 @@ try:
         st.session_state["radio_menu"] = "📄 Pedidos internos"
         st.query_params.clear()
         st.rerun()
-except:
+except Exception:
     pass
-
 
 # =========================
 # HEADER MÓVIL
@@ -504,11 +430,10 @@ st.markdown(f"""
 </a>
 """, unsafe_allow_html=True)
 
-
 # =========================
 # TÍTULO PC
 # =========================
-campana_html = f'<span style="font-size:26px;">🔔</span>'
+campana_html = '<span style="font-size:26px;">🔔</span>'
 if cant_pendientes > 0:
     campana_html = f'<a href="?ir_notif=1" style="text-decoration:none;font-size:18px;background:#0b3b60;color:white;padding:6px 12px;border-radius:8px;">🔔 {cant_pendientes}</a>'
 
@@ -537,7 +462,7 @@ st.markdown(f"""
 # SIDEBAR
 # =========================
 with st.sidebar:
-    st.markdown(f"""
+    st.markdown("""
         <div style='
             background: rgba(255,255,255,0.85);
             padding: 16px;
@@ -556,7 +481,7 @@ with st.sidebar:
     st.text_input("Buscar...", key="sidebar_search", label_visibility="collapsed", placeholder="Buscar...")
 
     st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
-    if user.get('empresa'):
+    if user.get("empresa"):
         st.markdown(f"🏢 {user.get('empresa')}")
     st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
 
@@ -571,7 +496,6 @@ with st.sidebar:
 
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
 
-
 # =========================
 # ROUTER
 # =========================
@@ -582,7 +506,7 @@ if menu_actual == "🏠 Inicio":
 
 elif "Chat (Chainlit)" in menu_actual:
     mostrar_chat_chainlit()
-    
+
 elif menu_actual == "🛒 Compras IA":
     mostrar_resumen_compras_rotativo()
     Compras_IA()
