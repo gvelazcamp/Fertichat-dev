@@ -191,6 +191,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
 /* =========================================================
    LOGIN - TARJETA CENTRAL
    ========================================================= */
+
 div[data-testid="stForm"] {
   background: #ffffff !important;
   border-radius: 22px !important;
@@ -199,10 +200,13 @@ div[data-testid="stForm"] {
   border: 1px solid rgba(15, 23, 42, 0.08) !important;
 }
 
+/* Título (FertiChat) */
 .block-container h1 {
   color: #0b3b60 !important;
+  font-weight: 800 !important;
 }
 
+/* Inputs */
 div[data-baseweb="input"],
 div[data-baseweb="base-input"] {
   background: #ffffff !important;
@@ -210,12 +214,14 @@ div[data-baseweb="base-input"] {
   border-radius: 12px !important;
 }
 
+/* Texto dentro del input */
 div[data-baseweb="input"] input,
 div[data-baseweb="base-input"] input {
   color: #0f172a !important;
   background: transparent !important;
 }
 
+/* Botón principal */
 button[kind="secondaryFormSubmit"],
 button[type="submit"] {
   background: #0b3b60 !important;
@@ -224,10 +230,9 @@ button[type="submit"] {
   font-weight: 700 !important;
 }
 
-/* Fondo general */
+/* Fondo general (login + app) */
 .stApp {
   background: linear-gradient(135deg, #f6f4ef, #f3f6fb) !important;
 }
 
-</style>
-"""
+
