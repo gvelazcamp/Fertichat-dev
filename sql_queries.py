@@ -1,15 +1,22 @@
 # =========================
 # SQL QUERIES - SOLO CONSULTAS (POSTGRES / SUPABASE)
 # =========================
+# VERSIÓN FINAL - SIN DUPLICADOS - CORREGIDO
+# =========================
+
 import os
 import re
-import time
-import psycopg2
 import pandas as pd
 from typing import List, Tuple, Optional, Dict
 from datetime import datetime
-from psycopg2.extras import RealDictCursor
 import streamlit as st
+
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    psycopg2 = None
+
 
 # =====================================================================
 # CONEXIÓN DB (SUPABASE / POSTGRES)
@@ -17,6 +24,9 @@ import streamlit as st
 
 def get_db_connection():
     """Conexión a Postgres (Supabase) usando Secrets/Env vars."""
+    if psycopg2 is None:
+        print("psycopg2 no instalado")
+        return None
     try:
         host = st.secrets.get("DB_HOST", os.getenv("DB_HOST"))
         port = st.secrets.get("DB_PORT", os.getenv("DB_PORT", "5432"))
@@ -36,7 +46,7 @@ def get_db_connection():
             sslmode="require"
         )
         return conn
-        
+
     except Exception as e:
         print(f"Error de conexión: {e}")
         return None
@@ -66,15 +76,15 @@ COL_MONTO     = '"Monto Neto"'
 # =====================================================================
 
 def _sql_fecha_expr() -> str:
-    return f'"Fecha"'
+    return '"Fecha"'
 
 
 def _sql_mes_col() -> str:
-    return f'TRIM(COALESCE("Mes", \'\'))'
+    return 'TRIM(COALESCE("Mes", \'\'))'
 
 
 def _sql_moneda_norm_expr() -> str:
-    return f'TRIM(COALESCE("Moneda", \'\'))'
+    return 'TRIM(COALESCE("Moneda", \'\'))'
 
 
 def _sql_num_from_text(text_expr: str) -> str:
@@ -83,7 +93,7 @@ def _sql_num_from_text(text_expr: str) -> str:
 
 def _sql_total_num_expr() -> str:
     """Convierte Monto Neto a número (pesos)."""
-    limpio = f"""
+    limpio = """
         REPLACE(
             REPLACE(
                 REPLACE(
@@ -103,7 +113,7 @@ def _sql_total_num_expr() -> str:
 
 def _sql_total_num_expr_usd() -> str:
     """Convierte Monto Neto a número (USD)."""
-    limpio = f"""
+    limpio = """
         REPLACE(
             REPLACE(
                 REPLACE(
@@ -129,7 +139,7 @@ def _sql_total_num_expr_usd() -> str:
 
 def _sql_total_num_expr_general() -> str:
     """Convierte Monto Neto a número (sirve para $ o U$S)."""
-    limpio = f"""
+    limpio = """
         REPLACE(
             REPLACE(
                 REPLACE(
@@ -209,9 +219,9 @@ def get_lista_tipos_comprobante() -> list:
         return ["Todos"]
     return ["Todos"] + df['tipo'].tolist()
 
+
 def get_dataset_completo(where_clause: str, params: tuple):
     total_expr = _sql_total_num_expr_general()
-
     sql = f"""
         SELECT
             "Fecha",
@@ -224,6 +234,7 @@ def get_dataset_completo(where_clause: str, params: tuple):
         WHERE {where_clause}
     """
     return ejecutar_consulta(sql, params)
+
 
 def get_lista_articulos() -> list:
     sql = """
@@ -248,15 +259,65 @@ def get_valores_unicos() -> dict:
 
 
 # =====================================================================
+# COMPRAS POR AÑO (SIN FILTRO DE PROVEEDOR/ARTÍCULO)
+# =====================================================================
+
+def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
+    """Todas las compras de un año."""
+    total_expr = _sql_total_num_expr_general()
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            TRIM("Nro. Comprobante") AS Nro_Factura,
+            "Fecha",
+            "Cantidad",
+            "Moneda",
+            {total_expr} AS Total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año"::int = %s
+        ORDER BY "Fecha" DESC NULLS LAST
+        LIMIT %s
+    """
+    return ejecutar_consulta(sql, (anio, limite))
+
+
+def get_total_compras_anio(anio: int) -> dict:
+    """Total de compras de un año (resumen)."""
+    total_pesos = _sql_total_num_expr()
+    total_usd = _sql_total_num_expr_usd()
+    sql = f"""
+        SELECT
+            COUNT(*) AS registros,
+            COALESCE(SUM(CASE WHEN TRIM("Moneda") = '$' THEN {total_pesos} ELSE 0 END), 0) AS total_pesos,
+            COALESCE(SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'U$$') THEN {total_usd} ELSE 0 END), 0) AS total_usd,
+            COUNT(DISTINCT TRIM("Cliente / Proveedor")) AS proveedores,
+            COUNT(DISTINCT TRIM("Articulo")) AS articulos
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año"::int = %s
+    """
+    df = ejecutar_consulta(sql, (anio,))
+    if df is not None and not df.empty:
+        return {
+            "registros": int(df["registros"].iloc[0] or 0),
+            "total_pesos": float(df["total_pesos"].iloc[0] or 0),
+            "total_usd": float(df["total_usd"].iloc[0] or 0),
+            "proveedores": int(df["proveedores"].iloc[0] or 0),
+            "articulos": int(df["articulos"].iloc[0] or 0)
+        }
+    return {"registros": 0, "total_pesos": 0.0, "total_usd": 0.0, "proveedores": 0, "articulos": 0}
+
+
+# =====================================================================
 # DETALLE COMPRAS: PROVEEDOR + MES
 # =====================================================================
 
 def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.DataFrame:
     """Detalle de compras de un proveedor en un mes específico."""
-    
     proveedor_like = (proveedor_like or "").strip().lower()
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT 
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -271,9 +332,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
           AND "Mes" = %s
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY "Fecha" DESC NULLS LAST
-      
     """
-    
     return ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
 
 
@@ -283,7 +342,6 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
 
 def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int, moneda: str = None) -> pd.DataFrame:
     """Detalle de compras de un proveedor en un año."""
-    
     proveedor_like = (proveedor_like or "").split("(")[0].strip().lower()
     total_expr = _sql_total_num_expr_general()
 
@@ -308,17 +366,13 @@ def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int, moneda: s
           AND "Año"::int = %s
           {moneda_sql}
         ORDER BY "Fecha" DESC NULLS LAST
-      
     """
     return ejecutar_consulta(sql, (f"%{proveedor_like}%", anio))
 
-def get_serie_compras_agregada(where_clause: str, params: tuple) -> pd.DataFrame:
-    """
-    Serie temporal agregada (SIN LIMIT).
-    Se usa SOLO para gráficos y explicación.
-    """
-    total_expr = _sql_total_num_expr_general()
 
+def get_serie_compras_agregada(where_clause: str, params: tuple) -> pd.DataFrame:
+    """Serie temporal agregada (SIN LIMIT). Se usa SOLO para gráficos."""
+    total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
             "Fecha"::date AS Fecha,
@@ -328,15 +382,13 @@ def get_serie_compras_agregada(where_clause: str, params: tuple) -> pd.DataFrame
         GROUP BY "Fecha"::date
         ORDER BY "Fecha"::date
     """
-
     return ejecutar_consulta(sql, params)
+
 
 def get_total_compras_proveedor_anio(proveedor_like: str, anio: int) -> dict:
     """Total de compras de un proveedor en un año."""
-    
     proveedor_like = (proveedor_like or "").split("(")[0].strip().lower()
     total_expr = _sql_total_num_expr_general()
-
     sql = f"""
         SELECT
             COUNT(*) AS registros,
@@ -347,7 +399,6 @@ def get_total_compras_proveedor_anio(proveedor_like: str, anio: int) -> dict:
           AND "Año"::int = %s
     """
     df = ejecutar_consulta(sql, (f"%{proveedor_like}%", anio))
-    
     if df is not None and not df.empty:
         return {
             "registros": int(df["registros"].iloc[0] or 0),
@@ -358,7 +409,6 @@ def get_total_compras_proveedor_anio(proveedor_like: str, anio: int) -> dict:
 
 def get_detalle_compras_proveedor_anios(anios: List[int], proveedores: List[str] = None) -> pd.DataFrame:
     """Detalle de compras por proveedor en varios años."""
-    
     total_expr = _sql_total_num_expr_general()
     anios = sorted(anios)
     anios_sql = ", ".join(str(y) for y in anios)
@@ -384,7 +434,6 @@ def get_detalle_compras_proveedor_anios(anios: List[int], proveedores: List[str]
         ORDER BY "Año" DESC, TRIM("Cliente / Proveedor"), TRIM("Articulo")
         LIMIT 500
     """
-
     return ejecutar_consulta(sql, tuple(prov_params) if prov_params else None)
 
 
@@ -394,10 +443,8 @@ def get_detalle_compras_proveedor_anios(anios: List[int], proveedores: List[str]
 
 def get_detalle_compras_articulo_mes(articulo_like: str, mes_key: str) -> pd.DataFrame:
     """Detalle de compras de un artículo en un mes específico."""
-    
     articulo_like = (articulo_like or "").strip().lower()
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT 
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -412,9 +459,7 @@ def get_detalle_compras_articulo_mes(articulo_like: str, mes_key: str) -> pd.Dat
           AND "Mes" = %s
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY "Fecha" DESC NULLS LAST
-     
     """
-    
     return ejecutar_consulta(sql, (f"%{articulo_like}%", mes_key))
 
 
@@ -422,11 +467,12 @@ def get_detalle_compras_articulo_mes(articulo_like: str, mes_key: str) -> pd.Dat
 # DETALLE COMPRAS: ARTÍCULO + AÑO
 # =====================================================================
 
-def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: None = None) -> pd.DataFrame:
+def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: int = 500) -> pd.DataFrame:
     """Detalle de compras de un artículo en un año."""
-    
     total_expr = _sql_total_num_expr_general()
-
+    # ✅ CORREGIDO: limite siempre tiene valor por defecto
+    if limite is None:
+        limite = 500
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -441,16 +487,14 @@ def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: Non
           AND "Año"::int = %s
           AND LOWER(TRIM("Articulo")) LIKE %s
         ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT {int(limite)}
+        LIMIT %s
     """
-    return ejecutar_consulta(sql, (anio, f"%{articulo_like.lower()}%"))
+    return ejecutar_consulta(sql, (anio, f"%{articulo_like.lower()}%", limite))
 
 
 def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
     """Total de compras de un artículo en un año."""
-    
     total_expr = _sql_total_num_expr_general()
-
     sql = f"""
         SELECT
             COUNT(*) AS registros,
@@ -461,7 +505,6 @@ def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
           AND LOWER(TRIM("Articulo")) LIKE %s
     """
     df = ejecutar_consulta(sql, (anio, f"%{articulo_like.lower()}%"))
-    
     if df is not None and not df.empty:
         return {
             "registros": int(df["registros"].iloc[0] or 0),
@@ -476,9 +519,7 @@ def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
 
 def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
     """Detalle de una factura por número."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT
             TRIM("Nro. Comprobante") AS nro_factura,
@@ -498,9 +539,7 @@ def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
 
 def get_total_factura_por_numero(nro_factura: str) -> pd.DataFrame:
     """Total de una factura."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT COALESCE(SUM({total_expr}), 0) AS total_factura
         FROM chatbot_raw
@@ -511,9 +550,7 @@ def get_total_factura_por_numero(nro_factura: str) -> pd.DataFrame:
 
 def get_ultima_factura_de_articulo(patron_articulo: str) -> pd.DataFrame:
     """Última factura de un artículo."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -534,10 +571,9 @@ def get_ultima_factura_de_articulo(patron_articulo: str) -> pd.DataFrame:
 
 def get_ultima_factura_inteligente(patron: str) -> pd.DataFrame:
     """Busca última factura por artículo O proveedor."""
-    
     patron = (patron or "").strip().lower()
     total_expr = _sql_total_num_expr_general()
-    
+
     # Primero como artículo
     sql_art = f"""
         SELECT
@@ -555,10 +591,10 @@ def get_ultima_factura_inteligente(patron: str) -> pd.DataFrame:
         LIMIT 1
     """
     df = ejecutar_consulta(sql_art, (f"%{patron}%",))
-    
+
     if df is not None and not df.empty:
         return df
-    
+
     # Si no encontró, buscar como proveedor
     sql_prov = f"""
         SELECT
@@ -580,7 +616,6 @@ def get_ultima_factura_inteligente(patron: str) -> pd.DataFrame:
 
 def get_ultima_factura_numero_de_articulo(patron_articulo: str) -> Optional[str]:
     """Obtiene solo el número de la última factura."""
-    
     sql = """
         SELECT TRIM("Nro. Comprobante") AS nro_factura
         FROM chatbot_raw
@@ -590,7 +625,6 @@ def get_ultima_factura_numero_de_articulo(patron_articulo: str) -> Optional[str]
         LIMIT 1
     """
     df = ejecutar_consulta(sql, (f"%{patron_articulo.lower()}%",))
-    
     if df.empty:
         return None
     return str(df["nro_factura"].iloc[0]).strip() or None
@@ -598,10 +632,8 @@ def get_ultima_factura_numero_de_articulo(patron_articulo: str) -> Optional[str]
 
 def get_facturas_de_articulo(patron_articulo: str, solo_ultima: bool = False) -> pd.DataFrame:
     """Lista de facturas de un artículo."""
-    
     total_expr = _sql_total_num_expr_general()
     limit_sql = "LIMIT 1" if solo_ultima else "LIMIT 50"
-
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -626,7 +658,6 @@ def get_facturas_de_articulo(patron_articulo: str, solo_ultima: bool = False) ->
 
 def get_comparacion_proveedor_meses(mes1: str, mes2: str, label1: str, label2: str, proveedores: List[str] = None) -> pd.DataFrame:
     """Compara proveedores entre dos meses."""
-    
     total_expr = _sql_total_num_expr_general()
 
     prov_where = ""
@@ -652,14 +683,12 @@ def get_comparacion_proveedor_meses(mes1: str, mes2: str, label1: str, label2: s
             OR SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) > 0
         ORDER BY Diferencia DESC
     """
-
     params = (mes1, mes2, mes2, mes1, mes1, mes2, *prov_params, mes1, mes2)
     return ejecutar_consulta(sql, params)
 
 
 def get_comparacion_articulo_meses(mes1: str, mes2: str, label1: str, label2: str, articulos: List[str] = None) -> pd.DataFrame:
     """Compara artículos entre dos meses."""
-    
     total_expr = _sql_total_num_expr_general()
 
     art_where = ""
@@ -684,16 +713,13 @@ def get_comparacion_articulo_meses(mes1: str, mes2: str, label1: str, label2: st
         HAVING SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) > 0
             OR SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) > 0
         ORDER BY Diferencia DESC
-    
     """
-
     params = (mes1, mes2, mes2, mes1, mes1, mes2, *art_params, mes1, mes2)
     return ejecutar_consulta(sql, params)
 
 
 def get_comparacion_familia_meses_moneda(mes1: str, mes2: str, label1: str, label2: str, moneda: str = "$", familias: List[str] = None) -> pd.DataFrame:
     """Compara familias entre dos meses filtrado por moneda."""
-    
     mon = (moneda or "$").strip().upper()
     if mon in ("U$S", "U$$", "USD"):
         total_expr = _sql_total_num_expr_usd()
@@ -726,7 +752,6 @@ def get_comparacion_familia_meses_moneda(mes1: str, mes2: str, label1: str, labe
             OR SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) > 0
         ORDER BY Diferencia DESC
     """
-
     params = (mes1, mes2, mes2, mes1, mes1, mes2, *fam_params, mes1, mes2)
     return ejecutar_consulta(sql, params)
 
@@ -737,7 +762,6 @@ def get_comparacion_familia_meses_moneda(mes1: str, mes2: str, label1: str, labe
 
 def get_comparacion_articulo_anios(anios: List[int], articulo_like: str) -> pd.DataFrame:
     """Compara un artículo específico entre años."""
-    
     total_expr = _sql_total_num_expr_general()
     anios = sorted(anios)
 
@@ -760,13 +784,11 @@ def get_comparacion_articulo_anios(anios: List[int], articulo_like: str) -> pd.D
         ORDER BY TRIM("Articulo")
         LIMIT 100
     """
-
     return ejecutar_consulta(sql, (f"%{articulo_like.lower()}%",))
 
 
 def get_comparacion_proveedor_anios_monedas(anios: List[int], proveedores: List[str] = None) -> pd.DataFrame:
     """Compara proveedores por años con separación de monedas."""
-    
     total_pesos = _sql_total_num_expr()
     total_usd = _sql_total_num_expr_usd()
     anios = sorted(anios)
@@ -800,13 +822,11 @@ def get_comparacion_proveedor_anios_monedas(anios: List[int], proveedores: List[
         ORDER BY {order_sql}
         LIMIT 300
     """
-
     return ejecutar_consulta(sql, tuple(prov_params) if prov_params else None)
 
 
 def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] = None) -> pd.DataFrame:
     """Compara familias por años con separación de monedas."""
-    
     total_pesos = _sql_total_num_expr()
     total_usd = _sql_total_num_expr_usd()
     anios = sorted(anios)
@@ -840,7 +860,6 @@ def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] 
         ORDER BY {order_sql}
         LIMIT 300
     """
-
     return ejecutar_consulta(sql, tuple(fam_params) if fam_params else None)
 
 
@@ -850,10 +869,8 @@ def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] 
 
 def get_gastos_todas_familias_mes(mes_key: str) -> pd.DataFrame:
     """Gastos de todas las familias en un mes."""
-    
     total_pesos = _sql_total_num_expr()
     total_usd = _sql_total_num_expr_usd()
-    
     sql = f"""
         SELECT
             TRIM(COALESCE("Familia", 'SIN FAMILIA')) AS Familia,
@@ -865,16 +882,13 @@ def get_gastos_todas_familias_mes(mes_key: str) -> pd.DataFrame:
         GROUP BY TRIM(COALESCE("Familia", 'SIN FAMILIA'))
         ORDER BY Total_Pesos DESC, Total_USD DESC
     """
-    
     return ejecutar_consulta(sql, (mes_key,))
 
 
 def get_gastos_todas_familias_anio(anio: int) -> pd.DataFrame:
     """Gastos de todas las familias en un año."""
-    
     total_pesos = _sql_total_num_expr()
     total_usd = _sql_total_num_expr_usd()
-    
     sql = f"""
         SELECT
             TRIM(COALESCE("Familia", 'SIN FAMILIA')) AS Familia,
@@ -886,17 +900,13 @@ def get_gastos_todas_familias_anio(anio: int) -> pd.DataFrame:
         GROUP BY TRIM(COALESCE("Familia", 'SIN FAMILIA'))
         ORDER BY Total_Pesos DESC, Total_USD DESC
     """
-    
     return ejecutar_consulta(sql, (anio,))
 
 
 def get_gastos_secciones_detalle_completo(familias: List[str], mes_key: str) -> pd.DataFrame:
     """Detalle de gastos de familias específicas en un mes."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     fam_placeholders = ", ".join(["%s"] * len(familias))
-    
     sql = f"""
         SELECT
             TRIM("Familia") AS Familia,
@@ -910,16 +920,13 @@ def get_gastos_secciones_detalle_completo(familias: List[str], mes_key: str) -> 
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY TRIM("Familia"), Total DESC
     """
-    
     params = [mes_key] + [f.upper() for f in familias]
     return ejecutar_consulta(sql, tuple(params))
 
 
 def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
     """Gastos por familia con where personalizado."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT
             TRIM(COALESCE("Familia", 'SIN FAMILIA')) AS Familia,
@@ -929,15 +936,12 @@ def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
         GROUP BY TRIM(COALESCE("Familia", 'SIN FAMILIA'))
         ORDER BY Total DESC
     """
-    
     return ejecutar_consulta(sql, params)
 
 
 def get_detalle_compras(where_clause: str, params: tuple) -> pd.DataFrame:
     """Detalle de compras con where personalizado."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -950,17 +954,13 @@ def get_detalle_compras(where_clause: str, params: tuple) -> pd.DataFrame:
         FROM chatbot_raw
         WHERE {where_clause}
         ORDER BY "Fecha" DESC NULLS LAST
-      
     """
-    
     return ejecutar_consulta(sql, params)
 
 
 def get_compras_por_mes_excel(mes_key: str) -> pd.DataFrame:
     """Compras de un mes para exportar a Excel."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -975,17 +975,13 @@ def get_compras_por_mes_excel(mes_key: str) -> pd.DataFrame:
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY "Fecha" DESC, TRIM("Cliente / Proveedor")
     """
-    
     return ejecutar_consulta(sql, (mes_key,))
 
 
 def get_total_compras_proveedor_moneda_periodos(periodos: List[str], monedas: List[str] = None) -> pd.DataFrame:
     """Total de compras por proveedor en múltiples períodos."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     periodos_sql = ", ".join(["%s"] * len(periodos))
-    
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -998,7 +994,6 @@ def get_total_compras_proveedor_moneda_periodos(periodos: List[str], monedas: Li
         GROUP BY TRIM("Cliente / Proveedor"), TRIM("Mes"), "Moneda"
         ORDER BY TRIM("Mes"), Total DESC
     """
-    
     return ejecutar_consulta(sql, tuple(periodos))
 
 
@@ -1008,12 +1003,10 @@ def get_total_compras_proveedor_moneda_periodos(periodos: List[str], monedas: Li
 
 def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: str = None) -> pd.DataFrame:
     """Top 10 proveedores."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     condiciones = ["(\"Tipo Comprobante\" = 'Compra Contado' OR \"Tipo Comprobante\" LIKE 'Compra%%')"]
     params = []
-    
+
     if moneda:
         mon = moneda.strip().upper()
         if mon in ("U$S", "U$$", "USD"):
@@ -1022,16 +1015,15 @@ def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: st
         else:
             total_expr = _sql_total_num_expr()
             condiciones.append("TRIM(\"Moneda\") = '$'")
-    
+
     if mes:
         condiciones.append("TRIM(\"Mes\") = %s")
         params.append(mes)
     elif anio:
         condiciones.append("\"Año\"::int = %s")
         params.append(anio)
-    
+
     where_sql = " AND ".join(condiciones)
-    
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -1045,7 +1037,6 @@ def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: st
         ORDER BY Total DESC
         LIMIT 10
     """
-    
     return ejecutar_consulta(sql, tuple(params) if params else None)
 
 
@@ -1055,10 +1046,8 @@ def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: st
 
 def get_dashboard_totales(anio: int) -> dict:
     """Totales para dashboard."""
-    
     total_pesos = _sql_total_num_expr()
     total_usd = _sql_total_num_expr_usd()
-    
     sql = f"""
         SELECT
             COALESCE(SUM(CASE WHEN TRIM("Moneda") = '$' THEN {total_pesos} ELSE 0 END), 0) AS total_pesos,
@@ -1069,9 +1058,7 @@ def get_dashboard_totales(anio: int) -> dict:
         WHERE "Año"::int = %s
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
     """
-    
     df = ejecutar_consulta(sql, (anio,))
-    
     if df is not None and not df.empty:
         return {
             "total_pesos": float(df["total_pesos"].iloc[0] or 0),
@@ -1084,9 +1071,7 @@ def get_dashboard_totales(anio: int) -> dict:
 
 def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
     """Compras por mes para dashboard."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT
             TRIM("Mes") AS Mes,
@@ -1097,20 +1082,18 @@ def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
         GROUP BY TRIM("Mes")
         ORDER BY TRIM("Mes")
     """
-    
     return ejecutar_consulta(sql, (anio,))
 
 
 def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$") -> pd.DataFrame:
     """Top proveedores para dashboard."""
-    
     if moneda in ("U$S", "U$$", "USD"):
         total_expr = _sql_total_num_expr_usd()
         mon_filter = "TRIM(\"Moneda\") IN ('U$S', 'U$$')"
     else:
         total_expr = _sql_total_num_expr()
         mon_filter = "TRIM(\"Moneda\") = '$'"
-    
+
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -1125,15 +1108,12 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
         ORDER BY Total DESC
         LIMIT %s
     """
-    
     return ejecutar_consulta(sql, (anio, top_n))
 
 
 def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
     """Gastos por familia para dashboard."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT
             TRIM(COALESCE("Familia", 'SIN FAMILIA')) AS Familia,
@@ -1145,15 +1125,12 @@ def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
         ORDER BY Total DESC
         LIMIT 10
     """
-    
     return ejecutar_consulta(sql, (anio,))
 
 
 def get_dashboard_ultimas_compras(limite: int = 10) -> pd.DataFrame:
     """Últimas compras para dashboard."""
-    
     total_expr = _sql_total_num_expr_general()
-    
     sql = f"""
         SELECT
             "Fecha",
@@ -1165,48 +1142,11 @@ def get_dashboard_ultimas_compras(limite: int = 10) -> pd.DataFrame:
         ORDER BY "Fecha" DESC NULLS LAST
         LIMIT %s
     """
-    
     return ejecutar_consulta(sql, (limite,))
 
 
-def get_alertas_vencimiento_multiple(limite: int = 10) -> list:
-    """Placeholder para alertas de vencimiento."""
-    return []
-
-
-def get_alertas_vencimiento_multiple(limite: int = 10) -> list:
-    """
-    Alertas rotativas de vencimiento para el módulo Stock IA.
-    Devuelve lista de dicts: articulo, lote, deposito, vencimiento, dias_restantes, stock
-    """
-    try:
-        df = get_lotes_por_vencer(dias=90)
-        if df is None or df.empty:
-            return []
-
-        # Ordenar por vencimiento asc
-        if "VENCIMIENTO" in df.columns:
-            df = df.sort_values(by="VENCIMIENTO", ascending=True, na_position="last")
-
-        df = df.head(int(limite))
-
-        alertas = []
-        for _, r in df.iterrows():
-            alertas.append({
-                "articulo": str(r.get("ARTICULO", "") or ""),
-                "lote": str(r.get("LOTE", "") or ""),
-                "deposito": str(r.get("DEPOSITO", "") or ""),
-                "vencimiento": str(r.get("VENCIMIENTO", "") or ""),
-                "dias_restantes": int(r.get("Dias_Para_Vencer", 0) or 0),
-                "stock": str(r.get("STOCK", "") or "")
-            })
-        return alertas
-    except Exception:
-        return []
-
-
 # =====================================================================
-# STOCK (SUPABASE / POSTGRES) - IMPLEMENTACIÓN REAL
+# STOCK (SUPABASE / POSTGRES)
 # =====================================================================
 
 _STOCK_TABLE_CANDIDATES = [
@@ -1220,23 +1160,17 @@ _STOCK_TABLE_CANDIDATES = [
     "estado_mercaderia",
 ]
 
+
 def _safe_ident(name: str) -> str:
-    """
-    Sanitiza identificadores simples (schema / table / column).
-    Solo permite letras, números y underscore. Si no cumple, devuelve "".
-    """
-    import re
+    """Sanitiza identificadores simples (schema / table / column)."""
     if not name:
         return ""
     name = name.strip()
     return name if re.match(r"^[A-Za-z0-9_]+$", name) else ""
 
+
 def _get_stock_schema_table() -> tuple:
-    """
-    Obtiene schema y tabla de stock.
-    - Si en secrets/env existe STOCK_TABLE, se usa.
-    - Si no, intenta autodetectar en el schema.
-    """
+    """Obtiene schema y tabla de stock."""
     schema = st.secrets.get("STOCK_SCHEMA", os.getenv("STOCK_SCHEMA", "public"))
     schema = _safe_ident(schema) or "public"
 
@@ -1246,7 +1180,6 @@ def _get_stock_schema_table() -> tuple:
     if table:
         return schema, table
 
-    # Autodetección
     try:
         sql = """
             SELECT table_name
@@ -1263,10 +1196,10 @@ def _get_stock_schema_table() -> tuple:
             if t in existing:
                 return schema, t
 
-        # fallback
         return schema, "stock_raw"
     except Exception:
         return schema, "stock_raw"
+
 
 def _get_stock_columns(schema: str, table: str) -> list:
     try:
@@ -1282,11 +1215,9 @@ def _get_stock_columns(schema: str, table: str) -> list:
     except Exception:
         return []
 
+
 def _pick_col(cols: list, candidates: list) -> str:
-    """
-    Devuelve el nombre REAL de la columna (con comillas) si existe.
-    Hace matching por lowercase para soportar columnas creadas sin comillas (default lower).
-    """
+    """Devuelve el nombre REAL de la columna (con comillas) si existe."""
     if not cols:
         return ""
 
@@ -1298,14 +1229,9 @@ def _pick_col(cols: list, candidates: list) -> str:
             return f"\"{real}\""
     return ""
 
-def _sql_date_expr(col_expr: str) -> str:
-    """
-    Convierte una columna (texto/date) a DATE de forma robusta.
-    Soporta:
-    - YYYY-MM-DD
-    - DD/MM/YYYY
-    - DD-MM-YYYY
-    """
+
+def _sql_date_expr_stock(col_expr: str) -> str:
+    """Convierte una columna (texto/date) a DATE de forma robusta."""
     if not col_expr:
         return "NULL::date"
 
@@ -1321,16 +1247,12 @@ def _sql_date_expr(col_expr: str) -> str:
     )
     """
 
-def _sql_num_expr(col_expr: str) -> str:
-    """
-    Convierte una columna (texto/num) a numeric.
-    - Quita separadores de miles típicos
-    - Normaliza coma decimal a punto
-    """
+
+def _sql_num_expr_stock(col_expr: str) -> str:
+    """Convierte una columna (texto/num) a numeric."""
     if not col_expr:
         return "NULL::numeric"
 
-    # Para stock, normalmente es entero; igual lo dejamos robusto
     return f"""
     NULLIF(
       regexp_replace(
@@ -1346,11 +1268,9 @@ def _sql_num_expr(col_expr: str) -> str:
     )::numeric
     """
 
+
 def _stock_base_subquery() -> tuple:
-    """
-    Construye un subquery estándar con aliases esperados por main.py:
-    CODIGO, ARTICULO, FAMILIA, DEPOSITO, LOTE, VENCIMIENTO, STOCK, Dias_Para_Vencer
-    """
+    """Construye un subquery estándar con aliases esperados."""
     schema, table = _get_stock_schema_table()
     schema_s = _safe_ident(schema) or "public"
     table_s = _safe_ident(table) or "stock_raw"
@@ -1371,8 +1291,8 @@ def _stock_base_subquery() -> tuple:
     lot_expr = f"TRIM(COALESCE({c_lot}::text,''))" if c_lot else "''"
     cod_expr = f"TRIM(COALESCE({c_cod}::text,''))" if c_cod else "''"
 
-    vto_expr = _sql_date_expr(c_vto)
-    stk_expr = _sql_num_expr(c_stk)
+    vto_expr = _sql_date_expr_stock(c_vto)
+    stk_expr = _sql_num_expr_stock(c_stk)
 
     full_table = f"\"{schema_s}\".\"{table_s}\""
 
@@ -1413,6 +1333,7 @@ def get_lista_articulos_stock() -> list:
     except Exception:
         return ["Todos"]
 
+
 def get_lista_familias_stock() -> list:
     try:
         base, _, _ = _stock_base_subquery()
@@ -1432,6 +1353,7 @@ def get_lista_familias_stock() -> list:
     except Exception:
         return ["Todos"]
 
+
 def get_lista_depositos_stock() -> list:
     try:
         base, _, _ = _stock_base_subquery()
@@ -1450,6 +1372,7 @@ def get_lista_depositos_stock() -> list:
         return items
     except Exception:
         return ["Todos"]
+
 
 def buscar_stock_por_lote(
     articulo: str = None,
@@ -1477,7 +1400,6 @@ def buscar_stock_por_lote(
             params.append(f"%{deposito.lower().strip()}%")
 
         if lote:
-            # clave: ILIKE para que encuentre aunque el user ponga minúsculas
             where.append("LOWER(COALESCE(\"LOTE\", '')) LIKE %s")
             params.append(f"%{lote.lower().strip()}%")
 
@@ -1515,6 +1437,7 @@ def buscar_stock_por_lote(
     except Exception:
         return pd.DataFrame()
 
+
 def get_stock_total() -> pd.DataFrame:
     try:
         base, _, _ = _stock_base_subquery()
@@ -1529,6 +1452,7 @@ def get_stock_total() -> pd.DataFrame:
         return ejecutar_consulta(sql, ())
     except Exception:
         return pd.DataFrame()
+
 
 def get_stock_por_familia() -> pd.DataFrame:
     try:
@@ -1547,6 +1471,7 @@ def get_stock_por_familia() -> pd.DataFrame:
     except Exception:
         return pd.DataFrame()
 
+
 def get_stock_por_deposito() -> pd.DataFrame:
     try:
         base, _, _ = _stock_base_subquery()
@@ -1559,11 +1484,11 @@ def get_stock_por_deposito() -> pd.DataFrame:
             FROM ({base}) s
             GROUP BY COALESCE(NULLIF(TRIM("DEPOSITO"), ''), 'SIN DEPÓSITO')
             ORDER BY stock_total DESC
-      
         """
         return ejecutar_consulta(sql, ())
     except Exception:
         return pd.DataFrame()
+
 
 def get_stock_articulo(articulo: str) -> pd.DataFrame:
     try:
@@ -1574,11 +1499,11 @@ def get_stock_articulo(articulo: str) -> pd.DataFrame:
             FROM ({base}) s
             WHERE LOWER(COALESCE("ARTICULO", '')) LIKE %s
             ORDER BY "VENCIMIENTO" ASC NULLS LAST, "LOTE" ASC
-           
         """
         return ejecutar_consulta(sql, (f"%{articulo.lower().strip()}%",))
     except Exception:
         return pd.DataFrame()
+
 
 def get_lotes_por_vencer(dias: int = 90) -> pd.DataFrame:
     try:
@@ -1592,11 +1517,11 @@ def get_lotes_por_vencer(dias: int = 90) -> pd.DataFrame:
               AND "VENCIMIENTO" <= (CURRENT_DATE + (%s || ' days')::interval)
               AND COALESCE("STOCK", 0) > 0
             ORDER BY "VENCIMIENTO" ASC
-         
         """
         return ejecutar_consulta(sql, (int(dias),))
     except Exception:
         return pd.DataFrame()
+
 
 def get_lotes_vencidos() -> pd.DataFrame:
     try:
@@ -1609,17 +1534,14 @@ def get_lotes_vencidos() -> pd.DataFrame:
               AND "VENCIMIENTO" < CURRENT_DATE
               AND COALESCE("STOCK", 0) > 0
             ORDER BY "VENCIMIENTO" DESC
-            
         """
         return ejecutar_consulta(sql, ())
     except Exception:
         return pd.DataFrame()
 
+
 def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
-    """
-    Devuelve registros con stock <= minimo (por defecto 10).
-    Si querés el “STOCK = 1” que usás arriba, llamalo con minimo=1.
-    """
+    """Devuelve registros con stock <= minimo (por defecto 10)."""
     try:
         base, _, _ = _stock_base_subquery()
         sql = f"""
@@ -1629,11 +1551,11 @@ def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
             WHERE "STOCK" IS NOT NULL
               AND "STOCK" <= %s
             ORDER BY "STOCK" ASC NULLS LAST, "ARTICULO" ASC
-          
         """
         return ejecutar_consulta(sql, (int(minimo),))
     except Exception:
         return pd.DataFrame()
+
 
 def get_stock_lote_especifico(lote: str) -> pd.DataFrame:
     try:
@@ -1644,11 +1566,11 @@ def get_stock_lote_especifico(lote: str) -> pd.DataFrame:
             FROM ({base}) s
             WHERE LOWER(COALESCE("LOTE", '')) LIKE %s
             ORDER BY "VENCIMIENTO" ASC NULLS LAST, "ARTICULO" ASC
-          
         """
         return ejecutar_consulta(sql, (f"%{lote.lower().strip()}%",))
     except Exception:
         return pd.DataFrame()
+
 
 def get_stock_familia(familia: str) -> pd.DataFrame:
     try:
@@ -1659,123 +1581,37 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
             FROM ({base}) s
             WHERE LOWER(COALESCE("FAMILIA", '')) LIKE %s
             ORDER BY "ARTICULO" ASC, "VENCIMIENTO" ASC NULLS LAST
-           
         """
         return ejecutar_consulta(sql, (f"%{familia.lower().strip()}%",))
     except Exception:
         return pd.DataFrame()
 
-# =====================================================================
-# COMPRAS POR AÑO (SIN FILTRO DE PROVEEDOR/ARTÍCULO)
-# Agregar en sql_queries.py ANTES de get_detalle_compras_proveedor_anio
-# =====================================================================
 
-def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
-    """Todas las compras de un año."""
-    
-    total_expr = _sql_total_num_expr_general()
+def get_alertas_vencimiento_multiple(limite: int = 10) -> list:
+    """Alertas rotativas de vencimiento para el módulo Stock IA."""
+    try:
+        df = get_lotes_por_vencer(dias=90)
+        if df is None or df.empty:
+            return []
 
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Articulo") AS Articulo,
-            TRIM("Nro. Comprobante") AS Nro_Factura,
-            "Fecha",
-            "Cantidad",
-            "Moneda",
-            {total_expr} AS Total
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año"::int = %s
-        ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT %s
-    """
-    return ejecutar_consulta(sql, (anio, limite))
+        if "VENCIMIENTO" in df.columns:
+            df = df.sort_values(by="VENCIMIENTO", ascending=True, na_position="last")
 
+        df = df.head(int(limite))
 
-def get_total_compras_anio(anio: int) -> dict:
-    """Total de compras de un año (resumen)."""
-    
-    total_pesos = _sql_total_num_expr()
-    total_usd = _sql_total_num_expr_usd()
+        alertas = []
+        for _, r in df.iterrows():
+            alertas.append({
+                "articulo": str(r.get("ARTICULO", "") or ""),
+                "lote": str(r.get("LOTE", "") or ""),
+                "deposito": str(r.get("DEPOSITO", "") or ""),
+                "vencimiento": str(r.get("VENCIMIENTO", "") or ""),
+                "dias_restantes": int(r.get("Dias_Para_Vencer", 0) or 0),
+                "stock": str(r.get("STOCK", "") or "")
+            })
+        return alertas
+    except Exception:
+        return []
 
-    sql = f"""
-        SELECT
-            COUNT(*) AS registros,
-            COALESCE(SUM(CASE WHEN TRIM("Moneda") = '$' THEN {total_pesos} ELSE 0 END), 0) AS total_pesos,
-            COALESCE(SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'U$$') THEN {total_usd} ELSE 0 END), 0) AS total_usd,
-            COUNT(DISTINCT TRIM("Cliente / Proveedor")) AS proveedores,
-            COUNT(DISTINCT TRIM("Articulo")) AS articulos
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año"::int = %s
-    """
-    df = ejecutar_consulta(sql, (anio,))
-    
-    if df is not None and not df.empty:
-        return {
-            "registros": int(df["registros"].iloc[0] or 0),
-            "total_pesos": float(df["total_pesos"].iloc[0] or 0),
-            "total_usd": float(df["total_usd"].iloc[0] or 0),
-            "proveedores": int(df["proveedores"].iloc[0] or 0),
-            "articulos": int(df["articulos"].iloc[0] or 0)
-        }
-    return {"registros": 0, "total_pesos": 0.0, "total_usd": 0.0, "proveedores": 0, "articulos": 0}
-    # =====================================================================
-# COMPRAS POR AÑO (SIN FILTRO DE PROVEEDOR/ARTÍCULO)
-# Agregar en sql_queries.py ANTES de get_detalle_compras_proveedor_anio
-# =====================================================================
-
-def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
-    """Todas las compras de un año."""
-    
-    total_expr = _sql_total_num_expr_general()
-
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Articulo") AS Articulo,
-            TRIM("Nro. Comprobante") AS Nro_Factura,
-            "Fecha",
-            "Cantidad",
-            "Moneda",
-            {total_expr} AS Total
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año"::int = %s
-        ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT %s
-    """
-    return ejecutar_consulta(sql, (anio, limite))
-
-
-def get_total_compras_anio(anio: int) -> dict:
-    """Total de compras de un año (resumen)."""
-    
-    total_pesos = _sql_total_num_expr()
-    total_usd = _sql_total_num_expr_usd()
-
-    sql = f"""
-        SELECT
-            COUNT(*) AS registros,
-            COALESCE(SUM(CASE WHEN TRIM("Moneda") = '$' THEN {total_pesos} ELSE 0 END), 0) AS total_pesos,
-            COALESCE(SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'U$$') THEN {total_usd} ELSE 0 END), 0) AS total_usd,
-            COUNT(DISTINCT TRIM("Cliente / Proveedor")) AS proveedores,
-            COUNT(DISTINCT TRIM("Articulo")) AS articulos
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año"::int = %s
-    """
-    df = ejecutar_consulta(sql, (anio,))
-    
-    if df is not None and not df.empty:
-        return {
-            "registros": int(df["registros"].iloc[0] or 0),
-            "total_pesos": float(df["total_pesos"].iloc[0] or 0),
-            "total_usd": float(df["total_usd"].iloc[0] or 0),
-            "proveedores": int(df["proveedores"].iloc[0] or 0),
-            "articulos": int(df["articulos"].iloc[0] or 0)
-        }
-    return {"registros": 0, "total_pesos": 0.0, "total_usd": 0.0, "proveedores": 0, "articulos": 0}
 
 # FIN DEL ARCHIVO
