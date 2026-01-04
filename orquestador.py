@@ -661,6 +661,13 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     return mensaje, df
 
 
+def procesar_pregunta_router(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
+    """
+    Alias de procesar_pregunta para compatibilidad con ui_compras.py
+    """
+    return procesar_pregunta(pregunta)
+
+
 # =====================================================================
 # TEST
 # =====================================================================
