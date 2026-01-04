@@ -1,380 +1,552 @@
 # =========================
-# ORQUESTADOR.PY - LÓGICA DE PROCESAMIENTO (COMPLETO)
+# ORQUESTADOR V2 - USA IA INTERPRETADOR
 # =========================
-# VERSIÓN FINAL - CON TODOS LOS HANDLERS
+# Flujo:
+# 1. Usuario pregunta
+# 2. IA interpreta → tipo + parámetros
+# 3. Si no entiende → sugerencia con botones
+# 4. Si entiende → llama función SQL
+# 5. Formatea y devuelve resultado
 # =========================
 
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 from typing import Tuple, Optional
-import re
+from datetime import datetime
 
-from config import DEBUG_MODE
-from utils_format import formatear_dataframe, df_to_excel, _latam_to_float
-from utils_openai import (
-    es_saludo_o_conversacion,
-    es_pregunta_conocimiento,
-    responder_con_openai,
-    recomendar_como_preguntar,
-    obtener_sugerencia_ejecutable,
-    fallback_openai_sql,
-)
+# Importar el interpretador
+from ia_interpretador import interpretar_pregunta, obtener_info_tipo, es_tipo_valido
 
-# =====================================================================
-# IMPORTS DE SQL_QUERIES (COMPLETO)
-# =====================================================================
+# Importar funciones SQL
 from sql_queries import (
-    ejecutar_consulta,
-    _sql_fecha_expr,
-    _sql_total_num_expr_general,
-    get_valores_unicos,
-    get_detalle_factura_por_numero,
-    get_total_factura_por_numero,
-    get_ultima_factura_inteligente,
-    get_ultima_factura_numero_de_articulo,
+    # Compras
+    get_compras_anio,
+    get_total_compras_anio,
     get_detalle_compras_proveedor_mes,
     get_detalle_compras_proveedor_anio,
     get_total_compras_proveedor_anio,
-    get_detalle_compras_proveedor_anios,
     get_detalle_compras_articulo_mes,
     get_detalle_compras_articulo_anio,
     get_total_compras_articulo_anio,
-    get_comparacion_articulo_anios,
+    get_compras_por_mes_excel,
+    
+    # Facturas
+    get_ultima_factura_inteligente,
+    get_facturas_de_articulo,
+    get_detalle_factura_por_numero,
+    get_total_factura_por_numero,
+    
+    # Comparaciones
     get_comparacion_proveedor_meses,
-    get_comparacion_articulo_meses,
-    get_comparacion_familia_meses_moneda,
     get_comparacion_proveedor_anios_monedas,
+    get_comparacion_articulo_meses,
+    get_comparacion_articulo_anios,
+    get_comparacion_familia_meses_moneda,
     get_comparacion_familia_anios_monedas,
+    
+    # Gastos
     get_gastos_todas_familias_mes,
     get_gastos_todas_familias_anio,
     get_gastos_secciones_detalle_completo,
-    get_gastos_por_familia,
-    get_compras_por_mes_excel,
-    get_total_compras_proveedor_moneda_periodos,
+    
+    # Top
     get_top_10_proveedores_chatbot,
-    get_facturas_de_articulo,
+    
+    # Stock
     get_stock_total,
-    get_stock_por_familia,
-    get_stock_por_deposito,
     get_stock_articulo,
     get_stock_familia,
+    get_stock_por_familia,
+    get_stock_por_deposito,
     get_lotes_por_vencer,
     get_lotes_vencidos,
     get_stock_bajo,
     get_stock_lote_especifico,
-    get_detalle_compras,
-    # ✅ NUEVOS IMPORTS PARA COMPRAS AÑO
-    get_compras_anio,
-    get_total_compras_anio,
 )
 
-# Placeholder para guardar_chat_log si no existe
-def guardar_chat_log(**kwargs):
-    """Placeholder - implementar en sql_queries si se necesita logging"""
-    pass
+# Importar utilidades
+from utils_format import formatear_dataframe
+from utils_openai import responder_con_openai
 
-from intent_detector import (
-    detectar_intencion,
-    extraer_valores_multiples,
-    extraer_meses_para_comparacion,
-    extraer_anios,
-    normalizar_texto,
-    _extraer_patron_libre,
-    _extraer_lista_familias,
-    _extraer_mes_key,
-    construir_where_clause,
-)
 
 # =====================================================================
-# ✅ NUEVO: REWRITE "LENGUAJE HUMANO" → COMANDO ESTÁNDAR
+# FUNCIÓN PRINCIPAL
 # =====================================================================
 
-def es_comando_estandar(texto: str) -> bool:
-    t = normalizar_texto(texto)
-    patrones = [
-        r'^(compras|detalle compras|total compras)\b',
-        r'^(comparar)\b',
-        r'^(gastos familias)\b',
-        r'^(top proveedores)\b',
-        r'^(ultima factura)\b',
-        r'^(detalle factura)\b',
-    ]
-    return any(re.search(p, t) for p in patrones)
-
-
-def resolver_a_comando(pregunta_original: str) -> str:
-    if es_comando_estandar(pregunta_original):
-        return pregunta_original
-
-    sug = obtener_sugerencia_ejecutable(pregunta_original)
-    cmd = (sug or {}).get("sugerencia", "").strip()
-
-    return cmd if cmd else pregunta_original
-
-
-def extraer_numero_factura(pregunta: str) -> Optional[str]:
-    """Extrae número de factura desde texto."""
-    if not pregunta:
-        return None
-
-    txt = (pregunta or "").upper()
-
-    # Caso: viene con letra A + ceros opcionales + número
-    m = re.search(r"A0*\s*(\d{5,})", txt)
-    if m:
-        num = m.group(1)
-        num = num.lstrip("0") or num
-        return num
-
-    # Caso: número suelto (mínimo 5 dígitos)
-    m = re.search(r"\b(\d{5,})\b", txt)
-    if m:
-        num = m.group(1)
-        num = num.lstrip("0") or num
-        return num
-
-    return None
-
-
-def normalizar_factura_para_db(nro_raw: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    """Normaliza número de factura para búsqueda en DB."""
-    if not nro_raw:
-        return None, None, None
-
-    s = str(nro_raw).strip().upper()
-    digits = re.sub(r"\D", "", s)
-    if not digits or len(digits) < 5:
-        return None, None, None
-
-    nro_mostrar = digits.lstrip("0") or digits
-
-    if len(digits) <= 8:
-        nro_db = "A" + digits.zfill(8)
-        nro_alt = "A" + digits.zfill(7)
-    else:
-        nro_db = "A" + digits
-        nro_alt = None
-
-    return nro_db, nro_alt, nro_mostrar
-
-
-def _formatear_detalle_factura_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Formatea DataFrame de detalle de factura."""
-    if df is None or df.empty:
-        return df
-
-    dfx = df.copy()
-
-    if "nro_factura" in dfx.columns:
-        dfx["Factura"] = dfx["nro_factura"].astype(str).apply(
-            lambda x: (re.sub(r"\D", "", x).lstrip("0") or re.sub(r"\D", "", x) or x)
-        )
-        dfx = dfx.drop(columns=["nro_factura"])
-        cols = ["Factura"] + [c for c in dfx.columns if c != "Factura"]
-        dfx = dfx[cols]
-
-    try:
-        dfx = formatear_dataframe(dfx)
-    except Exception:
-        pass
-
-    return dfx
-
-
-def es_conocimiento_general(pregunta: str) -> bool:
-    """Detecta si es pregunta de conocimiento general."""
-    txt = (pregunta or "").lower()
-    claves = [
-        "que es", "qué es", "para que sirve", "para qué sirve",
-        "definicion", "definición", "explicame", "explica",
-        "que significa", "significa"
-    ]
-    return any(k in txt for k in claves)
-
-
-# =========================
-# COMPATIBILIDAD: ROUTER → ORQUESTADOR
-# =========================
-
-def procesar_pregunta_router(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
-    """Alias para compatibilidad."""
-    # ✅ NUEVO: primero reescribir a comando estándar (si aplica)
-    pregunta_cmd = resolver_a_comando(pregunta)
-
-    intencion_info = detectar_intencion(pregunta_cmd)
-    tipo = intencion_info.get('tipo', 'desconocido')
-    debug = intencion_info.get('debug', '')
-
-    respuesta, df = procesar_pregunta(pregunta)
-
-    tuvo_datos = df is not None and not df.empty
-    registros = len(df) if tuvo_datos else 0
-
-    try:
-        guardar_chat_log(
-            pregunta=pregunta,
-            intencion=tipo,
-            respuesta=respuesta[:2000] if respuesta else '',
-            tuvo_datos=tuvo_datos,
-            registros=registros,
-            debug=debug
-        )
-    except:
-        pass
-
-    return respuesta, df
-
-
-def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
+def procesar_pregunta_v2(pregunta: str) -> Tuple[str, Optional[pd.DataFrame], Optional[dict]]:
     """
-    🎯 ORQUESTADOR PRINCIPAL
-    Recibe pregunta → detecta intención → llama SQL → formatea respuesta
+    Procesa la pregunta del usuario usando el nuevo sistema IA.
+    
+    Retorna:
+    - mensaje: str con la respuesta o título
+    - df: DataFrame con datos (o None)
+    - sugerencia_info: dict con info de sugerencia si no entendió (o None)
     """
-
-    if not pregunta or not pregunta.strip():
-        return "Por favor, escribe una pregunta.", None
-
-    # ✅ NUEVO: guardo original (para fallbacks OpenAI-SQL y mensajes)
-    pregunta_original = pregunta
-
+    
     print(f"\n{'='*60}")
-    print(f"PREGUNTA: {pregunta_original}")
+    print(f"📝 PREGUNTA: {pregunta}")
     print(f"{'='*60}")
-
-    # =====================================================================
-    # DETALLE FACTURA (ROBUSTO Y EXACTO)
-    # =====================================================================
-    nro_raw = extraer_numero_factura(pregunta_original)
-
-    if nro_raw:
-        nro_mostrar = str(nro_raw).strip()
-        nro_sql = nro_mostrar
-
-        if nro_sql.isdigit():
-            nro_sql = "A" + nro_sql.zfill(7)
-        else:
-            txt = str(nro_sql).upper().replace(" ", "")
-            m = re.search(r"A0*(\d{5,})", txt)
-            if m:
-                nro_mostrar = m.group(1)
-                nro_sql = "A" + m.group(1).zfill(7)
-
-        df = get_detalle_factura_por_numero(nro_sql)
-
-        if df is not None and not df.empty:
-            prov = ""
-            if "Proveedor" in df.columns:
-                try:
-                    prov = str(df["Proveedor"].dropna().iloc[0]).strip()
-                except Exception:
-                    prov = ""
-
-            print(f"🧾 FACTURA EXACTA: {nro_sql}")
-
-            titulo = f"🧾 Detalle de la factura {nro_mostrar}"
-            if prov:
-                titulo += f" — Proveedor: {prov}"
-
-            return titulo, formatear_dataframe(df)
-
-    # =====================================================================
-    # PASO 1: ¿Es saludo/conversación?
-    # =====================================================================
-    if es_saludo_o_conversacion(pregunta_original):
-        respuesta = responder_con_openai(pregunta_original, "conversacion")
-        print(f"✅ TIPO: Conversación → OpenAI")
-        return f"💬 {respuesta}", None
-
-    # =====================================================================
-    # PASO 2: ¿Es pregunta de conocimiento?
-    # =====================================================================
-    if es_pregunta_conocimiento(pregunta_original):
-        respuesta = responder_con_openai(pregunta_original, "conocimiento")
-        print(f"✅ TIPO: Conocimiento → OpenAI")
-        return f"📚 {respuesta}", None
-
-    # =====================================================================
-    # ✅ PASO 2.5: REWRITE "HUMANO" → COMANDO (SOLO SI HACE FALTA)
-    # =====================================================================
-    pregunta = resolver_a_comando(pregunta_original)
-
-    if DEBUG_MODE and pregunta != pregunta_original:
-        print(f"🧠 REWRITE: '{pregunta_original}'  →  '{pregunta}'")
-
-        # =====================================================================
-    # ✅ REWRITE: si viene "humano", lo paso a comando estándar antes de detectar intención
-    # =====================================================================
-    pregunta_original = pregunta
-    pregunta = resolver_a_comando(pregunta)
-
-    if pregunta != pregunta_original:
-        print(f"🧠 REWRITE: {pregunta_original}  →  {pregunta}")
-
-    # =====================================================================
-    # PASO 3: Detectar intención (REGLAS)
-    # =====================================================================
-    intencion = detectar_intencion(pregunta)
-    tipo = intencion.get('tipo', 'consulta_general')
-    params = intencion.get('parametros', {})
-    debug = intencion.get('debug', '')
-
-    print(f"🎯 INTENCIÓN: {tipo}")
-    print(f"📦 PARÁMETROS: {params}")
+    
+    # PASO 1: Interpretar con IA
+    interpretacion = interpretar_pregunta(pregunta)
+    
+    tipo = interpretacion.get("tipo", "no_entendido")
+    params = interpretacion.get("parametros", {})
+    debug = interpretacion.get("debug", "")
+    
+    print(f"🎯 TIPO: {tipo}")
+    print(f"📦 PARAMS: {params}")
     print(f"🔍 DEBUG: {debug}")
+    
+    # PASO 2: Manejar casos especiales
+    
+    # Conversación
+    if tipo == "conversacion":
+        respuesta = responder_con_openai(pregunta, "conversacion")
+        return f"💬 {respuesta}", None, None
+    
+    # Conocimiento general
+    if tipo == "conocimiento":
+        respuesta = responder_con_openai(pregunta, "conocimiento")
+        return f"📚 {respuesta}", None, None
+    
+    # No entendido → devolver sugerencia
+    if tipo == "no_entendido":
+        sugerencia = interpretacion.get("sugerencia", "No entendí tu pregunta.")
+        alternativas = interpretacion.get("alternativas", [])
+        
+        return (
+            f"🤔 {sugerencia}",
+            None,
+            {
+                "sugerencia": sugerencia,
+                "alternativas": alternativas,
+                "pregunta_original": pregunta
+            }
+        )
+    
+    # PASO 3: Ejecutar consulta según tipo
+    return _ejecutar_consulta(tipo, params, pregunta)
 
-    # =====================================================================
-    # ✅ NUEVO: SI NO MATCHEA BIEN → REWRITE A COMANDO Y RE-DETECTAR
-    # =====================================================================
-    if tipo in ('consulta_general', 'desconocido'):
-        pregunta_cmd = resolver_a_comando(pregunta)
 
-        if pregunta_cmd and pregunta_cmd.strip() and pregunta_cmd != pregunta:
-            print(f"🧠 REWRITE: '{pregunta}' → '{pregunta_cmd}'")
-            pregunta = pregunta_cmd
+# =====================================================================
+# EJECUTOR DE CONSULTAS
+# =====================================================================
 
-            intencion = detectar_intencion(pregunta)
-            tipo = intencion.get('tipo', 'consulta_general')
-            params = intencion.get('parametros', {})
-            debug = intencion.get('debug', '')
-
-    print(f"🎯 INTENCIÓN: {tipo}")
-    print(f"📦 PARÁMETROS: {params}")
-    print(f"🔍 DEBUG: {debug}")
-
-    # =====================================================================
-    # MANEJO DE INTENCIONES DE STOCK
-    # =====================================================================
-
-    if tipo == 'stock_total':
-        df = get_stock_total()
-        if df is not None and not df.empty:
-            return "📦 **Resumen de stock total:**", formatear_dataframe(df)
-        return "No pude obtener el stock total.", None
-
-    if tipo == 'stock_por_familia':
-        df = get_stock_por_familia()
-        if df is not None and not df.empty:
-            return "📦 **Stock por familia/sección:**", formatear_dataframe(df)
-        return "No encontré datos de stock por familia.", None
-
-    if tipo == 'stock_familia':
-        familia = params.get('familia', '')
-        df = get_stock_familia(familia)
-        if df is not None and not df.empty:
-            return f"📦 **Stock de la familia {familia}:**", formatear_dataframe(df)
-        return f"No encontré stock para la familia {familia}.", None
-
-    if tipo == 'stock_por_deposito':
-        df = get_stock_por_deposito()
-        if df is not None and not df.empty:
-            return "📦 **Stock por depósito:**", formatear_dataframe(df)
-        return "No encontré datos de stock por depósito.", None
-
-    if tipo == 'stock_articulo':
-        articulo = params.get('articulo', '')
-        df = get_stock_articulo(articulo)
-        if df is not None and not df.empty:
+def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple[str, Optional[pd.DataFrame], None]:
+    """Ejecuta la consulta SQL según el tipo"""
+    
+    try:
+        # =========================================================
+        # COMPRAS
+        # =========================================================
+        
+        if tipo == "compras_anio":
+            anio = params.get("anio")
+            if not anio:
+                return "❌ Falta especificar el año.", None, None
+            
+            # Obtener resumen
+            resumen = get_total_compras_anio(anio)
+            df = get_compras_anio(anio)
+            
+            if df is None or df.empty:
+                return f"No encontré compras en {anio}.", None, None
+            
+            # Formatear totales
+            total_pesos = resumen.get('total_pesos', 0)
+            total_usd = resumen.get('total_usd', 0)
+            registros = resumen.get('registros', 0)
+            proveedores = resumen.get('proveedores', 0)
+            articulos = resumen.get('articulos', 0)
+            
+            total_pesos_fmt = f"${total_pesos:,.0f}".replace(',', '.')
+            total_usd_fmt = f"U$S {total_usd:,.0f}".replace(',', '.')
+            
+            msg = f"📦 **Compras {anio}** | 💰 **{total_pesos_fmt}**"
+            if total_usd > 0:
+                msg += f" | 💵 **{total_usd_fmt}**"
+            msg += f" | {registros} registros | {proveedores} proveedores | {articulos} artículos"
+            
+            if registros > len(df):
+                msg += f" (mostrando {len(df)})"
+            
+            return msg + ":", formatear_dataframe(df), None
+        
+        
+        if tipo == "compras_proveedor_mes":
+            proveedor = params.get("proveedor")
+            mes = params.get("mes")
+            
+            if not proveedor or not mes:
+                return "❌ Falta proveedor o mes.", None, None
+            
+            df = get_detalle_compras_proveedor_mes(proveedor, mes)
+            
+            if df is None or df.empty:
+                return f"No encontré compras de {proveedor.upper()} en {mes}.", None, None
+            
+            total = df['Total'].sum() if 'Total' in df.columns else 0
+            total_fmt = f"${total:,.0f}".replace(',', '.')
+            
+            return (
+                f"📋 Compras de **{proveedor.upper()}** en {mes} | 💰 **{total_fmt}** | {len(df)} registros:",
+                formatear_dataframe(df),
+                None
+            )
+        
+        
+        if tipo == "compras_proveedor_anio":
+            proveedor = params.get("proveedor")
+            anio = params.get("anio")
+            
+            if not proveedor or not anio:
+                return "❌ Falta proveedor o año.", None, None
+            
+            resumen = get_total_compras_proveedor_anio(proveedor, anio)
+            df = get_detalle_compras_proveedor_anio(proveedor, anio)
+            
+            if df is None or df.empty:
+                return f"No encontré compras de {proveedor.upper()} en {anio}.", None, None
+            
+            total = resumen.get('total', 0)
+            total_fmt = f"${total:,.0f}".replace(',', '.')
+            registros = resumen.get('registros', 0)
+            
+            msg = f"📋 Compras de **{proveedor.upper()}** en {anio} | 💰 **{total_fmt}** | {registros} registros"
+            if registros > len(df):
+                msg += f" (mostrando {len(df)})"
+            
+            return msg + ":", formatear_dataframe(df), None
+        
+        
+        if tipo == "compras_articulo_mes":
+            articulo = params.get("articulo")
+            mes = params.get("mes")
+            
+            if not articulo or not mes:
+                return "❌ Falta artículo o mes.", None, None
+            
+            df = get_detalle_compras_articulo_mes(articulo, mes)
+            
+            if df is None or df.empty:
+                return f"No encontré compras de {articulo.upper()} en {mes}.", None, None
+            
+            total = df['Total'].sum() if 'Total' in df.columns else 0
+            total_fmt = f"${total:,.0f}".replace(',', '.')
+            
+            return (
+                f"📦 Compras de **{articulo.upper()}** en {mes} | 💰 **{total_fmt}** | {len(df)} registros:",
+                formatear_dataframe(df),
+                None
+            )
+        
+        
+        if tipo == "compras_articulo_anio":
+            articulo = params.get("articulo")
+            anio = params.get("anio")
+            
+            if not articulo or not anio:
+                return "❌ Falta artículo o año.", None, None
+            
+            resumen = get_total_compras_articulo_anio(articulo, anio)
+            df = get_detalle_compras_articulo_anio(articulo, anio)
+            
+            if df is None or df.empty:
+                return f"No encontré compras de {articulo.upper()} en {anio}.", None, None
+            
+            total = resumen.get('total', 0)
+            total_fmt = f"${total:,.0f}".replace(',', '.')
+            
+            return (
+                f"📦 Compras de **{articulo.upper()}** en {anio} | 💰 **{total_fmt}** | {len(df)} registros:",
+                formatear_dataframe(df),
+                None
+            )
+        
+        
+        if tipo == "compras_mes":
+            mes = params.get("mes")
+            
+            if not mes:
+                return "❌ Falta especificar el mes.", None, None
+            
+            df = get_compras_por_mes_excel(mes)
+            
+            if df is None or df.empty:
+                return f"No encontré compras en {mes}.", None, None
+            
+            return f"📦 Compras de {mes} ({len(df)} registros):", formatear_dataframe(df), None
+        
+        
+        # =========================================================
+        # FACTURAS
+        # =========================================================
+        
+        if tipo == "ultima_factura":
+            patron = params.get("patron")
+            
+            if not patron:
+                return "❌ ¿De qué artículo o proveedor querés la última factura?", None, None
+            
+            df = get_ultima_factura_inteligente(patron)
+            
+            if df is None or df.empty:
+                return f"No encontré facturas de '{patron}'.", None, None
+            
+            return f"🧾 Última factura de **{patron.upper()}**:", formatear_dataframe(df), None
+        
+        
+        if tipo == "facturas_articulo":
+            articulo = params.get("articulo")
+            
+            if not articulo:
+                return "❌ ¿De qué artículo querés ver las facturas?", None, None
+            
+            df = get_facturas_de_articulo(articulo, solo_ultima=False)
+            
+            if df is None or df.empty:
+                return f"No encontré facturas de '{articulo}'.", None, None
+            
+            return f"🧾 Facturas de **{articulo.upper()}** ({len(df)} registros):", formatear_dataframe(df), None
+        
+        
+        if tipo == "detalle_factura":
+            nro = params.get("nro_factura")
+            
+            if not nro:
+                return "❌ Falta el número de factura.", None, None
+            
+            # Normalizar número
+            nro_clean = str(nro).strip().upper()
+            if nro_clean.isdigit():
+                nro_clean = "A" + nro_clean.zfill(7)
+            
+            df = get_detalle_factura_por_numero(nro_clean)
+            
+            if df is None or df.empty:
+                return f"No encontré la factura {nro}.", None, None
+            
+            return f"🧾 Detalle de factura {nro}:", formatear_dataframe(df), None
+        
+        
+        # =========================================================
+        # COMPARACIONES
+        # =========================================================
+        
+        if tipo == "comparar_proveedor_meses":
+            proveedor = params.get("proveedor")
+            mes1 = params.get("mes1")
+            mes2 = params.get("mes2")
+            
+            if not mes1 or not mes2:
+                return "❌ Necesito dos meses para comparar.", None, None
+            
+            proveedores = [proveedor] if proveedor else None
+            df = get_comparacion_proveedor_meses(mes1, mes2, mes1, mes2, proveedores)
+            
+            if df is None or df.empty:
+                return f"No encontré datos para comparar.", None, None
+            
+            prov_str = proveedor.upper() if proveedor else "Proveedores"
+            return f"📊 Comparación {prov_str}: {mes1} vs {mes2}:", formatear_dataframe(df), None
+        
+        
+        if tipo == "comparar_proveedor_anios":
+            proveedor = params.get("proveedor")
+            anios = params.get("anios", [])
+            
+            if len(anios) < 2:
+                return "❌ Necesito al menos dos años para comparar.", None, None
+            
+            proveedores = [proveedor] if proveedor else None
+            df = get_comparacion_proveedor_anios_monedas(anios, proveedores)
+            
+            if df is None or df.empty:
+                return f"No encontré datos para comparar.", None, None
+            
+            prov_str = proveedor.upper() if proveedor else "Proveedores"
+            anios_str = ", ".join(map(str, sorted(anios)))
+            return f"📊 Comparación {prov_str}: {anios_str}:", formatear_dataframe(df), None
+        
+        
+        if tipo == "comparar_articulo_meses":
+            articulo = params.get("articulo")
+            mes1 = params.get("mes1")
+            mes2 = params.get("mes2")
+            
+            if not articulo or not mes1 or not mes2:
+                return "❌ Falta artículo o meses.", None, None
+            
+            df = get_comparacion_articulo_meses(mes1, mes2, mes1, mes2, [articulo])
+            
+            if df is None or df.empty:
+                return f"No encontré datos para comparar {articulo}.", None, None
+            
+            return f"📊 Comparación {articulo.upper()}: {mes1} vs {mes2}:", formatear_dataframe(df), None
+        
+        
+        if tipo == "comparar_articulo_anios":
+            articulo = params.get("articulo")
+            anios = params.get("anios", [])
+            
+            if not articulo or len(anios) < 2:
+                return "❌ Falta artículo o años.", None, None
+            
+            df = get_comparacion_articulo_anios(anios, articulo)
+            
+            if df is None or df.empty:
+                return f"No encontré datos para comparar {articulo}.", None, None
+            
+            anios_str = ", ".join(map(str, sorted(anios)))
+            return f"📊 Comparación {articulo.upper()}: {anios_str}:", formatear_dataframe(df), None
+        
+        
+        if tipo == "comparar_familia_meses":
+            mes1 = params.get("mes1")
+            mes2 = params.get("mes2")
+            moneda = params.get("moneda", "$")
+            
+            if not mes1 or not mes2:
+                return "❌ Necesito dos meses para comparar.", None, None
+            
+            df = get_comparacion_familia_meses_moneda(mes1, mes2, mes1, mes2, moneda)
+            
+            if df is None or df.empty:
+                return f"No encontré datos para comparar.", None, None
+            
+            return f"📊 Comparación familias: {mes1} vs {mes2} ({moneda}):", formatear_dataframe(df), None
+        
+        
+        if tipo == "comparar_familia_anios":
+            anios = params.get("anios", [])
+            
+            if len(anios) < 2:
+                return "❌ Necesito al menos dos años para comparar.", None, None
+            
+            df = get_comparacion_familia_anios_monedas(anios)
+            
+            if df is None or df.empty:
+                return f"No encontré datos para comparar.", None, None
+            
+            anios_str = ", ".join(map(str, sorted(anios)))
+            return f"📊 Comparación familias: {anios_str}:", formatear_dataframe(df), None
+        
+        
+        # =========================================================
+        # GASTOS
+        # =========================================================
+        
+        if tipo == "gastos_familias_mes":
+            mes = params.get("mes")
+            
+            if not mes:
+                return "❌ Falta especificar el mes.", None, None
+            
+            df = get_gastos_todas_familias_mes(mes)
+            
+            if df is None or df.empty:
+                return f"No encontré gastos en {mes}.", None, None
+            
+            # Calcular totales
+            total_pesos = df['Total_Pesos'].sum() if 'Total_Pesos' in df.columns else 0
+            total_usd = df['Total_USD'].sum() if 'Total_USD' in df.columns else 0
+            
+            total_pesos_fmt = f"${total_pesos:,.0f}".replace(',', '.')
+            total_usd_fmt = f"U$S {total_usd:,.0f}".replace(',', '.')
+            
+            msg = f"📊 Gastos por familia en {mes} | 💰 **{total_pesos_fmt}**"
+            if total_usd > 0:
+                msg += f" | 💵 **{total_usd_fmt}**"
+            
+            return msg + ":", formatear_dataframe(df), None
+        
+        
+        if tipo == "gastos_familias_anio":
+            anio = params.get("anio")
+            
+            if not anio:
+                return "❌ Falta especificar el año.", None, None
+            
+            df = get_gastos_todas_familias_anio(anio)
+            
+            if df is None or df.empty:
+                return f"No encontré gastos en {anio}.", None, None
+            
+            total_pesos = df['Total_Pesos'].sum() if 'Total_Pesos' in df.columns else 0
+            total_usd = df['Total_USD'].sum() if 'Total_USD' in df.columns else 0
+            
+            total_pesos_fmt = f"${total_pesos:,.0f}".replace(',', '.')
+            total_usd_fmt = f"U$S {total_usd:,.0f}".replace(',', '.')
+            
+            msg = f"📊 Gastos por familia en {anio} | 💰 **{total_pesos_fmt}**"
+            if total_usd > 0:
+                msg += f" | 💵 **{total_usd_fmt}**"
+            
+            return msg + ":", formatear_dataframe(df), None
+        
+        
+        if tipo == "gastos_secciones":
+            familias = params.get("familias", [])
+            mes = params.get("mes")
+            
+            if not familias or not mes:
+                return "❌ Falta especificar familias o mes.", None, None
+            
+            df = get_gastos_secciones_detalle_completo(familias, mes)
+            
+            if df is None or df.empty:
+                return f"No encontré gastos para esas familias en {mes}.", None, None
+            
+            return f"📊 Gastos de familias {', '.join(familias)} en {mes}:", formatear_dataframe(df), None
+        
+        
+        # =========================================================
+        # TOP PROVEEDORES
+        # =========================================================
+        
+        if tipo == "top_proveedores":
+            moneda = params.get("moneda")
+            anio = params.get("anio")
+            mes = params.get("mes")
+            
+            df = get_top_10_proveedores_chatbot(moneda, anio, mes)
+            
+            if df is None or df.empty:
+                return "No encontré datos de proveedores.", None, None
+            
+            titulo = "🏆 Top 10 Proveedores"
+            if moneda:
+                titulo += f" ({moneda})"
+            if mes:
+                titulo += f" {mes}"
+            elif anio:
+                titulo += f" {anio}"
+            
+            return titulo + ":", formatear_dataframe(df), None
+        
+        
+        # =========================================================
+        # STOCK
+        # =========================================================
+        
+        if tipo == "stock_total":
+            df = get_stock_total()
+            if df is not None and not df.empty:
+                return "📦 **Resumen de stock total:**", formatear_dataframe(df), None
+            return "No pude obtener el stock total.", None, None
+        
+        
+        if tipo == "stock_articulo":
+            articulo = params.get("articulo")
+            if not articulo:
+                return "❌ ¿De qué artículo querés ver el stock?", None, None
+            
+            df = get_stock_articulo(articulo)
+            
+            if df is None or df.empty:
+                return f"No encontré stock de '{articulo}'.", None, None
+            
             total = 0
             if 'STOCK' in df.columns:
                 try:
@@ -383,786 +555,136 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
                     ).sum()
                 except:
                     pass
-            msg = f"📦 **Stock de '{articulo}':**"
+            
+            msg = f"📦 **Stock de '{articulo.upper()}'**"
             if total > 0:
                 msg += f" (Total: {total:,.0f} unidades)".replace(',', '.')
-            return msg, formatear_dataframe(df)
-        return f"No encontré stock para '{articulo}'.", None
-
-    if tipo == 'stock_lotes_por_vencer':
-        dias = params.get('dias', 90)
-        df = get_lotes_por_vencer(dias)
-        if df is not None and not df.empty:
-            return f"⚠️ **Lotes que vencen en los próximos {dias} días:**", formatear_dataframe(df)
-        return f"No hay lotes que venzan en los próximos {dias} días.", None
-
-    if tipo == 'stock_lotes_vencidos':
-        df = get_lotes_vencidos()
-        if df is not None and not df.empty:
-            return "🚨 **Lotes VENCIDOS:**", formatear_dataframe(df)
-        return "No hay lotes vencidos con stock.", None
-
-    if tipo == 'stock_bajo':
-        df = get_stock_bajo(10)
-        if df is not None and not df.empty:
-            return "📉 **Artículos con stock bajo (≤10 unidades):**", formatear_dataframe(df)
-        return "No hay artículos con stock bajo.", None
-
-    if tipo == 'stock_lote_especifico':
-        lote = params.get('lote', '')
-        df = get_stock_lote_especifico(lote)
-        if df is not None and not df.empty:
-            return f"📦 **Información del lote {lote}:**", formatear_dataframe(df)
-        return f"No encontré el lote {lote}.", None
-
-    # =====================================================================
-    # CONOCIMIENTO GENERAL (NO SQL)
-    # =====================================================================
-    if es_conocimiento_general(pregunta):
-        respuesta = responder_con_openai(pregunta, tipo="conocimiento")
-        return respuesta, None
-
-    # =====================================================================
-    # LISTAR VALORES
-    # =====================================================================
-    if tipo == 'listar_valores':
-        valores = get_valores_unicos()
-        if valores:
-            texto_resp = "**Valores disponibles en la base de datos:**\n\n"
-
-            if valores.get('proveedores'):
-                texto_resp += f"**Proveedores ({len(valores['proveedores'])}):**\n"
-                texto_resp += ", ".join(valores['proveedores'][:20])
-                if len(valores['proveedores']) > 20:
-                    texto_resp += f" ... y {len(valores['proveedores']) - 20} más"
-                texto_resp += "\n\n"
-
-            if valores.get('familias'):
-                texto_resp += f"**Familias ({len(valores['familias'])}):**\n"
-                texto_resp += ", ".join(valores['familias'])
-                texto_resp += "\n\n"
-
-            if valores.get('articulos'):
-                texto_resp += "**Artículos (primeros 50):**\n"
-                texto_resp += ", ".join(valores['articulos'])
-
-            return texto_resp, None
-        return "No se pudo obtener la lista de valores.", None
-
-    # =====================================================================
-    # FACTURA POR NÚMERO
-    # =====================================================================
-    if tipo == 'detalle_factura_numero':
-        nro_raw = params.get("nro_factura", "")
-        nro_db, nro_alt, nro_mostrar = normalizar_factura_para_db(nro_raw)
-        if not nro_db:
-            return "No pude identificar el número de factura.", None
-
-        print(f"✅ TIPO: Detalle Factura → SQL (Factura {nro_mostrar})")
-
-        df = get_detalle_factura_por_numero(nro_db)
-
-        if (df is None or df.empty) and nro_alt and (nro_alt != nro_db):
-            df = get_detalle_factura_por_numero(nro_alt)
-
-        if df is None or df.empty:
-            return f"No encontré detalle para la factura {nro_mostrar}.", None
-
-        return f"🧾 Detalle de la factura {nro_mostrar}", _formatear_detalle_factura_df(df)
-
-    # =====================================================================
-    # FACTURA COMPLETA ARTÍCULO
-    # =====================================================================
-    if tipo == 'factura_completa_articulo':
-        articulos = extraer_valores_multiples(pregunta, 'articulo')
-        patron = articulos[0] if articulos else _extraer_patron_libre(
-            pregunta,
-            ['ultima', 'factura', 'articulo', 'completa', 'toda', 'todo', 'traer', 'mostrar', 'ver', 'detalle', 'de', 'del', 'la', 'el', 'por', 'para']
-        )
-
-        if not patron:
-            return "¿De qué artículo querés la factura completa?", None
-
-        nro = get_ultima_factura_numero_de_articulo(patron)
-        if not nro:
-            titulo, df2, resp2 = fallback_openai_sql(pregunta, "No pudo obtener factura completa")
-            if df2 is not None and not df2.empty:
-                return f"🧾 {resp2 or titulo}", formatear_dataframe(df2)
-            return "No pude obtener la factura completa.", None
-
-        df = get_detalle_factura_por_numero(nro)
-        df_tot = get_total_factura_por_numero(nro)
-
-        if not df_tot.empty and 'total_factura' in df_tot.columns:
-            try:
-                total = float(df_tot['total_factura'].iloc[0])
-                return f"🧾 Factura completa (nro {nro}) — Total: ${total:,.2f}", formatear_dataframe(df)
-            except Exception:
-                pass
-
-        return f"🧾 Factura completa (nro {nro}):", formatear_dataframe(df)
-
-    # =====================================================================
-    # ÚLTIMA FACTURA (ARTÍCULO O PROVEEDOR)
-    # =====================================================================
-    if tipo == 'ultima_factura_articulo':
-        articulos = extraer_valores_multiples(pregunta, 'articulo')
-        proveedores = extraer_valores_multiples(pregunta, 'proveedor')
-
-        if articulos:
-            patron = articulos[0]
-        elif proveedores:
-            patron = proveedores[0]
-        else:
-            patron = _extraer_patron_libre(
-                pregunta,
-                [
-                    'ultima', 'ultimo', 'ultim', 'factura', 'facturas',
-                    'articulo', 'articulos', 'proveedor', 'proveedores',
-                    'compras', 'compra', 'compre', 'compramos', 'comprado',
-                    'traer', 'mostrar', 'ver', 'dame', 'pasame', 'mostrame',
-                    'necesito', 'quiero', 'buscar', 'busco',
-                    'cuando', 'vino', 'llego', 'entro', 'fue', 'paso',
-                    'completa', 'toda', 'todo', 'todos', 'todas', 'entera',
-                    'de', 'del', 'la', 'el', 'los', 'las', 'un', 'una',
-                    'por', 'para', 'en', 'a', 'con', 'sin'
-                ]
-            )
-
-        if not patron:
-            return "¿De qué artículo o proveedor querés la última factura?", None
-
-        df = get_ultima_factura_inteligente(patron)
-
-        if df.empty:
-            titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró última factura")
-            if df2 is not None and not df2.empty:
-                return f"🧾 {resp2 or titulo}", formatear_dataframe(df2)
-            return f"No encontré facturas con '{patron}' en artículos ni proveedores.", None
-
-        return "🧾 Última factura encontrada:", formatear_dataframe(df)
-
-    # =====================================================================
-    # ✅ CUANDO VINO (ARTÍCULO)
-    # =====================================================================
-    if tipo == 'cuando_vino_articulo':
-        articulo = params.get('articulo', '')
-        if not articulo:
-            articulo = _extraer_patron_libre(
-                pregunta,
-                ['cuando', 'vino', 'llego', 'entro', 'ultima', 'vez', 'de', 'del', 'la', 'el']
-            )
-
-        if not articulo:
-            return "¿De qué artículo querés saber cuándo vino?", None
-
-        df = get_ultima_factura_inteligente(articulo)
-
-        if df is None or df.empty:
-            return f"No encontré registros de '{articulo}'.", None
-
-        return f"🧾 Última vez que vino **{articulo.upper()}**:", formatear_dataframe(df)
-
-    # =====================================================================
-    # TODAS LAS FACTURAS DE UN ARTÍCULO
-    # =====================================================================
-    if tipo == 'facturas_articulo':
-        articulos = extraer_valores_multiples(pregunta, 'articulo')
-        patron = articulos[0] if articulos else _extraer_patron_libre(
-            pregunta,
-            ['facturas', 'factura', 'listar', 'todas', 'articulo', 'de', 'del', 'la', 'el', 'cuando', 'vino']
-        )
-
-        if not patron:
-            return "¿De qué artículo querés ver las facturas?", None
-
-        df = get_facturas_de_articulo(patron, solo_ultima=False)
-
-        if df is None or df.empty:
-            return f"No encontré facturas para '{patron}'.", None
-
-        return f"🧾 Facturas del artículo '{patron}' ({len(df)} registros):", formatear_dataframe(df)
-
-    # =====================================================================
-    # GASTOS SECCIONES
-    # =====================================================================
-    if tipo == 'gastos_secciones':
-        familias = _extraer_lista_familias(pregunta)
-        mes_key = _extraer_mes_key(pregunta)
-
-        anio = None
-        if not mes_key:
-            match = re.search(r'(202[3-9]|2030)', pregunta)
-            if match:
-                anio = int(match.group(1))
-
-        if not mes_key and not anio:
-            return "Especificá el mes o año (ej: 'gastos familias noviembre 2025').", None
-
-        if not familias:
-            if mes_key:
-                df = get_gastos_todas_familias_mes(mes_key)
-                periodo = mes_key
-            else:
-                df = get_gastos_todas_familias_anio(anio)
-                periodo = str(anio)
-
+            
+            return msg + ":", formatear_dataframe(df), None
+        
+        
+        if tipo == "stock_familia":
+            familia = params.get("familia")
+            if not familia:
+                return "❌ ¿De qué familia querés ver el stock?", None, None
+            
+            df = get_stock_familia(familia)
+            
             if df is None or df.empty:
-                titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró gastos por familias")
-                if df2 is not None and not df2.empty:
-                    return f"📌 {resp2 or titulo}", formatear_dataframe(df2)
-                return f"No encontré gastos para {periodo}.", None
-
-            def latam_to_float(valor):
-                if pd.isna(valor):
-                    return 0.0
-                try:
-                    s = str(valor).strip()
-                    s = s.replace('.', '').replace(',', '.')
-                    return float(s)
-                except:
-                    return 0.0
-
-            col_pesos = None
-            col_usd = None
-            for col in df.columns:
-                col_lower = col.lower()
-                if 'pesos' in col_lower:
-                    col_pesos = col
-                if 'usd' in col_lower:
-                    col_usd = col
-
-            total_pesos = 0
-            total_usd = 0
-
-            if col_pesos:
-                total_pesos = df[col_pesos].apply(latam_to_float).sum()
-            if col_usd:
-                total_usd = df[col_usd].apply(latam_to_float).sum()
-
-            total_pesos_fmt = f"${total_pesos:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-            total_usd_fmt = f"U$S {total_usd:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-
-            return f"📊 Gastos por familia en {periodo} | 💰 **{total_pesos_fmt}** | 💵 **{total_usd_fmt}**:", formatear_dataframe(df)
-
-        if not mes_key:
-            return "Para familias específicas necesito el mes.", None
-
-        df = get_gastos_secciones_detalle_completo(familias, mes_key)
-        if df.empty:
-            return "No encontré gastos para esas secciones.", None
-
-        return f"📌 Gastos de familias {', '.join(familias)} en {mes_key}:", formatear_dataframe(df)
-
-    # =====================================================================
-    # COMPARAR PROVEEDOR MESES
-    # =====================================================================
-    if tipo == 'comparar_proveedor_meses':
-        meses = params.get('meses', [])
-        proveedores = params.get('proveedores', [])
-
-        if len(meses) < 2:
-            meses_detectados = extraer_meses_para_comparacion(pregunta)
-            meses = [m[2] for m in meses_detectados]
-
-        if len(meses) < 2:
-            return "Necesito dos meses para comparar (ej: 'comparar roche junio julio 2025').", None
-
-        mes1, mes2 = meses[0], meses[1]
-
-        if not proveedores:
-            proveedores = extraer_valores_multiples(pregunta, 'proveedor')
-        if not proveedores:
-            prov_libre = _extraer_patron_libre(pregunta, [
-                'comparar', 'comparame', 'compara', 'comparacion', 'vs',
-                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-                '2023', '2024', '2025', '2026', 'compras', 'proveedor', 'proveedores'
-            ])
-            if prov_libre:
-                proveedores = [prov_libre]
-
-        df = get_comparacion_proveedor_meses(mes1, mes2, mes1, mes2, proveedores if proveedores else None)
-
-        if df is None or df.empty:
-            prov_str = ', '.join(proveedores) if proveedores else 'proveedores'
-            return f"No encontré datos para comparar {prov_str} entre {mes1} y {mes2}.", None
-
-        prov_str = ', '.join(proveedores).upper() if proveedores else 'Proveedores'
-        return f"📊 Comparación de {prov_str}: {mes1} vs {mes2}:", formatear_dataframe(df)
-
-    # =====================================================================
-    # COMPARAR ARTÍCULO MESES
-    # =====================================================================
-    if tipo == 'comparar_articulo_meses':
-        meses = params.get('meses', [])
-        articulo = params.get('articulo_like', '')
-
-        if len(meses) < 2:
-            meses_detectados = extraer_meses_para_comparacion(pregunta)
-            meses = [m[2] for m in meses_detectados]
-
-        if len(meses) < 2:
-            return "Necesito dos meses para comparar.", None
-
-        mes1, mes2 = meses[0], meses[1]
-
-        if not articulo:
-            articulos = extraer_valores_multiples(pregunta, 'articulo')
-            articulo = articulos[0] if articulos else _extraer_patron_libre(pregunta, [
-                'comparar', 'comparame', 'vs', 'enero', 'febrero', 'marzo', 'abril',
-                'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre',
-                'noviembre', 'diciembre', '2023', '2024', '2025', '2026'
-            ])
-
-        df = get_comparacion_articulo_meses(mes1, mes2, mes1, mes2, [articulo] if articulo else None)
-
-        if df is None or df.empty:
-            return f"No encontré datos para comparar '{articulo}' entre {mes1} y {mes2}.", None
-
-        return f"📊 Comparación de {articulo.upper()}: {mes1} vs {mes2}:", formatear_dataframe(df)
-
-    # =====================================================================
-    # COMPARAR FAMILIA MESES
-    # =====================================================================
-    if tipo == 'comparar_familia_meses':
-        meses_params = params.get("meses", [])
-        familias = params.get("familias")
-
-        mes1 = None
-        mes2 = None
-
-        if meses_params and len(meses_params) >= 2:
-            mes1, mes2 = meses_params[0], meses_params[1]
-
-        if not mes1 or not mes2:
-            meses_detectados = extraer_meses_para_comparacion(pregunta)
-            if len(meses_detectados) >= 2:
-                mes1 = meses_detectados[0][2]
-                mes2 = meses_detectados[1][2]
-
-        if not mes1 or not mes2:
-            return "No pude identificar los dos meses a comparar.", None
-
-        df_pesos = get_comparacion_familia_meses_moneda(mes1, mes2, mes1, mes2, "$", familias)
-        df_usd = get_comparacion_familia_meses_moneda(mes1, mes2, mes1, mes2, "U$S", familias)
-
-        if (df_pesos is None or df_pesos.empty) and (df_usd is None or df_usd.empty):
-            return f"No hay datos para comparar familias entre {mes1} y {mes2}.", None
-
-        st.session_state['comparacion_familia_tabs'] = {
-            'titulo': f"📊 Comparación de gastos por familia: {mes1} vs {mes2}",
-            'df_pesos': df_pesos,
-            'df_usd': df_usd,
-            'mes1': mes1,
-            'mes2': mes2
-        }
-
-        return "__COMPARACION_FAMILIA_TABS__", None
-
-    # =====================================================================
-    # COMPARAR PROVEEDOR AÑOS
-    # =====================================================================
-    if tipo == 'comparar_proveedor_anios':
-        anios = params.get('anios', [])
-        proveedores = params.get('proveedores', [])
-
-        if not anios:
-            anios = extraer_anios(pregunta)
-
-        if len(anios) < 2:
-            return "Necesito al menos dos años para comparar.", None
-
-        if not proveedores:
-            proveedores = extraer_valores_multiples(pregunta, 'proveedor')
-        if not proveedores:
-            prov_libre = _extraer_patron_libre(pregunta, [
-                'comparar', 'comparame', 'compara', 'vs', 'compras',
-                '2023', '2024', '2025', '2026', 'proveedor', 'proveedores', 'años', 'anios'
-            ])
-            if prov_libre:
-                proveedores = [prov_libre]
-
-        df_resumen = get_comparacion_proveedor_anios_monedas(anios, proveedores if proveedores else None)
-
-        if df_resumen is None or df_resumen.empty:
-            return f"No encontré datos para comparar proveedores en años {anios}.", None
-
-        df_detalle = get_detalle_compras_proveedor_anios(anios, proveedores if proveedores else None)
-
-        st.session_state['comparacion_tabs'] = {
-            'resumen': formatear_dataframe(df_resumen),
-            'detalle': formatear_dataframe(df_detalle) if df_detalle is not None and not df_detalle.empty else None,
-            'titulo': f"🏭 Comparación {', '.join(proveedores) if proveedores else 'proveedores'} ({', '.join(map(str, sorted(anios)))})"
-        }
-
-        return "__COMPARACION_TABS__", None
-
-    # =====================================================================
-    # COMPARAR FAMILIA AÑOS
-    # =====================================================================
-    if tipo == 'comparar_familia_anios':
-        anios = params.get('anios', [])
-        familias = params.get('familias')
-        moneda = params.get('moneda')
-
-        if not anios:
-            anios = extraer_anios(pregunta)
-
-        if len(anios) < 2:
-            return "Necesito al menos dos años para comparar.", None
-
-        df = get_comparacion_familia_anios_monedas(anios, familias if familias else None)
-
-        if df is None or df.empty:
-            return f"No encontré datos para comparar familias en años {anios}.", None
-
-        return f"📊 Comparación de familias ({', '.join(map(str, sorted(anios)))}):", formatear_dataframe(df)
-
-    # =====================================================================
-    # COMPARAR PROVEEDOR AÑOS MONEDAS (existente)
-    # =====================================================================
-    if tipo == 'comparar_proveedor_anios_monedas':
-        anios = params.get('anios') or extraer_anios(pregunta)
-        proveedores = params.get('proveedores') or extraer_valores_multiples(pregunta, 'proveedor')
-
-        if isinstance(proveedores, str):
-            proveedores = [proveedores]
-
-        if proveedores:
-            proveedores = [p.strip() for p in proveedores if p and str(p).strip()]
-
-        if not proveedores:
-            txt = normalizar_texto(pregunta or "")
-            txt = re.sub(r"\b20\d{2}\b", " ", txt)
-            for w in ["comparar", "comparacion", "compras", "compra", "vs", "proveedor", "proveedores", "por"]:
-                txt = txt.replace(w, " ")
-            prov_libre = " ".join([t for t in txt.split() if t]).strip()
-            if prov_libre:
-                proveedores = [prov_libre]
-
-        df_resumen = get_comparacion_proveedor_anios_monedas(anios, proveedores if proveedores else None)
-        if df_resumen.empty:
-            titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró comparación proveedor por años")
-            if df2 is not None and not df2.empty:
-                return f"📊 {resp2 or titulo}", formatear_dataframe(df2)
-            return "No encontré datos para comparar proveedores por años.", None
-
-        df_detalle = get_detalle_compras_proveedor_anios(anios, proveedores if proveedores else None)
-
-        st.session_state['comparacion_tabs'] = {
-            'resumen': formatear_dataframe(df_resumen),
-            'detalle': formatear_dataframe(df_detalle) if df_detalle is not None and not df_detalle.empty else None,
-            'titulo': f"🏭 Comparación {', '.join(proveedores) if proveedores else 'proveedores'} ({', '.join(map(str, sorted(anios)))})"
-        }
-
-        return "__COMPARACION_TABS__", None
-
-    # =====================================================================
-    # COMPARAR ARTÍCULO AÑOS
-    # =====================================================================
-    if tipo == 'comparar_articulo_anios':
-        anios = params.get("anios", [])
-        articulo_like = params.get("articulo_like", "")
-
-        if not anios:
-            anios = extraer_anios(pregunta)
-
-        if not articulo_like:
-            articulos = extraer_valores_multiples(pregunta, 'articulo')
-            articulo_like = articulos[0] if articulos else _extraer_patron_libre(pregunta, [
-                'comparar', 'comparame', 'vs', '2023', '2024', '2025', '2026', 'compras', 'articulo'
-            ])
-
-        df = get_comparacion_articulo_anios(anios, articulo_like)
-
-        if df is None or df.empty:
-            return f"No encontré compras del artículo '{articulo_like}' en los años {anios}.", None
-
-        totales_por_anio = []
-        for anio in sorted(anios):
-            col_anio = str(anio)
-            if col_anio in df.columns:
-                total = df[col_anio].sum()
-                total_fmt = f"${total:,.0f}".replace(',', '.')
-                totales_por_anio.append(f"**{anio}**: {total_fmt}")
-
-        totales_str = " | ".join(totales_por_anio) if totales_por_anio else ""
-
-        return f"📊 Comparación del artículo **{articulo_like.upper()}** | {totales_str}:", formatear_dataframe(df)
-
-    # =====================================================================
-    # COMPRAS POR MES
-    # =====================================================================
-    if tipo == 'compras_por_mes':
-        mes_key = _extraer_mes_key(pregunta)
-        if not mes_key:
-            return "Especificá el mes (ej: 'compras junio 2025').", None
-
-        df = get_compras_por_mes_excel(mes_key)
-        if df.empty:
-            return "No encontré compras para ese mes.", None
-
-        return "📦 Compras por mes:", formatear_dataframe(df)
-
-    # =====================================================================
-    # ✅ NUEVO: COMPRAS POR AÑO COMPLETO
-    # =====================================================================
-    if tipo == 'compras_anio':
-        anio = params.get('anio')
-
-        if not anio:
-            return "No pude identificar el año. Ejemplo: 'compras 2025'", None
-
-        # Obtener resumen
-        resumen = get_total_compras_anio(anio)
-
-        # Obtener detalle
-        df = get_compras_anio(anio)
-
-        if df is None or df.empty:
-            return f"No encontré compras registradas en {anio}.", None
-
-        # Formatear totales
-        total_pesos = resumen.get('total_pesos', 0)
-        total_usd = resumen.get('total_usd', 0)
-        registros = resumen.get('registros', 0)
-        proveedores = resumen.get('proveedores', 0)
-        articulos = resumen.get('articulos', 0)
-
-        total_pesos_fmt = f"${total_pesos:,.0f}".replace(',', '.')
-        total_usd_fmt = f"U$S {total_usd:,.0f}".replace(',', '.')
-
-        # Construir mensaje
-        msg = f"📦 **Compras {anio}**"
-        msg += f" | 💰 **{total_pesos_fmt}**"
-        if total_usd > 0:
-            msg += f" | 💵 **{total_usd_fmt}**"
-        msg += f" | {registros} registros | {proveedores} proveedores | {articulos} artículos"
-
-        # Nota si hay más registros de los mostrados
-        if registros > len(df):
-            msg += f" (mostrando {len(df)})"
-
-        return msg + ":", formatear_dataframe(df)
-
-    # =====================================================================
-    # DETALLE COMPRAS PROVEEDOR + MES
-    # =====================================================================
-    if tipo == 'detalle_compras_proveedor_mes':
-        mes_key = params.get('mes_key')
-        proveedor_like = params.get('proveedor_like')
-
-        df = get_detalle_compras_proveedor_mes(proveedor_like, mes_key)
-
-        if df.empty:
-            titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró detalle proveedor + mes")
-            if df2 is not None and not df2.empty:
-                return f"📋 {resp2 or titulo}", formatear_dataframe(df2)
-            return "No encontré compras para ese proveedor y mes.", None
-
-        total = 0
-        if 'Total' in df.columns:
-            total = pd.to_numeric(df['Total'], errors='coerce').fillna(0).sum()
-
-        total_fmt = f"${total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-
-        return (
-            f"📋 Compras de {proveedor_like.upper()} en {mes_key} "
-            f"| 💰 **Total: {total_fmt}** | {len(df)} registros:",
-            formatear_dataframe(df)
-        )
-
-    # =====================================================================
-    # DETALLE COMPRAS ARTÍCULO + MES
-    # =====================================================================
-    if tipo == 'detalle_compras_articulo_mes':
-        mes_key = params.get("mes_key")
-        articulo_like = params.get("articulo_like")
-
-        df = get_detalle_compras_articulo_mes(articulo_like, mes_key)
-
-        if df is None or df.empty:
-            titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró compras por artículo + mes")
-            if df2 is not None and not df2.empty:
-                return f"📋 {resp2 or titulo}", formatear_dataframe(df2)
-            return f"No encontré compras del artículo '{articulo_like}' en {mes_key}.", None
-
-        totales_str = ""
-        if 'Total' in df.columns and 'Moneda' in df.columns:
-            for moneda in df['Moneda'].unique():
-                df_moneda = df[df['Moneda'] == moneda]
-                total_moneda = df_moneda['Total'].sum()
-                if moneda in ['U$S', 'USD', 'Dólares', 'Dolares']:
-                    totales_str += f"💵 **U$S {total_moneda:,.2f}** ".replace(',', 'X').replace('.', ',').replace('X', '.')
-                else:
-                    totales_str += f"💰 **${total_moneda:,.2f}** ".replace(',', 'X').replace('.', ',').replace('X', '.')
-        else:
-            total = df['Total'].sum() if 'Total' in df.columns else 0
-            totales_str = f"💰 **${total:,.2f}**".replace(',', 'X').replace('.', ',').replace('X', '.')
-
-        return (
-            f"📦 Compras del artículo **{articulo_like.upper()}** en {mes_key} "
-            f"| {totales_str}| {len(df)} registros:",
-            formatear_dataframe(df)
-        )
-
-    # =====================================================================
-    # DETALLE COMPRAS ARTÍCULO + AÑO
-    # =====================================================================
-    if tipo == 'detalle_compras_articulo_anio':
-        anio = params.get("anio")
-        articulo_like = params.get("articulo_like")
-
-        df = get_detalle_compras_articulo_anio(articulo_like, anio)
-
-        if df is None or df.empty:
-            titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró compras por artículo + año")
-            if df2 is not None and not df2.empty:
-                return f"📋 {resp2 or titulo}", formatear_dataframe(df2)
-            return f"No encontré compras para el artículo '{articulo_like}' en {anio}.", None
-
-        totales_str = ""
-        if 'Total' in df.columns and 'Moneda' in df.columns:
-            for moneda in df['Moneda'].unique():
-                df_moneda = df[df['Moneda'] == moneda]
-                total_moneda = df_moneda['Total'].sum()
-                if moneda in ['U$S', 'USD', 'Dólares', 'Dolares']:
-                    totales_str += f"💵 **U$S {total_moneda:,.0f}** ".replace(',', '.')
-                else:
-                    totales_str += f"💰 **${total_moneda:,.0f}** ".replace(',', '.')
-        else:
-            total = df['Total'].sum() if 'Total' in df.columns else 0
-            totales_str = f"💰 **${total:,.0f}**".replace(',', '.')
-
-        return (
-            f"📦 Compras del artículo **{articulo_like.upper()}** en {anio} "
-            f"| {totales_str}| {len(df)} registros:",
-            formatear_dataframe(df)
-        )
-
-    # =====================================================================
-    # DETALLE COMPRAS PROVEEDOR + AÑO
-    # =====================================================================
-    if tipo == 'detalle_compras_proveedor_anio':
-        anio = params.get('anio')
-        proveedor_like = params.get('proveedor_like')
-
-        totales = get_total_compras_proveedor_anio(proveedor_like, anio)
-        total_real = totales.get('total', 0)
-        registros_total = totales.get('registros', 0)
-
-        df = get_detalle_compras_proveedor_anio(proveedor_like, anio)
-        if df is None or df.empty:
-            # Reintentar como ARTÍCULO
-            totales_alt = get_total_compras_articulo_anio(proveedor_like, anio)
-            total_real_alt = totales_alt.get('total', 0)
-            registros_total_alt = totales_alt.get('registros', 0)
-
-            df_alt = get_detalle_compras_articulo_anio(proveedor_like, anio)
-            if df_alt is not None and not df_alt.empty:
-                total_fmt_alt = f"${total_real_alt:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-                if registros_total_alt > len(df_alt):
-                    return (
-                        f"📦 Compras del artículo **{proveedor_like.upper()}** en {anio} "
-                        f"| 💰 **Total: {total_fmt_alt}** | {registros_total_alt} registros "
-                        f"(mostrando {len(df_alt)}):",
-                        formatear_dataframe(df_alt)
-                    )
-                return (
-                    f"📦 Compras del artículo **{proveedor_like.upper()}** en {anio} "
-                    f"| 💰 **Total: {total_fmt_alt}** | {len(df_alt)} registros:",
-                    formatear_dataframe(df_alt)
-                )
-
-            titulo, df2, resp2 = fallback_openai_sql(pregunta, "No encontró detalle proveedor + año")
-            if df2 is not None and not df2.empty:
-                return f"📋 {resp2 or titulo}", formatear_dataframe(df2)
-            return "No encontré compras para ese proveedor y año.", None
-
-        total_fmt = f"${total_real:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-
-        if registros_total > len(df):
-            return (
-                f"📋 Compras de {proveedor_like.upper()} en {anio} | 💰 **Total: {total_fmt}** "
-                f"| {registros_total} registros (mostrando {len(df)}):",
-                formatear_dataframe(df)
-            )
-
-        return (
-            f"📋 Compras de {proveedor_like.upper()} en {anio} | 💰 **Total: {total_fmt}** | {len(df)} registros:",
-            formatear_dataframe(df)
-        )
-
-    # =====================================================================
-    # TOTAL PROVEEDOR + MONEDA + PERÍODOS
-    # =====================================================================
-    if tipo == 'total_proveedor_moneda_periodos':
-        periodos = params.get('periodos', [])
-        monedas = params.get('monedas')
-
-        df = get_total_compras_proveedor_moneda_periodos(periodos, monedas)
-        if df is None or df.empty:
-            return "No encontré compras por proveedor para esos períodos.", None
-
-        return "🏭 Total compras por proveedor (por período y moneda):", formatear_dataframe(df)
-
-    # =====================================================================
-    # TOP 10 PROVEEDORES
-    # =====================================================================
-    if tipo == 'top_10_proveedores':
-        moneda = params.get("moneda")
-        anio = params.get("anio")
-        mes = params.get("mes")
-
-        df = get_top_10_proveedores_chatbot(moneda, anio, mes)
-
-        if df is None or df.empty:
-            return "No encontré proveedores con compras registradas.", None
-
-        titulo = "🏆 Top 10 Proveedores"
-        if moneda:
-            titulo += f" ({moneda})"
-        if mes:
-            titulo += f" {mes}"
-        elif anio:
-            titulo += f" {anio}"
-
-        return titulo + ":", formatear_dataframe(df)
-
-    # =====================================================================
-    # GASTOS POR FAMILIA
-    # =====================================================================
-    if tipo == 'gastos_familia':
-        where_clause, params_sql = construir_where_clause(pregunta)
-        df = get_gastos_por_familia(where_clause, params_sql)
-
-        if df.empty:
-            return "No encontré gastos por familia.", None
-
-        return "📊 Gastos por familia:", formatear_dataframe(df)
-
-    # =====================================================================
-    # DETALLE GENERAL
-    # =====================================================================
-    if tipo == 'detalle':
-        where_clause, params_sql = construir_where_clause(pregunta)
-        df = get_detalle_compras(where_clause, params_sql)
-
-        if df.empty:
-            return "No encontré detalle para esa consulta.", None
-
-        return "📋 Detalle de compras:", formatear_dataframe(df)
-
-    # =====================================================================
-    # CONSULTA GENERAL (FALLBACK)
-    # =====================================================================
-    texto_lower = normalizar_texto(pregunta)
-
-    saludos = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'gracias', 'chau', 'adios']
-    es_saludo = any(s in texto_lower for s in saludos) and len(texto_lower.split()) <= 3
-
-    if es_saludo:
-        return "👋 ¡Hola! ¿En qué te puedo ayudar?", None
-
-    return "__MOSTRAR_SUGERENCIA__", None
+                return f"No encontré stock de la familia '{familia}'.", None, None
+            
+            return f"📦 **Stock de familia {familia.upper()}:**", formatear_dataframe(df), None
+        
+        
+        if tipo == "stock_por_familia":
+            df = get_stock_por_familia()
+            if df is not None and not df.empty:
+                return "📦 **Stock por familia:**", formatear_dataframe(df), None
+            return "No encontré datos de stock por familia.", None, None
+        
+        
+        if tipo == "stock_por_deposito":
+            df = get_stock_por_deposito()
+            if df is not None and not df.empty:
+                return "📦 **Stock por depósito:**", formatear_dataframe(df), None
+            return "No encontré datos de stock por depósito.", None, None
+        
+        
+        if tipo == "stock_lotes_vencer":
+            dias = params.get("dias", 90)
+            df = get_lotes_por_vencer(dias)
+            
+            if df is not None and not df.empty:
+                return f"⚠️ **Lotes que vencen en los próximos {dias} días:**", formatear_dataframe(df), None
+            return f"No hay lotes que venzan en los próximos {dias} días.", None, None
+        
+        
+        if tipo == "stock_lotes_vencidos":
+            df = get_lotes_vencidos()
+            if df is not None and not df.empty:
+                return "🚨 **Lotes VENCIDOS:**", formatear_dataframe(df), None
+            return "No hay lotes vencidos con stock.", None, None
+        
+        
+        if tipo == "stock_bajo":
+            minimo = params.get("minimo", 10)
+            df = get_stock_bajo(minimo)
+            
+            if df is not None and not df.empty:
+                return f"📉 **Artículos con stock bajo (≤{minimo}):**", formatear_dataframe(df), None
+            return "No hay artículos con stock bajo.", None, None
+        
+        
+        if tipo == "stock_lote":
+            lote = params.get("lote")
+            if not lote:
+                return "❌ ¿Qué lote querés buscar?", None, None
+            
+            df = get_stock_lote_especifico(lote)
+            
+            if df is None or df.empty:
+                return f"No encontré el lote '{lote}'.", None, None
+            
+            return f"📦 **Lote {lote.upper()}:**", formatear_dataframe(df), None
+        
+        
+        # =========================================================
+        # TIPO NO RECONOCIDO
+        # =========================================================
+        
+        return f"❌ Tipo de consulta '{tipo}' no implementado.", None, None
+        
+    except Exception as e:
+        print(f"❌ Error ejecutando consulta: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"❌ Error: {str(e)[:100]}", None, None
+
+
+# =====================================================================
+# FUNCIÓN DE COMPATIBILIDAD CON SISTEMA ANTERIOR
+# =====================================================================
+
+def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
+    """
+    Función de compatibilidad con el sistema anterior.
+    Ignora las sugerencias y solo devuelve mensaje + df.
+    """
+    mensaje, df, sugerencia = procesar_pregunta_v2(pregunta)
+    
+    # Si hay sugerencia, la incluimos en el mensaje
+    if sugerencia:
+        alternativas = sugerencia.get("alternativas", [])
+        if alternativas:
+            mensaje += "\n\n**Alternativas:**\n" + "\n".join(f"• {a}" for a in alternativas[:3])
+    
+    return mensaje, df
+
+
+# =====================================================================
+# TEST
+# =====================================================================
+
+if __name__ == "__main__":
+    pruebas = [
+        "compras 2025",
+        "compras roche enero 2026",
+        "ultimo vitek",
+        "cuando vino vitek",
+        "comparar roche 2024 2025",
+        "stock vitek",
+        "cuanto gastamos"
+    ]
+    
+    print("=" * 60)
+    print("PRUEBAS DEL ORQUESTADOR V2")
+    print("=" * 60)
+    
+    for p in pruebas:
+        print(f"\n📝 Pregunta: {p}")
+        msg, df, sug = procesar_pregunta_v2(p)
+        print(f"   Mensaje: {msg[:100]}...")
+        if df is not None:
+            print(f"   DataFrame: {len(df)} filas")
+        if sug:
+            print(f"   Sugerencia: {sug.get('sugerencia')}")
