@@ -34,7 +34,5 @@ streamlit-aggrid
 
 reportlab
 
--r requirements.txt
-chainlit
 
 
