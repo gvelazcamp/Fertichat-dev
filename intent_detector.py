@@ -920,6 +920,47 @@ def detectar_intencion(texto: str) -> Dict:
         intencion['debug'] = 'Match: compras por mes'
         return intencion
 
+        # =====================================================================
+    # ✅ PRIORIDAD 8.5: COMPRAS POR AÑO COMPLETO (NUEVO)
+    # Ejemplos: "compras 2025", "compras del 2024", "mostrame las compras 2025"
+    # =====================================================================
+    if 'compra' in texto_norm or 'compramos' in texto_norm:
+        # Verificar que NO sea comparación, NO tenga proveedor/artículo explícito
+        es_comparacion_check = _es_comparacion(texto_norm)
+        tiene_proveedor_explicito = 'proveedor' in texto_norm
+        tiene_articulo_explicito = 'articulo' in texto_norm
+        tiene_familia_explicita = 'familia' in texto_norm or 'seccion' in texto_norm
+        
+        # Patrón específico: "compras 2025", "compras del 2024", "compras año 2023"
+        patron_compras_anio = re.search(r'compras?\s+(?:del\s+)?(?:año\s+)?(?:en\s+)?(20\d{2})\b', texto_norm)
+        
+        # También detectar: "mostrame/ver/dame las compras 2025"
+        patron_mostrar_compras = re.search(r'(?:mostrar?|mostrame|ver|dame|listado|todas?\s+las?)\s+(?:las?\s+)?compras?\s+(?:del?\s+)?(?:año\s+)?(?:en\s+)?(20\d{2})\b', texto_norm)
+        
+        # Detectar "cuanto compramos en 2025" o "total compras 2025"
+        patron_total_anio = re.search(r'(?:cuanto|total|resumen)\s+(?:compramos|compras?|gastamos)?\s+(?:en\s+)?(20\d{2})\b', texto_norm)
+        
+        if (patron_compras_anio or patron_mostrar_compras or patron_total_anio) and not es_comparacion_check:
+            # Extraer el año del patrón que matcheó
+            if patron_compras_anio:
+                anio = int(patron_compras_anio.group(1))
+            elif patron_mostrar_compras:
+                anio = int(patron_mostrar_compras.group(1))
+            else:
+                anio = int(patron_total_anio.group(1))
+            
+            # Solo si NO tiene filtros adicionales explícitos
+            prov_limpio = _extraer_proveedor_limpio(texto)
+            
+            # Si el patrón libre está vacío o es muy corto, es compras año puro
+            if not tiene_proveedor_explicito and not tiene_articulo_explicito and not tiene_familia_explicita:
+                if not prov_limpio or len(prov_limpio) <= 2:
+                    intencion['tipo'] = 'compras_anio'
+                    intencion['parametros']['anio'] = anio
+                    intencion['debug'] = f'Match: compras año {anio} (sin filtros)'
+                    return intencion
+
+
     # =====================================================================
     # PRIORIDAD 9: DETALLE COMPRAS PROVEEDOR / ARTÍCULO + MES O AÑO
     # =====================================================================
