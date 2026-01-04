@@ -675,7 +675,7 @@ menu_actual = st.session_state["radio_menu"]
 
 if menu_actual == "🏠 Inicio":
     mostrar_inicio()
-elif menu == "💬 Chat (Chainlit)":
+elif menu_actual == "💬 Chat (Chainlit)":
     mostrar_chat_chainlit()
 elif menu_actual == "🛒 Compras IA":
     mostrar_resumen_compras_rotativo()
