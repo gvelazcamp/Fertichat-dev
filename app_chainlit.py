@@ -2,6 +2,9 @@
 import io
 import pandas as pd
 import chainlit as cl
+import os
+print("DB_HOST:", os.getenv("DB_HOST"))
+print("SUPABASE_URL:", os.getenv("SUPABASE_URL"))
 
 # AJUSTÁ SOLO ESTA LÍNEA si tu orquestador está en otro archivo
 from orquestador import procesar_pregunta_router
@@ -45,4 +48,5 @@ async def main(message: cl.Message):
 
     except Exception as e:
         await cl.Message(content=f"Error: {type(e).__name__}: {e}").send()
+
 
