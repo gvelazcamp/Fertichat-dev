@@ -258,7 +258,12 @@ RESPONDE SOLO JSON (sin ```json):
         return {'entendido': '', 'sugerencia': '', 'alternativas': []}
     except Exception as e:
         print(f"❌ Error en obtener_sugerencia_ejecutable: {e}")
-        return {'entendido': '', 'sugerencia': '', 'alternativas': []}
+        return {'entendido': '', 'sugerencia': '', 'alternativas': []}sug = obtener_sugerencia_ejecutable(pregunta_original)
+
+if sug and sug.get("sugerencia"):
+    # ✅ CLAVE: ejecutar lo sugerido
+    return procesar_pregunta(sug["sugerencia"])
+
 
 # =====================================================================
 # OPENAI - FALLBACK SQL
