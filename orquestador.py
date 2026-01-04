@@ -1,6 +1,8 @@
 # =========================
 # ORQUESTADOR.PY - LÓGICA DE PROCESAMIENTO (COMPLETO)
 # =========================
+# VERSIÓN FINAL - CON TODOS LOS HANDLERS
+# =========================
 
 import streamlit as st
 import pandas as pd
@@ -19,7 +21,9 @@ from utils_openai import (
     fallback_openai_sql,
 )
 
-# Imports de sql_queries
+# =====================================================================
+# IMPORTS DE SQL_QUERIES (COMPLETO)
+# =====================================================================
 from sql_queries import (
     ejecutar_consulta,
     _sql_fecha_expr,
@@ -60,8 +64,9 @@ from sql_queries import (
     get_stock_bajo,
     get_stock_lote_especifico,
     get_detalle_compras,
-    get_compras_anio,        
-    get_total_compras_anio, 
+    # ✅ NUEVOS IMPORTS PARA COMPRAS AÑO
+    get_compras_anio,
+    get_total_compras_anio,
 )
 
 # Placeholder para guardar_chat_log si no existe
@@ -470,7 +475,28 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         return "🧾 Última factura encontrada:", formatear_dataframe(df)
 
     # =====================================================================
-    # ✅ NUEVO: TODAS LAS FACTURAS DE UN ARTÍCULO
+    # ✅ CUANDO VINO (ARTÍCULO)
+    # =====================================================================
+    if tipo == 'cuando_vino_articulo':
+        articulo = params.get('articulo', '')
+        if not articulo:
+            articulo = _extraer_patron_libre(
+                pregunta,
+                ['cuando', 'vino', 'llego', 'entro', 'ultima', 'vez', 'de', 'del', 'la', 'el']
+            )
+        
+        if not articulo:
+            return "¿De qué artículo querés saber cuándo vino?", None
+        
+        df = get_ultima_factura_inteligente(articulo)
+        
+        if df is None or df.empty:
+            return f"No encontré registros de '{articulo}'.", None
+        
+        return f"🧾 Última vez que vino **{articulo.upper()}**:", formatear_dataframe(df)
+
+    # =====================================================================
+    # TODAS LAS FACTURAS DE UN ARTÍCULO
     # =====================================================================
     if tipo == 'facturas_articulo':
         articulos = extraer_valores_multiples(pregunta, 'articulo')
@@ -561,23 +587,21 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         return f"📌 Gastos de familias {', '.join(familias)} en {mes_key}:", formatear_dataframe(df)
 
     # =====================================================================
-    # ✅ NUEVO: COMPARAR PROVEEDOR MESES
+    # COMPARAR PROVEEDOR MESES
     # =====================================================================
     if tipo == 'comparar_proveedor_meses':
         meses = params.get('meses', [])
         proveedores = params.get('proveedores', [])
 
-        # Si no hay meses en params, extraer de pregunta
         if len(meses) < 2:
             meses_detectados = extraer_meses_para_comparacion(pregunta)
-            meses = [m[2] for m in meses_detectados]  # m[2] es el mes_key
+            meses = [m[2] for m in meses_detectados]
 
         if len(meses) < 2:
             return "Necesito dos meses para comparar (ej: 'comparar roche junio julio 2025').", None
 
         mes1, mes2 = meses[0], meses[1]
 
-        # Si no hay proveedores, extraer de pregunta
         if not proveedores:
             proveedores = extraer_valores_multiples(pregunta, 'proveedor')
         if not proveedores:
@@ -600,7 +624,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         return f"📊 Comparación de {prov_str}: {mes1} vs {mes2}:", formatear_dataframe(df)
 
     # =====================================================================
-    # ✅ NUEVO: COMPARAR ARTÍCULO MESES
+    # COMPARAR ARTÍCULO MESES
     # =====================================================================
     if tipo == 'comparar_articulo_meses':
         meses = params.get('meses', [])
@@ -669,7 +693,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         return "__COMPARACION_FAMILIA_TABS__", None
 
     # =====================================================================
-    # ✅ NUEVO: COMPARAR PROVEEDOR AÑOS
+    # COMPARAR PROVEEDOR AÑOS
     # =====================================================================
     if tipo == 'comparar_proveedor_anios':
         anios = params.get('anios', [])
@@ -707,7 +731,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         return "__COMPARACION_TABS__", None
 
     # =====================================================================
-    # ✅ NUEVO: COMPARAR FAMILIA AÑOS
+    # COMPARAR FAMILIA AÑOS
     # =====================================================================
     if tipo == 'comparar_familia_anios':
         anios = params.get('anios', [])
@@ -814,6 +838,47 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
         return "📦 Compras por mes:", formatear_dataframe(df)
 
     # =====================================================================
+    # ✅ NUEVO: COMPRAS POR AÑO COMPLETO
+    # =====================================================================
+    if tipo == 'compras_anio':
+        anio = params.get('anio')
+
+        if not anio:
+            return "No pude identificar el año. Ejemplo: 'compras 2025'", None
+
+        # Obtener resumen
+        resumen = get_total_compras_anio(anio)
+
+        # Obtener detalle
+        df = get_compras_anio(anio)
+
+        if df is None or df.empty:
+            return f"No encontré compras registradas en {anio}.", None
+
+        # Formatear totales
+        total_pesos = resumen.get('total_pesos', 0)
+        total_usd = resumen.get('total_usd', 0)
+        registros = resumen.get('registros', 0)
+        proveedores = resumen.get('proveedores', 0)
+        articulos = resumen.get('articulos', 0)
+
+        total_pesos_fmt = f"${total_pesos:,.0f}".replace(',', '.')
+        total_usd_fmt = f"U$S {total_usd:,.0f}".replace(',', '.')
+
+        # Construir mensaje
+        msg = f"📦 **Compras {anio}**"
+        msg += f" | 💰 **{total_pesos_fmt}**"
+        if total_usd > 0:
+            msg += f" | 💵 **{total_usd_fmt}**"
+        msg += f" | {registros} registros | {proveedores} proveedores | {articulos} artículos"
+
+        # Nota si hay más registros de los mostrados
+        if registros > len(df):
+            msg += f" (mostrando {len(df)})"
+
+        return msg + ":", formatear_dataframe(df)
+
+    # =====================================================================
     # DETALLE COMPRAS PROVEEDOR + MES
     # =====================================================================
     if tipo == 'detalle_compras_proveedor_mes':
@@ -829,8 +894,8 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             return "No encontré compras para ese proveedor y mes.", None
 
         total = 0
-        if 'total' in df.columns:
-            total = pd.to_numeric(df['total'], errors='coerce').fillna(0).sum()
+        if 'Total' in df.columns:
+            total = pd.to_numeric(df['Total'], errors='coerce').fillna(0).sum()
 
         total_fmt = f"${total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
 
@@ -840,47 +905,6 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             formatear_dataframe(df)
         )
 
-       # =====================================================================
-    # ✅ COMPRAS POR AÑO COMPLETO
-    # Ejemplos: "compras 2025", "compras del 2024", "total compras 2025"
-    # =====================================================================
-    if tipo == 'compras_anio':
-        anio = params.get('anio')
-        
-        if not anio:
-            return "No pude identificar el año. Ejemplo: 'compras 2025'", None
-        
-        # Obtener resumen
-        resumen = get_total_compras_anio(anio)
-        
-        # Obtener detalle
-        df = get_compras_anio(anio)
-        
-        if df is None or df.empty:
-            return f"No encontré compras registradas en {anio}.", None
-        
-        # Formatear totales
-        total_pesos = resumen.get('total_pesos', 0)
-        total_usd = resumen.get('total_usd', 0)
-        registros = resumen.get('registros', 0)
-        proveedores = resumen.get('proveedores', 0)
-        articulos = resumen.get('articulos', 0)
-        
-        total_pesos_fmt = f"${total_pesos:,.0f}".replace(',', '.')
-        total_usd_fmt = f"U$S {total_usd:,.0f}".replace(',', '.')
-        
-        # Construir mensaje
-        msg = f"📦 **Compras {anio}**"
-        msg += f" | 💰 **{total_pesos_fmt}**"
-        if total_usd > 0:
-            msg += f" | 💵 **{total_usd_fmt}**"
-        msg += f" | {registros} registros | {proveedores} proveedores | {articulos} artículos"
-        
-        # Nota si hay más registros de los mostrados
-        if registros > len(df):
-            msg += f" (mostrando {len(df)})"
-        
-        return msg + ":", formatear_dataframe(df)
     # =====================================================================
     # DETALLE COMPRAS ARTÍCULO + MES
     # =====================================================================
