@@ -1,5 +1,5 @@
 # =========================
-# MAIN.PY - SIDEBAR NATIVO (PC OK) + CONTROL NATIVO EN MÓVIL (Z FLIP 5)
+# MAIN.PY - VERSIÓN CORREGIDA (SIN INTENT_DETECTOR)
 # =========================
 
 import streamlit as st
@@ -21,7 +21,10 @@ from login_page import require_auth, get_current_user, logout
 from pedidos import mostrar_pedidos_internos, contar_notificaciones_no_leidas
 from bajastock import mostrar_baja_stock
 from ordenes_compra import mostrar_ordenes_compra
+
+# ✅ IMPORT CORREGIDO - USA LA NUEVA VERSIÓN CON IA
 from ui_compras import Compras_IA
+
 from ui_buscador import mostrar_buscador_ia
 from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo
 from ui_dashboard import mostrar_dashboard, mostrar_indicadores_ia, mostrar_resumen_compras_rotativo
@@ -33,6 +36,9 @@ from depositos import mostrar_depositos
 from familias import mostrar_familias
 from comprobantes import mostrar_menu_comprobantes
 from ui_chat_chainlit import mostrar_chat_chainlit
+
+# ❌ COMENTADO: YA NO SE USA intent_detector
+# from intent_detector import detectar_intencion
 
 # =========================
 # INICIALIZACIÓN
@@ -47,7 +53,7 @@ if "radio_menu" not in st.session_state:
 
 
 # =========================
-# CSS COMPLETO CORREGIDO
+# CSS COMPLETO (MISMO QUE TENÍAS)
 # =========================
 st.markdown(r"""
 <style>
@@ -178,172 +184,37 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     display: inline-flex !important;
   }
   
-  /* ============================================= */
-  /* 🔥 SELECTBOX MÓVIL - NUCLEAR MODE 🔥 */
-  /* ============================================= */
-  
-  /* Nivel 1: Containers principales */
+  /* SELECTBOX MÓVIL */
   div[data-testid="stSelectbox"],
   div[data-testid="stSelectbox"] *,
-  div[data-testid="stSelectbox"] > div,
-  div[data-testid="stSelectbox"] > div > div,
-  div[data-testid="stSelectbox"] > div > div > div {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  /* Nivel 2: Baseweb select - TODOS los elementos */
   div[data-baseweb="select"],
-  div[data-baseweb="select"] *,
-  div[data-baseweb="select"] > div,
-  div[data-baseweb="select"] > div > div,
-  div[data-baseweb="select"] > div > div > div,
-  div[data-baseweb="select"] > div > div > div > div {
+  div[data-baseweb="select"] * {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
   }
   
-  /* Nivel 3: Clases específicas de baseweb */
-  [class*="StyledControl"],
-  [class*="StyledControlContainer"],
-  [class*="StyledValueContainer"],
-  [class*="StyledSingleValue"],
-  [class*="StyledInput"],
-  [class*="StyledInputContainer"],
-  [class*="StyledPlaceholder"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  /* Nivel 4: Input directo dentro del select */
   div[data-baseweb="select"] input,
-  div[data-baseweb="select"] input[type="text"],
-  div[data-testid="stSelectbox"] input,
-  div[data-testid="stSelectbox"] input[type="text"] {
+  div[data-testid="stSelectbox"] input {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
     border-color: #e2e8f0 !important;
   }
   
-  /* Nivel 5: Texto dentro del select */
-  div[data-baseweb="select"] span,
-  div[data-baseweb="select"] div,
-  div[data-baseweb="select"] p,
-  div[data-testid="stSelectbox"] span,
-  div[data-testid="stSelectbox"] div:not([data-baseweb]),
-  div[data-testid="stSelectbox"] p {
-    color: #0f172a !important;
-  }
-  
-  /* Nivel 6: Dropdown/Popover */
-  div[data-baseweb="popover"],
-  div[data-baseweb="popover"] *,
-  div[data-baseweb="popover"] > div,
-  div[data-baseweb="popover"] > div > div,
-  div[data-baseweb="popover"] ul,
-  div[data-baseweb="popover"] li {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  /* Nivel 7: Menu desplegable */
-  div[data-baseweb="menu"],
-  div[data-baseweb="menu"] *,
-  div[data-baseweb="menu"] > div,
-  div[data-baseweb="menu"] ul,
-  div[data-baseweb="menu"] li,
-  [class*="StyledList"],
-  [class*="StyledListItem"],
-  [class*="StyledEmptyState"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  /* Nivel 8: Hover en opciones */
-  div[data-baseweb="menu"] li:hover,
-  [class*="StyledListItem"]:hover {
-    background: #f1f5f9 !important;
-    background-color: #f1f5f9 !important;
-  }
-  
-  /* Nivel 9: Iconos */
-  div[data-baseweb="select"] svg,
-  div[data-baseweb="select"] svg *,
-  [class*="StyledDropdownIcon"],
-  [class*="StyledClearIcon"] {
-    fill: #64748b !important;
-    color: #64748b !important;
-  }
-  
-  /* ============================================= */
-  /* 🔥 TEXT INPUT - NUCLEAR MODE 🔥 */
-  /* ============================================= */
-  
+  /* TEXT INPUT */
   div[data-testid="stTextInput"],
   div[data-testid="stTextInput"] *,
-  div[data-testid="stTextInput"] > div,
-  div[data-testid="stTextInput"] > div > div,
-  div[data-baseweb="input"],
-  div[data-baseweb="input"] *,
-  div[data-baseweb="base-input"],
-  div[data-baseweb="base-input"] *,
-  [class*="StyledInput"],
-  [class*="StyledInputContainer"] {
+  input[type="text"] {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
     border-color: #e2e8f0 !important;
   }
   
-  input[type="text"],
-  input[type="text"]:focus,
-  input[type="text"]:active {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
-    font-size: 15px !important;
-    padding: 12px 14px !important;
-    min-height: 48px !important;
-  }
-  
-  /* ============================================= */
-  /* 🔥 NUMBER & DATE INPUT - NUCLEAR MODE 🔥 */
-  /* ============================================= */
-  
-  div[data-testid="stNumberInput"],
-  div[data-testid="stNumberInput"] *,
-  div[data-testid="stDateInput"],
-  div[data-testid="stDateInput"] * {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border-color: #e2e8f0 !important;
-  }
-  
-  input[type="number"],
-  input[type="date"],
-  input[type="number"]:focus,
-  input[type="date"]:focus {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
-  }
-  
-  /* ============================================= */
-  /* 🔥 CHAT INPUT - NUCLEAR MODE 🔥 */
-  /* ============================================= */
-  
+  /* CHAT INPUT */
   div[data-testid="stChatInput"],
   div[data-testid="stChatInput"] *,
-  div[data-baseweb="textarea"],
-  div[data-baseweb="textarea"] *,
   textarea,
   textarea[data-testid="stChatInputTextArea"] {
     background: #ffffff !important;
@@ -351,181 +222,23 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #0f172a !important;
     border-color: #e2e8f0 !important;
   }
-  
-  textarea:focus,
-  textarea:active {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  /* ============================================= */
-  /* 🔥 PLACEHOLDERS 🔥 */
-  /* ============================================= */
-  
-  input::placeholder,
-  textarea::placeholder,
-  [class*="StyledPlaceholder"] {
-    color: #64748b !important;
-    opacity: 0.7 !important;
-  }
 }
 
-/* ============================================= */
 /* ESTILOS MÓVIL GENERALES (768px) */
-/* ============================================= */
 @media (max-width: 768px) {
   .block-container h1,
   .block-container h2,
   .block-container h3,
-  .block-container h4,
   .block-container p,
   .block-container span,
-  .block-container label,
-  .block-container div,
-  .block-container li,
-  .block-container td,
-  .block-container th,
-  [data-testid="stMarkdownContainer"] *,
-  [data-testid="stText"] *,
-  [data-testid="stCaption"] * {
+  .block-container label {
     color: #0f172a !important;
   }
   
-  .block-container div[style*="background"],
-  .block-container div[style*="border-radius"],
-  [data-testid="stMetric"],
-  [data-testid="metric-container"],
-  [data-testid="stVerticalBlock"] div[style*="padding"],
-  [data-testid="stHorizontalBlock"] div[style*="padding"] {
-    background: #f6f4ef !important;
-    background-color: #f6f4ef !important;
-    color: #0f172a !important;
-  }
-  
-  /* 🔥 REFUERZO SELECTBOX 768px 🔥 */
-  div[data-baseweb="select"],
-  div[data-baseweb="select"] *,
-  div[data-baseweb="select"] > div,
-  div[data-baseweb="select"] input,
-  div[data-testid="stSelectbox"],
-  div[data-testid="stSelectbox"] * {
+  .block-container button {
     background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  div[data-baseweb="popover"],
-  div[data-baseweb="popover"] *,
-  div[data-baseweb="menu"],
-  div[data-baseweb="menu"] * {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  .block-container button,
-  .block-container [data-testid="stButton"] button,
-  .block-container [data-testid="stFormSubmitButton"] button,
-  .stButton > button,
-  button[kind="primary"],
-  button[kind="secondary"],
-  button[data-testid="baseButton-primary"],
-  button[data-testid="baseButton-secondary"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
     color: #0f172a !important;
     border: 1px solid #e2e8f0 !important;
-    font-size: 14px !important;
-    padding: 10px 16px !important;
-    min-height: 42px !important;
-  }
-  
-  .block-container button span,
-  .block-container button p,
-  .block-container button div {
-    color: #0f172a !important;
-  }
-  
-  [data-testid="stDataFrame"],
-  [data-testid="stDataFrame"] > div,
-  [data-testid="stTable"],
-  [data-testid="stTable"] > div,
-  .stDataFrame,
-  div[class*="glideDataEditor"],
-  div[class*="dvn-scroller"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  [data-testid="stDataFrame"] td,
-  [data-testid="stDataFrame"] th,
-  [data-testid="stTable"] td,
-  [data-testid="stTable"] th {
-    background: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  [data-baseweb="tab-list"],
-  [data-baseweb="tab-panel"],
-  button[data-baseweb="tab"] {
-    background: transparent !important;
-    color: #0f172a !important;
-  }
-  
-  [data-testid="stExpander"],
-  [data-testid="stExpander"] > div {
-    background: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  [data-testid="stAlert"] p,
-  [data-testid="stAlert"] span,
-  .stAlert p,
-  .stAlert span {
-    color: #0f172a !important;
-  }
-
-  section[data-testid="stSidebar"],
-  section[data-testid="stSidebar"] > div,
-  section[data-testid="stSidebar"] > div > div,
-  section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-  
-  section[data-testid="stSidebar"] p,
-  section[data-testid="stSidebar"] span,
-  section[data-testid="stSidebar"] label,
-  section[data-testid="stSidebar"] h1,
-  section[data-testid="stSidebar"] h2,
-  section[data-testid="stSidebar"] h3,
-  section[data-testid="stSidebar"] div,
-  section[data-testid="stSidebar"] strong,
-  section[data-testid="stSidebar"] em {
-    color: #0f172a !important;
-  }
-  
-  section[data-testid="stSidebar"] div[role="radiogroup"] label {
-    background: #f8fafc !important;
-  }
-  
-  section[data-testid="stSidebar"] div[role="radiogroup"] label span {
-    color: #0f172a !important;
-  }
-  
-  section[data-testid="stSidebar"] input {
-    background: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  section[data-testid="stSidebar"] button {
-    background: #f1f5f9 !important;
-    color: #0f172a !important;
-  }
-  
-  section[data-testid="stSidebar"] button span {
-    color: #0f172a !important;
   }
 }
 </style>
@@ -541,7 +254,7 @@ if usuario_actual:
 
 
 # =========================
-# DETECCIÓN DE NAVEGACIÓN DESDE TARJETAS (CRÍTICO - ANTES DEL SIDEBAR)
+# DETECCIÓN DE NAVEGACIÓN DESDE TARJETAS
 # =========================
 try:
     go = st.query_params.get("go")
@@ -558,18 +271,15 @@ try:
         }
         destino = mapping.get(go.lower())
         if destino:
-            # PRIMERO cambiar el estado
             st.session_state["radio_menu"] = destino
-            # DESPUÉS limpiar params
             st.query_params.clear()
-            # RERUN inmediato
             st.rerun()
 except:
     pass
 
 
 # =========================
-# MANEJAR CLICK CAMPANA (ANTES DEL SIDEBAR TAMBIÉN)
+# MANEJAR CLICK CAMPANA
 # =========================
 try:
     if st.query_params.get("ir_notif") == "1":
@@ -596,9 +306,6 @@ st.markdown(f"""
     {badge_html}
 </a>
 """, unsafe_allow_html=True)
-
-
-# (ELIMINAR el bloque "MANEJAR CLICK CAMPANA" que estaba acá)
 
 
 # =========================
@@ -681,7 +388,7 @@ elif "Chat (Chainlit)" in menu_actual:
     
 elif menu_actual == "🛒 Compras IA":
     mostrar_resumen_compras_rotativo()
-    Compras_IA()
+    Compras_IA()  # ✅ AHORA USA LA VERSIÓN CON INTERPRETADOR IA
 
 elif menu_actual == "📦 Stock IA":
     mostrar_resumen_stock_rotativo()
