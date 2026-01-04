@@ -85,7 +85,6 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
 
 /* DESKTOP (mouse/trackpad) */
 @media (hover: hover) and (pointer: fine) {
-  /* HEADER BEIGE SOLO EN PC */
   [data-testid="stHeader"] {
     background: var(--fc-bg-1) !important;
   }
@@ -180,123 +179,130 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
   }
   
   /* ============================================= */
-  /* SELECTBOX MÓVIL - FORZAR BLANCO - MÁXIMA PRIORIDAD */
+  /* 🔥 SELECTBOX MÓVIL - NUCLEAR MODE 🔥 */
   /* ============================================= */
   
-  /* Container principal del selectbox */
-  [data-testid="stSelectbox"],
-  [data-testid="stSelectbox"] > div,
-  [data-testid="stSelectbox"] > div > div,
-  [data-testid="stSelectbox"] [data-baseweb="select"],
-  [data-testid="stSelectbox"] [data-baseweb="select"] > div,
-  [data-testid="stSelectbox"] [data-baseweb="select"] > div > div {
+  /* Nivel 1: Containers principales */
+  div[data-testid="stSelectbox"],
+  div[data-testid="stSelectbox"] *,
+  div[data-testid="stSelectbox"] > div,
+  div[data-testid="stSelectbox"] > div > div,
+  div[data-testid="stSelectbox"] > div > div > div {
     background: #ffffff !important;
     background-color: #ffffff !important;
   }
   
-  /* Baseweb select - todos los niveles */
-  [data-baseweb="select"],
-  [data-baseweb="select"] > div,
-  [data-baseweb="select"] > div > div,
-  [data-baseweb="select"] > div > div > div,
-  [data-baseweb="select"] [class*="container"],
-  [data-baseweb="select"] [class*="control"],
-  [data-baseweb="select"] [class*="ValueContainer"],
-  [data-baseweb="select"] [class*="singleValue"],
-  [data-baseweb="select"] [class*="Input"],
-  [data-baseweb="select"] [class*="placeholder"] {
+  /* Nivel 2: Baseweb select - TODOS los elementos */
+  div[data-baseweb="select"],
+  div[data-baseweb="select"] *,
+  div[data-baseweb="select"] > div,
+  div[data-baseweb="select"] > div > div,
+  div[data-baseweb="select"] > div > div > div,
+  div[data-baseweb="select"] > div > div > div > div {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+  
+  /* Nivel 3: Clases específicas de baseweb */
+  [class*="StyledControl"],
+  [class*="StyledControlContainer"],
+  [class*="StyledValueContainer"],
+  [class*="StyledSingleValue"],
+  [class*="StyledInput"],
+  [class*="StyledInputContainer"],
+  [class*="StyledPlaceholder"] {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+  
+  /* Nivel 4: Input directo dentro del select */
+  div[data-baseweb="select"] input,
+  div[data-baseweb="select"] input[type="text"],
+  div[data-testid="stSelectbox"] input,
+  div[data-testid="stSelectbox"] input[type="text"] {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
     border-color: #e2e8f0 !important;
   }
   
-  /* Input dentro del select */
-  [data-baseweb="select"] input,
-  [data-baseweb="select"] input[type="text"] {
+  /* Nivel 5: Texto dentro del select */
+  div[data-baseweb="select"] span,
+  div[data-baseweb="select"] div,
+  div[data-baseweb="select"] p,
+  div[data-testid="stSelectbox"] span,
+  div[data-testid="stSelectbox"] div:not([data-baseweb]),
+  div[data-testid="stSelectbox"] p {
+    color: #0f172a !important;
+  }
+  
+  /* Nivel 6: Dropdown/Popover */
+  div[data-baseweb="popover"],
+  div[data-baseweb="popover"] *,
+  div[data-baseweb="popover"] > div,
+  div[data-baseweb="popover"] > div > div,
+  div[data-baseweb="popover"] ul,
+  div[data-baseweb="popover"] li {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
   }
   
-  /* Texto y spans dentro del select */
-  [data-baseweb="select"] span,
-  [data-baseweb="select"] div,
-  [data-baseweb="select"] p,
-  [data-testid="stSelectbox"] span,
-  [data-testid="stSelectbox"] div,
-  [data-testid="stSelectbox"] p {
-    color: #0f172a !important;
-  }
-  
-  /* Dropdown/Popover del select */
-  [data-baseweb="popover"],
-  [data-baseweb="popover"] > div,
-  [data-baseweb="popover"] > div > div,
-  [data-baseweb="popover"] [class*="List"],
-  [data-baseweb="popover"] ul,
-  [data-baseweb="popover"] li {
+  /* Nivel 7: Menu desplegable */
+  div[data-baseweb="menu"],
+  div[data-baseweb="menu"] *,
+  div[data-baseweb="menu"] > div,
+  div[data-baseweb="menu"] ul,
+  div[data-baseweb="menu"] li,
+  [class*="StyledList"],
+  [class*="StyledListItem"],
+  [class*="StyledEmptyState"] {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
   }
   
-  /* Menu del select */
-  [data-baseweb="menu"],
-  [data-baseweb="menu"] > div,
-  [data-baseweb="menu"] ul,
-  [data-baseweb="menu"] li,
-  [data-baseweb="menu"] [class*="option"],
-  [data-baseweb="menu"] [class*="Option"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-  
-  /* Opción hover en el menu */
-  [data-baseweb="menu"] li:hover,
-  [data-baseweb="menu"] [class*="option"]:hover {
+  /* Nivel 8: Hover en opciones */
+  div[data-baseweb="menu"] li:hover,
+  [class*="StyledListItem"]:hover {
     background: #f1f5f9 !important;
     background-color: #f1f5f9 !important;
   }
   
-  /* Icono dropdown */
-  [data-baseweb="select"] svg,
-  [data-baseweb="select"] [class*="indicator"],
-  [data-baseweb="select"] [class*="Indicator"] {
+  /* Nivel 9: Iconos */
+  div[data-baseweb="select"] svg,
+  div[data-baseweb="select"] svg *,
+  [class*="StyledDropdownIcon"],
+  [class*="StyledClearIcon"] {
     fill: #64748b !important;
     color: #64748b !important;
   }
   
-  /* MULTISELECT también */
-  [data-testid="stMultiSelect"],
-  [data-testid="stMultiSelect"] > div,
-  [data-testid="stMultiSelect"] [data-baseweb="select"],
-  [data-testid="stMultiSelect"] [data-baseweb="select"] > div {
+  /* ============================================= */
+  /* 🔥 TEXT INPUT - NUCLEAR MODE 🔥 */
+  /* ============================================= */
+  
+  div[data-testid="stTextInput"],
+  div[data-testid="stTextInput"] *,
+  div[data-testid="stTextInput"] > div,
+  div[data-testid="stTextInput"] > div > div,
+  div[data-baseweb="input"],
+  div[data-baseweb="input"] *,
+  div[data-baseweb="base-input"],
+  div[data-baseweb="base-input"] *,
+  [class*="StyledInput"],
+  [class*="StyledInputContainer"] {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
+    border-color: #e2e8f0 !important;
   }
   
-  /* ============================================= */
-  /* FIN SELECTBOX */
-  /* ============================================= */
-  
-  /* FORZAR INPUTS CLAROS EN MÓVIL - MÁXIMA PRIORIDAD */
-  
-  /* TEXT INPUT (Stock IA) */
-  [data-testid="stTextInput"],
-  [data-testid="stTextInput"] *,
-  [data-testid="stTextInput"] > div,
-  [data-testid="stTextInput"] [data-baseweb="input"],
-  [data-testid="stTextInput"] [data-baseweb="base-input"],
-  [data-testid="stTextInput"] input,
-  [data-baseweb="input"],
-  [data-baseweb="input"] *,
-  [data-baseweb="input"] > div,
-  [data-baseweb="base-input"],
-  [data-baseweb="base-input"] *,
-  input[type="text"] {
+  input[type="text"],
+  input[type="text"]:focus,
+  input[type="text"]:active {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
@@ -304,81 +310,70 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     font-size: 15px !important;
     padding: 12px 14px !important;
     min-height: 48px !important;
-    height: auto !important;
-    max-height: none !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    border-radius: 8px !important;
   }
   
-  /* NUMBER INPUT */
-  [data-testid="stNumberInput"],
-  [data-testid="stNumberInput"] > div,
-  [data-testid="stNumberInput"] > div > div,
-  [data-testid="stNumberInput"] input,
-  input[type="number"] {
+  /* ============================================= */
+  /* 🔥 NUMBER & DATE INPUT - NUCLEAR MODE 🔥 */
+  /* ============================================= */
+  
+  div[data-testid="stNumberInput"],
+  div[data-testid="stNumberInput"] *,
+  div[data-testid="stDateInput"],
+  div[data-testid="stDateInput"] * {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
+  }
+  
+  input[type="number"],
+  input[type="date"],
+  input[type="number"]:focus,
+  input[type="date"]:focus {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
     border: 1px solid #e2e8f0 !important;
   }
   
-  /* DATE INPUT */
-  [data-testid="stDateInput"],
-  [data-testid="stDateInput"] > div,
-  [data-testid="stDateInput"] > div > div,
-  [data-testid="stDateInput"] input,
-  input[type="date"] {
+  /* ============================================= */
+  /* 🔥 CHAT INPUT - NUCLEAR MODE 🔥 */
+  /* ============================================= */
+  
+  div[data-testid="stChatInput"],
+  div[data-testid="stChatInput"] *,
+  div[data-baseweb="textarea"],
+  div[data-baseweb="textarea"] *,
+  textarea,
+  textarea[data-testid="stChatInputTextArea"] {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
+    border-color: #e2e8f0 !important;
   }
   
-  /* CHAT INPUT (Compras IA) */
-  [data-testid="stChatInput"],
-  [data-testid="stChatInput"] *,
-  [data-testid="stChatInput"] > div,
-  [data-testid="stChatInput"] [data-baseweb="textarea"],
-  [data-testid="stChatInput"] [data-baseweb="base-input"],
-  [data-testid="stChatInput"] textarea,
-  textarea[data-testid="stChatInputTextArea"],
-  [data-baseweb="textarea"],
-  [data-baseweb="textarea"] *,
-  [data-baseweb="textarea"] > div,
-  [data-baseweb="textarea"] textarea {
+  textarea:focus,
+  textarea:active {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
-    font-size: 15px !important;
-    padding: 12px 14px !important;
-    min-height: 48px !important;
-    height: auto !important;
-    max-height: 120px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    border-radius: 8px !important;
   }
   
-  /* Placeholders */
+  /* ============================================= */
+  /* 🔥 PLACEHOLDERS 🔥 */
+  /* ============================================= */
+  
   input::placeholder,
-  textarea::placeholder {
+  textarea::placeholder,
+  [class*="StyledPlaceholder"] {
     color: #64748b !important;
     opacity: 0.7 !important;
-    font-size: 14px !important;
-  }
-  
-  /* Botones de envío */
-  [data-testid="stChatInput"] button,
-  [data-testid="stTextInput"] button {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
   }
 }
 
-/* ESTILOS MÓVIL GENERALES */
+/* ============================================= */
+/* ESTILOS MÓVIL GENERALES (768px) */
+/* ============================================= */
 @media (max-width: 768px) {
   .block-container h1,
   .block-container h2,
@@ -408,41 +403,26 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #0f172a !important;
   }
   
-  /* ============================================= */
-  /* SELECTBOX MÓVIL 768px - REFUERZO */
-  /* ============================================= */
-  
-  [data-baseweb="select"],
-  [data-baseweb="select"] > div,
-  [data-baseweb="select"] > div > div,
-  div[data-baseweb="select"] div[class*="container"],
-  div[data-baseweb="select"] div[class*="control"],
-  div[data-baseweb="select"] div[class*="value"],
-  div[data-baseweb="select"] input {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border-color: #e2e8f0 !important;
-  }
-  
-  [data-baseweb="select"] span,
-  [data-baseweb="select"] div,
-  [data-baseweb="select"] p {
-    color: #0f172a !important;
-  }
-  
-  [data-baseweb="popover"],
-  [data-baseweb="popover"] > div,
-  [data-baseweb="menu"],
-  [data-baseweb="menu"] > div {
+  /* 🔥 REFUERZO SELECTBOX 768px 🔥 */
+  div[data-baseweb="select"],
+  div[data-baseweb="select"] *,
+  div[data-baseweb="select"] > div,
+  div[data-baseweb="select"] input,
+  div[data-testid="stSelectbox"],
+  div[data-testid="stSelectbox"] * {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
   }
   
-  /* ============================================= */
-  /* FIN REFUERZO SELECTBOX */
-  /* ============================================= */
+  div[data-baseweb="popover"],
+  div[data-baseweb="popover"] *,
+  div[data-baseweb="menu"],
+  div[data-baseweb="menu"] * {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
   
   .block-container button,
   .block-container [data-testid="stButton"] button,
