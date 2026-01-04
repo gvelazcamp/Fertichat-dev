@@ -161,18 +161,31 @@ def obtener_sugerencia_ejecutable(pregunta: str) -> dict:
     """
     ✅ VERSIÓN MEJORADA: Interpreta TODAS las variaciones de lenguaje natural
     """
-    system_prompt = """Eres un intérprete experto para un chatbot de compras de laboratorio.
+    hoy = datetime.now()
+    anio_actual = hoy.year
+    meses_es = [
+        "enero", "febrero", "marzo", "abril", "mayo", "junio",
+        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    ]
+    mes_actual_es = meses_es[hoy.month - 1]
+
+    system_prompt = f"""Eres un intérprete experto para un chatbot de compras de laboratorio.
 Tu tarea es entender CUALQUIER forma en que el usuario pregunte y traducirla al formato exacto que el sistema entiende.
 
 IMPORTANTE: Responde SOLO en JSON válido, sin markdown.
 
+CONTEXTO DE FECHA:
+- Fecha actual: {hoy.strftime('%Y-%m-%d')}
+- Mes actual: {mes_actual_es} {anio_actual}
+- Si el usuario dice "este mes", "mes actual", "en el mes", usá SIEMPRE: {mes_actual_es} {anio_actual}
+
 FORMATOS QUE EL SISTEMA ENTIENDE:
 
 COMPRAS (todas estas variaciones son válidas):
-✅ "compras {proveedor} {año}" → compras roche 2025
-✅ "compras {proveedor} {mes} {año}" → compras roche noviembre 2025
-✅ "detalle compras {proveedor} {año}" → detalle compras roche 2025
-✅ "total compras {mes} {año}" → total compras noviembre 2025
+✅ "compras {{proveedor}} {{año}}" → compras roche 2025
+✅ "compras {{proveedor}} {{mes}} {{año}}" → compras roche noviembre 2025
+✅ "detalle compras {{proveedor}} {{año}}" → detalle compras roche 2025
+✅ "total compras {{mes}} {{año}}" → total compras noviembre 2025
 
 VARIACIONES QUE DEBES ENTENDER Y TRADUCIR:
 - "cuales fueron las compras a roche en noviembre 2025" → "compras roche noviembre 2025"
@@ -195,17 +208,17 @@ PREPOSICIONES QUE DEBES IGNORAR:
 - "a", "de", "en", "del", "al", "para", "con"
 
 COMPARACIONES:
-✅ "comparar {proveedor} {año1} {año2}" → comparar roche 2023 2024
-✅ "comparar {proveedor} {mes} {año1} vs {mes} {año2}" → comparar roche noviembre 2023 vs noviembre 2024
-✅ "comparar gastos familias {año1} {año2}" → comparar gastos familias 2023 2024
+✅ "comparar {{proveedor}} {{año1}} {{año2}}" → comparar roche 2023 2024
+✅ "comparar {{proveedor}} {{mes}} {{año1}} vs {{mes}} {{año2}}" → comparar roche noviembre 2023 vs noviembre 2024
+✅ "comparar gastos familias {{año1}} {{año2}}" → comparar gastos familias 2023 2024
 
 FACTURAS:
-✅ "última factura {proveedor/artículo}" → última factura vitek
-✅ "detalle factura {número}" → detalle factura 275217
+✅ "última factura {{proveedor/artículo}}" → última factura vitek
+✅ "detalle factura {{número}}" → detalle factura 275217
 
 GASTOS:
-✅ "gastos familias {mes} {año}" → gastos familias noviembre 2025
-✅ "top proveedores {mes} {año}" → top proveedores noviembre 2025
+✅ "gastos familias {{mes}} {{año}}" → gastos familias noviembre 2025
+✅ "top proveedores {{mes}} {{año}}" → top proveedores noviembre 2025
 
 ERRORES COMUNES QUE DEBES CORREGIR:
 - "novimbre", "novienbre", "novimbr" → noviembre
@@ -216,16 +229,16 @@ ERRORES COMUNES QUE DEBES CORREGIR:
 
 EJEMPLOS REALES:
 Usuario: "cuales fueron las compras a roche en noviembre 2025"
-Respuesta: {"entendido": "Querés ver las compras realizadas al proveedor ROCHE en noviembre 2025", "sugerencia": "compras roche noviembre 2025", "alternativas": ["detalle compras roche noviembre 2025", "total compras roche noviembre 2025"]}
+Respuesta: {{"entendido": "Querés ver las compras realizadas al proveedor ROCHE en noviembre 2025", "sugerencia": "compras roche noviembre 2025", "alternativas": ["detalle compras roche noviembre 2025", "total compras roche noviembre 2025"]}}
 
 Usuario: "cuanto le compramos a biodiagnostico este mes"
-Respuesta: {"entendido": "Querés ver las compras a BIODIAGNOSTICO del mes actual", "sugerencia": "compras biodiagnostico noviembre 2025", "alternativas": ["total compras biodiagnostico noviembre 2025"]}
+Respuesta: {{"entendido": "Querés ver las compras a BIODIAGNOSTICO del mes actual", "sugerencia": "compras biodiagnostico {mes_actual_es} {anio_actual}", "alternativas": ["total compras biodiagnostico {mes_actual_es} {anio_actual}"]}}
 
 Usuario: "compras roche 2025"
-Respuesta: {"entendido": "Querés ver todas las compras a ROCHE en 2025", "sugerencia": "compras roche 2025", "alternativas": ["detalle compras roche 2025", "comparar roche 2024 2025"]}
+Respuesta: {{"entendido": "Querés ver todas las compras a ROCHE en 2025", "sugerencia": "compras roche 2025", "alternativas": ["detalle compras roche 2025", "comparar roche 2024 2025"]}}
 
 RESPONDE SOLO JSON (sin ```json):
-{"entendido": "descripción clara", "sugerencia": "comando exacto", "alternativas": ["opción 1", "opción 2"]}
+{{"entendido": "descripción clara", "sugerencia": "comando exacto", "alternativas": ["opción 1", "opción 2"]}}
 """
 
     try:
@@ -236,14 +249,13 @@ RESPONDE SOLO JSON (sin ```json):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": pregunta}
             ],
-            temperature=0.1,  # ✅ Reducido para mayor consistencia
+            temperature=0.1,
             max_tokens=250,
             timeout=15
         )
         content = response.choices[0].message.content.strip()
         print(f"🤖 IA respondió: {content}")
 
-        # Limpiar markdown si viene
         content = re.sub(r'```json\s*', '', content)
         content = re.sub(r'```\s*', '', content)
         content = content.strip()
@@ -258,11 +270,8 @@ RESPONDE SOLO JSON (sin ```json):
         return {'entendido': '', 'sugerencia': '', 'alternativas': []}
     except Exception as e:
         print(f"❌ Error en obtener_sugerencia_ejecutable: {e}")
-        return {'entendido': '', 'sugerencia': '', 'alternativas': []}sug = obtener_sugerencia_ejecutable(pregunta_original)
+        return {'entendido': '', 'sugerencia': '', 'alternativas': []}
 
-if sug and sug.get("sugerencia"):
-    # ✅ CLAVE: ejecutar lo sugerido
-    return procesar_pregunta(sug["sugerencia"])
 
 
 # =====================================================================
