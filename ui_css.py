@@ -7,10 +7,7 @@ CSS_GLOBAL = r"""
 #MainMenu, footer { display: none !important; }
 div[data-testid="stDecoration"] { display: none !important; }
 
-/* =========================================================
-   ✅ FORZAR MODO CLARO GLOBAL (aunque el celular esté en dark)
-   Esto evita que a algunos usuarios se les vea “todo negro”.
-   ========================================================= */
+/* FORZAR MODO CLARO GLOBAL */
 html, body {
   color-scheme: light !important;
   background: #f6f4ef !important;
@@ -22,13 +19,12 @@ html, body {
   --fc-primary: #0b3b60;
   --fc-accent: #f59e0b;
 
-  /* Refuerzo variables típicas de Streamlit (no rompe PC) */
   --background-color: #f6f4ef;
   --secondary-background-color: #ffffff;
   --text-color: #0f172a;
 }
 
-/* Contenedores principales (cubrir variaciones entre versiones) */
+/* Contenedores principales */
 html, body,
 .stApp,
 div[data-testid="stApp"],
@@ -39,26 +35,43 @@ div[data-testid="stAppViewContainer"] > .main > div {
   color: #0f172a !important;
 }
 
-/* Tipografía */
 html, body { font-family: Inter, system-ui, sans-serif; color: #0f172a; }
 .block-container { max-width: 1240px; padding-top: 1.25rem; padding-bottom: 2.25rem; }
 
 /* =========================================================
-   Sidebar look (base)
+   ✅ SIDEBAR: fondo blanco + texto negro (GLOBAL)
+   Esto corrige “sidebar blanco con letras blancas”
    ========================================================= */
 section[data-testid="stSidebar"] { border-right: 1px solid rgba(15, 23, 42, 0.08); }
+
+/* Fondo */
 section[data-testid="stSidebar"] > div,
 div[data-testid="stSidebar"] > div {
-  background: rgba(255,255,255,0.70);
+  background: rgba(255,255,255,0.92) !important;
   backdrop-filter: blur(8px);
 }
 
+/* Texto/labels dentro del sidebar */
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] * ,
+div[data-testid="stSidebar"],
+div[data-testid="stSidebar"] * {
+  color: #0f172a !important;
+}
+
+/* Radio items */
 div[data-testid="stSidebar"] div[role="radiogroup"] label {
   border-radius: 12px;
   padding: 8px 10px;
   margin: 3px 0;
   border: 1px solid transparent;
 }
+
+/* Asegurar texto dentro del label */
+div[data-testid="stSidebar"] div[role="radiogroup"] label * {
+  color: #0f172a !important;
+}
+
 div[data-testid="stSidebar"] div[role="radiogroup"] label:hover { background: rgba(37,99,235,0.06); }
 div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
   background: rgba(245,158,11,0.10);
@@ -90,8 +103,7 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
 }
 
 /* =========================================================
-   ✅ Si el dispositivo está en Dark Mode, igual forzamos claro
-   (clave para tu amigo que lo ve negro)
+   Si el dispositivo está en Dark Mode, igual forzamos claro
    ========================================================= */
 @media (prefers-color-scheme: dark) {
   html, body { color-scheme: light !important; }
@@ -106,17 +118,15 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #0f172a !important;
   }
 
-  /* En dark mode, el sidebar semitransparente puede verse “gris/oscuro”
-     porque toma el fondo oscuro. Lo hacemos más sólido SOLO en dark mode. */
+  /* Sidebar sólido + texto negro (por si el navegador insiste) */
   section[data-testid="stSidebar"] > div,
   div[data-testid="stSidebar"] > div {
-    background: rgba(255,255,255,0.92) !important;
+    background: rgba(255,255,255,0.95) !important;
     backdrop-filter: blur(8px) !important;
   }
 
-  /* Inputs claros en dark mode */
-  input, textarea {
-    background: #ffffff !important;
+  section[data-testid="stSidebar"] *,
+  div[data-testid="stSidebar"] * {
     color: #0f172a !important;
   }
 }
@@ -127,11 +137,17 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
 @media (hover: none) and (pointer: coarse) {
   .block-container { padding-top: 70px !important; }
 
-  /* Sidebar en móvil: forzar blanco (evita “gris” por transparencias) */
+  /* Sidebar en móvil: blanco sí o sí */
   section[data-testid="stSidebar"] > div,
   div[data-testid="stSidebar"] > div {
     background: #ffffff !important;
     backdrop-filter: none !important;
+  }
+
+  /* Texto negro sí o sí en móvil */
+  section[data-testid="stSidebar"] *,
+  div[data-testid="stSidebar"] * {
+    color: #0f172a !important;
   }
 
   #mobile-header {
@@ -200,16 +216,9 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     display: inline-flex !important;
   }
 
-  /* =========================================================
-     🔥 SELECTBOX / DATEINPUT / INPUTS MÓVIL - BLANCO + TEXTO NEGRO
-     (cubre BaseWeb role=button/combobox y menús desplegables)
-     ========================================================= */
-
-  /* Select (control) */
+  /* Select / Date / Inputs blancos */
   div[data-baseweb="select"],
-  div[data-baseweb="select"] * {
-    color: #0f172a !important;
-  }
+  div[data-baseweb="select"] * { color: #0f172a !important; }
 
   div[data-baseweb="select"] div[role="button"],
   div[data-baseweb="select"] div[role="combobox"],
@@ -228,9 +237,6 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #0f172a !important;
   }
 
-  div[data-baseweb="select"] svg { fill: #64748b !important; }
-
-  /* Popover / menu del select */
   div[data-baseweb="popover"],
   div[data-baseweb="popover"] > div,
   div[data-baseweb="menu"],
@@ -242,16 +248,8 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #0f172a !important;
   }
 
-  div[data-baseweb="menu"] li:hover {
-    background: #f1f5f9 !important;
-    background-color: #f1f5f9 !important;
-  }
-
-  /* DatePicker (st.date_input suele verse negro en móvil) */
   div[data-baseweb="datepicker"],
-  div[data-baseweb="datepicker"] * {
-    color: #0f172a !important;
-  }
+  div[data-baseweb="datepicker"] * { color: #0f172a !important; }
 
   div[data-baseweb="datepicker"] > div,
   div[data-baseweb="datepicker"] input {
@@ -260,7 +258,6 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     border-color: #e2e8f0 !important;
   }
 
-  /* Base inputs en general (text input / number input) */
   div[data-baseweb="base-input"],
   div[data-baseweb="base-input"] > div,
   div[data-baseweb="base-input"] input,
@@ -273,24 +270,6 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #0f172a !important;
     border-color: #e2e8f0 !important;
   }
-
-  /* Streamlit wrappers (por si cambia el DOM) */
-  div[data-testid="stSelectbox"],
-  div[data-testid="stSelectbox"] > div,
-  div[data-testid="stSelectbox"] > div > div,
-  div[data-testid="stDateInput"] > div,
-  div[data-testid="stDateInput"] input,
-  div[data-testid="stTextInput"] > div,
-  div[data-testid="stTextInput"] input[type="text"],
-  div[data-testid="stNumberInput"] input,
-  textarea[data-testid="stChatInputTextArea"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
-  }
-
-  [class*="StyledPlaceholder"] { color: #64748b !important; }
 }
 
 /* Refuerzo móvil general (768px) */
@@ -304,18 +283,21 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #0f172a !important;
   }
 
-  /* Botones claros */
   .block-container button {
     background: #ffffff !important;
     color: #0f172a !important;
     border: 1px solid #e2e8f0 !important;
   }
 
-  /* Sidebar en móvil: blanco sí o sí */
   section[data-testid="stSidebar"] > div,
   div[data-testid="stSidebar"] > div {
     background: #ffffff !important;
     backdrop-filter: none !important;
+  }
+
+  section[data-testid="stSidebar"] *,
+  div[data-testid="stSidebar"] * {
+    color: #0f172a !important;
   }
 }
 """
