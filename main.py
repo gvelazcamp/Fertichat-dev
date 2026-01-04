@@ -21,7 +21,10 @@ from login_page import require_auth, get_current_user, logout
 from pedidos import mostrar_pedidos_internos, contar_notificaciones_no_leidas
 from bajastock import mostrar_baja_stock
 from ordenes_compra import mostrar_ordenes_compra
+
+# ✅ IMPORT CORREGIDO - USA LA NUEVA VERSIÓN CON IA
 from ui_compras import Compras_IA
+
 from ui_buscador import mostrar_buscador_ia
 from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo
 from ui_dashboard import mostrar_dashboard, mostrar_indicadores_ia, mostrar_resumen_compras_rotativo
@@ -33,6 +36,9 @@ from depositos import mostrar_depositos
 from familias import mostrar_familias
 from comprobantes import mostrar_menu_comprobantes
 from ui_chat_chainlit import mostrar_chat_chainlit
+
+# ❌ COMENTADO: YA NO SE USA intent_detector
+# from intent_detector import detectar_intencion
 
 # =========================
 # INICIALIZACIÓN
