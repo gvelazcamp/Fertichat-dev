@@ -80,34 +80,112 @@ DETECCIÓN DE CONOCIMIENTO (tipo: "conocimiento"):
 - "que es X", "para que sirve X", "como funciona X"
 - Si NO menciona compras/stock/proveedores → tipo: "conocimiento"
 
-EJEMPLOS CRÍTICOS:
+EJEMPLOS CRÍTICOS - TODAS LAS VARIACIONES:
 
-Usuario: "hola"
-{{"tipo": "conversacion", "parametros": {{}}, "debug": "saludo simple"}}
-
-Usuario: "que es HPV"
-{{"tipo": "conocimiento", "parametros": {{}}, "debug": "pregunta de conocimiento médico"}}
-
-Usuario: "buenos días"
+=== SALUDOS ===
+Usuario: "hola" / "hey" / "buenos días" / "buenas" / "hola!" / "que tal"
 {{"tipo": "conversacion", "parametros": {{}}, "debug": "saludo"}}
 
+Usuario: "gracias" / "muchas gracias" / "perfecto gracias" / "ok gracias"
+{{"tipo": "conversacion", "parametros": {{}}, "debug": "agradecimiento"}}
+
+Usuario: "chau" / "adios" / "hasta luego" / "nos vemos"
+{{"tipo": "conversacion", "parametros": {{}}, "debug": "despedida"}}
+
+=== CONOCIMIENTO ===
+Usuario: "que es HPV" / "que es un hemograma" / "para que sirve la glucosa"
+{{"tipo": "conocimiento", "parametros": {{}}, "debug": "pregunta de conocimiento"}}
+
+=== COMPRAS AÑO (todas estas son iguales) ===
 Usuario: "compras 2025"
+Usuario: "que compramos en 2025"
+Usuario: "mostrame las compras del 2025"
+Usuario: "dame las compras de 2025"
+Usuario: "listado de compras 2025"
+Usuario: "todas las compras del año 2025"
 {{"tipo": "compras_anio", "parametros": {{"anio": 2025}}, "debug": "todas las compras de 2025"}}
 
+=== COMPRAS PROVEEDOR MES (todas estas son iguales) ===
 Usuario: "que le compre a biodiagnostico en enero 2025"
+Usuario: "compras biodiagnostico enero 2025"
+Usuario: "cuanto le compramos a biodiagnostico en enero 2025"
+Usuario: "mostrame las compras de biodiagnostico en enero 2025"
+Usuario: "dame las compras a biodiagnostico enero 2025"
+Usuario: "compras realizadas a biodiagnostico en enero del 2025"
+Usuario: "cuanto gastamos en biodiagnostico enero 2025"
+Usuario: "facturas de biodiagnostico enero 2025"
+Usuario: "que pedimos a biodiagnostico en enero 2025"
 {{"tipo": "compras_proveedor_mes", "parametros": {{"proveedor": "biodiagnostico", "mes": "2025-01"}}, "debug": "compras BIODIAGNOSTICO enero 2025"}}
 
-Usuario: "cuanto le compramos a roche este mes"
-{{"tipo": "compras_proveedor_mes", "parametros": {{"proveedor": "roche", "mes": "{mes_actual}"}}, "debug": "compras ROCHE {mes_nombre} {anio_actual}"}}
+=== COMPRAS PROVEEDOR AÑO (todas estas son iguales) ===
+Usuario: "compras roche 2025"
+Usuario: "que le compramos a roche en 2025"
+Usuario: "cuanto gastamos en roche 2025"
+Usuario: "mostrame las compras de roche del 2025"
+Usuario: "facturas de roche en 2025"
+Usuario: "pedidos a roche 2025"
+{{"tipo": "compras_proveedor_anio", "parametros": {{"proveedor": "roche", "anio": 2025}}, "debug": "compras ROCHE 2025"}}
 
-Usuario: "compras roche noviembre 2025"
-{{"tipo": "compras_proveedor_mes", "parametros": {{"proveedor": "roche", "mes": "2025-11"}}, "debug": "compras ROCHE noviembre 2025"}}
+=== COMPRAS MES (todas estas son iguales) ===
+Usuario: "compras enero 2025"
+Usuario: "que compramos en enero 2025"
+Usuario: "compras del mes de enero 2025"
+Usuario: "mostrame las compras de enero 2025"
+Usuario: "listado compras enero 2025"
+{{"tipo": "compras_mes", "parametros": {{"mes": "2025-01"}}, "debug": "compras enero 2025"}}
 
+=== ÚLTIMA FACTURA (todas estas son iguales) ===
+Usuario: "ultima factura vitek"
+Usuario: "cuando llego vitek"
+Usuario: "cuando vino el ultimo vitek"
+Usuario: "cual fue la ultima factura de vitek"
+Usuario: "ultima vez que vino vitek"
+Usuario: "ultimo pedido vitek"
+{{"tipo": "ultima_factura", "parametros": {{"patron": "vitek"}}, "debug": "última factura VITEK"}}
+
+=== FACTURAS ARTÍCULO (todas estas son iguales) ===
+Usuario: "cuando vino vitek"
+Usuario: "todas las facturas de vitek"
+Usuario: "en que fechas llego vitek"
+Usuario: "historial de vitek"
+Usuario: "listado facturas vitek"
+{{"tipo": "facturas_articulo", "parametros": {{"articulo": "vitek"}}, "debug": "todas las facturas VITEK"}}
+
+=== COMPARAR PROVEEDOR MESES ===
+Usuario: "comparar roche octubre noviembre 2025"
+Usuario: "comparar roche octubre vs noviembre 2025"
+Usuario: "diferencia roche octubre noviembre 2025"
+{{"tipo": "comparar_proveedor_meses", "parametros": {{"proveedor": "roche", "mes1": "2025-10", "mes2": "2025-11"}}, "debug": "comparar ROCHE oct vs nov 2025"}}
+
+=== COMPARAR PROVEEDOR AÑOS ===
+Usuario: "comparar roche 2024 2025"
+Usuario: "comparar roche 2024 vs 2025"
+Usuario: "diferencia roche entre 2024 y 2025"
+{{"tipo": "comparar_proveedor_anios", "parametros": {{"proveedor": "roche", "anios": [2024, 2025]}}, "debug": "comparar ROCHE 2024 vs 2025"}}
+
+=== STOCK ===
 Usuario: "stock vitek"
-{{"tipo": "stock_articulo", "parametros": {{"articulo": "vitek"}}, "debug": "stock de VITEK"}}
+Usuario: "cuanto stock tenemos de vitek"
+Usuario: "cuanto hay de vitek"
+Usuario: "inventario vitek"
+{{"tipo": "stock_articulo", "parametros": {{"articulo": "vitek"}}, "debug": "stock VITEK"}}
 
-Usuario: "ultima factura roche"
-{{"tipo": "ultima_factura", "parametros": {{"patron": "roche"}}, "debug": "última factura ROCHE"}}
+Usuario: "stock total"
+Usuario: "cuanto stock tenemos"
+Usuario: "resumen de stock"
+Usuario: "inventario total"
+{{"tipo": "stock_total", "parametros": {{}}, "debug": "stock total"}}
+
+=== GASTOS ===
+Usuario: "gastos familias enero 2026"
+Usuario: "cuanto gastamos por familia en enero 2026"
+Usuario: "gastos por seccion enero 2026"
+{{"tipo": "gastos_familias_mes", "parametros": {{"mes": "2026-01"}}, "debug": "gastos familias enero 2026"}}
+
+Usuario: "top proveedores 2025"
+Usuario: "ranking proveedores 2025"
+Usuario: "mayores proveedores 2025"
+{{"tipo": "top_proveedores", "parametros": {{"anio": 2025}}, "debug": "top 10 proveedores 2025"}}
 
 IMPORTANTE:
 - Responde SOLO JSON válido
