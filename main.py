@@ -676,10 +676,9 @@ menu_actual = st.session_state["radio_menu"]
 if menu_actual == "🏠 Inicio":
     mostrar_inicio()
 
-# Aceptar ambos textos posibles del menú (por diferencia de emojis/label)
-elif menu_actual == "💬 Chat (Chainlit)" or menu_actual == "☁️ Chat (Chainlit)⌨️":
+elif "Chat (Chainlit)" in menu_actual:
     mostrar_chat_chainlit()
-
+    
 elif menu_actual == "🛒 Compras IA":
     mostrar_resumen_compras_rotativo()
     Compras_IA()
