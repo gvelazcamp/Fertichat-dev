@@ -1,5 +1,5 @@
 # =========================
-# MAIN.PY - VERSIÓN CORREGIDA (SIN INTENT_DETECTOR)
+# MAIN.PY - CSS ARREGLADO PARA Z FLIP 5
 # =========================
 
 import streamlit as st
@@ -21,10 +21,7 @@ from login_page import require_auth, get_current_user, logout
 from pedidos import mostrar_pedidos_internos, contar_notificaciones_no_leidas
 from bajastock import mostrar_baja_stock
 from ordenes_compra import mostrar_ordenes_compra
-
-# ✅ IMPORT CORREGIDO - USA LA NUEVA VERSIÓN CON IA
 from ui_compras import Compras_IA
-
 from ui_buscador import mostrar_buscador_ia
 from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo
 from ui_dashboard import mostrar_dashboard, mostrar_indicadores_ia, mostrar_resumen_compras_rotativo
@@ -36,9 +33,6 @@ from depositos import mostrar_depositos
 from familias import mostrar_familias
 from comprobantes import mostrar_menu_comprobantes
 from ui_chat_chainlit import mostrar_chat_chainlit
-
-# ❌ COMENTADO: YA NO SE USA intent_detector
-# from intent_detector import detectar_intencion
 
 # =========================
 # INICIALIZACIÓN
@@ -53,7 +47,7 @@ if "radio_menu" not in st.session_state:
 
 
 # =========================
-# CSS COMPLETO (MISMO QUE TENÍAS)
+# CSS COMPLETO CORREGIDO
 # =========================
 st.markdown(r"""
 <style>
@@ -184,48 +178,170 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     display: inline-flex !important;
   }
   
-  /* SELECTBOX MÓVIL */
-  div[data-testid="stSelectbox"],
-  div[data-testid="stSelectbox"] *,
-  div[data-baseweb="select"],
-  div[data-baseweb="select"] * {
+  /* ============================================= */
+  /* 🔥 SELECTBOX MÓVIL - NUCLEAR MODE 🔥 */
+  /* ============================================= */
+  
+  /* Nivel 1: Container principal del selectbox */
+  div[data-testid="stSelectbox"] {
+    background: #ffffff !important;
+  }
+  
+  div[data-testid="stSelectbox"] > div {
+    background: #ffffff !important;
+  }
+  
+  div[data-testid="stSelectbox"] > div > div {
+    background: #ffffff !important;
+  }
+  
+  /* Nivel 2: Baseweb select root */
+  div[data-baseweb="select"] {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  /* Nivel 3: Control container (el clickeable) */
+  div[data-baseweb="select"] > div {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+  
+  /* Nivel 4: Value container (donde va el texto) */
+  div[data-baseweb="select"] > div > div {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  /* Nivel 5: Single value (el texto seleccionado) */
+  div[data-baseweb="select"] > div > div > div {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
   }
   
-  div[data-baseweb="select"] input,
-  div[data-testid="stSelectbox"] input {
+  /* Nivel 6: Input dentro del select */
+  div[data-baseweb="select"] input {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
-    border-color: #e2e8f0 !important;
+    border: none !important;
   }
   
-  /* TEXT INPUT */
-  div[data-testid="stTextInput"],
-  div[data-testid="stTextInput"] *,
-  input[type="text"] {
+  /* Nivel 7: Popover (dropdown que se abre) */
+  div[data-baseweb="popover"] {
+    background: #ffffff !important;
+  }
+  
+  div[data-baseweb="popover"] > div {
+    background: #ffffff !important;
+  }
+  
+  /* Nivel 8: Menu (lista de opciones) */
+  div[data-baseweb="menu"] {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  div[data-baseweb="menu"] ul {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  div[data-baseweb="menu"] li {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
-    border-color: #e2e8f0 !important;
   }
   
-  /* CHAT INPUT */
-  div[data-testid="stChatInput"],
-  div[data-testid="stChatInput"] *,
-  textarea,
+  div[data-baseweb="menu"] li:hover {
+    background: #f1f5f9 !important;
+    background-color: #f1f5f9 !important;
+  }
+  
+  /* Nivel 9: Todas las clases con StyledXXX */
+  [class*="StyledControl"] {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  [class*="StyledControlContainer"] {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  [class*="StyledValueContainer"] {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  [class*="StyledSingleValue"] {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+  
+  [class*="StyledInput"] {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+  
+  /* Nivel 10: Placeholder */
+  [class*="StyledPlaceholder"] {
+    color: #64748b !important;
+  }
+  
+  /* Nivel 11: Iconos (flechita) */
+  div[data-baseweb="select"] svg {
+    fill: #64748b !important;
+  }
+  
+  /* ============================================= */
+  /* 🔥 TEXT INPUT 🔥 */
+  /* ============================================= */
+  
+  div[data-testid="stTextInput"] {
+    background: transparent !important;
+  }
+  
+  div[data-testid="stTextInput"] > div {
+    background: #ffffff !important;
+  }
+  
+  div[data-testid="stTextInput"] input[type="text"] {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+  
+  /* ============================================= */
+  /* 🔥 CHAT INPUT 🔥 */
+  /* ============================================= */
+  
+  div[data-testid="stChatInput"] {
+    background: transparent !important;
+  }
+  
+  div[data-testid="stChatInput"] > div {
+    background: #ffffff !important;
+  }
+  
   textarea[data-testid="stChatInputTextArea"] {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
-    border-color: #e2e8f0 !important;
+    border: 1px solid #e2e8f0 !important;
   }
 }
 
+/* ============================================= */
 /* ESTILOS MÓVIL GENERALES (768px) */
+/* ============================================= */
 @media (max-width: 768px) {
+  /* Textos oscuros */
   .block-container h1,
   .block-container h2,
   .block-container h3,
@@ -235,10 +351,46 @@ div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     color: #0f172a !important;
   }
   
+  /* Botones blancos */
   .block-container button {
     background: #ffffff !important;
     color: #0f172a !important;
     border: 1px solid #e2e8f0 !important;
+  }
+  
+  /* 🔥 REFUERZO SELECTBOX PARA 768px 🔥 */
+  div[data-testid="stSelectbox"],
+  div[data-testid="stSelectbox"] > div,
+  div[data-testid="stSelectbox"] > div > div,
+  div[data-baseweb="select"],
+  div[data-baseweb="select"] > div,
+  div[data-baseweb="select"] > div > div,
+  div[data-baseweb="select"] > div > div > div {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+  }
+  
+  div[data-baseweb="select"] input {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+  
+  /* Todo el texto dentro de selectbox */
+  div[data-baseweb="select"] span,
+  div[data-baseweb="select"] div,
+  [class*="StyledSingleValue"] {
+    color: #0f172a !important;
+  }
+  
+  /* Dropdown/menu */
+  div[data-baseweb="popover"],
+  div[data-baseweb="popover"] *,
+  div[data-baseweb="menu"],
+  div[data-baseweb="menu"] * {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
   }
 }
 </style>
@@ -388,7 +540,7 @@ elif "Chat (Chainlit)" in menu_actual:
     
 elif menu_actual == "🛒 Compras IA":
     mostrar_resumen_compras_rotativo()
-    Compras_IA()  # ✅ AHORA USA LA VERSIÓN CON INTERPRETADOR IA
+    Compras_IA()
 
 elif menu_actual == "📦 Stock IA":
     mostrar_resumen_stock_rotativo()
