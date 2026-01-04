@@ -59,7 +59,9 @@ from sql_queries import (
     get_lotes_vencidos,
     get_stock_bajo,
     get_stock_lote_especifico,
-    get_detalle_compras,
+    get_detalle_compras,.
+    get_compras_anio,        
+    get_total_compras_anio, 
 )
 
 # Placeholder para guardar_chat_log si no existe
@@ -838,6 +840,47 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
             formatear_dataframe(df)
         )
 
+       # =====================================================================
+    # ✅ COMPRAS POR AÑO COMPLETO
+    # Ejemplos: "compras 2025", "compras del 2024", "total compras 2025"
+    # =====================================================================
+    if tipo == 'compras_anio':
+        anio = params.get('anio')
+        
+        if not anio:
+            return "No pude identificar el año. Ejemplo: 'compras 2025'", None
+        
+        # Obtener resumen
+        resumen = get_total_compras_anio(anio)
+        
+        # Obtener detalle
+        df = get_compras_anio(anio)
+        
+        if df is None or df.empty:
+            return f"No encontré compras registradas en {anio}.", None
+        
+        # Formatear totales
+        total_pesos = resumen.get('total_pesos', 0)
+        total_usd = resumen.get('total_usd', 0)
+        registros = resumen.get('registros', 0)
+        proveedores = resumen.get('proveedores', 0)
+        articulos = resumen.get('articulos', 0)
+        
+        total_pesos_fmt = f"${total_pesos:,.0f}".replace(',', '.')
+        total_usd_fmt = f"U$S {total_usd:,.0f}".replace(',', '.')
+        
+        # Construir mensaje
+        msg = f"📦 **Compras {anio}**"
+        msg += f" | 💰 **{total_pesos_fmt}**"
+        if total_usd > 0:
+            msg += f" | 💵 **{total_usd_fmt}**"
+        msg += f" | {registros} registros | {proveedores} proveedores | {articulos} artículos"
+        
+        # Nota si hay más registros de los mostrados
+        if registros > len(df):
+            msg += f" (mostrando {len(df)})"
+        
+        return msg + ":", formatear_dataframe(df)
     # =====================================================================
     # DETALLE COMPRAS ARTÍCULO + MES
     # =====================================================================
