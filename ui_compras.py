@@ -1,12 +1,12 @@
 # =========================
-# UI_COMPRAS.PY - VERSIÓN CORREGIDA CON IA_INTERPRETADOR
+# UI_COMPRAS.PY - CON HISTORIAL PERSISTENTE
 # =========================
 
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# ✅ IMPORT CORREGIDO - EL ARCHIVO SE LLAMA ia_interpretador.py
+# IMPORTS
 from ia_interpretador import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
 
@@ -47,13 +47,21 @@ from sql_queries import (
 
 
 # =========================
+# INICIALIZAR HISTORIAL
+# =========================
+
+def inicializar_historial():
+    """Inicializa el historial del chat en session_state"""
+    if "historial_compras" not in st.session_state:
+        st.session_state["historial_compras"] = []
+
+
+# =========================
 # FUNCIÓN ROUTER PARA EJECUTAR SQL
 # =========================
 
 def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
-    """
-    Router que ejecuta la función SQL correcta según el tipo
-    """
+    """Router que ejecuta la función SQL correcta según el tipo"""
     
     # COMPRAS
     if tipo == "compras_anio":
@@ -189,13 +197,11 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
 
 # =========================
-# FUNCIÓN PARA OBTENER RESUMEN (SI EXISTE)
+# FUNCIÓN PARA OBTENER RESUMEN
 # =========================
 
 def obtener_resumen_si_existe(tipo: str, parametros: dict):
-    """
-    Algunas consultas tienen una versión 'resumen' además del detalle.
-    """
+    """Obtiene resumen si existe para el tipo de consulta"""
     info_tipo = obtener_info_tipo(tipo)
     if not info_tipo:
         return None
@@ -230,9 +236,10 @@ def obtener_resumen_si_existe(tipo: str, parametros: dict):
 # =========================
 
 def Compras_IA():
-    """
-    Interfaz principal del chatbot de compras con IA
-    """
+    """Interfaz principal del chatbot de compras con IA"""
+    
+    # Inicializar historial
+    inicializar_historial()
     
     st.markdown("### 🤖 Asistente de Compras IA")
     st.markdown("Preguntá en lenguaje natural sobre compras, gastos, proveedores y más.")
@@ -244,50 +251,86 @@ def Compras_IA():
         - "compras roche noviembre 2025"
         - "cuánto le compramos a biodiagnóstico este mes"
         - "compras 2025"
-        - "detalle compras wiener 2024"
         
         **Comparaciones:**
         - "comparar roche octubre noviembre 2025"
         - "comparar gastos familias 2024 2025"
-        - "comparar vitek 2023 2024"
         
         **Facturas:**
         - "última factura vitek"
         - "cuando vino vitek"
-        - "detalle factura 275217"
         
         **Stock:**
         - "stock vitek"
         - "lotes por vencer"
-        - "stock total"
-        - "stock bajo"
-        
-        **Gastos:**
-        - "gastos familias enero 2026"
-        - "top proveedores 2025"
-        - "gastos secciones G FB enero 2026"
         
         **Conversación:**
         - "hola"
         - "gracias"
-        - "qué puedes hacer"
         """)
     
-    # Debug mode toggle
-    if st.checkbox("🔍 Modo debug", value=False, key="debug_mode_compras"):
-        st.session_state["debug_mode"] = True
-    else:
-        st.session_state["debug_mode"] = False
+    # Botones de control
+    col1, col2, col3 = st.columns([1, 1, 3])
+    with col1:
+        if st.button("🗑️ Limpiar chat", use_container_width=True):
+            st.session_state["historial_compras"] = []
+            st.rerun()
+    
+    with col2:
+        debug_mode = st.checkbox("🔍 Debug", value=False)
     
     st.markdown("---")
     
-    # Input del usuario
+    # ========================================
+    # MOSTRAR TODO EL HISTORIAL
+    # ========================================
+    for mensaje in st.session_state["historial_compras"]:
+        with st.chat_message(mensaje["role"]):
+            st.write(mensaje["content"])
+            
+            # Si hay datos adicionales (tablas, métricas)
+            if "data" in mensaje and mensaje["data"]:
+                data = mensaje["data"]
+                
+                # Mostrar resumen si existe
+                if "resumen" in data and data["resumen"]:
+                    st.success("📈 Resumen:")
+                    cols = st.columns(len(data["resumen"]))
+                    for idx, (key, value) in enumerate(data["resumen"].items()):
+                        with cols[idx]:
+                            st.metric(label=key, value=value)
+                    st.markdown("---")
+                
+                # Mostrar tabla si existe
+                if "dataframe" in data and data["dataframe"] is not None:
+                    df = data["dataframe"]
+                    st.success(f"✅ Encontré **{len(df)}** resultados")
+                    st.dataframe(df, use_container_width=True, height=400)
+                    
+                    # Botón de descarga
+                    csv = df.to_csv(index=False, encoding='utf-8-sig')
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    st.download_button(
+                        label="📥 Descargar CSV",
+                        data=csv,
+                        file_name=f"consulta_{timestamp}.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                        key=f"download_{mensaje.get('id', timestamp)}"
+                    )
+    
+    # ========================================
+    # INPUT DEL USUARIO
+    # ========================================
     pregunta = st.chat_input("Escribí tu consulta aquí...")
     
     if pregunta:
-        # Mostrar mensaje del usuario
-        with st.chat_message("user"):
-            st.write(pregunta)
+        # Agregar pregunta al historial
+        st.session_state["historial_compras"].append({
+            "role": "user",
+            "content": pregunta,
+            "id": datetime.now().timestamp()
+        })
         
         # Interpretar con IA
         with st.spinner("🤔 Analizando tu pregunta..."):
@@ -297,117 +340,72 @@ def Compras_IA():
         parametros = resultado.get("parametros", {})
         debug = resultado.get("debug", "")
         
-        # Mostrar debug si está activado
-        if st.session_state.get("debug_mode", False):
-            with st.expander("🔍 Información de debug"):
-                st.json({
-                    "tipo": tipo,
-                    "parametros": parametros,
-                    "debug": debug,
-                    "resultado_completo": resultado
-                })
+        # Debug info
+        if debug_mode:
+            st.info(f"🔍 Debug: Tipo={tipo}, Params={parametros}")
         
-        # Procesar según el tipo
-        with st.chat_message("assistant"):
+        # Preparar respuesta
+        respuesta_texto = ""
+        respuesta_data = {}
+        
+        # PROCESAR SEGÚN TIPO
+        if tipo == "conversacion":
+            respuesta_texto = responder_con_openai(pregunta, tipo="conversacion")
+        
+        elif tipo == "conocimiento":
+            respuesta_texto = responder_con_openai(pregunta, tipo="conocimiento")
+        
+        elif tipo == "no_entendido":
+            respuesta_texto = "🤔 No entendí bien tu pregunta."
+            if resultado.get("sugerencia"):
+                respuesta_texto += f"\n\n**¿Quisiste decir:** {resultado['sugerencia']}"
+            if resultado.get("alternativas"):
+                respuesta_texto += "\n\n**O probá con:**"
+                for alt in resultado["alternativas"]:
+                    respuesta_texto += f"\n- `{alt}`"
+        
+        else:
+            # CONSULTA DE DATOS
+            info_tipo = obtener_info_tipo(tipo)
             
-            # CASO 1: CONVERSACIÓN
-            if tipo == "conversacion":
-                with st.spinner("💬 Generando respuesta..."):
-                    respuesta = responder_con_openai(pregunta, tipo="conversacion")
-                st.write(respuesta)
-            
-            # CASO 2: CONOCIMIENTO GENERAL
-            elif tipo == "conocimiento":
-                with st.spinner("🧠 Buscando información..."):
-                    respuesta = responder_con_openai(pregunta, tipo="conocimiento")
-                st.write(respuesta)
-            
-            # CASO 3: NO ENTENDIDO
-            elif tipo == "no_entendido":
-                st.warning("🤔 No entendí bien tu pregunta.")
-                
-                if resultado.get("sugerencia"):
-                    st.write(f"**¿Quisiste decir:** {resultado['sugerencia']}")
-                
-                if resultado.get("alternativas"):
-                    st.write("**O probá con:**")
-                    for alt in resultado["alternativas"]:
-                        st.write(f"- `{alt}`")
-            
-            # CASO 4: CONSULTA DE DATOS
+            if not info_tipo:
+                respuesta_texto = f"❌ El tipo '{tipo}' no tiene una función SQL asociada"
             else:
-                # Verificar que el tipo tenga mapeo
-                info_tipo = obtener_info_tipo(tipo)
-                
-                if not info_tipo:
-                    st.error(f"❌ El tipo '{tipo}' no tiene una función SQL asociada")
-                    st.info("Esto es un error de configuración. Por favor reportalo al desarrollador.")
-                    return
-                
-                # Ejecutar la consulta
                 try:
-                    with st.spinner("📊 Consultando base de datos..."):
-                        resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
-                    
-                    # Obtener resumen si existe
+                    # Ejecutar consulta
+                    resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
                     resumen = obtener_resumen_si_existe(tipo, parametros)
                     
-                    # MOSTRAR RESULTADOS
+                    # Guardar datos
+                    respuesta_data = {
+                        "resumen": resumen if isinstance(resumen, dict) else None,
+                        "dataframe": resultado_sql if isinstance(resultado_sql, pd.DataFrame) else None
+                    }
                     
-                    # Si hay resumen, mostrarlo primero
-                    if resumen and isinstance(resumen, dict):
-                        st.success("📈 Resumen:")
-                        cols = st.columns(len(resumen))
-                        for idx, (key, value) in enumerate(resumen.items()):
-                            with cols[idx]:
-                                st.metric(label=key, value=value)
-                        st.markdown("---")
-                    
-                    # Mostrar detalle
+                    # Texto de respuesta
                     if isinstance(resultado_sql, pd.DataFrame):
                         if len(resultado_sql) == 0:
-                            st.warning("⚠️ No se encontraron resultados para esta consulta.")
+                            respuesta_texto = "⚠️ No se encontraron resultados para esta consulta."
                         else:
-                            st.success(f"✅ Encontré **{len(resultado_sql)}** resultados")
-                            
-                            # Mostrar tabla
-                            st.dataframe(
-                                resultado_sql, 
-                                use_container_width=True,
-                                height=400
-                            )
-                            
-                            # Botón de descarga
-                            csv = resultado_sql.to_csv(index=False, encoding='utf-8-sig')
-                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                            st.download_button(
-                                label="📥 Descargar CSV",
-                                data=csv,
-                                file_name=f"consulta_{tipo}_{timestamp}.csv",
-                                mime="text/csv",
-                                use_container_width=True
-                            )
-                    
+                            respuesta_texto = f"📊 Consulta ejecutada correctamente"
                     elif isinstance(resultado_sql, dict):
-                        # Es un diccionario (resumen/métricas)
-                        st.success("✅ Resultado:")
-                        cols = st.columns(len(resultado_sql))
-                        for idx, (key, value) in enumerate(resultado_sql.items()):
-                            with cols[idx]:
-                                st.metric(label=key, value=value)
-                    
-                    elif isinstance(resultado_sql, str):
-                        # Es un mensaje de texto
-                        st.info(resultado_sql)
-                    
+                        respuesta_texto = "✅ Resultado obtenido"
+                        respuesta_data["resumen"] = resultado_sql
                     else:
-                        # Otro tipo de resultado
-                        st.write(resultado_sql)
+                        respuesta_texto = str(resultado_sql)
                 
                 except Exception as e:
-                    st.error(f"❌ Error ejecutando consulta: {str(e)}")
-                    
-                    if st.session_state.get("debug_mode", False):
-                        st.exception(e)
-                    else:
-                        st.info("💡 Activá el modo debug para ver más detalles del error")
+                    respuesta_texto = f"❌ Error ejecutando consulta: {str(e)}"
+                    if debug_mode:
+                        respuesta_texto += f"\n\n```\n{str(e)}\n```"
+        
+        # Agregar respuesta al historial
+        st.session_state["historial_compras"].append({
+            "role": "assistant",
+            "content": respuesta_texto,
+            "data": respuesta_data,
+            "id": datetime.now().timestamp()
+        })
+        
+        # Rerun para mostrar
+        st.rerun()
