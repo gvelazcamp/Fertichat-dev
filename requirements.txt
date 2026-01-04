@@ -34,3 +34,6 @@ streamlit-aggrid
 
 reportlab
 
+chainlit==1.0.0
+
+
