@@ -13,7 +13,7 @@ import json
 import unicodedata
 from typing import Dict, Optional
 from datetime import datetime
-
+from ia_comparativas import interpretar_comparativas
 import streamlit as st
 from openai import OpenAI  # opcional
 from config import OPENAI_MODEL
