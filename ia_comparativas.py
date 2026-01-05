@@ -315,6 +315,20 @@ def interpretar_comparativas(pregunta: str) -> Dict:
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
+# =========================
+# DEBUG COMPARATIVAS (VISIBLE)
+# =========================
+if st.session_state.get("DEBUG_MODE", True):
+    st.markdown("### 🐞 Debug comparativa")
+
+    st.code({
+        "pregunta": pregunta,
+        "tipo": res.get("tipo"),
+        "parametros": res.get("parametros"),
+        "debug": res.get("debug"),
+        "sugerencia": res.get("sugerencia"),
+    }, language="python")
+    
     # ==========================================================
     # DETECCIÓN "MODO COMPARATIVA"
     # - Si aparece alguna keyword de comparar, entramos.
