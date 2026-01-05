@@ -214,7 +214,31 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             "sugerencia": "Por favor, escribí tu consulta.",
             "debug": "pregunta vacía"
         }
-    
+        # =========================
+        # NORMALIZACIÓN EXTRA (NO ROMPE LO EXISTENTE)
+        # =========================
+
+        tipo = resultado.get("tipo")
+        params = resultado.get("parametros", {})
+
+        # Si hay proveedor + mes → SIEMPRE es compras_proveedor_mes
+        if (
+            tipo == "compras_proveedor_anio"
+            and "proveedor" in params
+            and "mes" in params
+        ):
+            resultado["tipo"] = "compras_proveedor_mes"
+            # si viene anio separado, lo eliminamos (el SQL usa mes YYYY-MM)
+            params.pop("anio", None)
+            resultado["parametros"] = params
+            resultado["debug"] = resultado.get("debug", "") + " | normalizado a proveedor_mes"
+
+        # Si la IA devolvió mes como texto (enero 2025), intentar corregir
+        if tipo == "compras_proveedor_mes" and isinstance(params.get("mes"), str):
+            m = re.search(r'(202\d)[-/ ]?(0[1-9]|1[0-2])', params["mes"])
+            if m:
+                params["mes"] = f"{m.group(1)}-{m.group(2)}"
+                resultado["parametros"] = params
     # DETECCIÓN RÁPIDA DE SALUDOS (antes de llamar a OpenAI)
     texto_lower = pregunta.lower().strip()
     saludos_simples = [
