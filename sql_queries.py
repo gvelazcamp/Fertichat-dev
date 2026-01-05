@@ -798,22 +798,23 @@ def get_comparacion_articulo_anios(anios: List[int], articulo_like: str) -> pd.D
     return ejecutar_consulta(sql, (f"%{articulo_like.lower()}%",))
 
 
-# =====================================================================
-# ✅ FUNCIÓN CORREGIDA - get_comparacion_proveedor_anios_like
-# =====================================================================
+# =========================
+# REEMPLAZAR EN sql_queries.py
+# Buscar get_comparacion_proveedor_anios_like (línea ~950-1000)
+# =========================
+
 def get_comparacion_proveedor_anios_like(proveedor_like: str, anios: list[int]) -> pd.DataFrame:
     """
-    ✅ CORREGIDO: Usa LIKE en vez de = para buscar proveedores.
+    ✅ VERSIÓN LIMITADA: Trae solo el proveedor con más compras que matchee el LIKE.
     
     Comparación por proveedor usando LIKE (ej: tresul, biodiagnostico, roche)
-    NO agrupa por alias, agrupa por proveedor real en la base de datos.
     
     Args:
         proveedor_like: Texto a buscar en nombre del proveedor (ej: "tresul")
         anios: Lista de años a comparar (mínimo 2)
     
     Returns:
-        DataFrame con columnas: Proveedor, {año1}, {año2}
+        DataFrame con 1 fila: Proveedor, {año1}, {año2}
     """
     # Normalizar proveedor
     proveedor_like = proveedor_like.strip().lower()
@@ -829,21 +830,23 @@ def get_comparacion_proveedor_anios_like(proveedor_like: str, anios: list[int]) 
     # Expresión SQL para convertir montos
     total_expr = _sql_total_num_expr_general()
     
-    # ✅ CAMBIO PRINCIPAL: LIKE en vez de =
+    # ✅ QUERY LIMITADA A 1 PROVEEDOR (el que más compras tiene)
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
             SUM(CASE WHEN "Año"::int = %s THEN {total_expr} ELSE 0 END) AS "{a1}",
-            SUM(CASE WHEN "Año"::int = %s THEN {total_expr} ELSE 0 END) AS "{a2}"
+            SUM(CASE WHEN "Año"::int = %s THEN {total_expr} ELSE 0 END) AS "{a2}",
+            SUM({total_expr}) AS total_general
         FROM chatbot_raw
         WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año"::int IN (%s, %s)
         GROUP BY TRIM("Cliente / Proveedor")
-        ORDER BY Proveedor
+        ORDER BY total_general DESC  -- Ordenar por el que más compras tiene
+        LIMIT 1  -- Solo traer el principal
     """
     
-    # ✅ Parámetros con % para LIKE
+    # Parámetros con % para LIKE
     params = (
         a1,                        # primer año en CASE
         a2,                        # segundo año en CASE
@@ -852,7 +855,13 @@ def get_comparacion_proveedor_anios_like(proveedor_like: str, anios: list[int]) 
         a2,                        # segundo año en IN
     )
     
-    return ejecutar_consulta(sql, params)
+    df = ejecutar_consulta(sql, params)
+    
+    # Eliminar la columna auxiliar total_general antes de retornar
+    if df is not None and not df.empty and 'total_general' in df.columns:
+        df = df.drop(columns=['total_general'])
+    
+    return df
 
 
 def get_comparacion_proveedor_anios_monedas(anios: List[int], proveedores: List[str] = None) -> pd.DataFrame:
