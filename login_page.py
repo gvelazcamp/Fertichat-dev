@@ -1,7 +1,7 @@
 # =====================================================================
 # 🔐 PÁGINA DE LOGIN - FERTI CHAT
 # =====================================================================
-# Login por USUARIO (SIN CSS – hereda CSS_GLOBAL desde main.py)
+# Login por USUARIO (SIN CSS – hereda CSS_GLOBAL)
 # =====================================================================
 
 import streamlit as st
@@ -18,11 +18,11 @@ def show_logo():
     st.markdown("""
         <div style="text-align:center; padding:10px 0 30px 0;">
             <div style="
-                display: inline-block;
+                display:inline-block;
                 background: rgba(255,255,255,0.9);
                 border-radius: 20px;
                 padding: 20px 40px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+                box-shadow: 0 10px 40px rgba(0,0,0,0.10);
             ">
                 <h1 style="
                     font-size: 42px;
@@ -33,17 +33,13 @@ def show_logo():
                     background-clip: text;
                     margin: 0;
                     letter-spacing: -1px;
-                ">
-                    🦋 FertiChat
-                </h1>
+                ">🦋 FertiChat</h1>
                 <p style="
                     color: #64748b;
                     font-size: 15px;
                     margin: 8px 0 0 0;
                     font-weight: 500;
-                ">
-                    Sistema de Gestión de Compras
-                </p>
+                ">Sistema de Gestión de Compras</p>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -53,7 +49,7 @@ def show_footer():
     st.markdown("""
         <div style="
             text-align: center;
-            color: rgba(255,255,255,0.8);
+            color: rgba(255,255,255,0.85);
             font-size: 13px;
             padding-top: 30px;
             font-weight: 500;
@@ -68,22 +64,15 @@ def show_footer():
 
 def login_form():
     with st.form("login_form", clear_on_submit=False):
-        st.markdown("""
-            <p style="
-                text-align: center;
-                color: #64748b;
-                font-size: 14px;
-                margin-bottom: 20px;
-            ">
-                Ingresá tus credenciales para continuar
-            </p>
-        """, unsafe_allow_html=True)
+
+        st.markdown(
+            "<p style='text-align:center;'>Ingresá tus credenciales para continuar</p>",
+            unsafe_allow_html=True
+        )
 
         st.text_input("🏢 Empresa", value="Fertilab", disabled=True)
         usuario = st.text_input("👤 Usuario", placeholder="Ingresá tu usuario")
         password = st.text_input("🔒 Contraseña", type="password", placeholder="Ingresá tu contraseña")
-
-        st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
 
         submitted = st.form_submit_button("Ingresar", use_container_width=True)
 
@@ -101,23 +90,16 @@ def login_form():
 
 def change_password_form():
     with st.form("change_password_form", clear_on_submit=True):
-        st.markdown("""
-            <p style="
-                text-align: center;
-                color: #64748b;
-                font-size: 14px;
-                margin-bottom: 20px;
-            ">
-                Actualizá tu contraseña de acceso
-            </p>
-        """, unsafe_allow_html=True)
+
+        st.markdown(
+            "<p style='text-align:center;'>Actualizá tu contraseña de acceso</p>",
+            unsafe_allow_html=True
+        )
 
         usuario = st.text_input("👤 Usuario", placeholder="Tu usuario")
-        old_password = st.text_input("🔑 Contraseña actual", type="password", placeholder="Contraseña actual")
-        new_password = st.text_input("🔒 Nueva contraseña", type="password", placeholder="Nueva contraseña")
-        new_password2 = st.text_input("🔒 Confirmar nueva", type="password", placeholder="Repetí la nueva contraseña")
-
-        st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
+        old_password = st.text_input("🔑 Contraseña actual", type="password")
+        new_password = st.text_input("🔒 Nueva contraseña", type="password")
+        new_password2 = st.text_input("🔒 Confirmar nueva", type="password")
 
         submitted = st.form_submit_button("Cambiar contraseña", use_container_width=True)
 
@@ -140,8 +122,8 @@ def change_password_form():
 # =====================================================================
 
 def show_login_page():
-    # Marcador para que el CSS global sepa que está en login
-    st.markdown('<div id="fc-login-marker" style="display:none"></div>', unsafe_allow_html=True)
+    # Marcador: el CSS global detecta login con esto
+    st.markdown('<div id="fc-login-marker"></div>', unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 1.4, 1])
     with col2:
