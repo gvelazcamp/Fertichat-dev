@@ -427,5 +427,11 @@ def obtener_info_tipo(tipo: str) -> Optional[Dict]:
 
 def es_tipo_valido(tipo: str) -> bool:
     """Verifica si un tipo es válido"""
-    tipos_especiales = ["conversacion", "conocimiento", "no_entendido"]
+    tipos_especiales = [
+        "conversacion",
+        "conocimiento",
+        "no_entendido",
+        "comparar_proveedor_meses",
+        "comparar_proveedor_anios"
+    ]
     return tipo in MAPEO_FUNCIONES or tipo in tipos_especiales
