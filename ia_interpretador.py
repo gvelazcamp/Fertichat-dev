@@ -215,7 +215,45 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             "debug": "pregunta vacía"
         }
 
-# =========================
+    # ==========================================================
+    # DETECCIÓN DIRECTA: COMPARAR COMPRAS PROVEEDOR MESES
+    # Ej: "comparar compras roche junio julio 2025"
+    # ==========================================================
+    patron = re.search(
+        r'comparar\s+compras?\s+([a-záéíóúñ]+)\s+'
+        r'(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+'
+        r'(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+'
+        r'(20\d{2})',
+        texto_lower
+    )
+
+    if patron:
+        proveedor = patron.group(1)
+        mes1_nombre = patron.group(2)
+        mes2_nombre = patron.group(3)
+        anio = int(patron.group(4))
+
+        meses = {
+            'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+            'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+            'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
+        }
+
+        mes1 = f"{anio}-{meses[mes1_nombre]}"
+        mes2 = f"{anio}-{meses[mes2_nombre]}"
+
+        return {
+            "tipo": "comparar_proveedor_meses",
+            "parametros": {
+                "proveedor": proveedor,
+                "mes1": mes1,
+                "mes2": mes2,
+                "label1": f"{mes1_nombre} {anio}",
+                "label2": f"{mes2_nombre} {anio}",
+            },
+            "debug": "comparar proveedor meses (regex directo)"
+        }
+        # =========================
         # NORMALIZACIÓN COMPARATIVAS (NO ROMPE NADA)
         # =========================
 
@@ -247,7 +285,8 @@ def interpretar_pregunta(pregunta: str) -> Dict:
                         "mes2": mes2
                     },
                     "debug": f"comparativa forzada {proveedor} {mes1} vs {mes2}"
-                }     
+                }  
+
         # =========================
         # NORMALIZACIÓN EXTRA (NO ROMPE LO EXISTENTE)
         # =========================
