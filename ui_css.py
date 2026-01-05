@@ -233,6 +233,48 @@ div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[type=
     padding-right: 1rem !important;
     padding-bottom: 4rem !important;
   }
+/* ===================================================== */
+/* 🔒 FORZAR LIGHT MODE INCLUSO CON prefers-color-scheme */
+/* ===================================================== */
+@media (prefers-color-scheme: dark) {
+
+  html, body {
+    background: #f6f4ef !important;
+    color: #0f172a !important;
+  }
+
+  [data-testid="stAppViewContainer"] {
+    background: linear-gradient(135deg, #f6f4ef, #f3f6fb) !important;
+  }
+
+  section[data-testid="stSidebar"] > div {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  section[data-testid="stSidebar"] * {
+    color: #0f172a !important;
+  }
+
+  input, textarea, select {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  div[data-baseweb="select"],
+  div[data-baseweb="menu"],
+  div[data-baseweb="popover"] {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  button {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
+  }
+}
+  
 }
 @media (max-width: 480px) {
   div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
@@ -242,3 +284,4 @@ div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[type=
 
 </style>
 """
+
