@@ -208,31 +208,21 @@ def _resolver_proveedor_alias(texto_lower: str, idx_prov: List[Tuple[str, str]])
         "roche",
     ]
 
-    hit = None
-    for a in alias_terms:
-        if a in tlk:
-            hit = a
-            break
-
-    if not hit:
-        return None
-
-    best_orig = None
-    best_score = None
-
-    for orig, norm in idx_prov:
-        if hit in norm:
-            score = 1000
-            if "laboratorio" in norm:
-                score += 200
-            score -= int(len(norm) / 10)
-
-            if best_score is None or score > best_score:
-                best_score = score
-                best_orig = orig
-
-    return best_orig
-
+    # el alias debería ser más permisivo
+    for alias_term in alias_terms:
+        if alias_term in texto_lower:
+            # Buscar el nombre completo en el índice de proveedores
+            best_candidate = None
+            best_score = 0
+            for original_name, normalized_name in idx_prov:
+                if alias_term in normalized_name:
+                    score = len(alias_term) / len(normalized_name)
+                    if score > best_score:
+                        best_score = score
+                        best_candidate = original_name
+            return best_candidate
+    return None
+    
 # =====================================================================
 # PARSEO TIEMPO
 # =====================================================================
@@ -390,8 +380,8 @@ def interpretar_comparativas(pregunta: str) -> Dict:
             return {
                 "tipo": "no_entendido",
                 "parametros": {},
-                "sugerencia": "No reconocí el proveedor. Probá: comparar compras tresul 2024 2025 | comparar compras biodiagnostico 2024 2025",
-                "debug": "comparar: proveedor no reconocido",
+                "sugerencia": "No reconocí el proveedor 'tresul'. Intenta usar su nombre completo.",
+                "debug": "No se reconoció el proveedor en alias ni lista.",
             }
 
         # ==========================================================
