@@ -5,7 +5,7 @@
 import os
 import re
 import unicodedata
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import streamlit as st
 
@@ -29,6 +29,7 @@ MAX_PROVEEDORES = 5
 MAX_ARTICULOS = 5
 MAX_MESES = 6
 MAX_ANIOS = 4
+
 
 # =====================================================================
 # HELPERS NORMALIZACIÓN
@@ -54,6 +55,7 @@ def _tokens(texto: str) -> List[str]:
         if len(k) >= 3:
             out.append(k)
     return out
+
 
 # =====================================================================
 # CARGA LISTAS DESDE SUPABASE (cache)
@@ -107,11 +109,13 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
     if not toks or not index:
         return []
 
+    # 1) EXACT token match
     toks_set = set(toks)
     for orig, norm in index:
         if norm in toks_set:
             return [orig]
 
+    # 2) substring + score
     candidatos: List[Tuple[int, str]] = []
     for orig, norm in index:
         for tk in toks:
@@ -133,6 +137,55 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
             break
 
     return out
+
+
+# =====================================================================
+# RESOLVER ALIASES DE PROVEEDOR (TRESUL / BIODIAGNOSTICO / ROCHE)
+# =====================================================================
+def _resolver_proveedor_alias(texto_lower: str, idx_prov: List[Tuple[str, str]]) -> Optional[str]:
+    """
+    Si el usuario escribe 'tresul' pero el proveedor real es 'LABORATORIO TRESUL ...',
+    esto devuelve el nombre real (de la lista Supabase) para que el SQL filtre bien.
+    """
+    tlk = _key(texto_lower)
+
+    # términos a detectar (en clave sin acentos)
+    alias_terms = [
+        "tresul",
+        "biodiagnostico",
+        "cabinsur",
+        "cabinsursrl",
+        "cabinsuruy",
+        "roche",
+    ]
+
+    hit = None
+    for a in alias_terms:
+        if a in tlk:
+            hit = a
+            break
+
+    if not hit:
+        return None
+
+    # candidatos en la lista de proveedores cuyo "norm" contiene el alias
+    best_orig = None
+    best_score = None
+
+    for orig, norm in idx_prov:
+        if hit in norm:
+            score = 1000
+            if "laboratorio" in norm:
+                score += 200  # preferir "LABORATORIO ..." cuando aplica (tresul)
+            # un poquito de preferencia por nombres "más específicos" (no exagerar)
+            score -= int(len(norm) / 10)
+
+            if best_score is None or score > best_score:
+                best_score = score
+                best_orig = orig
+
+    return best_orig
+
 
 # =====================================================================
 # PARSEO TIEMPO
@@ -178,6 +231,7 @@ def _extraer_meses_yyyymm(texto: str) -> List[str]:
 def _to_yyyymm(anio: int, mes_nombre: str) -> str:
     return f"{anio}-{MESES[mes_nombre]}"
 
+
 # =====================================================================
 # INTÉRPRETE COMPARATIVAS
 # =====================================================================
@@ -193,10 +247,17 @@ def interpretar_comparativas(pregunta: str) -> Dict:
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
     # ==========================================================
-    # COMPARAR COMPRAS PROVEEDOR MES VS MES
+    # COMPARAR COMPRAS PROVEEDOR MES VS MES / AÑO VS AÑO
     # ==========================================================
-    if ("comparar" in texto_lower or "comparame" in texto_lower or "compara" in texto_lower) and ("compra" in texto_lower or "compras" in texto_lower):
-        proveedor = provs[0] if provs else None
+    if (
+        ("comparar" in texto_lower or "comparame" in texto_lower or "compara" in texto_lower)
+        and ("compra" in texto_lower or "compras" in texto_lower)
+    ):
+        # 1) primero intento por alias (tresul/biodiagnostico/roche)
+        proveedor_alias = _resolver_proveedor_alias(texto_lower, idx_prov)
+
+        # 2) si no, uso match por lista
+        proveedor = proveedor_alias or (provs[0] if provs else None)
 
         proveedor_libre = None
         if not proveedor:
@@ -209,6 +270,10 @@ def interpretar_comparativas(pregunta: str) -> Dict:
             )
             tmp = re.sub(r"(2023|2024|2025|2026)", "", tmp)
             tmp = tmp.strip()
+
+            # ✅ ajuste mínimo: normalizar espacios
+            tmp = re.sub(r"\s+", " ", tmp).strip()
+
             if tmp and len(tmp) >= 3:
                 proveedor_libre = tmp
 
@@ -222,6 +287,7 @@ def interpretar_comparativas(pregunta: str) -> Dict:
                 "debug": "comparar: proveedor no reconocido",
             }
 
+        # --- mes vs mes (YYYY-MM) ---
         if len(meses_yyyymm) >= 2:
             mes1, mes2 = meses_yyyymm[0], meses_yyyymm[1]
             return {
@@ -236,6 +302,7 @@ def interpretar_comparativas(pregunta: str) -> Dict:
                 "debug": "comparar proveedor meses (YYYY-MM)",
             }
 
+        # --- mes vs mes (nombre + año) ---
         if len(meses_nombre) >= 2 and len(anios) >= 1:
             anio = anios[0]
             mes1 = _to_yyyymm(anio, meses_nombre[0])
@@ -252,6 +319,7 @@ def interpretar_comparativas(pregunta: str) -> Dict:
                 "debug": "comparar proveedor meses (nombre+anio)",
             }
 
+        # --- año vs año ---
         if len(anios) >= 2:
             return {
                 "tipo": "comparar_proveedor_anios",
@@ -265,7 +333,7 @@ def interpretar_comparativas(pregunta: str) -> Dict:
         return {
             "tipo": "no_entendido",
             "parametros": {},
-            "sugerencia": "Probá: comparar compras roche junio julio 2025",
+            "sugerencia": "Probá: comparar compras roche junio julio 2025 | comparar compras roche 2024 2025",
             "debug": "comparar: faltan meses/año",
         }
 
