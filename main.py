@@ -1,9 +1,4 @@
-# =========================
-# MAIN.PY - CSS ARREGLADO PARA Z FLIP 5
-# =========================
-
 import streamlit as st
-from datetime import datetime
 
 st.set_page_config(
     page_title="FertiChat",
@@ -13,7 +8,14 @@ st.set_page_config(
 )
 
 from ui_css import CSS_GLOBAL
+from login_page import require_auth
+
 st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
+
+require_auth()
+
+st.title("Inicio")
+
 
 # =========================
 # IMPORTS
