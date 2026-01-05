@@ -704,8 +704,6 @@ def get_comparacion_proveedor_meses(
 
     return ejecutar_consulta(sql, params)
 
-
-
 def get_comparacion_articulo_meses(mes1: str, mes2: str, label1: str, label2: str, articulos: List[str] = None) -> pd.DataFrame:
     """Compara artículos entre dos meses."""
     total_expr = _sql_total_num_expr_general()
