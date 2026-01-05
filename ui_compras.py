@@ -327,8 +327,10 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         )
 
     elif tipo == "comparar_proveedor_anios":
-        # Mantengo tu llamada (no invento firma).
-        return sqlq.get_comparacion_proveedor_anios_monedas(parametros["anios"], parametros["proveedor"])
+        # ✅ FIX: Usar la función corregida con LIKE y LIMIT 1
+        proveedor = parametros.get("proveedor")
+        anios = parametros.get("anios", [])
+        return sqlq.get_comparacion_proveedor_anios_like(proveedor, anios)
 
     elif tipo == "comparar_articulo_meses":
         articulo = parametros.get("articulo")
