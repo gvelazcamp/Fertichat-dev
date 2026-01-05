@@ -1,6 +1,13 @@
 # =========================
 # IA_COMPARATIVAS.PY - INTÉRPRETE COMPARATIVAS (CANÓNICO)
 # =========================
+# IDEA (TUYA, IMPLEMENTADA SIN IA):
+# - Lo único que importa es mapear la pregunta a una "FUNCIÓN" definida por:
+#   ACCIÓN | OBJETO | TIEMPO | MULTI | TIPO (output) | PARAMS
+# - Todo lo que esté antes/después (hola, insultos, contexto) NO importa.
+# - Si el usuario dice "comparar" pero NO alcanza para ejecutar (ej: "comparar 2025"),
+#   NO se inventa nada: se sugiere el formato correcto (ej: "comparar compras proveedor 2024 2025").
+# - No hace falta IA: con reglas + tabla canónica alcanza (más estable y controlable).
 
 import os
 import re
@@ -30,6 +37,28 @@ MAX_ARTICULOS = 5
 MAX_MESES = 6
 MAX_ANIOS = 4
 
+# =====================================================================
+# TABLA CANÓNICA SOLO COMPARATIVAS (CONTRATO)
+# - Sirve como referencia de qué "funciones" (tipos) existen.
+# =====================================================================
+TABLA_CANONICA_COMPARATIVAS = r"""
+| # | ACCIÓN | OBJETO | TIEMPO | MULTI | TIPO (output) | PARAMS |
+|---|--------|--------|--------|-------|---------------|--------|
+| 16 | comparar | proveedor | mes+mes (mismo anio) | no | comparar_proveedor_meses | proveedor, mes1, mes2, label1, label2 |
+| 17 | comparar | proveedor | anio+anio | no | comparar_proveedor_anios | proveedor, anios |
+| 18 | comparar compras | proveedor | mes+mes | no | comparar_proveedor_meses | proveedor, mes1, mes2 |
+| 19 | comparar compras | proveedor | anio+anio | no | comparar_proveedor_anios | proveedor, anios |
+| 22 | comparar | proveedor | meses (lista) | si (<=6) | comparar_proveedor_meses | proveedor, mes1, mes2 (si hay 2) |
+| 23 | comparar | proveedor | anios (lista) | si (<=4) | comparar_proveedor_anios | proveedor, anios |
+| 30 | comparar compras | proveedor | mes(YYYY-MM)+mes(YYYY-MM) | no | comparar_proveedor_meses | proveedor, mes1, mes2 |
+| 31 | comparar compras | proveedor | anio+anio | no | comparar_proveedor_anios | proveedor, anios |
+| 34 | comparar compras | proveedor | "junio julio 2025" | no | comparar_proveedor_meses | proveedor, 2025-06, 2025-07 |
+| 35 | comparar compras | proveedor | "noviembre diciembre 2025" | no | comparar_proveedor_meses | proveedor, 2025-11, 2025-12 |
+| 36 | comparar compras | proveedor | "2024 2025" | no | comparar_proveedor_anios | proveedor, [2024,2025] |
+| 41 | comparar compras | proveedor | "enero febrero" (sin año) | no | comparar_proveedor_meses | proveedor, pedir año |
+| 46 | comparar | proveedor | mes vs mes | no | comparar_proveedor_meses | proveedor, mes1, mes2 |
+| 47 | comparar | proveedor | anio vs anio | no | comparar_proveedor_anios | proveedor, anios |
+"""
 
 # =====================================================================
 # HELPERS NORMALIZACIÓN
@@ -141,15 +170,14 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
 
 # =====================================================================
 # RESOLVER ALIASES DE PROVEEDOR (TRESUL / BIODIAGNOSTICO / ROCHE)
+# - Objetivo: que "tresul" termine en el nombre real de tu lista (ej: "LABORATORIO TRESUL ...")
+# - Esto evita que el SQL compare por un string corto que no coincide con la BD.
 # =====================================================================
 def _resolver_proveedor_alias(texto_lower: str, idx_prov: List[Tuple[str, str]]) -> Optional[str]:
-    """
-    Si el usuario escribe 'tresul' pero el proveedor real es 'LABORATORIO TRESUL ...',
-    esto devuelve el nombre real (de la lista Supabase) para que el SQL filtre bien.
-    """
     tlk = _key(texto_lower)
 
-    # términos a detectar (en clave sin acentos)
+    # alias -> buscar dentro del "norm" de la lista supabase
+    # (no renombra nada, solo elige el proveedor real existente)
     alias_terms = [
         "tresul",
         "biodiagnostico",
@@ -168,16 +196,20 @@ def _resolver_proveedor_alias(texto_lower: str, idx_prov: List[Tuple[str, str]])
     if not hit:
         return None
 
-    # candidatos en la lista de proveedores cuyo "norm" contiene el alias
     best_orig = None
     best_score = None
 
     for orig, norm in idx_prov:
         if hit in norm:
             score = 1000
+
+            # preferir nombres más "formales" cuando aplica
             if "laboratorio" in norm:
-                score += 200  # preferir "LABORATORIO ..." cuando aplica (tresul)
-            # un poquito de preferencia por nombres "más específicos" (no exagerar)
+                score += 200
+            if "diagnostics" in norm or "diagnostico" in norm:
+                score += 80
+
+            # evitar quedarse con el más corto si hay uno más descriptivo
             score -= int(len(norm) / 10)
 
             if best_score is None or score > best_score:
@@ -233,13 +265,28 @@ def _to_yyyymm(anio: int, mes_nombre: str) -> str:
 
 
 # =====================================================================
+# SUGERENCIAS CANÓNICAS (cuando falta info)
+# - Esto implementa lo que dijiste: si ponen "comparar 2025" es inválido,
+#   entonces sugerimos "comparar compras <proveedor> 2024 2025" o "junio julio 2025"
+# =====================================================================
+def _sugerencia_canonica_comparar() -> str:
+    return (
+        "Probá así:\n"
+        "- comparar compras roche 2024 2025\n"
+        "- comparame compras tresul 2025 2026\n"
+        "- comparar compras biodiagnostico junio julio 2025\n"
+        "- comparar compras roche noviembre diciembre 2025"
+    )
+
+
+# =====================================================================
 # INTÉRPRETE COMPARATIVAS
 # =====================================================================
 def interpretar_comparativas(pregunta: str) -> Dict:
     texto = (pregunta or "").strip()
     texto_lower = texto.lower().strip()
 
-    idx_prov, idx_art = _get_indices()
+    idx_prov, _idx_art = _get_indices()
     provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
 
     anios = _extraer_anios(texto_lower)
@@ -247,18 +294,20 @@ def interpretar_comparativas(pregunta: str) -> Dict:
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
     # ==========================================================
-    # COMPARAR COMPRAS PROVEEDOR MES VS MES / AÑO VS AÑO
+    # DETECTOR DE "FUNCIÓN" COMPARATIVA
+    # - lo demás no importa: hola/ruido/contexto no se usa
     # ==========================================================
-    if (
-        ("comparar" in texto_lower or "comparame" in texto_lower or "compara" in texto_lower)
-        and ("compra" in texto_lower or "compras" in texto_lower)
-    ):
-        # 1) primero intento por alias (tresul/biodiagnostico/roche)
+    es_comparar = ("comparar" in texto_lower) or ("comparame" in texto_lower) or ("compara" in texto_lower)
+    es_compras = ("compra" in texto_lower) or ("compras" in texto_lower)
+
+    if es_comparar and es_compras:
+        # 1) alias duros primero (tresul/biodiagnostico/roche)
         proveedor_alias = _resolver_proveedor_alias(texto_lower, idx_prov)
 
-        # 2) si no, uso match por lista
+        # 2) si no hay alias, intento lista
         proveedor = proveedor_alias or (provs[0] if provs else None)
 
+        # 3) fallback libre (solo si no detecté nada en lista)
         proveedor_libre = None
         if not proveedor:
             tmp = texto_lower
@@ -268,10 +317,7 @@ def interpretar_comparativas(pregunta: str) -> Dict:
                 "",
                 tmp,
             )
-            tmp = re.sub(r"(2023|2024|2025|2026)", "", tmp)
-            tmp = tmp.strip()
-
-            # ✅ ajuste mínimo: normalizar espacios
+            tmp = re.sub(r"(2023|2024|2025|2026)", "", tmp).strip()
             tmp = re.sub(r"\s+", " ", tmp).strip()
 
             if tmp and len(tmp) >= 3:
@@ -279,15 +325,16 @@ def interpretar_comparativas(pregunta: str) -> Dict:
 
         proveedor_final = proveedor or proveedor_libre
 
+        # Si el usuario dijo "comparar compras" pero NO hay proveedor -> sugerir
         if not proveedor_final:
             return {
                 "tipo": "no_entendido",
                 "parametros": {},
-                "sugerencia": "No reconocí el proveedor. Probá: comparar compras roche junio julio 2025",
-                "debug": "comparar: proveedor no reconocido",
+                "sugerencia": _sugerencia_canonica_comparar(),
+                "debug": "comparar: falta proveedor",
             }
 
-        # --- mes vs mes (YYYY-MM) ---
+        # --- CASO 1: mes vs mes (YYYY-MM) ---
         if len(meses_yyyymm) >= 2:
             mes1, mes2 = meses_yyyymm[0], meses_yyyymm[1]
             return {
@@ -302,7 +349,7 @@ def interpretar_comparativas(pregunta: str) -> Dict:
                 "debug": "comparar proveedor meses (YYYY-MM)",
             }
 
-        # --- mes vs mes (nombre + año) ---
+        # --- CASO 2: mes vs mes (nombre + año) ---
         if len(meses_nombre) >= 2 and len(anios) >= 1:
             anio = anios[0]
             mes1 = _to_yyyymm(anio, meses_nombre[0])
@@ -319,7 +366,7 @@ def interpretar_comparativas(pregunta: str) -> Dict:
                 "debug": "comparar proveedor meses (nombre+anio)",
             }
 
-        # --- año vs año ---
+        # --- CASO 3: año vs año (mínimo 2 años) ---
         if len(anios) >= 2:
             return {
                 "tipo": "comparar_proveedor_anios",
@@ -330,16 +377,19 @@ def interpretar_comparativas(pregunta: str) -> Dict:
                 "debug": "comparar proveedor años",
             }
 
+        # --- Si llegó acá: el usuario dijo "comparar" pero le faltan parámetros ---
+        # Ejemplo: "comparar 2025" -> no se puede ejecutar: falta proveedor y 2do año
         return {
             "tipo": "no_entendido",
             "parametros": {},
-            "sugerencia": "Probá: comparar compras roche junio julio 2025 | comparar compras roche 2024 2025",
-            "debug": "comparar: faltan meses/año",
+            "sugerencia": _sugerencia_canonica_comparar(),
+            "debug": "comparar: faltan meses/años",
         }
 
+    # Si la pregunta no es comparativa de compras, no la tomamos acá
     return {
         "tipo": "no_entendido",
         "parametros": {},
-        "sugerencia": "Probá: comparar compras roche junio julio 2025 | comparar compras roche 2024 2025",
+        "sugerencia": _sugerencia_canonica_comparar(),
         "debug": "comparar: no match",
     }
