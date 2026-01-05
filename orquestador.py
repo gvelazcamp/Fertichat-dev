@@ -370,9 +370,9 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             if not proveedor or len(anios) < 2:
                 return "❌ Necesito proveedor y al menos dos años para comparar.", None, None
 
-            df = get_comparacion_proveedor_anios_monedas(
-                anios,
-                [proveedor]
+            df = get_comparacion_proveedor_anios_like(
+                proveedor,
+                anios
             )
 
             if df is None or df.empty:
