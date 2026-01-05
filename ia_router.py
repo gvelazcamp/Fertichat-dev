@@ -133,31 +133,28 @@ def interpretar_pregunta(pregunta: str) -> Dict:
         return {
             "tipo": "no_entendido",
             "parametros": {},
-            "sugerencia": "Escribí una consulta.",
-            "debug": "pregunta vacía",
+            "sugerencia": "Escribe una consulta.",
+            "debug": "Pregunta vacía.",
         }
 
     texto = pregunta.strip()
     texto_lower = texto.lower().strip()
 
-    # -------- conversacion / cortos --------
+    # -------- conversación / cortos --------
     saludos = {"hola", "buenas", "buenos", "gracias", "ok", "dale", "perfecto", "genial"}
     if any(re.search(rf"\b{re.escape(w)}\b", texto_lower) for w in saludos):
-        # si además incluye una intención clara, que pase a módulo.
+        # Si además incluye una intención clara, que pase a módulo.
         if not any(k in texto_lower for k in ["compra", "compar", "stock"]):
             return {"tipo": "conversacion", "parametros": {}, "debug": "saludo"}
 
     # Dominio: stock / comparativas / compras
     if "stock" in texto_lower:
-        from ia_stock import interpretar_stock
         return interpretar_stock(pregunta)
 
-    if ("comparar" in texto_lower) or ("comparame" in texto_lower) or ("compara" in texto_lower):
-        from ia_comparativas import interpretar_comparativas
+    if "comparar" in texto_lower or "comparame" in texto_lower or "compara" in texto_lower:
         return interpretar_comparativas(pregunta)
 
-    if ("compra" in texto_lower) or ("compras" in texto_lower):
-        from ia_compras import interpretar_compras
+    if "compra" in texto_lower or "compras" in texto_lower:
         return interpretar_compras(pregunta)
 
     # OPENAI (opcional)
@@ -188,15 +185,15 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             return {
                 "tipo": "no_entendido",
                 "parametros": {},
-                "sugerencia": "No pude interpretar. Probá: compras roche noviembre 2025",
+                "sugerencia": "No pude interpretar. Prueba: compras roche noviembre 2025",
                 "debug": f"openai error: {str(e)[:80]}",
             }
 
     return {
         "tipo": "no_entendido",
         "parametros": {},
-        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | stock total",
-        "debug": "router: no match",
+        "sugerencia": "Prueba: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | stock total",
+        "debug": "router: no match.",
     }
 
 # =====================================================================
