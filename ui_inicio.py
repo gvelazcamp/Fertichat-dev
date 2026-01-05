@@ -53,6 +53,14 @@ def mostrar_inicio():
         letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;
       }
       .fc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;}
+
+      /* ✅ NUEVO: link wrapper para que el click funcione en Streamlit */
+      .fc-card-link{
+        text-decoration:none !important;
+        color:inherit !important;
+        display:block;
+      }
+
       .fc-card{
         border:1px solid rgba(15,23,42,0.10);
         background:rgba(255,255,255,0.72);
@@ -109,12 +117,17 @@ def mostrar_inicio():
     <div class="fc-home-wrap">
       <div class="fc-section-title">📌 Módulos principales</div>
       <div class="fc-grid">
-        <div class="fc-card" onclick="window.location.href='?go=compras'">
-          <div class="fc-row">
-            <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
-            <div class="fc-txt"><h3>Compras IA</h3><p>Consultas inteligentes</p></div>
+
+        <!-- ✅ CAMBIO SOLO COMPRAS: ahora es un link real (sin onclick) -->
+        <a class="fc-card-link" href="?go=compras">
+          <div class="fc-card">
+            <div class="fc-row">
+              <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
+              <div class="fc-txt"><h3>Compras IA</h3><p>Consultas inteligentes</p></div>
+            </div>
           </div>
-        </div>
+        </a>
+
         <div class="fc-card" onclick="window.location.href='?go=buscador'">
           <div class="fc-row">
             <div class="fc-tile tile-buscador"><div class="fc-ico">🔎</div></div>
@@ -164,7 +177,7 @@ def mostrar_inicio():
       </div>
     </div>
     """
-    
+
     st.markdown(cards_html, unsafe_allow_html=True)
 
     # =========================
