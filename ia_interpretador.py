@@ -392,99 +392,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
 # - comparar compras roche 2025-06 2025-07
 # ==========================================================
 if "comparar" in texto_lower and "compra" in texto_lower:
-    proveedor = provs[0] if provs else None
-
-    # ==========================================================
-    # FALLBACK: proveedor libre (si no matcheó índice)
-    # ==========================================================
-    proveedor_libre = None
-    if not proveedor:
-        tmp = texto_lower
-        tmp = re.sub(r"(comparar|compras?)", "", tmp)
-        tmp = re.sub(
-            r"(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)",
-            "",
-            tmp
-        )
-        tmp = re.sub(r"(2023|2024|2025|2026)", "", tmp)
-        tmp = tmp.strip()
-        if tmp and len(tmp) >= 3:
-            proveedor_libre = tmp
-
-    proveedor_final = proveedor or proveedor_libre
-
-    if not proveedor_final:
-        return {
-            "tipo": "no_entendido",
-            "parametros": {},
-            "sugerencia": "No reconocí el proveedor. Probá: comparar compras roche junio julio 2025",
-            "debug": "comparar: proveedor no reconocido (ni índice ni libre)",
-        }
-
-    # ==========================================================
-    # meses explícitos YYYY-MM
-    # ==========================================================
-    if len(meses_yyyymm) >= 2:
-        mes1, mes2 = meses_yyyymm[0], meses_yyyymm[1]
-        return {
-            "tipo": "comparar_proveedor_meses",
-            "parametros": {
-                "proveedor": proveedor_final,
-                "mes1": mes1,
-                "mes2": mes2,
-                "label1": mes1,  # ← ✅ AGREGAR LABELS
-                "label2": mes2,  # ← ✅ AGREGAR LABELS
-            },
-            "debug": "comparar proveedor meses (YYYY-MM)",
-        }
-
-    # ==========================================================
-    # meses por nombre + año
-    # ==========================================================
-    if len(meses_nombre) >= 2 and len(anios) >= 1:
-        anio = anios[0]
-        mes1 = _to_yyyymm(anio, meses_nombre[0])
-        mes2 = _to_yyyymm(anio, meses_nombre[1])
-        return {
-            "tipo": "comparar_proveedor_meses",
-            "parametros": {
-                "proveedor": proveedor_final,
-                "mes1": mes1,
-                "mes2": mes2,
-                "label1": f"{meses_nombre[0]} {anio}",  # ← ✅ LABEL LEGIBLE
-                "label2": f"{meses_nombre[1]} {anio}",  # ← ✅ LABEL LEGIBLE
-            },
-            "debug": "comparar proveedor meses (nombre+anio)",
-        }
-
-    # ==========================================================
-    # comparar por años
-    # ==========================================================
-    if len(anios) >= 2:
-        return {
-            "tipo": "comparar_proveedor_anios",
-            "parametros": {
-                "proveedor": proveedor_final,
-                "anios": [anios[0], anios[1]],
-            },
-            "debug": "comparar proveedor años",
-        }
-
-    return {
-        "tipo": "no_entendido",
-        "parametros": {},
-        "sugerencia": "Probá: comparar compras roche junio julio 2025",
-        "debug": "comparar: faltan meses/año",
-    }
-    
-    # ==========================================================
-    # COMPRAS
-    # - compras roche noviembre 2025  => compras_proveedor_mes
-    # - compras noviembre 2025        => compras_mes
-    # - compras roche 2025            => compras_proveedor_anio
-    # - compras 2025                  => compras_anio
-    # ==========================================================
-    if "compra" in texto_lower or "compras" in texto_lower:
         proveedor = provs[0] if provs else None
 
         # ==========================================================
@@ -493,7 +400,7 @@ if "comparar" in texto_lower and "compra" in texto_lower:
         proveedor_libre = None
         if not proveedor:
             tmp = texto_lower
-            tmp = re.sub(r"(compras?|comparar)", "", tmp)
+            tmp = re.sub(r"(comparar|compras?)", "", tmp)
             tmp = re.sub(
                 r"(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)",
                 "",
@@ -506,75 +413,69 @@ if "comparar" in texto_lower and "compra" in texto_lower:
 
         proveedor_final = proveedor or proveedor_libre
 
-        # ==========================================================
-        # proveedor + mes (YYYY-MM)
-        # ==========================================================
-        if proveedor_final and len(meses_yyyymm) >= 1:
+        if not proveedor_final:
             return {
-                "tipo": "compras_proveedor_mes",
-                "parametros": {
-                    "proveedor": proveedor_final,
-                    "mes": meses_yyyymm[0]
-                },
-                "debug": "compras proveedor mes (YYYY-MM)",
+                "tipo": "no_entendido",
+                "parametros": {},
+                "sugerencia": "No reconocí el proveedor. Probá: comparar compras roche junio julio 2025",
+                "debug": "comparar: proveedor no reconocido (ni índice ni libre)",
             }
 
         # ==========================================================
-        # proveedor + mes (nombre) + año
+        # meses explícitos YYYY-MM
         # ==========================================================
-        if proveedor_final and len(meses_nombre) >= 1 and len(anios) >= 1:
+        if len(meses_yyyymm) >= 2:
+            mes1, mes2 = meses_yyyymm[0], meses_yyyymm[1]
+            return {
+                "tipo": "comparar_proveedor_meses",
+                "parametros": {
+                    "proveedor": proveedor_final,
+                    "mes1": mes1,
+                    "mes2": mes2,
+                    "label1": mes1,
+                    "label2": mes2,
+                },
+                "debug": "comparar proveedor meses (YYYY-MM)",
+            }
+
+        # ==========================================================
+        # meses por nombre + año
+        # ==========================================================
+        if len(meses_nombre) >= 2 and len(anios) >= 1:
             anio = anios[0]
-            mes = _to_yyyymm(anio, meses_nombre[0])
+            mes1 = _to_yyyymm(anio, meses_nombre[0])
+            mes2 = _to_yyyymm(anio, meses_nombre[1])
             return {
-                "tipo": "compras_proveedor_mes",
+                "tipo": "comparar_proveedor_meses",
                 "parametros": {
                     "proveedor": proveedor_final,
-                    "mes": mes
+                    "mes1": mes1,
+                    "mes2": mes2,
+                    "label1": f"{meses_nombre[0]} {anio}",
+                    "label2": f"{meses_nombre[1]} {anio}",
                 },
-                "debug": "compras proveedor mes (nombre+anio)",
+                "debug": "comparar proveedor meses (nombre+anio)",
             }
 
         # ==========================================================
-        # proveedor + año
+        # comparar por años
         # ==========================================================
-        if proveedor_final and len(anios) >= 1 and len(meses_nombre) == 0 and len(meses_yyyymm) == 0:
-            anio = anios[0]
+        if len(anios) >= 2:
             return {
-                "tipo": "compras_proveedor_anio",
+                "tipo": "comparar_proveedor_anios",
                 "parametros": {
                     "proveedor": proveedor_final,
-                    "anio": anio
+                    "anios": [anios[0], anios[1]],
                 },
-                "debug": "compras proveedor año",
+                "debug": "comparar proveedor años",
             }
 
-        # ==========================================================
-        # compras por mes (sin proveedor)
-        # ==========================================================
-        if not proveedor_final and len(meses_yyyymm) >= 1:
-            return {
-                "tipo": "compras_mes",
-                "parametros": {"mes": meses_yyyymm[0]},
-                "debug": "compras mes (YYYY-MM)",
-            }
-
-        if not proveedor_final and len(meses_nombre) >= 1 and len(anios) >= 1:
-            mes = _to_yyyymm(anios[0], meses_nombre[0])
-            return {
-                "tipo": "compras_mes",
-                "parametros": {"mes": mes},
-                "debug": "compras mes (nombre+anio)",
-            }
-
-        # ==========================================================
-        # compras por año (sin proveedor)
-        # ==========================================================
-        if not proveedor_final and len(anios) >= 1:
-            return {
-                "tipo": "compras_anio",
-                "parametros": {"anio": anios[0]},
-                "debug": "compras año",
-            }
+        return {
+            "tipo": "no_entendido",
+            "parametros": {},
+            "sugerencia": "Probá: comparar compras roche junio julio 2025",
+            "debug": "comparar: faltan meses/año",
+        }
 
     # ==========================================================
     # STOCK
