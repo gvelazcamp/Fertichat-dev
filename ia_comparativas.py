@@ -1,11 +1,12 @@
 # =========================
 # IA_COMPARATIVAS.PY - INTÉRPRETE COMPARATIVAS (CANÓNICO)
 # =========================
-# CAMBIOS (mínimos):
-# 1) Agregué TABLA_CANONICA_COMPARATIVAS (solo filas comparativas)
-# 2) Agregué fallback proveedor_libre igual que IA_COMPRAS (para que "tresul" funcione)
-# 3) No toqué la lógica de comparación: mes vs mes / año vs año
+# CAMBIOS (mínimos, sin romper lo existente):
+# 1) Agregada TABLA_CANONICA_COMPARATIVAS (solo comparativas) para guiar sugerencias.
+# 2) Mejorada detección de "comparativa/comparacion" + extracción robusta de proveedor (aliases + libre) tipo TRESUL/BIODIAGNOSTICO/CABINSUR.
+# 3) Agregadas sugerencias cuando falte 2do año/mes (ej: "comparar 2025" -> pedir 2 años o 2 meses).
 
+import os
 import re
 import unicodedata
 from typing import Dict, List, Tuple, Optional
@@ -29,6 +30,7 @@ MESES = {
 }
 
 MAX_PROVEEDORES = 5
+MAX_ARTICULOS = 5
 MAX_MESES = 6
 MAX_ANIOS = 4
 
@@ -40,13 +42,19 @@ TABLA_CANONICA_COMPARATIVAS = r"""
 |---|--------|--------|--------|-------|---------------|--------|
 | 16 | comparar | proveedor | mes+mes (mismo anio) | no | comparar_proveedor_meses | proveedor, mes1, mes2, label1, label2 |
 | 17 | comparar | proveedor | anio+anio | no | comparar_proveedor_anios | proveedor, anios |
-| 18 | comparar compras | proveedor | mes+mes | no | comparar_proveedor_meses | proveedor, mes1, mes2, label1, label2 |
+| 18 | comparar compras | proveedor | mes+mes | no | comparar_proveedor_meses | proveedor, mes1, mes2 |
 | 19 | comparar compras | proveedor | anio+anio | no | comparar_proveedor_anios | proveedor, anios |
-| 30 | comparar compras | proveedor | mes(YYYY-MM)+mes(YYYY-MM) | no | comparar_proveedor_meses | proveedor, mes1, mes2, label1, label2 |
-| 31 | comparar compras | proveedor | anio+anio | no | comparar_proveedor_anios | proveedor, anios |
-| 34 | comparar compras | proveedor | "junio julio 2025" | no | comparar_proveedor_meses | proveedor, 2025-06, 2025-07, label1, label2 |
-| 35 | comparar compras | proveedor | "noviembre diciembre 2025" | no | comparar_proveedor_meses | proveedor, 2025-11, 2025-12, label1, label2 |
+| 20 | comparar | proveedor+proveedor | mismo mes | si (<=5) | compras_proveedor_mes | proveedor(s), mes |
+| 21 | comparar | proveedor+proveedor | mismo anio | si (<=5) | compras_proveedor_anio | proveedor(s), anio |
+| 22 | comparar | proveedor | meses (lista) | si (<=6) | comparar_proveedor_meses | proveedor, mes1, mes2 (si hay 2) |
+| 23 | comparar | proveedor | anios (lista) | si (<=4) | comparar_proveedor_anios | proveedor, anios |
+| 30 | comparar compras | proveedor | mes(YYYY-MM)+mes(YYYY-MM) | no | comparar_proveedor_meses | proveedor, mes1, mes2 |
+| 34 | comparar compras | proveedor | "junio julio 2025" | no | comparar_proveedor_meses | proveedor, 2025-06, 2025-07 |
+| 35 | comparar compras | proveedor | "noviembre diciembre 2025" | no | comparar_proveedor_meses | proveedor, 2025-11, 2025-12 |
 | 36 | comparar compras | proveedor | "2024 2025" | no | comparar_proveedor_anios | proveedor, [2024,2025] |
+| 41 | comparar compras | proveedor | "enero febrero" (sin año) | no | comparar_proveedor_meses | proveedor, pedir año |
+| 46 | comparar | proveedor | mes vs mes | no | comparar_proveedor_meses | proveedor, mes1, mes2 |
+| 47 | comparar | proveedor | anio vs anio | no | comparar_proveedor_anios | proveedor, anios |
 """
 
 # =====================================================================
@@ -80,11 +88,12 @@ def _tokens(texto: str) -> List[str]:
 @st.cache_data(ttl=60 * 60)
 def _cargar_listas_supabase() -> Dict[str, List[str]]:
     proveedores: List[str] = []
+    articulos: List[str] = []
 
     try:
         from supabase_client import supabase  # type: ignore
         if supabase is None:
-            return {"proveedores": []}
+            return {"proveedores": [], "articulos": []}
 
         for col in ["nombre", "Nombre", "NOMBRE"]:
             try:
@@ -96,29 +105,42 @@ def _cargar_listas_supabase() -> Dict[str, List[str]]:
             except Exception:
                 continue
 
+        for col in ["Descripción", "Descripcion", "descripcion", "DESCRIPCION", "DESCRIPCIÓN"]:
+            try:
+                res = supabase.table("articulos").select(col).execute()
+                data = res.data or []
+                articulos = [str(r.get(col)).strip() for r in data if r.get(col)]
+                if articulos:
+                    break
+            except Exception:
+                continue
+
     except Exception:
-        return {"proveedores": []}
+        return {"proveedores": [], "articulos": []}
 
     proveedores = sorted(list(set([p for p in proveedores if p])))
-    return {"proveedores": proveedores}
+    articulos = sorted(list(set([a for a in articulos if a])))
 
-def _get_indices() -> List[Tuple[str, str]]:
+    return {"proveedores": proveedores, "articulos": articulos}
+
+def _get_indices() -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
     listas = _cargar_listas_supabase()
     prov = [(p, _key(p)) for p in (listas.get("proveedores") or []) if p]
-    return prov
+    art = [(a, _key(a)) for a in (listas.get("articulos") or []) if a]
+    return prov, art
 
 def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) -> List[str]:
     toks = _tokens(texto)
     if not toks or not index:
         return []
 
-    # 1) PRIORIDAD ABSOLUTA: MATCH EXACTO
+    # 1) EXACT token match
     toks_set = set(toks)
     for orig, norm in index:
         if norm in toks_set:
             return [orig]
 
-    # 2) FALLBACK: substring + score
+    # 2) substring + score
     candidatos: List[Tuple[int, str]] = []
     for orig, norm in index:
         for tk in toks:
@@ -142,6 +164,89 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
     return out
 
 # =====================================================================
+# PROVEEDORES: ALIASES + LIBRE (PARA QUE SQL LIKE FUNCIONE)
+# =====================================================================
+_ALIAS_PROVEEDORES = {
+    # el usuario escribe -> posibles "claves" a detectar en el texto
+    "tresul": ["tresul", "laboratoriotresul"],
+    "biodiagnostico": ["biodiagnostico", "biodiagnostico", "bio", "bio-diagnostico", "biodiagnost"],
+    "cabinsur": ["cabinsur", "cabinsursrl", "cabinsuruy"],
+    "roche": ["roche"],
+}
+
+def _detectar_aliases_proveedor(texto_lower: str) -> List[str]:
+    """
+    Devuelve términos-candidatos a usar como filtro LIKE en SQL.
+    No necesita que exista en tabla proveedores, porque SQL filtra por LIKE.
+    """
+    tlk = _key(texto_lower)
+    hits: List[str] = []
+
+    for canon, patrones in _ALIAS_PROVEEDORES.items():
+        for p in patrones:
+            if p and p in tlk:
+                hits.append(canon)
+                break
+
+    # únicos, en orden
+    seen = set()
+    out: List[str] = []
+    for x in hits:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out[:MAX_PROVEEDORES]
+
+def _extraer_proveedor_libre(texto_lower: str) -> Optional[str]:
+    """
+    Extrae proveedor como texto libre, ignorando todo lo que no sean "funciones".
+    """
+    tmp = texto_lower
+
+    # sacar disparadores
+    tmp = re.sub(r"\b(comparar|comparame|compara|comparativa|comparacion|comparación)\b", " ", tmp)
+    tmp = re.sub(r"\b(compras?|compra)\b", " ", tmp)
+
+    # sacar meses
+    tmp = re.sub(
+        r"\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b",
+        " ",
+        tmp,
+    )
+
+    # sacar años
+    tmp = re.sub(r"\b(2023|2024|2025|2026)\b", " ", tmp)
+
+    # sacar conectores típicos (para que no quede "vs")
+    tmp = re.sub(r"\b(vs|versus|contra|y|e|entre)\b", " ", tmp)
+
+    # normalizar espacios
+    tmp = re.sub(r"[\(\)\[\]\{\}\|]", " ", tmp)
+    tmp = re.sub(r"[,:;]", " ", tmp)
+    tmp = re.sub(r"\s+", " ", tmp).strip()
+
+    if tmp and len(tmp) >= 3:
+        return tmp
+    return None
+
+def _resolver_proveedor(texto_lower: str, idx_prov: List[Tuple[str, str]]) -> Optional[str]:
+    """
+    Prioridad:
+    1) Aliases (tresul/biodiagnostico/cabinsur/roche) -> devuelve el alias como filtro LIKE (sirve en SQL)
+    2) Match por lista (tabla proveedores) -> devuelve nombre completo de lista
+    3) Fallback libre -> devuelve texto libre como filtro LIKE
+    """
+    aliases = _detectar_aliases_proveedor(texto_lower)
+    if aliases:
+        return aliases[0]
+
+    provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
+    if provs:
+        return provs[0]
+
+    return _extraer_proveedor_libre(texto_lower)
+
+# =====================================================================
 # PARSEO TIEMPO
 # =====================================================================
 def _extraer_anios(texto: str) -> List[int]:
@@ -152,7 +257,6 @@ def _extraer_anios(texto: str) -> List[int]:
             out.append(int(a))
         except Exception:
             pass
-
     seen = set()
     out2: List[int] = []
     for x in out:
@@ -187,147 +291,129 @@ def _to_yyyymm(anio: int, mes_nombre: str) -> str:
     return f"{anio}-{MESES[mes_nombre]}"
 
 # =====================================================================
-# EXTRAER PROVEEDOR LIBRE (IGUAL A COMPRAS, ADAPTADO A COMPARATIVAS)
-# =====================================================================
-def _extraer_proveedor_libre_comparativas(texto_lower: str) -> Optional[str]:
-    tmp = texto_lower
-
-    # sacar palabras de acción
-    tmp = re.sub(r"\b(comparar|comparame|compara)\b", " ", tmp)
-    tmp = re.sub(r"\b(compras?|compra)\b", " ", tmp)
-
-    # sacar meses
-    tmp = re.sub(
-        r"\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b",
-        " ",
-        tmp,
-    )
-
-    # sacar años
-    tmp = re.sub(r"\b(2023|2024|2025|2026)\b", " ", tmp)
-
-    # normalizar espacios
-    tmp = re.sub(r"\s+", " ", tmp).strip()
-
-    if tmp and len(tmp) >= 3:
-        return tmp
-    return None
-
-# =====================================================================
 # INTÉRPRETE COMPARATIVAS
 # =====================================================================
 def interpretar_comparativas(pregunta: str) -> Dict:
     texto = (pregunta or "").strip()
     texto_lower = texto.lower().strip()
 
-    es_comparar = ("comparar" in texto_lower) or ("comparame" in texto_lower) or ("compara" in texto_lower)
-    es_compras = ("compra" in texto_lower) or ("compras" in texto_lower)
-
-    if not (es_comparar and es_compras):
-        return {
-            "tipo": "no_entendido",
-            "parametros": {},
-            "sugerencia": "Probá: comparar compras roche junio julio 2025 | comparar compras tresul 2023 2024",
-            "debug": "comparar: no match",
-        }
-
-    idx_prov = _get_indices()
-    provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
+    idx_prov, idx_art = _get_indices()
 
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
-    # ==========================================================
-    # PROVEEDOR (CLAVE): igual que COMPRAS
-    # - si no lo reconoce por lista, usa proveedor_libre (tresul/biodiagnostico/etc)
-    # ==========================================================
-    proveedor_libre = None
-    if not provs:
-        proveedor_libre = _extraer_proveedor_libre_comparativas(texto_lower)
+    # disparadores (acepta "comparativa" / "comparacion")
+    hay_comparar = (
+        ("comparar" in texto_lower) or
+        ("comparame" in texto_lower) or
+        ("compara" in texto_lower) or
+        ("comparativa" in texto_lower) or
+        ("comparacion" in texto_lower) or
+        ("comparación" in texto_lower)
+    )
+    hay_compras = ("compra" in texto_lower) or ("compras" in texto_lower)
 
-    proveedor_final = provs[0] if provs else proveedor_libre
-
-    if not proveedor_final:
+    if hay_comparar and (not hay_compras):
+        # el usuario dijo "comparar ..." pero no indicó qué (por tu regla: sugerir "comparar compras ...")
+        sug = "Probá: comparar compras roche 2024 2025 | comparar compras roche junio julio 2025"
+        if len(anios) == 1:
+            a = anios[0]
+            a2 = a - 1 if a > 2023 else 2024
+            sug = f"Te falta otro período. Probá: comparar compras roche {a2} {a}"
         return {
             "tipo": "no_entendido",
             "parametros": {},
-            "sugerencia": "No reconocí el proveedor. Probá: comparar compras tresul 2023 2024 | comparar compras biodiagnostico 2024 2025",
-            "debug": "comparar: proveedor no reconocido",
+            "sugerencia": sug,
+            "debug": "comparar: falta palabra compras/compra",
         }
 
     # ==========================================================
-    # FUNCIÓN 1: COMPARAR PROVEEDOR MESES (YYYY-MM)
+    # COMPARAR COMPRAS PROVEEDOR MES VS MES / AÑO VS AÑO
     # ==========================================================
-    if len(meses_yyyymm) >= 2:
-        mes1, mes2 = meses_yyyymm[0], meses_yyyymm[1]
-        return {
-            "tipo": "comparar_proveedor_meses",
-            "parametros": {
-                "proveedor": proveedor_final,
-                "mes1": mes1,
-                "mes2": mes2,
-                "label1": mes1,
-                "label2": mes2,
-            },
-            "debug": "comparar proveedor meses (YYYY-MM)",
-        }
+    if hay_comparar and hay_compras:
+        proveedor_final = _resolver_proveedor(texto_lower, idx_prov)
 
-    # ==========================================================
-    # FUNCIÓN 2: COMPARAR PROVEEDOR MESES (nombre + año)
-    # ==========================================================
-    if len(meses_nombre) >= 2 and len(anios) >= 1:
-        anio = anios[0]
-        mes1 = _to_yyyymm(anio, meses_nombre[0])
-        mes2 = _to_yyyymm(anio, meses_nombre[1])
-        return {
-            "tipo": "comparar_proveedor_meses",
-            "parametros": {
-                "proveedor": proveedor_final,
-                "mes1": mes1,
-                "mes2": mes2,
-                "label1": f"{meses_nombre[0]} {anio}",
-                "label2": f"{meses_nombre[1]} {anio}",
-            },
-            "debug": "comparar proveedor meses (nombre+anio)",
-        }
+        if not proveedor_final:
+            return {
+                "tipo": "no_entendido",
+                "parametros": {},
+                "sugerencia": "No reconocí el proveedor. Probá: comparar compras tresul 2024 2025 | comparar compras biodiagnostico 2024 2025",
+                "debug": "comparar: proveedor no reconocido",
+            }
 
-    # Si dio 2 meses sin año
-    if len(meses_nombre) >= 2 and len(anios) == 0:
+        # --- mes vs mes (YYYY-MM) ---
+        if len(meses_yyyymm) >= 2:
+            mes1, mes2 = meses_yyyymm[0], meses_yyyymm[1]
+            return {
+                "tipo": "comparar_proveedor_meses",
+                "parametros": {
+                    "proveedor": proveedor_final,
+                    "mes1": mes1,
+                    "mes2": mes2,
+                    "label1": mes1,
+                    "label2": mes2,
+                },
+                "debug": "comparar proveedor meses (YYYY-MM)",
+            }
+
+        # --- mes vs mes (nombre + año) ---
+        if len(meses_nombre) >= 2 and len(anios) >= 1:
+            anio = anios[0]
+            mes1 = _to_yyyymm(anio, meses_nombre[0])
+            mes2 = _to_yyyymm(anio, meses_nombre[1])
+            return {
+                "tipo": "comparar_proveedor_meses",
+                "parametros": {
+                    "proveedor": proveedor_final,
+                    "mes1": mes1,
+                    "mes2": mes2,
+                    "label1": f"{meses_nombre[0]} {anio}",
+                    "label2": f"{meses_nombre[1]} {anio}",
+                },
+                "debug": "comparar proveedor meses (nombre+anio)",
+            }
+
+        # --- año vs año ---
+        if len(anios) >= 2:
+            return {
+                "tipo": "comparar_proveedor_anios",
+                "parametros": {
+                    "proveedor": proveedor_final,
+                    "anios": [anios[0], anios[1]],
+                },
+                "debug": "comparar proveedor años",
+            }
+
+        # --- sugerencias cuando falta el 2do periodo ---
+        if len(anios) == 1:
+            a = anios[0]
+            a2 = a - 1 if a > 2023 else 2024
+            return {
+                "tipo": "no_entendido",
+                "parametros": {},
+                "sugerencia": f"Te falta otro año para comparar. Probá: comparar compras {proveedor_final} {a2} {a}",
+                "debug": "comparar: falta segundo año",
+            }
+
+        if len(meses_nombre) == 1 and len(anios) >= 1:
+            return {
+                "tipo": "no_entendido",
+                "parametros": {},
+                "sugerencia": f"Te falta otro mes para comparar. Probá: comparar compras {proveedor_final} junio julio {anios[0]}",
+                "debug": "comparar: falta segundo mes",
+            }
+
         return {
             "tipo": "no_entendido",
             "parametros": {},
-            "sugerencia": f"Para comparar meses necesito el año. Probá: comparar compras {proveedor_final} {meses_nombre[0]} {meses_nombre[1]} 2025",
-            "debug": "comparar: meses sin año",
-        }
-
-    # ==========================================================
-    # FUNCIÓN 3: COMPARAR PROVEEDOR AÑOS
-    # ==========================================================
-    if len(anios) >= 2:
-        return {
-            "tipo": "comparar_proveedor_anios",
-            "parametros": {
-                "proveedor": proveedor_final,
-                "anios": [anios[0], anios[1]],
-                "label1": str(anios[0]),
-                "label2": str(anios[1]),
-            },
-            "debug": "comparar proveedor años",
-        }
-
-    # Si hay 1 solo año (tu regla: no se puede comparar con 1)
-    if len(anios) == 1:
-        return {
-            "tipo": "no_entendido",
-            "parametros": {},
-            "sugerencia": f"Para comparar años necesito 2 años. Probá: comparar compras {proveedor_final} {anios[0]-1} {anios[0]}",
-            "debug": "comparar: solo 1 año",
+            "sugerencia": f"Probá: comparar compras {proveedor_final} 2024 2025 | comparar compras {proveedor_final} junio julio 2025",
+            "debug": "comparar: faltan meses/años",
         }
 
     return {
         "tipo": "no_entendido",
         "parametros": {},
-        "sugerencia": f"Probá: comparar compras {proveedor_final} junio julio 2025 | comparar compras {proveedor_final} 2023 2024",
-        "debug": "comparar: faltan meses/año",
+        "sugerencia": "Probá: comparar compras roche 2024 2025 | comparar compras roche junio julio 2025",
+        "debug": "comparar: no match",
     }
