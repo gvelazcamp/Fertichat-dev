@@ -173,7 +173,8 @@ def _sql_total_num_expr_general() -> str:
 def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
     """Ejecuta consulta SQL y retorna DataFrame."""
     try:
-        conn = get_db_connection()        if not conn:
+        conn = get_db_connection()
+        if not conn:
             return pd.DataFrame()
 
         if params is None:
@@ -186,7 +187,6 @@ def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
     except Exception as e:
         print(f"Error en consulta SQL: {e}")
         return pd.DataFrame()
-
 
 # =====================================================================
 # LISTADOS
