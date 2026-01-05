@@ -214,7 +214,40 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             "sugerencia": "Por favor, escribí tu consulta.",
             "debug": "pregunta vacía"
         }
+        
+        # =========================
+        # NORMALIZACIÓN COMPARATIVAS (NO ROMPE NADA)
+        # =========================
 
+        texto = pregunta.lower()
+
+        meses_map = {
+            "enero": "01", "febrero": "02", "marzo": "03", "abril": "04",
+            "mayo": "05", "junio": "06", "julio": "07", "agosto": "08",
+            "septiembre": "09", "octubre": "10", "noviembre": "11", "diciembre": "12"
+        }
+
+        # comparar proveedor mes vs mes año
+        if "comparar" in texto:
+            proveedor = resultado.get("parametros", {}).get("proveedor")
+
+            meses_en_texto = [m for m in meses_map if m in texto]
+            anio_match = re.search(r"(202\d)", texto)
+
+            if proveedor and len(meses_en_texto) == 2 and anio_match:
+                anio = anio_match.group(1)
+                mes1 = f"{anio}-{meses_map[meses_en_texto[0]]}"
+                mes2 = f"{anio}-{meses_map[meses_en_texto[1]]}"
+
+                resultado = {
+                    "tipo": "comparar_proveedor_meses",
+                    "parametros": {
+                        "proveedor": proveedor,
+                        "mes1": mes1,
+                        "mes2": mes2
+                    },
+                    "debug": f"comparativa forzada {proveedor} {mes1} vs {mes2}"
+                }  
     # ==========================================================
     # DETECCIÓN DIRECTA: COMPARAR COMPRAS PROVEEDOR MESES
     # Ej: "comparar compras roche junio julio 2025"
@@ -253,40 +286,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             },
             "debug": "comparar proveedor meses (regex directo)"
         }
-        # =========================
-        # NORMALIZACIÓN COMPARATIVAS (NO ROMPE NADA)
-        # =========================
-
-        texto = pregunta.lower()
-
-        meses_map = {
-            "enero": "01", "febrero": "02", "marzo": "03", "abril": "04",
-            "mayo": "05", "junio": "06", "julio": "07", "agosto": "08",
-            "septiembre": "09", "octubre": "10", "noviembre": "11", "diciembre": "12"
-        }
-
-        # comparar proveedor mes vs mes año
-        if "comparar" in texto:
-            proveedor = resultado.get("parametros", {}).get("proveedor")
-
-            meses_en_texto = [m for m in meses_map if m in texto]
-            anio_match = re.search(r"(202\d)", texto)
-
-            if proveedor and len(meses_en_texto) == 2 and anio_match:
-                anio = anio_match.group(1)
-                mes1 = f"{anio}-{meses_map[meses_en_texto[0]]}"
-                mes2 = f"{anio}-{meses_map[meses_en_texto[1]]}"
-
-                resultado = {
-                    "tipo": "comparar_proveedor_meses",
-                    "parametros": {
-                        "proveedor": proveedor,
-                        "mes1": mes1,
-                        "mes2": mes2
-                    },
-                    "debug": f"comparativa forzada {proveedor} {mes1} vs {mes2}"
-                }  
-
+        
         # =========================
         # NORMALIZACIÓN EXTRA (NO ROMPE LO EXISTENTE)
         # =========================
