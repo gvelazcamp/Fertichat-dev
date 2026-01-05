@@ -315,9 +315,9 @@ def get_total_compras_anio(anio: int) -> dict:
 # =====================================================================
 
 def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.DataFrame:
-    """Detalle de compras de un proveedor en un mes específico."""
     proveedor_like = (proveedor_like or "").strip().lower()
     total_expr = _sql_total_num_expr_general()
+
     sql = f"""
         SELECT 
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -329,11 +329,24 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
             {total_expr} AS Total
         FROM chatbot_raw 
         WHERE LOWER("Cliente / Proveedor") LIKE %s
-          AND "Mes" = %s
+          AND TRIM("Mes") = %s
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY "Fecha" DESC NULLS LAST
     """
-    return ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
+
+    df = ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
+
+    # =========================
+    # FALLBACK AUTOMÁTICO DE MES
+    # =========================
+    if df.empty:
+        mes_alt = get_ultimo_mes_disponible_hasta(mes_key)
+        if mes_alt and mes_alt != mes_key:
+            df = ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_alt))
+            if not df.empty:
+                df.attrs["fallback_mes"] = mes_alt
+
+    return df
 
 
 # =====================================================================
