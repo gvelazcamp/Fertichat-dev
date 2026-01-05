@@ -28,6 +28,14 @@ h3 > span.eqpbrs03 {
 }
 
 /* =========================================================
+   OCULTAR SOLO el H1 "Inicio" que te queda gigante
+   (PC + CEL)
+   ========================================================= */
+h1#inicio {
+  display: none !important;
+}
+
+/* =========================================================
    OCULTAR: <div class="logo">🦋 FertiChat</div>
    (tu header mobile custom)
    PC + CEL
@@ -289,4 +297,5 @@ div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[type=
 }
 </style>
 """
+
 
