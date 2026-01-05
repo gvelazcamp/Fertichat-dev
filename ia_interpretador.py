@@ -206,7 +206,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     """
     Interpreta la pregunta del usuario usando OpenAI
     """
-    
+
     if not pregunta or not pregunta.strip():
         return {
             "tipo": "no_entendido",
@@ -214,6 +214,12 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             "sugerencia": "Por favor, escribí tu consulta.",
             "debug": "pregunta vacía"
         }
+
+    # ----------------------------------------------------------
+    # NORMALIZACIÓN BASE (DEBE EXISTIR SIEMPRE)
+    # ----------------------------------------------------------
+    texto_lower = pregunta.lower().strip()
+
         
         # =========================
         # NORMALIZACIÓN COMPARATIVAS (NO ROMPE NADA)
