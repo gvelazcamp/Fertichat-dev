@@ -31,23 +31,7 @@ MAX_MESES = 6
 MAX_ANIOS = 4
 
 # =====================================================================
-# PROVEEDORES INVÁLIDOS (KEYWORDS QUE NO SON PROVEEDORES)
-# =====================================================================
-PROVEEDORES_INVALIDOS = {
-    "compras",
-    "comparar",
-    "comparame",
-    "compara",
-    "comparativa",
-    "comparativas",
-    "comparativo",
-    "comparativos",
-}
-
-# =====================================================================
 # TABLA CANÓNICA (SOLO COMPARATIVAS)
-# - Esto es el "spec" de funciones: ACCIÓN | OBJETO | TIEMPO | MULTI | TIPO | PARAMS
-# - El texto extra antes/después no importa; nos centramos en mapear a una función (TIPO) con PARAMS.
 # =====================================================================
 TABLA_CANONICA_COMPARATIVAS = r"""
 | # | ACCIÓN | OBJETO | TIEMPO | MULTI | TIPO (output) | PARAMS |
@@ -104,25 +88,21 @@ def _tokens(texto: str) -> List[str]:
     return out
 
 def _tiene_palabra(texto_lower: str, palabra: str) -> bool:
-    # match por palabra completa (evita que "compara" se dispare dentro de otras cosas raras)
     return bool(re.search(rf"\b{re.escape(palabra)}\b", texto_lower))
 
 def _tiene_alguna_palabra(texto_lower: str, palabras: List[str]) -> bool:
-    for p in palabras:
-        if _tiene_palabra(texto_lower, p):
-            return True
-    return False
+    return any(_tiene_palabra(texto_lower, p) for p in palabras)
 
 # =====================================================================
 # CARGA LISTAS DESDE SUPABASE (cache)
 # =====================================================================
 @st.cache_data(ttl=60 * 60)
 def _cargar_listas_supabase() -> Dict[str, List[str]]:
-    proveedores: List[str] = []
-    articulos: List[str] = []
+    proveedores = []
+    articulos = []
 
     try:
-        from supabase_client import supabase  # type: ignore
+        from supabase_client import supabase
         if supabase is None:
             return {"proveedores": [], "articulos": []}
 
@@ -136,7 +116,7 @@ def _cargar_listas_supabase() -> Dict[str, List[str]]:
             except Exception:
                 continue
 
-        for col in ["Descripción", "Descripcion", "descripcion", "DESCRIPCION", "DESCRIPCIÓN"]:
+        for col in ["Descripción", "DESCRIPCIÓN", "descripcion"]:
             try:
                 res = supabase.table("articulos").select(col).execute()
                 data = res.data or []
@@ -151,7 +131,6 @@ def _cargar_listas_supabase() -> Dict[str, List[str]]:
 
     proveedores = sorted(list(set([p for p in proveedores if p])))
     articulos = sorted(list(set([a for a in articulos if a])))
-
     return {"proveedores": proveedores, "articulos": articulos}
 
 def _get_indices() -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
@@ -165,25 +144,20 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
     if not toks or not index:
         return []
 
-    # 1) EXACT token match
     toks_set = set(toks)
     for orig, norm in index:
         if norm in toks_set:
             return [orig]
 
-    # 2) substring + score
-    candidatos: List[Tuple[int, str]] = []
+    candidatos = []
     for orig, norm in index:
         for tk in toks:
             if tk and tk in norm:
                 score = (len(tk) * 1000) - len(norm)
                 candidatos.append((score, orig))
 
-    if not candidatos:
-        return []
-
     candidatos.sort(key=lambda x: (-x[0], x[1]))
-    out: List[str] = []
+    out = []
     seen = set()
     for _, orig in candidatos:
         if orig not in seen:
@@ -191,14 +165,9 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
             out.append(orig)
         if len(out) >= max_items:
             break
-
     return out
 
-# =====================================================================
-# RESOLVER ALIASES DE PROVEEDOR (si existe en tu lista de proveedores)
-# - Importante: si NO existe (porque tu tabla proveedores no tiene "LABORATORIO TRESUL"),
-#   igual vamos a pasar el proveedor "libre" (ej: "tresul") para que el SQL filtre con LIKE.
-# =====================================================================
+# Resolver alias de proveedor
 def _resolver_proveedor_alias(texto_lower: str, idx_prov: List[Tuple[str, str]]) -> Optional[str]:
     alias_terms = [
         "tresul",
@@ -208,10 +177,8 @@ def _resolver_proveedor_alias(texto_lower: str, idx_prov: List[Tuple[str, str]])
         "roche",
     ]
 
-    # el alias debería ser más permisivo
     for alias_term in alias_terms:
         if alias_term in texto_lower:
-            # Buscar el nombre completo en el índice de proveedores
             best_candidate = None
             best_score = 0
             for original_name, normalized_name in idx_prov:
@@ -222,266 +189,53 @@ def _resolver_proveedor_alias(texto_lower: str, idx_prov: List[Tuple[str, str]])
                         best_candidate = original_name
             return best_candidate
     return None
-    
-# =====================================================================
-# PARSEO TIEMPO
-# =====================================================================
+
+# Parseo de tiempo
 def _extraer_anios(texto: str) -> List[int]:
     anios = re.findall(r"(2023|2024|2025|2026)", texto or "")
-    out: List[int] = []
-    for a in anios:
-        try:
-            out.append(int(a))
-        except Exception:
-            pass
+    out = []
     seen = set()
-    out2: List[int] = []
-    for x in out:
-        if x not in seen:
-            seen.add(x)
-            out2.append(x)
-    return out2[:MAX_ANIOS]
+    for a in anios:
+        a = int(a)
+        if a not in seen:
+            seen.add(a)
+            out.append(a)
+    return out[:MAX_ANIOS]
 
 def _extraer_meses_nombre(texto: str) -> List[str]:
-    tl = (texto or "").lower()
-    ms = [m for m in MESES.keys() if m in tl]
-    seen = set()
-    out: List[str] = []
-    for m in ms:
-        if m not in seen:
-            seen.add(m)
-            out.append(m)
-    return out[:MAX_MESES]
+    return list(filter(lambda m: m in texto, MESES.keys()))[:MAX_MESES]
 
 def _extraer_meses_yyyymm(texto: str) -> List[str]:
-    ms = re.findall(r"(2023|2024|2025|2026)[-/](0[1-9]|1[0-2])", texto or "")
-    out = [f"{a}-{m}" for a, m in ms]
+    ms = re.findall(r"(2023|2024|2025|2026)-[0-9]{2}", texto or "")
     seen = set()
-    out2: List[str] = []
-    for x in out:
-        if x not in seen:
-            seen.add(x)
-            out2.append(x)
-    return out2[:MAX_MESES]
+    return [x for x in ms if not (x in seen or seen.add(x))][:MAX_MESES]
 
 def _to_yyyymm(anio: int, mes_nombre: str) -> str:
-    return f"{anio}-{MESES[mes_nombre]}"
+    return f"{anio}-{MESES.get(mes_nombre, '01')}"
 
-# =====================================================================
-# EXTRAER "PROVEEDOR LIBRE" (robusto)
-# - Ignora texto alrededor, se queda con lo que parece proveedor luego de sacar keywords y fechas.
-# =====================================================================
+# Extraer proveedor libre
 def _extraer_proveedor_libre(texto_lower: str) -> Optional[str]:
-    tmp = texto_lower
+    tmp = re.sub(r"\b(comparar|compras?|enero|febrero|202[34])\b", "", texto_lower)
+    tmp = re.sub(r"[^\s]+", " ", tmp).strip()
+    return tmp if tmp and len(tmp) > 3 else None
 
-    # sacar keywords de comparar (por palabra completa)
-    tmp = re.sub(
-        r"\b(comparar|comparame|compara|comparativa|comparativas|comparativo|comparativos)\b",
-        " ",
-        tmp,
-        flags=re.IGNORECASE,
-    )
-
-    # sacar compras
-    tmp = re.sub(r"\bcompras?\b", " ", tmp, flags=re.IGNORECASE)
-
-    # sacar meses
-    tmp = re.sub(
-        r"\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b",
-        " ",
-        tmp,
-        flags=re.IGNORECASE,
-    )
-
-    # sacar años
-    tmp = re.sub(r"\b(2023|2024|2025|2026)\b", " ", tmp)
-
-    # limpiar basura típica (mínimo, sin romper)
-    tmp = re.sub(r"\s+", " ", tmp).strip()
-
-    if tmp and len(tmp) >= 3:
-        return tmp
-
-    return None
-
-# =====================================================================
-# INTÉRPRETE COMPARATIVAS
-# =====================================================================
+# Interpretar comparativas
 def interpretar_comparativas(pregunta: str) -> Dict:
-    texto = (pregunta or "").strip()
-    texto_lower = texto.lower().strip()
+    texto = (pregunta or "").strip().lower()
+    idx_prov, _ = _get_indices()
+    provs = _match_best(texto, idx_prov, MAX_PROVEEDORES)
 
-    idx_prov, idx_art = _get_indices()
-    provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
+    proveedor_alias = _resolver_proveedor_alias(texto, idx_prov)
+    proveedor_libre = _extraer_proveedor_libre(texto)
 
-    anios = _extraer_anios(texto_lower)
-    meses_nombre = _extraer_meses_nombre(texto_lower)
-    meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
+    proveedor_final = proveedor_alias or proveedor_libre or (provs[0] if provs else None)
 
-    # ==========================================================
-    # DETECCIÓN "MODO COMPARATIVA"
-    # - Si aparece alguna keyword de comparar, entramos.
-    # - Si además dice compras, mejor (pero no es obligatorio para sugerir).
-    # ==========================================================
-    es_comparativa = _tiene_alguna_palabra(texto_lower, _COMPARA_WORDS)
-    menciona_compras = _tiene_palabra(texto_lower, "compra") or _tiene_palabra(texto_lower, "compras")
+    if proveedor_final in PROVEEDORES_INVALIDOS or not proveedor_final:
+        return {"tipo": "no_entendido", "sugerencia": "Intenta escribir el nombre completo: Tresul, Roche…"}
+    return {"proveedor": proveedor_final}
 
-    if es_comparativa:
-        # 1) alias contra lista de proveedores (si existe)
-        proveedor_alias = _resolver_proveedor_alias(texto_lower, idx_prov)
-
-        # 2) match por lista supabase
-        proveedor_lista = provs[0] if provs else None
-
-        # 3) fallback proveedor libre (CLAVE para casos como "tresul" cuando tu tabla proveedores no lo tiene)
-        proveedor_libre = _extraer_proveedor_libre(texto_lower)
-
-        # =========================
-        # ✅ FIX PRINCIPAL AQUÍ
-        # =========================
-        # Prioridad: alias > libre > lista
-        # (antes era: alias > lista > libre)
-        
-        proveedor_final = None
-        
-        # Primero alias (más específico)
-        if proveedor_alias:
-            proveedor_final = proveedor_alias
-        
-        # Si no hay alias, intentar con proveedor libre (texto crudo)
-        elif proveedor_libre and proveedor_libre not in PROVEEDORES_INVALIDOS:
-            proveedor_final = proveedor_libre
-        
-        # Por último, lista Supabase (puede traer falsos positivos)
-        elif proveedor_lista:
-            proveedor_final = proveedor_lista
-
-        # --------------------------
-        # SUGERENCIAS si falta "compras"
-        # --------------------------
-        if not menciona_compras:
-            # Ej: "comparar 2025" -> sugerir explícito "comparar compras ..."
-            if len(anios) == 1:
-                y = anios[0]
-                sug = f"Te falta el segundo año. Probá: comparar compras {y-1} {y}"
-            else:
-                sug = "Probá: comparar compras roche 2024 2025 | comparar compras tresul 2024 2025"
-            return {
-                "tipo": "no_entendido",
-                "parametros": {},
-                "sugerencia": sug,
-                "debug": "comparar: falta palabra 'compras'",
-            }
-
-        # --------------------------
-        # si no hay proveedor -> sugerir
-        # --------------------------
-        if not proveedor_final:
-            return {
-                "tipo": "no_entendido",
-                "parametros": {},
-                "sugerencia": "No reconocí el proveedor 'tresul'. Intenta usar su nombre completo.",
-                "debug": "No se reconoció el proveedor en alias ni lista.",
-            }
-
-        # ==========================================================
-        # 1) mes vs mes (YYYY-MM)
-        # ==========================================================
-        if len(meses_yyyymm) >= 2:
-            mes1, mes2 = meses_yyyymm[0], meses_yyyymm[1]
-            return {
-                "tipo": "comparar_proveedor_meses",
-                "parametros": {
-                    # compat: algunos flujos usan 'proveedor', otros 'proveedores'
-                    "proveedor": proveedor_final,
-                    "proveedores": [proveedor_final],
-                    "mes1": mes1,
-                    "mes2": mes2,
-                    "label1": mes1,
-                    "label2": mes2,
-                },
-                "debug": "comparar proveedor meses (YYYY-MM)",
-            }
-
-        # ==========================================================
-        # 2) mes vs mes (nombre + año)
-        # ==========================================================
-        if len(meses_nombre) >= 2 and len(anios) >= 1:
-            anio = anios[0]
-            mes1 = _to_yyyymm(anio, meses_nombre[0])
-            mes2 = _to_yyyymm(anio, meses_nombre[1])
-            return {
-                "tipo": "comparar_proveedor_meses",
-                "parametros": {
-                    "proveedor": proveedor_final,
-                    "proveedores": [proveedor_final],
-                    "mes1": mes1,
-                    "mes2": mes2,
-                    "label1": f"{meses_nombre[0]} {anio}",
-                    "label2": f"{meses_nombre[1]} {anio}",
-                },
-                "debug": "comparar proveedor meses (nombre+anio)",
-            }
-
-        # ==========================================================
-        # 3) año vs año
-        # ==========================================================
-        if len(anios) >= 2:
-            return {
-                "tipo": "comparar_proveedor_anios",
-                "parametros": {
-                    "proveedor": proveedor_final,
-                    "proveedores": [proveedor_final],  # CLAVE para SQL que espera lista
-                    "anios": [anios[0], anios[1]],
-                },
-                "debug": "comparar proveedor años",
-            }
-
-        # ==========================================================
-        # Sugerencias cuando falta el "qué comparar"
-        # ==========================================================
-        if len(anios) == 1:
-            y = anios[0]
-            return {
-                "tipo": "no_entendido",
-                "parametros": {},
-                "sugerencia": f"Te falta el segundo año. Probá: comparar compras {proveedor_final} {y-1} {y}",
-                "debug": "comparar: solo un año",
-            }
-
-        return {
-            "tipo": "no_entendido",
-            "parametros": {},
-            "sugerencia": f"Probá: comparar compras {proveedor_final} 2024 2025 | comparar compras {proveedor_final} junio julio 2025",
-            "debug": "comparar: faltan meses/años",
-        }
-
-    # ==========================================================
-    # FALLBACK FINAL
-    # ==========================================================
-    return {
-        "tipo": "no_entendido",
-        "parametros": {},
-        "sugerencia": "Probá: comparar compras roche 2024 2025 | comparar compras tresul 2024 2025",
-        "debug": "comparar: no match",
-    }
-
-
-# =========================
-# DEBUG COMPARATIVAS (VISIBLE)
-# =========================
+# Test
 if __name__ == "__main__":
-    # Test local
-    pruebas = [
-        "comparar compras tresul 2024 2025",
-        "comparar compras biodiagnostico 2024 2025",
-        "comparar compras roche 2024 2025",
-        "comparar compras cabinsur enero febrero 2025",
-    ]
-    
+    pruebas = ["comparar compras tresul 2024 2025", "comparar compras roche 2024 2025"]
     for p in pruebas:
-        print(f"\n🔍 Pregunta: {p}")
-        res = interpretar_comparativas(p)
-        print(f"   Tipo: {res.get('tipo')}")
-        print(f"   Params: {res.get('parametros')}")
-        print(f"   Debug: {res.get('debug')}")
+        print(interpretar_comparativas(p))
