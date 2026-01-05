@@ -222,20 +222,33 @@ def _extraer_proveedor_libre(texto_lower: str) -> Optional[str]:
     tmp = re.sub(r"[^\s]+", " ", tmp).strip()
     return tmp if tmp and len(tmp) > 3 else None
 
-# Interpretar comparativas
 def interpretar_comparativas(pregunta: str) -> Dict:
     texto = (pregunta or "").strip().lower()
     idx_prov, _ = _get_indices()
     provs = _match_best(texto, idx_prov, MAX_PROVEEDORES)
 
+    # Extraer alias y nombres del proveedor
     proveedor_alias = _resolver_proveedor_alias(texto, idx_prov)
     proveedor_libre = _extraer_proveedor_libre(texto)
-
     proveedor_final = proveedor_alias or proveedor_libre or (provs[0] if provs else None)
 
-    if proveedor_final in PROVEEDORES_INVALIDOS or not proveedor_final:
+    if not proveedor_final or proveedor_final in PROVEEDORES_INVALIDOS:
         return {"tipo": "no_entendido", "sugerencia": "Intenta escribir el nombre completo: Tresul, Roche…"}
-    return {"proveedor": proveedor_final}
+
+    # Extraer años de la pregunta
+    anios = _extraer_anios(texto)
+    if len(anios) < 2:
+        return {"tipo": "no_entendido", "sugerencia": "Necesito al menos dos años para comparar."}
+
+    # Retornar tipo y parámetros
+    return {
+        "tipo": "comparar_proveedor_anios",
+        "parametros": {
+            "proveedor": proveedor_final,
+            "anios": anios,
+        },
+        "debug": f"Proveedor: {proveedor_final}, Años: {anios}"
+    }
 
 # Test
 if __name__ == "__main__":
