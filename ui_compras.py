@@ -540,6 +540,37 @@ def Compras_IA():
             except Exception as e:
                 respuesta_content = f"❌ Error: {str(e)}"
 
+        
+# =========================
+# FIX EN ui_compras.py
+# Buscar donde procesas la pregunta (línea ~530)
+# AGREGAR st.cache_data.clear() al inicio
+# =========================
+
+    # INPUT
+    pregunta = st.chat_input("Escribí tu consulta...")
+
+    if pregunta:
+        # ✅ LIMPIAR CACHE ANTES DE PROCESAR
+        # Esto evita que queden datos viejos entre consultas
+        try:
+            st.cache_data.clear()
+        except Exception:
+            pass  # Si falla, no es crítico
+        
+        st.session_state["historial_compras"].append(
+            {
+                "role": "user",
+                "content": pregunta,
+                "timestamp": datetime.now().timestamp(),
+            }
+        )
+
+        resultado = interpretar_pregunta(pregunta)
+        tipo = resultado.get("tipo", "")
+        parametros = resultado.get("parametros", {})
+
+        # ... resto del código sin cambios
         st.session_state["historial_compras"].append(
             {
                 "role": "assistant",
