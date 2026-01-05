@@ -46,18 +46,15 @@ MAX_ARTICULOS = 5
 MAX_MESES = 6
 MAX_ANIOS = 4
 
-EJEMPLOS DE PROVEEDORES (CANÓNICOS OBLIGATORIOS):
+# =====================================================================
+# EJEMPLOS DE PROVEEDORES (CANÓNICOS OBLIGATORIOS)
+# - ROCHE: roche, roche laboratorio, roche diagnostics,
+#          roche international, roche international ltd
+# - BIODIAGNOSTICO: biodiagnostico, biodiagnóstico,
+#                   cabinsur, cabin sur, cabinsur srl
+# - TRESUL: tresul, tresul s.a, laboratorio tresul
+# =====================================================================
 
-- ROCHE:
-  Incluye: "roche", "roche laboratorio", "roche diagnostics",
-            "roche international", "roche international ltd"
-
-- BIODIAGNOSTICO:
-  Incluye: "biodiagnostico", "biodiagnóstico",
-            "cabinsur", "cabin sur", "cabinsur srl"
-
-- TRESUL:
-  Incluye: "tresul", "tresul s.a", "laboratorio tresul"
 # =====================================================================
 # TABLA DE TIPOS
 # =====================================================================
