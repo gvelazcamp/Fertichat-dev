@@ -19,7 +19,7 @@ from config import OPENAI_MODEL
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
-# Si querés “sacar OpenAI” para datos: dejalo False (recomendado).
+# Si querés "sacar OpenAI" para datos: dejalo False (recomendado).
 USAR_OPENAI_PARA_DATOS = False
 
 # =====================================================================
@@ -55,7 +55,7 @@ NOMBRES_PERSONALES_EXCLUIR = [
     "gonzalo",
     "daniela",
     "andres",
-    "sndres",   # por si lo escriben mal
+    "sndres",
     "juan",
 ]
 
@@ -82,7 +82,7 @@ TABLA_TIPOS = """
 """
 
 # =====================================================================
-# TABLA CANÓNICA (50 combinaciones permitidas) - PARA GUIAR A LA IA
+# TABLA CANÓNICA (50 combinaciones permitidas)
 # =====================================================================
 TABLA_CANONICA_50 = r"""
 | # | ACCIÓN | OBJETO | TIEMPO | MULTI | TIPO (output) | PARAMS |
@@ -91,52 +91,6 @@ TABLA_CANONICA_50 = r"""
 | 02 | compras | (ninguno) | mes | no | compras_mes | mes |
 | 03 | compras | proveedor | anio | no | compras_proveedor_anio | proveedor, anio |
 | 04 | compras | proveedor | mes | no | compras_proveedor_mes | proveedor, mes |
-| 05 | compras | proveedor | mes | si (<=5) | compras_proveedor_mes | proveedor(s), mes |
-| 06 | compras | proveedor | anio | si (<=5) | compras_proveedor_anio | proveedor(s), anio |
-| 07 | compras | (ninguno) | meses | si (<=6) | compras_mes | mes(s) |
-| 08 | compras | (ninguno) | anios | si (<=4) | compras_anio | anio(s) |
-| 09 | compras | articulo | (ninguno) | no | facturas_articulo | articulo |
-| 10 | compras | articulo | anio | no | facturas_articulo | articulo (+ filtro anio si existiera) |
-| 11 | compras | articulo | mes | no | facturas_articulo | articulo (+ filtro mes si existiera) |
-| 12 | stock | (ninguno) | (ninguno) | no | stock_total | - |
-| 13 | stock | articulo | (ninguno) | no | stock_articulo | articulo |
-| 14 | ultima_factura | articulo | (ninguno) | no | ultima_factura | patron |
-| 15 | ultima_factura | proveedor | (ninguno) | no | ultima_factura | patron |
-| 16 | comparar | proveedor | mes+mes (mismo anio) | no | comparar_proveedor_meses | proveedor, mes1, mes2, label1, label2 |
-| 17 | comparar | proveedor | anio+anio | no | comparar_proveedor_anios | proveedor, anios |
-| 18 | comparar compras | proveedor | mes+mes | no | comparar_proveedor_meses | proveedor, mes1, mes2 |
-| 19 | comparar compras | proveedor | anio+anio | no | comparar_proveedor_anios | proveedor, anios |
-| 20 | comparar | proveedor+proveedor | mismo mes | si (<=5) | compras_proveedor_mes | proveedor(s), mes |
-| 21 | comparar | proveedor+proveedor | mismo anio | si (<=5) | compras_proveedor_anio | proveedor(s), anio |
-| 22 | comparar | proveedor | meses (lista) | si (<=6) | comparar_proveedor_meses | proveedor, mes1, mes2 (si hay 2) |
-| 23 | comparar | proveedor | anios (lista) | si (<=4) | comparar_proveedor_anios | proveedor, anios |
-| 24 | compras | proveedor | "este mes" | no | compras_proveedor_mes | proveedor, mes(actual) |
-| 25 | compras | (ninguno) | "este mes" | no | compras_mes | mes(actual) |
-| 26 | compras | proveedor | "este anio" | no | compras_proveedor_anio | proveedor, anio(actual) |
-| 27 | compras | (ninguno) | "este anio" | no | compras_anio | anio(actual) |
-| 28 | compras | proveedor | mes (YYYY-MM) | no | compras_proveedor_mes | proveedor, mes |
-| 29 | compras | (ninguno) | mes (YYYY-MM) | no | compras_mes | mes |
-| 30 | comparar compras | proveedor | mes(YYYY-MM)+mes(YYYY-MM) | no | comparar_proveedor_meses | proveedor, mes1, mes2 |
-| 31 | comparar compras | proveedor | anio+anio | no | comparar_proveedor_anios | proveedor, anios |
-| 32 | compras | proveedor | "noviembre 2025" | contiene | compras_proveedor_mes | proveedor, 2025-11 |
-| 33 | compras | (ninguno) | "noviembre 2025" | no | compras_mes | 2025-11 |
-| 34 | comparar compras | proveedor | "junio julio 2025" | no | comparar_proveedor_meses | proveedor, 2025-06, 2025-07 |
-| 35 | comparar compras | proveedor | "noviembre diciembre 2025" | no | comparar_proveedor_meses | proveedor, 2025-11, 2025-12 |
-| 36 | comparar compras | proveedor | "2024 2025" | no | comparar_proveedor_anios | proveedor, [2024,2025] |
-| 37 | compras | proveedor | "2025" | no | compras_proveedor_anio | proveedor, 2025 |
-| 38 | compras | proveedor | "enero 2026" | no | compras_proveedor_mes | proveedor, 2026-01 |
-| 39 | compras | proveedor | "enero" (sin año) | no | compras_proveedor_mes | proveedor, mes(actual o pedir año) |
-| 40 | compras | (ninguno) | "enero" (sin año) | no | compras_mes | mes(actual o pedir año) |
-| 41 | comparar compras | proveedor | "enero febrero" (sin año) | no | comparar_proveedor_meses | proveedor, pedir año |
-| 42 | compras | proveedor | rango meses | si | compras_proveedor_mes | proveedor, mes(s) |
-| 43 | compras | proveedor | rango anios | si | compras_proveedor_anio | proveedor, anio(s) |
-| 44 | compras | proveedor+proveedor | mes | si | compras_proveedor_mes | proveedor(s), mes |
-| 45 | compras | proveedor+proveedor | anio | si | compras_proveedor_anio | proveedor(s), anio |
-| 46 | comparar | proveedor | mes vs mes | no | comparar_proveedor_meses | proveedor, mes1, mes2 |
-| 47 | comparar | proveedor | anio vs anio | no | comparar_proveedor_anios | proveedor, anios |
-| 48 | stock | proveedor | (ninguno) | no | no_entendido | sugerir: "compras proveedor ..." |
-| 49 | compras | articulo | (texto libre) | no | facturas_articulo | articulo |
-| 50 | no | (ambiguo) | (ambiguo) | - | no_entendido | sugerencia |
 """
 
 # =====================================================================
@@ -155,9 +109,6 @@ def _key(s: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "", s)
     return s
 
-# =====================================================================
-# set de keys de nombres personales
-# =====================================================================
 _NOMBRES_PERSONALES_KEYS = set(_key(n) for n in (NOMBRES_PERSONALES_EXCLUIR or []) if n)
 
 def _tokens(texto: str) -> List[str]:
@@ -172,9 +123,6 @@ def _tokens(texto: str) -> List[str]:
     return out
 
 def normalizar_texto(texto: str) -> str:
-    """
-    Normaliza un texto quitando acentos, ruido y palabras no relevantes.
-    """
     if not texto:
         return ""
 
@@ -192,13 +140,7 @@ def normalizar_texto(texto: str) -> str:
     texto = re.sub(r"\s+", " ", texto).strip()
     return texto
 
-# =====================================================================
-# LIMPIEZA CANÓNICA
-# =====================================================================
 def limpiar_consulta(texto: str) -> str:
-    """
-    Limpia el texto de entrada quitando ruido y normaliza para tabla canónica.
-    """
     if not texto:
         return ""
 
@@ -234,7 +176,7 @@ def contiene_comparar(texto: str) -> bool:
     return bool(re.search(r"\b(comparar|comparame|compara)\b", t))
 
 # =====================================================================
-# FACTURAS (NUEVO - SIN FORZAR 'A' + zfill)
+# FACTURAS
 # =====================================================================
 def contiene_factura(texto: str) -> bool:
     if not texto:
@@ -252,11 +194,6 @@ def contiene_factura(texto: str) -> bool:
     )
 
 def _normalizar_nro_factura(nro: str) -> str:
-    """
-    Normaliza SIN cambiar el formato base.
-    - "275015" => "275015"
-    - "A00275015" => "A00275015"
-    """
     nro = (nro or "").strip().upper()
     return nro
 
@@ -266,7 +203,6 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
 
     t = str(texto).strip()
 
-    # keyword + número (factura/comprobante/nro factura/nro comprobante)
     m = re.search(
         r"\b(detalle\s+)?(factura|comprobante|nro\.?\s*comprobante|nro\.?\s*factura)\b\s*[:#-]?\s*([A-Za-z]?\d{3,})\b",
         t,
@@ -277,7 +213,6 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
         nro = _normalizar_nro_factura(raw)
         return nro or None
 
-    # solo "A00273279" o "275015"
     if re.fullmatch(r"[A-Za-z]?\d{3,}", t):
         nro = _normalizar_nro_factura(t)
         return nro or None
@@ -285,7 +220,7 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
     return None
 
 # =====================================================================
-# EXTRACCIÓN SIMPLE DE PARÁMETROS (disponible)
+# EXTRACCIÓN SIMPLE DE PARÁMETROS
 # =====================================================================
 def extraer_parametros(texto: str) -> Dict:
     MESES_LOCAL = {
@@ -315,7 +250,7 @@ def extraer_parametros(texto: str) -> Dict:
     return parametros
 
 # =====================================================================
-# CARGA LISTAS DESDE SUPABASE (cache)
+# CARGA LISTAS DESDE SUPABASE
 # =====================================================================
 @st.cache_data(ttl=60 * 60)
 def _cargar_listas_supabase() -> Dict[str, List[str]]:
@@ -323,7 +258,7 @@ def _cargar_listas_supabase() -> Dict[str, List[str]]:
     articulos: List[str] = []
 
     try:
-        from supabase_client import supabase  # type: ignore
+        from supabase_client import supabase
         if supabase is None:
             return {"proveedores": [], "articulos": []}
 
@@ -366,13 +301,11 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
     if not toks or not index:
         return []
 
-    # 1) PRIORIDAD ABSOLUTA: MATCH EXACTO
     toks_set = set(toks)
     for orig, norm in index:
         if norm in toks_set:
             return [orig]
 
-    # 2) FALLBACK: substring + score
     candidatos: List[Tuple[int, str]] = []
     for orig, norm in index:
         for tk in toks:
@@ -395,9 +328,6 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
 
     return out
 
-# =====================================================================
-# RESOLUCIÓN FINAL: PROVEEDOR → SI NO, ARTÍCULO
-# =====================================================================
 def detectar_proveedor_o_articulo(texto: str) -> Dict[str, List[str]]:
     prov_index, art_index = _get_indices()
 
@@ -411,25 +341,10 @@ def detectar_proveedor_o_articulo(texto: str) -> Dict[str, List[str]]:
 
     return {"tipo": "ninguno", "valores": []}
 
-# =========================
-# IA_INTERPRETADOR.PY - PATCH (AGREGAR MULTI-PROVEEDOR EN COMPARATIVAS)
-# =========================
-# SOLO AGREGAR: detección de múltiples proveedores para comparar compras
-# NO TOCA la lógica existente de comparar_proveedor_meses/anios (1 proveedor)
-
-import re
-from typing import List, Dict, Optional
-
-# ---------------------------------------------------------------------
-# Helper: extraer proveedores desde texto usando tu índice existente
-# (asume que ya tenés provs = _match_best(..., max_items=MAX_PROVEEDORES))
-# ---------------------------------------------------------------------
-
+# =====================================================================
+# HELPER MULTI-PROVEEDOR
+# =====================================================================
 def _extraer_lista_proveedores_desde_texto(texto_lower: str, provs_detectados: List[str]) -> List[str]:
-    """
-    Devuelve lista de proveedores detectados (máximo MAX_PROVEEDORES),
-    preservando el orden y evitando duplicados.
-    """
     out: List[str] = []
     seen = set()
     for p in (provs_detectados or []):
@@ -438,67 +353,6 @@ def _extraer_lista_proveedores_desde_texto(texto_lower: str, provs_detectados: L
             out.append(p)
     return out
 
-# =========================
-# DENTRO DE interpretar_pregunta() -> BLOQUE:
-# "COMPARAR COMPRAS PROVEEDOR MES VS MES / AÑO VS AÑO"
-# =========================
-# Pegá ESTE BLOQUE dentro del:
-# if flag_comparar and flag_compras:
-# ... DESPUÉS de calcular `provs`, `anios`, `meses_nombre`, `meses_yyyymm`
-# y ANTES de la lógica de 1 proveedor (para darle prioridad al multi).
-# -------------------------
-
-# >>>>> INICIO BLOQUE AGREGADO: MULTI PROVEEDOR <<<<<
-proveedores_lista = _extraer_lista_proveedores_desde_texto(texto_lower, provs)
-
-# MULTI PROVEEDOR + MESES (2 meses)
-if len(proveedores_lista) >= 2:
-    # Caso meses YYYY-MM (ej: 2025-06 2025-07)
-    if len(meses_yyyymm) >= 2:
-        mes1, mes2 = meses_yyyymm[0], meses_yyyymm[1]
-        return {
-            "tipo": "comparar_proveedores_meses",
-            "parametros": {
-                "proveedores": proveedores_lista[:MAX_PROVEEDORES],
-                "mes1": mes1,
-                "mes2": mes2,
-                "label1": mes1,
-                "label2": mes2,
-            },
-            "debug": "Comparativa multi-proveedor (mes vs mes) YYYY-MM",
-        }
-
-    # Caso meses por nombre + año (ej: junio julio 2025)
-    if len(meses_nombre) >= 2 and len(anios) >= 1:
-        anio = anios[0]
-        mes1 = _to_yyyymm(anio, meses_nombre[0])
-        mes2 = _to_yyyymm(anio, meses_nombre[1])
-        return {
-            "tipo": "comparar_proveedores_meses",
-            "parametros": {
-                "proveedores": proveedores_lista[:MAX_PROVEEDORES],
-                "mes1": mes1,
-                "mes2": mes2,
-                "label1": f"{meses_nombre[0]} {anio}",
-                "label2": f"{meses_nombre[1]} {anio}",
-            },
-            "debug": "Comparativa multi-proveedor (mes vs mes) nombre+anio",
-        }
-
-    # MULTI PROVEEDOR + AÑOS (2 años)
-    if len(anios) >= 2:
-        a1, a2 = anios[0], anios[1]
-        return {
-            "tipo": "comparar_proveedores_anios",
-            "parametros": {
-                "proveedores": proveedores_lista[:MAX_PROVEEDORES],
-                "anios": [a1, a2],
-                "label1": str(a1),
-                "label2": str(a2),
-            },
-            "debug": "Comparativa multi-proveedor (año vs año)",
-        }
-# >>>>> FIN BLOQUE AGREGADO: MULTI PROVEEDOR <<<<<
 # =====================================================================
 # PARSEO TIEMPO
 # =====================================================================
@@ -544,7 +398,7 @@ def _to_yyyymm(anio: int, mes_nombre: str) -> str:
     return f"{anio}-{MESES[mes_nombre]}"
 
 # =====================================================================
-# PROMPT OpenAI (solo si lo habilitás)
+# PROMPT OpenAI
 # =====================================================================
 def _get_system_prompt() -> str:
     hoy = datetime.now()
@@ -566,7 +420,7 @@ FECHA: {hoy.strftime("%Y-%m-%d")} (mes actual {mes_actual}, año {anio_actual})
 """.strip()
 
 # =====================================================================
-# OPENAI (opcional) - SOLO COMO FALLBACK
+# OPENAI (opcional)
 # =====================================================================
 def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
     if not (client and USAR_OPENAI_PARA_DATOS):
@@ -619,10 +473,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     texto_original = pregunta.strip()
     texto_lower_original = texto_original.lower().strip()
 
-    # ==========================================================
-    # FAST-PATH FACTURAS (prioridad máxima)
-    # - Soporta: "Detalle factura 275016" / "Detalle factura A00275016" / "275016"
-    # ==========================================================
+    # FAST-PATH FACTURAS
     if contiene_factura(texto_lower_original) or re.fullmatch(r"\d{5,}", texto_original.strip()):
         nro_factura = _extraer_nro_factura(texto_original)
         if nro_factura:
@@ -632,11 +483,9 @@ def interpretar_pregunta(pregunta: str) -> Dict:
                 "debug": f"detalle factura detectado ({nro_factura})",
             }
 
-    # NUEVO: aplicar limpieza canónica sin romper la lógica
     texto_limpio = limpiar_consulta(texto_original)
     texto_lower = texto_limpio.lower().strip()
 
-    # flags
     flag_compras = contiene_compras(texto_lower_original) or contiene_compras(texto_lower)
     flag_comparar = contiene_comparar(texto_lower_original) or contiene_comparar(texto_lower)
 
@@ -648,9 +497,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
-    # ==========================================================
-    # COMPRAS (CANÓNICO)
-    # ==========================================================
+    # COMPRAS
     if flag_compras and (not flag_comparar):
         proveedor_libre = None
         if not provs:
@@ -669,7 +516,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
 
         proveedor_final = provs[0] if provs else proveedor_libre
 
-        # compras proveedor + mes
         if proveedor_final:
             if len(meses_yyyymm) >= 1:
                 return {
@@ -686,7 +532,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
                     "debug": "compras proveedor mes (nombre+anio)",
                 }
 
-            # compras proveedor + año
             if len(anios) >= 1:
                 return {
                     "tipo": "compras_proveedor_anio",
@@ -694,7 +539,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
                     "debug": "compras proveedor año",
                 }
 
-        # compras (sin proveedor) + mes
         if len(meses_yyyymm) >= 1:
             return {
                 "tipo": "compras_mes",
@@ -710,7 +554,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
                 "debug": "compras mes (nombre+anio)",
             }
 
-        # compras (sin proveedor) + año
         if len(anios) >= 1:
             return {
                 "tipo": "compras_anio",
@@ -718,10 +561,56 @@ def interpretar_pregunta(pregunta: str) -> Dict:
                 "debug": "compras año",
             }
 
-    # ==========================================================
-    # COMPARAR COMPRAS PROVEEDOR MES VS MES / AÑO VS AÑO
-    # ==========================================================
+    # COMPARAR COMPRAS
     if flag_comparar and flag_compras:
+        # MULTI-PROVEEDOR (PRIORIDAD)
+        proveedores_lista = _extraer_lista_proveedores_desde_texto(texto_lower, provs)
+
+        if len(proveedores_lista) >= 2:
+            if len(meses_yyyymm) >= 2:
+                mes1, mes2 = meses_yyyymm[0], meses_yyyymm[1]
+                return {
+                    "tipo": "comparar_proveedores_meses",
+                    "parametros": {
+                        "proveedores": proveedores_lista[:MAX_PROVEEDORES],
+                        "mes1": mes1,
+                        "mes2": mes2,
+                        "label1": mes1,
+                        "label2": mes2,
+                    },
+                    "debug": "Comparativa multi-proveedor (mes vs mes) YYYY-MM",
+                }
+
+            if len(meses_nombre) >= 2 and len(anios) >= 1:
+                anio = anios[0]
+                mes1 = _to_yyyymm(anio, meses_nombre[0])
+                mes2 = _to_yyyymm(anio, meses_nombre[1])
+                return {
+                    "tipo": "comparar_proveedores_meses",
+                    "parametros": {
+                        "proveedores": proveedores_lista[:MAX_PROVEEDORES],
+                        "mes1": mes1,
+                        "mes2": mes2,
+                        "label1": f"{meses_nombre[0]} {anio}",
+                        "label2": f"{meses_nombre[1]} {anio}",
+                    },
+                    "debug": "Comparativa multi-proveedor (mes vs mes) nombre+anio",
+                }
+
+            if len(anios) >= 2:
+                a1, a2 = anios[0], anios[1]
+                return {
+                    "tipo": "comparar_proveedores_anios",
+                    "parametros": {
+                        "proveedores": proveedores_lista[:MAX_PROVEEDORES],
+                        "anios": [a1, a2],
+                        "label1": str(a1),
+                        "label2": str(a2),
+                    },
+                    "debug": "Comparativa multi-proveedor (año vs año)",
+                }
+
+        # 1 PROVEEDOR
         proveedor = provs[0] if provs else None
 
         if not proveedor:
@@ -743,7 +632,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
                 "debug": f"Proveedor='{proveedor}', texto={texto_lower}",
             }
 
-        # meses YYYY-MM
         if len(meses_yyyymm) >= 2:
             mes1, mes2 = meses_yyyymm[0], meses_yyyymm[1]
             return {
@@ -758,7 +646,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
                 "debug": "Comparando meses en formato YYYY-MM.",
             }
 
-        # meses por nombre + año
         if len(meses_nombre) >= 2 and len(anios) >= 1:
             anio = anios[0]
             mes1 = _to_yyyymm(anio, meses_nombre[0])
@@ -775,7 +662,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
                 "debug": "Comparando meses por nombre y año explícito.",
             }
 
-        # años
         if len(anios) >= 2:
             a1, a2 = anios[0], anios[1]
             return {
@@ -796,9 +682,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             "debug": f"Condiciones insuficientes: años={anios}, meses={meses_nombre}",
         }
 
-    # ==========================================================
     # STOCK
-    # ==========================================================
     if "stock" in texto_lower:
         if arts:
             return {
@@ -812,9 +696,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             "debug": "stock total",
         }
 
-    # ==========================================================
     # DEFAULT
-    # ==========================================================
     out_ai = _interpretar_con_openai(texto_original)
     if out_ai:
         return out_ai
@@ -827,7 +709,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     }
 
 # =====================================================================
-# MAPEO TIPO → FUNCIÓN SQL (CANÓNICO)
+# MAPEO TIPO → FUNCIÓN SQL
 # =====================================================================
 MAPEO_FUNCIONES = {
     "compras_anio": {
@@ -835,62 +717,51 @@ MAPEO_FUNCIONES = {
         "params": ["anio"],
         "resumen": "get_total_compras_anio"
     },
-
     "compras_proveedor_anio": {
         "funcion": "get_detalle_compras_proveedor_anio",
         "params": ["proveedor", "anio"],
         "resumen": "get_total_compras_proveedor_anio"
     },
-
     "compras_proveedor_mes": {
         "funcion": "get_detalle_compras_proveedor_mes",
         "params": ["proveedor", "mes"]
     },
-
     "compras_mes": {
         "funcion": "get_compras_por_mes_excel",
         "params": ["mes"]
     },
-
-    # =========================
-    # FACTURAS
-    # =========================
     "detalle_factura_numero": {
         "funcion": "get_detalle_factura_por_numero",
         "params": ["nro_factura"]
     },
-
-    # =========================
-    # COMPARATIVAS
-    # =========================
     "comparar_proveedor_meses": {
         "funcion": "get_comparacion_proveedor_meses",
         "params": ["proveedor", "mes1", "mes2", "label1", "label2"]
     },
-
     "comparar_proveedor_anios": {
         "funcion": "get_comparacion_proveedor_anios",
         "params": ["proveedor", "anios", "label1", "label2"]
     },
-
-    # =========================
-    # OTROS
-    # =========================
+    "comparar_proveedores_meses": {
+        "funcion": "get_comparacion_proveedores_meses",
+        "params": ["proveedores", "mes1", "mes2", "label1", "label2"]
+    },
+    "comparar_proveedores_anios": {
+        "funcion": "get_comparacion_proveedores_anios",
+        "params": ["proveedores", "anios", "label1", "label2"]
+    },
     "ultima_factura": {
         "funcion": "get_ultima_factura_inteligente",
         "params": ["patron"]
     },
-
     "facturas_articulo": {
         "funcion": "get_facturas_de_articulo",
         "params": ["articulo"]
     },
-
     "stock_total": {
         "funcion": "get_stock_total",
         "params": []
     },
-
     "stock_articulo": {
         "funcion": "get_stock_articulo",
         "params": ["articulo"]
@@ -907,18 +778,7 @@ def es_tipo_valido(tipo: str) -> bool:
         "no_entendido",
         "comparar_proveedor_meses",
         "comparar_proveedor_anios",
-    ]
-    return tipo in MAPEO_FUNCIONES or tipo in tipos_especiales
-
-def obtener_info_tipo(tipo: str) -> Optional[Dict]:
-    return MAPEO_FUNCIONES.get(tipo)
-
-def es_tipo_valido(tipo: str) -> bool:
-    tipos_especiales = [
-        "conversacion",
-        "conocimiento",
-        "no_entendido",
-        "comparar_proveedor_meses",
-        "comparar_proveedor_anios",
+        "comparar_proveedores_meses",
+        "comparar_proveedores_anios",
     ]
     return tipo in MAPEO_FUNCIONES or tipo in tipos_especiales
