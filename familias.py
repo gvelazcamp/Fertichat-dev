@@ -9,7 +9,7 @@ from datetime import datetime
 
 # Importar conexión a DB (Supabase / Postgres)
 # (No cambiar: se asume que ya existe en tu proyecto)
-from sql_queries import get_db_connection
+from sql_core import get_db_connection
 
 
 # =====================================================================
