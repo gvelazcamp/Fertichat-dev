@@ -1,9 +1,6 @@
 # =========================
 # SQL QUERIES - SOLO CONSULTAS (POSTGRES / SUPABASE)
 # =========================
-# VERSIÓN CORREGIDA - get_comparacion_proveedor_anios_like CON LIKE
-# =========================
-
 import os
 import re
 import pandas as pd
