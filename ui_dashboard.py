@@ -10,7 +10,7 @@ from datetime import datetime
 
 from config import DEBUG_MODE, POWERBI_URL
 from utils_format import _fmt_num_latam, _safe_float
-from sql_queries import (
+from sql_core import (
     ejecutar_consulta,
     _sql_total_num_expr_general,
     get_dashboard_totales,
