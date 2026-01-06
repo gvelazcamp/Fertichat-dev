@@ -8,7 +8,7 @@ import pandas as pd
 from typing import Optional
 
 # Importar conexión a DB
-from sql_queries import get_db_connection, ejecutar_consulta
+from sql_core import get_db_connection, ejecutar_consulta
 
 
 # =====================================================================
