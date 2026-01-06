@@ -164,6 +164,26 @@ def _tokens(texto: str) -> List[str]:
             out.append(k)
     return out
 
+def normalizar_texto(texto: str) -> str:
+    """
+    Normaliza un texto quitando acentos, espacios extra y caracteres no permitidos.
+    """
+    if not texto:  # Manejo si el texto está vacío
+        return ""
+    
+    # Quita espacios extra y convierte a minúsculas
+    texto = texto.strip().lower()
+    
+    # Normaliza el texto (elimina acentos)
+    texto = "".join(
+        c for c in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(c) != "Mn"
+    )
+    
+    # Quita caracteres especiales
+    texto = re.sub(r"[^a-z0-9\s]", "", texto)
+    
+    return texto
 # =====================================================================
 # CARGA LISTAS DESDE SUPABASE (cache)
 # =====================================================================
