@@ -275,38 +275,37 @@ def generar_grafico(df: pd.DataFrame, tipo: str):
         print(f"Error generando gráfico: {e}")
         return None
 
-
 # =========================
 # ROUTER SQL
 # =========================
 def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     if tipo == "compras_anio":
-        return sqlq.get_compras_anio(parametros["anio"])
+        return sqlq_compras.get_compras_anio(parametros["anio"])
 
     elif tipo == "compras_proveedor_mes":
-        return sqlq.get_detalle_compras_proveedor_mes(parametros["proveedor"], parametros["mes"])
+        return sqlq_compras.get_detalle_compras_proveedor_mes(parametros["proveedor"], parametros["mes"])
 
     elif tipo == "compras_proveedor_anio":
-        return sqlq.get_detalle_compras_proveedor_anio(parametros["proveedor"], parametros["anio"])
+        return sqlq_compras.get_detalle_compras_proveedor_anio(parametros["proveedor"], parametros["anio"])
 
     elif tipo == "compras_articulo_mes":
-        return sqlq.get_detalle_compras_articulo_mes(parametros["articulo"], parametros["mes"])
+        return sqlq_compras.get_detalle_compras_articulo_mes(parametros["articulo"], parametros["mes"])
 
     elif tipo == "compras_articulo_anio":
-        return sqlq.get_detalle_compras_articulo_anio(parametros["articulo"], parametros["anio"])
+        return sqlq_compras.get_detalle_compras_articulo_anio(parametros["articulo"], parametros["anio"])
 
     elif tipo == "compras_mes":
-        return sqlq.get_compras_por_mes_excel(parametros["mes"])
+        return sqlq_compras.get_compras_por_mes_excel(parametros["mes"])
 
     elif tipo == "ultima_factura":
-        return sqlq.get_ultima_factura_inteligente(parametros["patron"])
+        return sqlq_compras.get_ultima_factura_inteligente(parametros["patron"])
 
     elif tipo == "facturas_articulo":
-        return sqlq.get_facturas_de_articulo(parametros["articulo"])
+        return sqlq_compras.get_facturas_de_articulo(parametros["articulo"])
 
     elif tipo == "detalle_factura":
-        return sqlq.get_detalle_factura_por_numero(parametros["nro_factura"])
+        return sqlq_compras.get_detalle_factura_por_numero(parametros["nro_factura"])
 
     # =========================
     # COMPARATIVAS
@@ -318,7 +317,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         label1 = parametros.get("label1", mes1)
         label2 = parametros.get("label2", mes2)
 
-        return sqlq.get_comparacion_proveedor_meses(
+        return sqlq_comparativas.get_comparacion_proveedor_meses(
             proveedor,
             mes1,
             mes2,
@@ -327,9 +326,9 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         )
 
     elif tipo == "comparar_proveedor_anios":
-         proveedor = parametros.get("proveedor")
-         anios = parametros.get("anios", [])
-         return sqlq_comparativas.get_comparacion_proveedor_anios_like(proveedor, anios)
+        proveedor = parametros.get("proveedor")
+        anios = parametros.get("anios", [])
+        return sqlq_comparativas.get_comparacion_proveedor_anios_like(proveedor, anios)
 
     elif tipo == "comparar_articulo_meses":
         articulo = parametros.get("articulo")
@@ -338,7 +337,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         label1 = parametros.get("label1", mes1)
         label2 = parametros.get("label2", mes2)
 
-        return sqlq.get_comparacion_articulo_meses(
+        return sqlq_comparativas.get_comparacion_articulo_meses(
             mes1,
             mes2,
             label1,
@@ -347,7 +346,10 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         )
 
     elif tipo == "comparar_articulo_anios":
-        return sqlq.get_comparacion_articulo_anios(parametros["anios"], parametros["articulo"])
+        return sqlq_comparativas.get_comparacion_articulo_anios(
+            parametros["anios"], 
+            parametros["articulo"]
+        )
 
     elif tipo == "comparar_familia_meses":
         mes1 = parametros.get("mes1")
@@ -357,7 +359,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         moneda = parametros.get("moneda", "$")
         familias = parametros.get("familias")
 
-        return sqlq.get_comparacion_familia_meses_moneda(
+        return sqlq_comparativas.get_comparacion_familia_meses_moneda(
             mes1,
             mes2,
             label1,
@@ -367,61 +369,62 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         )
 
     elif tipo == "comparar_familia_anios":
-        return sqlq.get_comparacion_familia_anios_monedas(parametros["anios"])
+        return sqlq_comparativas.get_comparacion_familia_anios_monedas(
+            parametros["anios"]
+        )
 
     # =========================
     # GASTOS
     # =========================
     elif tipo == "gastos_familias_mes":
-        return sqlq.get_gastos_todas_familias_mes(parametros["mes"])
+        return sqlq_compras.get_gastos_todas_familias_mes(parametros["mes"])
 
     elif tipo == "gastos_familias_anio":
-        return sqlq.get_gastos_todas_familias_anio(parametros["anio"])
+        return sqlq_compras.get_gastos_todas_familias_anio(parametros["anio"])
 
     elif tipo == "gastos_secciones":
-        return sqlq.get_gastos_secciones_detalle_completo(parametros["familias"], parametros["mes"])
+        return sqlq_compras.get_gastos_secciones_detalle_completo(parametros["familias"], parametros["mes"])
 
     elif tipo == "top_proveedores":
         moneda = parametros.get("moneda", "pesos")
         anio = parametros.get("anio")
         mes = parametros.get("mes")
-        return sqlq.get_top_10_proveedores_chatbot(moneda, anio, mes)
+        return sqlq_compras.get_top_10_proveedores_chatbot(moneda, anio, mes)
 
     # =========================
     # STOCK
     # =========================
     elif tipo == "stock_total":
-        return sqlq.get_stock_total()
+        return sqlq_compras.get_stock_total()
 
     elif tipo == "stock_articulo":
-        return sqlq.get_stock_articulo(parametros["articulo"])
+        return sqlq_compras.get_stock_articulo(parametros["articulo"])
 
     elif tipo == "stock_familia":
-        return sqlq.get_stock_familia(parametros["familia"])
+        return sqlq_compras.get_stock_familia(parametros["familia"])
 
     elif tipo == "stock_por_familia":
-        return sqlq.get_stock_por_familia()
+        return sqlq_compras.get_stock_por_familia()
 
     elif tipo == "stock_por_deposito":
-        return sqlq.get_stock_por_deposito()
+        return sqlq_compras.get_stock_por_deposito()
 
     elif tipo == "stock_lotes_vencer":
         dias = parametros.get("dias", 90)
-        return sqlq.get_lotes_por_vencer(dias)
+        return sqlq_compras.get_lotes_por_vencer(dias)
 
     elif tipo == "stock_lotes_vencidos":
-        return sqlq.get_lotes_vencidos()
+        return sqlq_compras.get_lotes_vencidos()
 
     elif tipo == "stock_bajo":
         minimo = parametros.get("minimo", 10)
-        return sqlq.get_stock_bajo(minimo)
+        return sqlq_compras.get_stock_bajo(minimo)
 
     elif tipo == "stock_lote":
-        return sqlq.get_stock_lote_especifico(parametros["lote"])
+        return sqlq_compras.get_stock_lote_especifico(parametros["lote"])
 
     else:
         raise ValueError(f"Tipo '{tipo}' no implementado")
-
 
 # =========================
 # UI PRINCIPAL
