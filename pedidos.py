@@ -12,7 +12,7 @@ import io
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, GridUpdateMode
 
 # Importar conexión a DB
-from sql_queries import ejecutar_consulta, get_db_connection
+from sql_core import ejecutar_consulta, get_db_connection
 
 # =====================================================================
 # CONFIGURACIÓN
@@ -799,3 +799,4 @@ def mostrar_pedidos_internos():
                     st.dataframe(df_det, use_container_width=True)
             except Exception:
                 pass
+
