@@ -9,7 +9,7 @@ from typing import Tuple, Optional
 import time
 
 from utils_format import formatear_dataframe, df_to_excel
-from sql_core import (
+from sql_stock import (
     get_stock_total,
     get_stock_por_familia,
     get_stock_por_deposito,
