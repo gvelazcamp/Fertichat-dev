@@ -13,6 +13,7 @@ from ia_comparativas import interpretar_comparativas
 import streamlit as st
 from openai import OpenAI
 from config import OPENAI_MODEL
+from ia_interpretador import limpiar_consulta
 
 # =====================================================================
 # CONFIGURACIÓN OPENAI (opcional)
