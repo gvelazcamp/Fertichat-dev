@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Tuple, Optional
 
 from utils_format import formatear_dataframe, df_to_excel
-from sql_queries import (
+from sql_core import (
     ejecutar_consulta,
     get_lista_proveedores,
     get_lista_tipos_comprobante,
