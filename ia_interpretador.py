@@ -435,7 +435,8 @@ def _to_yyyymm(anio: int, mes_nombre: str) -> str:
 
 # =====================================================================
 # NUEVO: EXTRACTOR NRO FACTURA (AGREGADO)
-# - Soporta: "detalle factura A00273279", "factura 27379", "A00273279"
+# - Soporta: "detalle factura A00273279", "factura 273279", "A00273279"
+# - Normaliza: "273279" -> "A00273279" (A + zfill(8))
 # =====================================================================
 def _extraer_nro_factura(texto: str) -> Optional[str]:
     if not texto:
@@ -443,17 +444,20 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
 
     t = str(texto).strip()
 
-    # "detalle factura A00273279" / "factura: 27379" / "factura A00273279"
     m = re.search(r"\b(detalle\s+)?factura\b\s*[:#-]?\s*([A-Za-z]?\d{3,})\b", t, flags=re.IGNORECASE)
     if m:
-        return str(m.group(2)).strip().upper()
+        nro = str(m.group(2)).strip().upper()
+        if nro.isdigit() and len(nro) <= 8:
+            nro = "A" + nro.zfill(8)
+        return nro
 
-    # Si escriben SOLO el número (A + dígitos o solo dígitos)
     if re.fullmatch(r"[A-Za-z]?\d{3,}", t):
-        return t.upper()
+        nro = t.upper()
+        if nro.isdigit() and len(nro) <= 8:
+            nro = "A" + nro.zfill(8)
+        return nro
 
     return None
-
 # =====================================================================
 # PROMPT OpenAI (solo si lo habilitás)
 # =====================================================================
