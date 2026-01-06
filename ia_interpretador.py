@@ -739,6 +739,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     }
 
 # =====================================================================
+# =====================================================================
 # MAPEO TIPO → FUNCIÓN SQL (CANÓNICO)
 # =====================================================================
 MAPEO_FUNCIONES = {
@@ -777,7 +778,7 @@ MAPEO_FUNCIONES = {
     # =========================
     "comparar_proveedor_meses": {
         "funcion": "get_comparacion_proveedor_meses",
-        "params": ["proveedor", "mes1", "mes2, "label1", "label2"]
+        "params": ["proveedor", "mes1", "mes2", "label1", "label2"]
     },
 
     "comparar_proveedor_anios": {
