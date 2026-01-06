@@ -38,6 +38,7 @@ from depositos import mostrar_depositos
 from familias import mostrar_familias
 from comprobantes import mostrar_menu_comprobantes
 from ui_chat_chainlit import mostrar_chat_chainlit
+from sql_core import get_lista_proveedores, get_valores_unicos, ejecutar_consulta
 
 from ui_css import CSS_GLOBAL
 
