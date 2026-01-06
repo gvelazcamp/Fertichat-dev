@@ -12,7 +12,7 @@ from ia_router import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
 
 # IMPORTS DE SQL (evita ImportError por funciones no existentes)
-import sql_core as sqlq
+import sql_compras as sqlq
 
 
 # =========================
