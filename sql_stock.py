@@ -5,7 +5,7 @@
 import os
 import pandas as pd
 import streamlit as st
-from .sql_core import ejecutar_consulta, _safe_ident
+from sql_core import ejecutar_consulta, _safe_ident
 
 
 # =====================================================================
