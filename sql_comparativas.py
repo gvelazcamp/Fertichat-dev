@@ -361,3 +361,60 @@ def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
         ORDER BY Total DESC
     """
     return ejecutar_consulta(sql, params)
+# =====================================================================
+# COMPARACIÓN MULTI PROVEEDORES - MULTI MESES
+# =====================================================================
+
+def get_comparacion_proveedores_meses_multi(
+    proveedores: List[str],
+    meses: List[str]
+) -> pd.DataFrame:
+    """
+    Compara múltiples proveedores en múltiples meses.
+    Ej:
+      proveedores = ["roche", "biodiagnostico", "tresul"]
+      meses = ["2025-06", "2025-07"]
+    """
+
+    if not proveedores or not meses:
+        return pd.DataFrame()
+
+    total_expr = _sql_total_num_expr_general()
+
+    # WHERE proveedores
+    prov_clauses = []
+    params: List = []
+
+    for p in proveedores:
+        prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
+        params.append(f"%{p.lower()}%")
+
+    prov_where = " OR ".join(prov_clauses)
+
+    # Columnas dinámicas por mes
+    cols = []
+    for m in meses:
+        cols.append(
+            f"""SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) AS "{m}" """
+        )
+        params.append(m)
+
+    cols_sql = ",\n            ".join(cols)
+    meses_placeholders = ", ".join(["%s"] * len(meses))
+    params.extend(meses)
+
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            {cols_sql}
+        FROM chatbot_raw
+        WHERE ({prov_where})
+          AND TRIM("Mes") IN ({meses_placeholders})
+          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+        GROUP BY TRIM("Cliente / Proveedor")
+        ORDER BY Proveedor
+        LIMIT 300
+    """
+
+    return ejecutar_consulta(sql, tuple(params))
+    
