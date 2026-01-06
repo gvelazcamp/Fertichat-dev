@@ -395,7 +395,47 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         anio = parametros.get("anio")
         mes = parametros.get("mes")
         return sqlq_compras.get_top_10_proveedores_chatbot(moneda, anio, mes)
+# =========================
+# UI_COMPRAS.PY - PATCH (AGREGAR 2 ELIF EN ROUTER SQL)
+# =========================
+# SOLO AGREGAR: 2 elif nuevos para ejecutar SQL multi-proveedor
 
+def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
+
+    # ... (todo tu código existente arriba queda igual)
+
+    # =========================
+    # COMPARATIVAS (MULTI-PROVEEDOR) - NUEVO
+    # =========================
+    elif tipo == "comparar_proveedores_meses":
+        proveedores = parametros.get("proveedores", [])
+        mes1 = parametros.get("mes1")
+        mes2 = parametros.get("mes2")
+        label1 = parametros.get("label1", mes1)
+        label2 = parametros.get("label2", mes2)
+
+        return sqlq_comparativas.get_comparacion_proveedores_meses(
+            proveedores,
+            mes1,
+            mes2,
+            label1,
+            label2,
+        )
+
+    elif tipo == "comparar_proveedores_anios":
+        proveedores = parametros.get("proveedores", [])
+        anios = parametros.get("anios", [])
+        label1 = parametros.get("label1", str(anios[0]) if len(anios) > 0 else "")
+        label2 = parametros.get("label2", str(anios[1]) if len(anios) > 1 else "")
+
+        return sqlq_comparativas.get_comparacion_proveedores_anios(
+            proveedores,
+            anios,
+            label1,
+            label2,
+        )
+
+    # ... (todo tu código existente abajo queda igual)
     # =========================
     # STOCK
     # =========================
