@@ -13,6 +13,7 @@ from utils_openai import responder_con_openai
 
 # IMPORTS DE SQL (evita ImportError por funciones no existentes)
 import sql_compras as sqlq
+import sql_comparativas as sqlq
 
 
 # =========================
