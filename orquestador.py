@@ -1,3 +1,6 @@
+import streamlit as st
+st.session_state["ORQUESTADOR_CARGADO"] = True
+
 # =========================
 # ORQUESTADOR V2 - USA IA INTERPRETADOR
 # =========================
