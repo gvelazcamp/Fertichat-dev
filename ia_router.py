@@ -184,8 +184,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     # Saludos / conversación
     saludos = {"hola", "buenas", "buenos", "gracias", "ok", "dale", "perfecto", "genial"}
     if any(re.search(rf"\b{re.escape(w)}\b", texto_lower) for w in saludos):
-        # IMPORTANTE: si hay intención de datos, NO lo tomes como conversación
-        if not any(k in texto_lower for k in ["compra", "compras", "compar", "stock", "factura", "facturas", "detalle"]):
+        if not any(k in texto_lower for k in ["compra", "compar", "stock"]):
             return {"tipo": "conversacion", "parametros": {}, "debug": "saludo"}
 
     # ✅ ROUTING POR KEYWORDS
@@ -194,11 +193,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
 
     if "comparar" in texto_lower or "comparame" in texto_lower or "compara" in texto_lower:
         return interpretar_comparativas(pregunta)
-
-    # ✅ FACTURAS (detalle/última/etc.) -> va al intérprete canónico
-    # Ej: "Detalle factura 275217", "última factura tresul", "facturas de X"
-    if "factura" in texto_lower or "facturas" in texto_lower or re.search(r"\bdetalle\s+factura\b", texto_lower):
-        return interpretar_canonico(pregunta)
 
     if "compra" in texto_lower or "compras" in texto_lower:
         return interpretar_canonico(pregunta)
@@ -236,7 +230,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     return {
         "tipo": "no_entendido",
         "parametros": {},
-        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche 2024 2025 | detalle factura 275217",
+        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche 2024 2025",
         "debug": "router: no match.",
     }
 
@@ -268,18 +262,16 @@ MAPEO_FUNCIONES = {
         "funcion": "get_comparacion_proveedor_anios_like",
         "params": ["proveedor", "anios"],
     },
+
+    # ✅ NUEVO: multi-proveedor + multi-mes (meses "YYYY-MM")
+    "comparar_proveedores_meses_multi": {
+        "funcion": "get_comparacion_proveedores_meses_multi",
+        "params": ["proveedores", "meses"],
+    },
+
     "ultima_factura": {
         "funcion": "get_ultima_factura_inteligente",
         "params": ["patron"],
-    },
-    # ✅ agregado alias de tipo por compatibilidad (si el intérprete devuelve este)
-    "detalle_factura": {
-        "funcion": "get_detalle_factura_por_numero",
-        "params": ["nro_factura"],
-    },
-    "detalle_factura_numero": {
-        "funcion": "get_detalle_factura_por_numero",
-        "params": ["nro_factura"],
     },
     "stock_total": {
         "funcion": "get_stock_total",
