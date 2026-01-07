@@ -338,6 +338,9 @@ def _detectar_proveedores_multi(texto_lower: str, idx_prov: List[Tuple[str, str]
     No rompe el caso proveedor compuesto (ej: "laboratorio tresul") porque se activa con:
       - 2+ alias conocidos (roche/tresul/biodiagnostico/cabinsur)
       - o separadores explícitos (coma / ' y ' / ' e ')
+    IMPORTANTE:
+      - Para alias, devuelve el ALIAS (patrón LIKE) y no la razón social completa,
+        para evitar que el SQL quede demasiado estricto y no matchee en chatbot_raw.
     """
     tlk = _key(texto_lower)
 
@@ -347,13 +350,16 @@ def _detectar_proveedores_multi(texto_lower: str, idx_prov: List[Tuple[str, str]
     out: List[str] = []
     seen = set()
 
-    # 1) Multi por alias (sin separadores)
+    def _add(val: Optional[str]) -> None:
+        v = (val or "").strip()
+        if v and v not in seen:
+            seen.add(v)
+            out.append(v)
+
+    # 1) Multi por alias (sin separadores) -> DEVUELVE ALIAS (patrón LIKE)
     if len(alias_hits) >= 2:
         for hit in alias_hits:
-            prov = _resolver_proveedor_alias_por_hit(hit, idx_prov)
-            if prov and prov not in seen:
-                seen.add(prov)
-                out.append(prov)
+            _add(hit)  # <- antes resolvía a razón social; ahora devolvemos el alias
             if len(out) >= MAX_PROVEEDORES:
                 break
         if len(out) >= 2:
@@ -367,19 +373,26 @@ def _detectar_proveedores_multi(texto_lower: str, idx_prov: List[Tuple[str, str]
             if not part:
                 continue
 
-            # primero alias si aplica
-            prov_alias = _resolver_proveedor_alias(part, idx_prov)
-            if prov_alias and prov_alias not in seen:
-                seen.add(prov_alias)
-                out.append(prov_alias)
+            part_key = _key(part)
+            hit_part = None
+            for a in alias_terms:
+                if a in part_key:
+                    hit_part = a
+                    break
+
+            # primero alias si aplica -> DEVUELVE ALIAS (patrón LIKE)
+            if hit_part:
+                _add(hit_part)
             else:
-                # match por lista (1 por parte)
-                prov_list = _match_best(part, idx_prov, max_items=1)
-                if prov_list:
-                    p0 = prov_list[0]
-                    if p0 and p0 not in seen:
-                        seen.add(p0)
-                        out.append(p0)
+                # si no es alias, mantenemos tu lógica actual
+                prov_alias = _resolver_proveedor_alias(part, idx_prov)
+                if prov_alias and prov_alias not in seen:
+                    _add(prov_alias)
+                else:
+                    # match por lista (1 por parte)
+                    prov_list = _match_best(part, idx_prov, max_items=1)
+                    if prov_list:
+                        _add(prov_list[0])
 
             if len(out) >= MAX_PROVEEDORES:
                 break
@@ -388,7 +401,6 @@ def _detectar_proveedores_multi(texto_lower: str, idx_prov: List[Tuple[str, str]
             return out
 
     return []
-
 # =====================================================================
 # INTÉRPRETE COMPARATIVAS (FUNCIÓN PRINCIPAL)
 # =====================================================================
