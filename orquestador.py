@@ -41,6 +41,7 @@ from sql_compras import (
     get_detalle_compras_articulo_mes,
     get_detalle_compras_articulo_anio,
     get_total_compras_articulo_anio,
+    get_facturas_proveedor_detalle,
     get_compras_por_mes_excel,
     # Facturas
     get_ultima_factura_inteligente,
