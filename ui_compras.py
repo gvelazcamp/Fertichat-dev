@@ -23,6 +23,49 @@ import sql_comparativas as sqlq_comparativas
 
 
 # =========================
+# DEBUG HELPERS (NO ROMPEN NADA)
+# =========================
+def _dbg_set_interpretacion(obj: dict):
+    try:
+        st.session_state["DBG_INT_LAST"] = obj or {}
+    except Exception:
+        pass
+
+
+def _dbg_set_sql(tag: Optional[str], query: str, params, df: Optional[pd.DataFrame] = None):
+    """
+    Guarda info para el panel:
+    - DBG_SQL_LAST_TAG
+    - DBG_SQL_LAST_QUERY
+    - DBG_SQL_LAST_PARAMS
+    - DBG_SQL_ROWS
+    - DBG_SQL_COLS
+    """
+    try:
+        st.session_state["DBG_SQL_LAST_TAG"] = tag
+        st.session_state["DBG_SQL_LAST_QUERY"] = query or ""
+        st.session_state["DBG_SQL_LAST_PARAMS"] = params if params is not None else []
+        if isinstance(df, pd.DataFrame):
+            st.session_state["DBG_SQL_ROWS"] = int(len(df))
+            st.session_state["DBG_SQL_COLS"] = list(df.columns)
+        else:
+            # no sabemos filas/cols
+            st.session_state["DBG_SQL_ROWS"] = None
+            st.session_state["DBG_SQL_COLS"] = []
+    except Exception:
+        pass
+
+
+def _dbg_set_result(df: Optional[pd.DataFrame]):
+    try:
+        if isinstance(df, pd.DataFrame):
+            st.session_state["DBG_SQL_ROWS"] = int(len(df))
+            st.session_state["DBG_SQL_COLS"] = list(df.columns)
+    except Exception:
+        pass
+
+
+# =========================
 # INICIALIZAR HISTORIAL
 # =========================
 def inicializar_historial():
@@ -383,8 +426,6 @@ def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
     except Exception as e:
         print(f"Error calculando totales: {e}")
         return None
-
-
 # =========================
 # GENERAR EXPLICACIÓN
 # =========================
@@ -606,35 +647,102 @@ def generar_grafico(df: pd.DataFrame, tipo: str):
 # =========================
 def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
+    # Debug base: deja de estar vacío aunque la query viva en sql_compras/sql_comparativas
+    _dbg_set_sql(
+        tag=tipo,
+        query=f"-- Ejecutando tipo: {tipo}\n-- (SQL real se arma dentro de sql_compras/sql_comparativas)\n",
+        params=parametros,
+        df=None
+    )
+
     if tipo == "compras_anio":
-        return sqlq_compras.get_compras_anio(parametros["anio"])
+        df = sqlq_compras.get_compras_anio(parametros["anio"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "compras_proveedor_mes":
-        return sqlq_compras.get_detalle_compras_proveedor_mes(parametros["proveedor"], parametros["mes"])
+        df = sqlq_compras.get_detalle_compras_proveedor_mes(parametros["proveedor"], parametros["mes"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "compras_proveedor_anio":
-        return sqlq_compras.get_detalle_compras_proveedor_anio(parametros["proveedor"], parametros["anio"])
+        df = sqlq_compras.get_detalle_compras_proveedor_anio(parametros["proveedor"], parametros["anio"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "compras_articulo_mes":
-        return sqlq_compras.get_detalle_compras_articulo_mes(parametros["articulo"], parametros["mes"])
+        df = sqlq_compras.get_detalle_compras_articulo_mes(parametros["articulo"], parametros["mes"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "compras_articulo_anio":
-        return sqlq_compras.get_detalle_compras_articulo_anio(parametros["articulo"], parametros["anio"])
+        df = sqlq_compras.get_detalle_compras_articulo_anio(parametros["articulo"], parametros["anio"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "compras_mes":
-        return sqlq_compras.get_compras_por_mes_excel(parametros["mes"])
+        df = sqlq_compras.get_compras_por_mes_excel(parametros["mes"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "ultima_factura":
-        return sqlq_compras.get_ultima_factura_inteligente(parametros["patron"])
+        df = sqlq_compras.get_ultima_factura_inteligente(parametros["patron"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "facturas_articulo":
-        return sqlq_compras.get_facturas_de_articulo(parametros["articulo"])
+        df = sqlq_compras.get_facturas_de_articulo(parametros["articulo"])
+        _dbg_set_result(df)
+        return df
 
     # =========================
     # FACTURAS
     # =========================
     elif tipo in ("detalle_factura", "detalle_factura_numero"):
-        return sqlq_compras.get_detalle_factura_por_numero(parametros["nro_factura"])
+        df = sqlq_compras.get_detalle_factura_por_numero(parametros["nro_factura"])
+        _dbg_set_result(df)
+        return df
+
+    # =========================
+    # ✅ FIX: FACTURAS POR PROVEEDOR (NUEVO SOPORTE)
+    # =========================
+    elif tipo in (
+        "facturas_proveedor",
+        "facturas_por_proveedor",
+        "todas_facturas_proveedor",
+        "todas_las_facturas_proveedor",
+        "facturas_proveedor_anio",
+        "facturas_proveedor_mes",
+    ):
+        proveedores = parametros.get("proveedores", [])
+        if (not proveedores) and parametros.get("proveedor"):
+            proveedores = [parametros.get("proveedor")]
+
+        # soportar mes singular -> meses
+        meses = parametros.get("meses")
+        if not meses and parametros.get("mes"):
+            meses = [parametros.get("mes")]
+
+        # soportar anio singular -> anios
+        anios = parametros.get("anios")
+        if not anios and parametros.get("anio"):
+            try:
+                anios = [int(parametros.get("anio"))]
+            except Exception:
+                anios = parametros.get("anios")
+
+        df = sqlq_compras.get_facturas_proveedor_detalle(
+            proveedores=proveedores or [],
+            meses=meses,
+            anios=anios,
+            desde=parametros.get("desde"),
+            hasta=parametros.get("hasta"),
+            articulo=parametros.get("articulo"),
+            moneda=parametros.get("moneda"),
+            limite=parametros.get("limite", 5000),
+        )
+        _dbg_set_result(df)
+        return df
 
     # =========================
     # COMPARATIVAS
@@ -646,43 +754,50 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         label1 = parametros.get("label1", mes1)
         label2 = parametros.get("label2", mes2)
 
-        return sqlq_comparativas.get_comparacion_proveedor_meses(
+        df = sqlq_comparativas.get_comparacion_proveedor_meses(
             proveedor,
             mes1,
             mes2,
             label1,
             label2,
         )
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "comparar_proveedor_anios":
         proveedor = parametros.get("proveedor")
         anios = parametros.get("anios", [])
-        return sqlq_comparativas.get_comparacion_proveedor_anios_like(proveedor, anios)
+        df = sqlq_comparativas.get_comparacion_proveedor_anios_like(proveedor, anios)
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "comparar_articulo_anios":
-        return sqlq_comparativas.get_comparacion_articulo_anios(
+        df = sqlq_comparativas.get_comparacion_articulo_anios(
             parametros["anios"],
             parametros["articulo"]
         )
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "comparar_familia_anios":
-        return sqlq_comparativas.get_comparacion_familia_anios_monedas(
+        df = sqlq_comparativas.get_comparacion_familia_anios_monedas(
             parametros["anios"]
         )
+        _dbg_set_result(df)
+        return df
 
     # =========================
-    # TODAS LAS FACTURAS DE PROVEEDOR (DETALLE)
+    # TODAS LAS FACTURAS DE PROVEEDOR (DETALLE) - COMPAT VIEJA
     # =========================
     elif tipo in (
         "compras_Todas las facturas de un Proveedor",
         "compras_Todoas las facturas de un Proveedor_________",  # compat typo viejo
     ):
         proveedores = parametros.get("proveedores", [])
-        # compat si viene singular
         if (not proveedores) and parametros.get("proveedor"):
             proveedores = [parametros.get("proveedor")]
 
-        return sqlq_compras.get_facturas_proveedor_detalle(
+        df = sqlq_compras.get_facturas_proveedor_detalle(
             proveedores=proveedores or [],
             meses=parametros.get("meses"),
             anios=parametros.get("anios"),
@@ -692,12 +807,14 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
             moneda=parametros.get("moneda"),
             limite=parametros.get("limite", 5000),
         )
+        _dbg_set_result(df)
+        return df
+
     # =========================
     # COMPARATIVAS (MULTI-PROVEEDOR) - FIX + COMPAT
     # =========================
     elif tipo in ("comparar_proveedores_meses", "comparar_proveedores_meses_multi"):
         proveedores = parametros.get("proveedores", [])
-        # compat si viene "proveedor" singular
         if (not proveedores) and parametros.get("proveedor"):
             proveedores = [parametros.get("proveedor")]
 
@@ -710,72 +827,101 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
             elif mes1:
                 meses = [mes1]
 
-        return sqlq_comparativas.get_comparacion_proveedores_meses_multi(
+        df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(
             proveedores,
             meses or []
         )
+        _dbg_set_result(df)
+        return df
 
     elif tipo in ("comparar_proveedores_anios", "comparar_proveedores_anios_multi"):
         proveedores = parametros.get("proveedores", [])
-        # compat si viene "proveedor" singular
         if (not proveedores) and parametros.get("proveedor"):
             proveedores = [parametros.get("proveedor")]
 
         anios = parametros.get("anios", [])
-        return sqlq_comparativas.get_comparacion_proveedores_anios_multi(
+        df = sqlq_comparativas.get_comparacion_proveedores_anios_multi(
             proveedores,
             anios
         )
+        _dbg_set_result(df)
+        return df
 
     # =========================
     # GASTOS
     # =========================
     elif tipo == "gastos_familias_mes":
-        return sqlq_compras.get_gastos_todas_familias_mes(parametros["mes"])
+        df = sqlq_compras.get_gastos_todas_familias_mes(parametros["mes"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "gastos_familias_anio":
-        return sqlq_compras.get_gastos_todas_familias_anio(parametros["anio"])
+        df = sqlq_compras.get_gastos_todas_familias_anio(parametros["anio"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "gastos_secciones":
-        return sqlq_compras.get_gastos_secciones_detalle_completo(parametros["familias"], parametros["mes"])
+        df = sqlq_compras.get_gastos_secciones_detalle_completo(parametros["familias"], parametros["mes"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "top_proveedores":
         moneda = parametros.get("moneda", "pesos")
         anio = parametros.get("anio")
         mes = parametros.get("mes")
-        return sqlq_compras.get_top_10_proveedores_chatbot(moneda, anio, mes)
+        df = sqlq_compras.get_top_10_proveedores_chatbot(moneda, anio, mes)
+        _dbg_set_result(df)
+        return df
 
     # =========================
     # STOCK
     # =========================
     elif tipo == "stock_total":
-        return sqlq_compras.get_stock_total()
+        df = sqlq_compras.get_stock_total()
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "stock_articulo":
-        return sqlq_compras.get_stock_articulo(parametros["articulo"])
+        df = sqlq_compras.get_stock_articulo(parametros["articulo"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "stock_familia":
-        return sqlq_compras.get_stock_familia(parametros["familia"])
+        df = sqlq_compras.get_stock_familia(parametros["familia"])
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "stock_por_familia":
-        return sqlq_compras.get_stock_por_familia()
+        df = sqlq_compras.get_stock_por_familia()
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "stock_por_deposito":
-        return sqlq_compras.get_stock_por_deposito()
+        df = sqlq_compras.get_stock_por_deposito()
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "stock_lotes_vencer":
         dias = parametros.get("dias", 90)
-        return sqlq_compras.get_lotes_por_vencer(dias)
+        df = sqlq_compras.get_lotes_por_vencer(dias)
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "stock_lotes_vencidos":
-        return sqlq_compras.get_lotes_vencidos()
+        df = sqlq_compras.get_lotes_vencidos()
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "stock_bajo":
         minimo = parametros.get("minimo", 10)
-        return sqlq_compras.get_stock_bajo(minimo)
+        df = sqlq_compras.get_stock_bajo(minimo)
+        _dbg_set_result(df)
+        return df
 
     elif tipo == "stock_lote":
-        return sqlq_compras.get_stock_lote_especifico(parametros["lote"])
+        df = sqlq_compras.get_stock_lote_especifico(parametros["lote"])
+        _dbg_set_result(df)
+        return df
 
     else:
         raise ValueError(f"Tipo '{tipo}' no implementado")
@@ -792,6 +938,9 @@ def Compras_IA():
 
     if st.button("🗑️ Limpiar chat"):
         st.session_state["historial_compras"] = []
+        # limpiar debug también
+        _dbg_set_interpretacion({})
+        _dbg_set_sql(None, "", [], None)
         st.rerun()
 
     st.markdown("---")
@@ -849,6 +998,8 @@ def Compras_IA():
 
                             # Ejecutar sugerencia (misma lógica del input principal)
                             res2 = interpretar_pregunta(suger_preg)
+                            _dbg_set_interpretacion(res2)
+
                             tipo2 = res2.get("tipo", "")
                             params2 = res2.get("parametros", {})
 
@@ -892,6 +1043,8 @@ def Compras_IA():
                                         resp2_content = str(resultado_sql2)
 
                             except Exception as e:
+                                # dejar debug visible aunque haya error
+                                _dbg_set_sql(tipo2, f"-- Error ejecutando tipo: {tipo2}", params2, None)
                                 resp2_content = f"❌ Error: {str(e)}"
 
                             st.session_state["historial_compras"].append(
@@ -969,6 +1122,8 @@ def Compras_IA():
         )
 
         resultado = interpretar_pregunta(pregunta)
+        _dbg_set_interpretacion(resultado)
+
         tipo = resultado.get("tipo", "")
         parametros = resultado.get("parametros", {})
 
@@ -1007,6 +1162,8 @@ def Compras_IA():
                     respuesta_content = str(resultado_sql)
 
             except Exception as e:
+                # dejar debug visible aunque haya error
+                _dbg_set_sql(tipo, f"-- Error ejecutando tipo: {tipo}", parametros, None)
                 respuesta_content = f"❌ Error: {str(e)}"
 
         st.session_state["historial_compras"].append(
@@ -1022,3 +1179,4 @@ def Compras_IA():
         )
 
         st.rerun()
+
