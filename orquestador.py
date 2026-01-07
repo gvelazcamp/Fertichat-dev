@@ -65,11 +65,20 @@ from sql_queries import (
     get_stock_lote_especifico,
 )
 
+
 # Facturas por proveedor (detalle) - puede vivir en sql_compras.py o sql_queries.py
 try:
     from sql_queries import get_facturas_proveedor_detalle  # si existe acá
 except Exception:
     from sql_compras import get_facturas_proveedor_detalle  # fallback
+
+try:
+    if st.session_state.get("DEBUG_SQL",False):
+        st.session_state["DBG_SQL_ROWS"]=0 if df is None else int(len(df))
+        st.session_state["DBG_SQL_COLS"]=[] if df is None else list(df.columns)
+except Exception:
+    pass
+
 
 
 # Importar utilidades
