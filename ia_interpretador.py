@@ -708,6 +708,26 @@ def interpretar_pregunta(pregunta: str) -> Dict:
         "debug": "no match",
     }
 
+ # =========================
+    # NUEVO: TODAS LAS FACTURAS DE UN PROVEEDOR (DETALLE) - COMPAT MULTI
+ # =========================
+    elif tipo == "compras_Todoas las facturas de un Proveedor":
+        proveedores = parametros.get("proveedores", [])
+        # compat si viene "proveedor" singular
+        if (not proveedores) and parametros.get("proveedor"):
+            proveedores = [parametros.get("proveedor")]
+
+    return sqlq_compras.get_facturas_proveedor_detalle(
+       proveedores=proveedores or [],
+       meses=parametros.get("meses"),
+       anios=parametros.get("anios"),
+       desde=parametros.get("desde"),
+       hasta=parametros.get("hasta"),
+       articulo=parametros.get("articulo"),
+       moneda=parametros.get("moneda"),
+       limite=parametros.get("limite", 5000),
+    )
+
 # =====================================================================
 # MAPEO TIPO → FUNCIÓN SQL
 # =====================================================================
