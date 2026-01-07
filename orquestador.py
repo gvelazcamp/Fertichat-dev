@@ -44,7 +44,6 @@ from sql_compras import (
     get_top_10_proveedores_chatbot,
 )
 
-
 from sql_comparativas import (
     get_comparacion_proveedor_meses,
     get_comparacion_articulo_anios,
@@ -54,7 +53,11 @@ from sql_comparativas import (
     get_comparacion_proveedores_meses_multi,
     get_comparacion_proveedores_anios_multi,
 
-# --- STOCK ---
+    get_gastos_todas_familias_mes,
+    get_gastos_todas_familias_anio,
+    get_gastos_secciones_detalle_completo,
+)
+
 from sql_stock import (
     get_stock_total,
     get_stock_articulo,
@@ -66,7 +69,6 @@ from sql_stock import (
     get_stock_bajo,
     get_stock_lote_especifico,
 )
-
 
 # --- GASTOS / STOCK ---
 from sql_stock import (
