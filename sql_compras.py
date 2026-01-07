@@ -2,8 +2,9 @@
 # SQL COMPRAS - CONSULTAS TRANSACCIONALES
 # =========================
 
+import re
 import pandas as pd
-from typing import List, Optional
+from typing import List, Optional, Any
 from sql_core import (
     ejecutar_consulta,
     _sql_total_num_expr,
