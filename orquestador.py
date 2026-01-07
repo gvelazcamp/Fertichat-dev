@@ -37,6 +37,9 @@ from sql_queries import (
     get_detalle_factura_por_numero,
     get_total_factura_por_numero,
 
+    # ✅ NUEVO: TODAS LAS FACTURAS POR PROVEEDOR (DETALLE)
+    get_facturas_proveedor_detalle,
+
     # Comparaciones
     get_comparacion_proveedor_meses,
     get_comparacion_proveedor_anios_monedas,
@@ -367,6 +370,65 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
                 return f"No encontré facturas de '{articulo}'.", None, None
 
             return f"🧾 Facturas de **{articulo.upper()}** ({len(df)} registros):", formatear_dataframe(df), None
+
+
+        # ✅ NUEVO: FACTURAS POR PROVEEDOR (DETALLE)
+        # Soporta tipo canónico "facturas_proveedor"
+        # y también el tipo viejo que tenías en el interpretador.
+        if tipo in ("facturas_proveedor", "compras_Todas las facturas de un Proveedor"):
+            proveedores = params.get("proveedores") or []
+            if isinstance(proveedores, str) and proveedores.strip():
+                proveedores = [proveedores.strip()]
+
+            # compat: por si viene "proveedor" singular
+            prov_singular = params.get("proveedor")
+            if (not proveedores) and prov_singular:
+                proveedores = [str(prov_singular).strip()]
+
+            meses = params.get("meses")
+            anios = params.get("anios")
+            desde = params.get("desde")
+            hasta = params.get("hasta")
+            articulo = params.get("articulo")
+            moneda = params.get("moneda")
+            limite = params.get("limite", 5000)
+
+            if not proveedores:
+                return "❌ Falta proveedor para listar facturas. Ej: todas las facturas roche 2025", None, None
+
+            df = get_facturas_proveedor_detalle(
+                proveedores=proveedores,
+                meses=meses,
+                anios=anios,
+                desde=desde,
+                hasta=hasta,
+                articulo=articulo,
+                moneda=moneda,
+                limite=limite,
+            )
+
+            if df is None or df.empty:
+                prov_txt = ", ".join([p.upper() for p in proveedores[:3]])
+                return f"No encontré facturas de {prov_txt} para ese período.", None, None
+
+            total = df["Total"].sum() if "Total" in df.columns else 0
+            total_fmt = f"${total:,.0f}".replace(",", ".")
+            prov_txt = ", ".join([p.upper() for p in proveedores[:3]])
+
+            # título “humano” según tiempo
+            tiempo_txt = ""
+            if meses and isinstance(meses, list) and meses:
+                tiempo_txt = f" en {meses[0]}"
+            elif anios and isinstance(anios, list) and anios:
+                tiempo_txt = f" en {anios[0]}"
+            elif desde and hasta:
+                tiempo_txt = f" del {desde} al {hasta}"
+
+            return (
+                f"🧾 Facturas de **{prov_txt}**{tiempo_txt} | 💰 **{total_fmt}** | {len(df)} registros:",
+                formatear_dataframe(df),
+                None
+            )
 
 
         # ✅ SOPORTE NUEVO (AGREGADO): detalle_factura_numero
@@ -790,6 +852,8 @@ if __name__ == "__main__":
         "cuanto gastamos",
         "detalle factura 273279",
         "detalle factura A00273279",
+        "todas las facturas roche 2025",
+        "todas las facturas roche noviembre 2025",
     ]
 
     print("=" * 60)
