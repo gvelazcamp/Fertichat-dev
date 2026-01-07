@@ -1,6 +1,10 @@
 # =========================
 # IA_ROUTER.PY - ROUTER (COMPRAS / COMPARATIVAS / STOCK)
 # =========================
+# Cambios mínimos:
+# 1) Se evita recursión: compras/facturas ahora van a interpretar_canonico (ia_interpretador)
+# 2) Se elimina import circular con orquestador (no debe estar en el router)
+# 3) Se agrega/asegura mapeo "facturas_proveedor" en MAPEO_FUNCIONES
 
 import os
 import re
@@ -8,14 +12,17 @@ import json
 import unicodedata
 from typing import Dict, Optional
 from datetime import datetime
-from ia_interpretador import interpretar_pregunta
-from ia_comparativas import interpretar_comparativas
+
 import streamlit as st
 from openai import OpenAI
 from config import OPENAI_MODEL
-from ia_interpretador import limpiar_consulta
-from orquestador import procesar_pregunta_router
-from ia_interpretador import interpretar_pregunta
+
+# ✅ CANÓNICO (no se redefine ni se llama a sí mismo)
+from ia_interpretador import interpretar_pregunta as interpretar_canonico
+from ia_interpretador import limpiar_consulta  # (si lo usás en otros lados, lo dejo importado)
+
+from ia_comparativas import interpretar_comparativas
+
 # =====================================================================
 # CONFIGURACIÓN OPENAI (opcional)
 # =====================================================================
@@ -35,7 +42,7 @@ MESES = {
 }
 
 # =====================================================================
-# HELPERS
+# HELPERS (opcionales; no rompen)
 # =====================================================================
 def _extraer_anios(texto: str) -> list:
     """Extrae años (2023-2026)"""
@@ -45,117 +52,76 @@ def _extraer_meses_nombre(texto: str) -> list:
     """Extrae meses por nombre"""
     return [m for m in MESES.keys() if m in texto.lower()]
 
-def _extraer_proveedor(texto: str) -> str:
-    """Extrae proveedor básico (mejora según necesites)"""
-    # Remover keywords y fechas
-    tmp = re.sub(r"\b(compras?|noviembre|diciembre|enero|febrero|2023|2024|2025|2026)\b", "", texto.lower())
+def _extraer_proveedor(texto: str) -> Optional[str]:
+    """Extrae proveedor básico (NO canónico; se deja por compat)"""
+    tmp = re.sub(
+        r"\b(compras?|facturas?|comprobantes?|noviembre|diciembre|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|2023|2024|2025|2026)\b",
+        "",
+        texto.lower()
+    )
     tmp = re.sub(r"\s+", " ", tmp).strip()
     return tmp if len(tmp) >= 3 else None
 
 # =====================================================================
-# INTÉRPRETE DE COMPRAS (BÁSICO)
+# INTÉRPRETE DE COMPRAS (BÁSICO) - NO SE USA EN ROUTING PRINCIPAL
+# (Lo dejo por si lo llamabas en otro lado, pero el router usa CANÓNICO)
 # =====================================================================
 def interpretar_compras(pregunta: str) -> Dict:
-    """
-    Interpreta consultas de compras simples:
-    - compras 2025
-    - compras roche 2025
-    - compras roche noviembre 2025
-    """
     texto = pregunta.strip()
-    texto_lower = texto.lower()
-
     anios = _extraer_anios(texto)
     meses_nombre = _extraer_meses_nombre(texto)
     proveedor = _extraer_proveedor(texto)
 
-    # Caso: compras noviembre 2025
     if meses_nombre and anios:
         anio = anios[0]
         mes_nombre = meses_nombre[0]
         mes_yyyymm = f"{anio}-{MESES[mes_nombre]}"
 
         if proveedor:
-            # compras roche noviembre 2025
             return {
                 "tipo": "compras_proveedor_mes",
-                "parametros": {
-                    "proveedor": proveedor,
-                    "mes": mes_yyyymm,
-                },
-                "debug": f"compras proveedor mes: {proveedor} {mes_yyyymm}",
+                "parametros": {"proveedor": proveedor, "mes": mes_yyyymm},
+                "debug": f"compras proveedor mes (basico): {proveedor} {mes_yyyymm}",
             }
-        else:
-            # compras noviembre 2025
-            return {
-                "tipo": "compras_mes",
-                "parametros": {
-                    "mes": mes_yyyymm,
-                },
-                "debug": f"compras mes: {mes_yyyymm}",
-            }
+        return {
+            "tipo": "compras_mes",
+            "parametros": {"mes": mes_yyyymm},
+            "debug": f"compras mes (basico): {mes_yyyymm}",
+        }
 
-    # Caso: compras 2025 o compras roche 2025
     if anios:
         anio = anios[0]
-
         if proveedor:
-            # compras roche 2025
             return {
                 "tipo": "compras_proveedor_anio",
-                "parametros": {
-                    "proveedor": proveedor,
-                    "anio": anio,
-                },
-                "debug": f"compras proveedor año: {proveedor} {anio}",
+                "parametros": {"proveedor": proveedor, "anio": anio},
+                "debug": f"compras proveedor año (basico): {proveedor} {anio}",
             }
-        else:
-            # compras 2025
-            return {
-                "tipo": "compras_anio",
-                "parametros": {
-                    "anio": anio,
-                },
-                "debug": f"compras año: {anio}",
-            }
+        return {
+            "tipo": "compras_anio",
+            "parametros": {"anio": anio},
+            "debug": f"compras año (basico): {anio}",
+        }
 
-    # No entendido
     return {
         "tipo": "no_entendido",
         "parametros": {},
         "sugerencia": "Probá: compras roche noviembre 2025 | compras 2025",
-        "debug": "compras: no match",
+        "debug": "compras (basico): no match",
     }
 
 # =====================================================================
 # INTÉRPRETE DE STOCK (BÁSICO)
 # =====================================================================
 def interpretar_stock(pregunta: str) -> Dict:
-    """
-    Interpreta consultas de stock:
-    - stock total
-    - stock vitek
-    """
-    texto_lower = pregunta.lower()
+    texto_lower = (pregunta or "").lower()
 
     if "total" in texto_lower:
-        return {
-            "tipo": "stock_total",
-            "parametros": {},
-            "debug": "stock total",
-        }
+        return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
 
-    # Extraer artículo (básico)
-    articulo = re.sub(r"\b(stock|de|del|el)\b", "", texto_lower).strip()
-
+    articulo = re.sub(r"\b(stock|de|del|el|la|los|las)\b", "", texto_lower).strip()
     if articulo and len(articulo) >= 3:
-        return {
-            "tipo": "stock_articulo",
-            "parametros": {
-                "articulo": articulo,
-            },
-            "debug": f"stock artículo: {articulo}",
-        }
+        return {"tipo": "stock_articulo", "parametros": {"articulo": articulo}, "debug": f"stock artículo: {articulo}"}
 
     return {
         "tipo": "no_entendido",
@@ -165,13 +131,16 @@ def interpretar_stock(pregunta: str) -> Dict:
     }
 
 # =====================================================================
-# ROUTER PRINCIPAL
+# ROUTER PRINCIPAL (EXPORTA interpretar_pregunta PARA EL SISTEMA)
 # =====================================================================
 def interpretar_pregunta(pregunta: str) -> Dict:
     """
-    Router principal que decide qué intérprete usar
+    Router principal:
+    - comparativas -> ia_comparativas
+    - compras/facturas/comprobantes -> CANÓNICO (ia_interpretador)
+    - stock -> interpretar_stock
     """
-    if not pregunta or not pregunta.strip():
+    if not pregunta or not str(pregunta).strip():
         return {
             "tipo": "no_entendido",
             "parametros": {},
@@ -179,28 +148,25 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             "debug": "Pregunta vacía.",
         }
 
-    texto = pregunta.strip()
-    texto_lower = texto.lower().strip()
+    texto_lower = str(pregunta).lower().strip()
 
     # Saludos / conversación
     saludos = {"hola", "buenas", "buenos", "gracias", "ok", "dale", "perfecto", "genial"}
     if any(re.search(rf"\b{re.escape(w)}\b", texto_lower) for w in saludos):
-        if not any(k in texto_lower for k in ["compra", "compar", "stock"]):
+        if not any(k in texto_lower for k in ["compra", "compras", "compar", "stock", "factura", "facturas", "comprobante", "comprobantes"]):
             return {"tipo": "conversacion", "parametros": {}, "debug": "saludo"}
 
-    # ✅ ROUTING POR KEYWORDS
+    # ROUTING POR KEYWORDS (orden importa)
     if "stock" in texto_lower:
         return interpretar_stock(pregunta)
 
-    if "comparar" in texto_lower or "comparame" in texto_lower or "compara" in texto_lower:
+    if re.search(r"\b(comparar|comparame|compara)\b", texto_lower):
         return interpretar_comparativas(pregunta)
 
-    if "compra" in texto_lower or "compras" in texto_lower:
-        return interpretar_pregunta(pregunta)
+    # ✅ TODO lo de compras/facturas va al CANÓNICO (evita recursión)
+    if any(k in texto_lower for k in ["compra", "compras", "factura", "facturas", "comprobante", "comprobantes"]):
+        return interpretar_canonico(pregunta)
 
-    if any(k in texto_lower for k in ["factura", "facturas", "comprobante", "comprobantes"]):
-        return interpretar_pregunta(pregunta)
-        
     # OPENAI (opcional)
     if client and USAR_OPENAI_PARA_DATOS:
         try:
@@ -228,13 +194,13 @@ def interpretar_pregunta(pregunta: str) -> Dict:
                 "tipo": "no_entendido",
                 "parametros": {},
                 "sugerencia": "No pude interpretar.",
-                "debug": f"openai error: {str(e)[:80]}",
+                "debug": f"openai error: {str(e)[:120]}",
             }
 
     return {
         "tipo": "no_entendido",
         "parametros": {},
-        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche 2024 2025",
+        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche 2024 2025 | todas las facturas roche 2025",
         "debug": "router: no match.",
     }
 
@@ -242,22 +208,11 @@ def interpretar_pregunta(pregunta: str) -> Dict:
 # MAPEO TIPO → FUNCIÓN SQL
 # =====================================================================
 MAPEO_FUNCIONES = {
-    "compras_anio": {
-        "funcion": "get_compras_anio",
-        "params": ["anio"],
-    },
-    "compras_proveedor_anio": {
-        "funcion": "get_detalle_compras_proveedor_anio",
-        "params": ["proveedor", "anio"],
-    },
-    "compras_proveedor_mes": {
-        "funcion": "get_detalle_compras_proveedor_mes",
-        "params": ["proveedor", "mes"],
-    },
-    "compras_mes": {
-        "funcion": "get_compras_por_mes_excel",
-        "params": ["mes"],
-    },
+    "compras_anio": {"funcion": "get_compras_anio", "params": ["anio"]},
+    "compras_proveedor_anio": {"funcion": "get_detalle_compras_proveedor_anio", "params": ["proveedor", "anio"]},
+    "compras_proveedor_mes": {"funcion": "get_detalle_compras_proveedor_mes", "params": ["proveedor", "mes"]},
+    "compras_mes": {"funcion": "get_compras_por_mes_excel", "params": ["mes"]},
+
     "comparar_proveedor_meses": {
         "funcion": "get_comparacion_proveedor_meses",
         "params": ["proveedor", "mes1", "mes2", "label1", "label2"],
@@ -267,27 +222,27 @@ MAPEO_FUNCIONES = {
         "params": ["proveedor", "anios"],
     },
 
-    # ✅ NUEVO: multi-proveedor + multi-mes (meses "YYYY-MM")
+    # Multi-proveedor
     "comparar_proveedores_meses_multi": {
         "funcion": "get_comparacion_proveedores_meses_multi",
         "params": ["proveedores", "meses"],
     },
 
-    "ultima_factura": {
-        "funcion": "get_ultima_factura_inteligente",
-        "params": ["patron"],
+    "ultima_factura": {"funcion": "get_ultima_factura_inteligente", "params": ["patron"]},
+
+    "stock_total": {"funcion": "get_stock_total", "params": []},
+    "stock_articulo": {"funcion": "get_stock_articulo", "params": ["articulo"]},
+
+    # ✅ CORRECTO (lo que usa tu intérprete canónico)
+    "facturas_proveedor": {
+        "funcion": "get_facturas_proveedor_detalle",
+        "params": ["proveedores", "meses", "anios", "desde", "hasta", "articulo", "moneda", "limite"],
     },
-    "stock_total": {
-        "funcion": "get_stock_total",
-        "params": [],
-    },
-    "stock_articulo": {
-        "funcion": "get_stock_articulo",
-        "params": ["articulo"],
-    },
+
+    # (Dejo tu clave rara por compat, pero NO la usa el canónico)
     "compras_Todas las facturas de un Proveedor": {
         "funcion": "get_facturas_proveedor_detalle",
-        "params": ["proveedores", "meses", "anios", "desde", "hasta", "articulo", "moneda"]
+        "params": ["proveedores", "meses", "anios", "desde", "hasta", "articulo", "moneda"],
     },
 }
 
