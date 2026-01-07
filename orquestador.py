@@ -152,6 +152,20 @@ def procesar_pregunta_v2(pregunta: str) -> Tuple[str, Optional[pd.DataFrame], Op
     print(f"📦 PARAMS: {params}")
     print(f"🔍 DEBUG: {debug}")
 
+        # =========================
+    # DEBUG (interpretación)
+    # =========================
+    try:
+        if st.session_state.get("DEBUG_SQL", False):
+            st.session_state["DBG_INT_LAST"] = {
+                "pregunta": pregunta,
+                "tipo": tipo,
+                "parametros": params,
+                "debug": debug,
+            }
+    except Exception:
+        pass
+
     # PASO 2: Manejar casos especiales
 
     # Conversación
