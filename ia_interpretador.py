@@ -596,7 +596,7 @@ MAPEO_FUNCIONES = {
     # =========================
     # NUEVO: TODAS LAS FACTURAS DE UN PROVEEDOR (DETALLE)
     # =========================
-    "compras_Todoas las facturas de un Proveedor_________": {
+    "compras_Todas las facturas de un Proveedor": {
         "funcion": "get_facturas_proveedor_detalle",
         "params": ["proveedores", "meses", "anios", "desde", "hasta", "articulo", "moneda", "limite"]
     },
