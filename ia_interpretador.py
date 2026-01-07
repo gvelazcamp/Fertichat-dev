@@ -730,6 +730,70 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "sugerencia": "Indicá el proveedor. Ej: todas las facturas de Roche noviembre 2025.",
                 "debug": "facturas: no encontré proveedor",
             }
+# =================================================================
+    # NUEVO: TODAS LAS FACTURAS DE UN PROVEEDOR (DETALLE)
+    # - Se activa si el usuario pide "facturas" / "comprobantes" sin nro específico
+    # =================================================================
+    if contiene_factura(texto_lower_original) and (not _extraer_nro_factura(texto_original)):
+        # Intento multi-proveedor: asigna "mejor match" por token
+        proveedores_lista: List[str] = []
+        seen_prov = set()
+        toks = _tokens(texto_lower)
+
+        # tokens a ignorar (ruido / tiempo)
+        ignorar = set([
+            "todas", "toda", "todaslas", "factura", "facturas",
+            "comprobante", "comprobantes", "compra", "compras",
+            "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+            "septiembre", "setiembre", "octubre", "noviembre", "diciembre",
+            "2023", "2024", "2025", "2026"
+        ])
+
+        for tk in toks:
+            if (not tk) or (tk in ignorar):
+                continue
+
+            best_orig = None
+            best_score = None
+            for orig, norm in idx_prov:
+                if tk in norm:
+                    score = (len(tk) * 1000) - len(norm)
+                    if (best_score is None) or (score > best_score):
+                        best_score = score
+                        best_orig = orig
+
+            if best_orig and best_orig not in seen_prov:
+                seen_prov.add(best_orig)
+                proveedores_lista.append(best_orig)
+                if len(proveedores_lista) >= MAX_PROVEEDORES:
+                    break
+
+        # Si no logró multi, fallback al match estándar (1 proveedor)
+        if not proveedores_lista and provs:
+            proveedores_lista = (provs or [])[:MAX_PROVEEDORES]
+
+        # Fallback: si no detectó proveedor por lista, intentar "libre"
+        if not proveedores_lista:
+            tmp = texto_lower
+            tmp = re.sub(r"\b(todas|todas las|facturas?|comprobantes?|de|del|la|el)\b", " ", tmp)
+            tmp = re.sub(r"\b(compras?|comparar|comparame|compara)\b", " ", tmp)
+            tmp = re.sub(
+                r"\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b",
+                " ",
+                tmp
+            )
+            tmp = re.sub(r"\b(2023|2024|2025|2026)\b", " ", tmp)
+            tmp = re.sub(r"\s+", " ", tmp).strip()
+            if tmp and len(tmp) >= 3:
+                proveedores_lista = [tmp]
+
+        if not proveedores_lista:
+            return {
+                "tipo": "no_entendido",
+                "parametros": {},
+                "sugerencia": "Indicá el proveedor. Ej: todas las facturas de Roche noviembre 2025.",
+                "debug": "facturas: no encontré proveedor",
+            }
 
         # Rango de fechas exacto (prioridad)
         desde, hasta = _extraer_rango_fechas(texto_original)
@@ -764,4 +828,3 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             },
             "debug": "facturas proveedor detalle",
         }
-
