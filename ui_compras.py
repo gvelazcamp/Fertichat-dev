@@ -581,4 +581,3 @@ def Compras_IA():
         )
 
         st.rerun()
-```0
