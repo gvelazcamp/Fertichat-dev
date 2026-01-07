@@ -1,5 +1,7 @@
 import streamlit as st
 
+st.session_state["DEBUG_SQL"] = st.sidebar.checkbox("Debug SQL", value=False)
+
 st.set_page_config(
     page_title="FertiChat",
     page_icon="🦋",
