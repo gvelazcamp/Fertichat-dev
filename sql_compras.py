@@ -481,6 +481,108 @@ def get_facturas_de_articulo(patron_articulo: str, solo_ultima: bool = False) ->
 
 
 # =====================================================================
+# FACTURAS - PROVEEDOR (NUEVO)
+# =====================================================================
+
+def get_facturas_proveedor_detalle(
+    proveedores: List[str],
+    meses: Optional[List[str]] = None,
+    anios: Optional[List[int]] = None,
+    desde: Optional[str] = None,
+    hasta: Optional[str] = None,
+    articulo: Optional[str] = None,
+    moneda: Optional[str] = None,
+    limite: int = 5000,
+) -> pd.DataFrame:
+    """
+    Trae todas las facturas (detalle) de uno o más proveedores con filtros opcionales:
+    - meses: lista YYYY-MM (columna "Mes")
+    - anios: lista int (columna "Año")
+    - desde/hasta: YYYY-MM-DD (columna "Fecha")
+    - articulo: filtro LIKE por Articulo
+    - moneda: "$" / "USD" (o variantes)
+    """
+    total_expr = _sql_total_num_expr_general()
+
+    where_parts: List[str] = []
+    params: List[object] = []
+
+    # Compras únicamente
+    where_parts.append("(\"Tipo Comprobante\" = 'Compra Contado' OR \"Tipo Comprobante\" LIKE 'Compra%%')")
+
+    # Excluir factura dummy si existiera
+    where_parts.append("TRIM(\"Nro. Comprobante\") <> 'A0000000'")
+
+    # Proveedores (OBLIGATORIO)
+    provs = [p for p in (proveedores or []) if p]
+    if not provs:
+        return pd.DataFrame(columns=["Proveedor", "Nro_Factura", "Fecha", "Articulo", "Cantidad", "Moneda", "Total"])
+
+    prov_conds: List[str] = []
+    for _ in provs:
+        prov_conds.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
+    where_parts.append("(" + " OR ".join(prov_conds) + ")")
+    params.extend([f"%{str(p).lower()}%" for p in provs])
+
+    # Filtro artículo (opcional)
+    if articulo and str(articulo).strip():
+        where_parts.append('LOWER(TRIM("Articulo")) LIKE %s')
+        params.append(f"%{str(articulo).lower().strip()}%")
+
+    # Filtro moneda (opcional)
+    if moneda and str(moneda).strip():
+        m = str(moneda).strip().upper()
+        if m in ("USD", "U$S", "U$$", "US$"):
+            where_parts.append("TRIM(\"Moneda\") IN ('U$S', 'U$$', 'USD', 'US$')")
+        elif m in ("$", "PESOS", "UYU", "URU"):
+            where_parts.append("TRIM(\"Moneda\") = '$'")
+        else:
+            where_parts.append('UPPER(TRIM("Moneda")) LIKE %s')
+            params.append(f"%{m}%")
+
+    # Filtro por fechas exactas (prioridad)
+    if desde and hasta:
+        where_parts.append('"Fecha"::date BETWEEN %s AND %s')
+        params.extend([desde, hasta])
+    else:
+        # Filtro por meses (YYYY-MM)
+        if meses:
+            meses_ok = [m for m in (meses or []) if m]
+            if meses_ok:
+                ph = ", ".join(["%s"] * len(meses_ok))
+                where_parts.append(f'TRIM("Mes") IN ({ph})')
+                params.extend(meses_ok)
+
+        # Filtro por años (si no hay meses)
+        if (not meses) and anios:
+            anios_ok = [int(a) for a in (anios or []) if a]
+            if anios_ok:
+                ph = ", ".join(["%s"] * len(anios_ok))
+                where_parts.append(f'"Año"::int IN ({ph})')
+                params.extend(anios_ok)
+
+    where_sql = " AND ".join(where_parts)
+
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Nro. Comprobante") AS Nro_Factura,
+            "Fecha",
+            TRIM("Articulo") AS Articulo,
+            "Cantidad",
+            "Moneda",
+            {total_expr} AS Total
+        FROM chatbot_raw
+        WHERE {where_sql}
+        ORDER BY "Fecha" DESC NULLS LAST, TRIM("Cliente / Proveedor"), TRIM("Nro. Comprobante"), TRIM("Articulo")
+        LIMIT %s
+    """
+    params.append(int(limite) if limite else 5000)
+
+    return ejecutar_consulta(sql, tuple(params))
+
+
+# =====================================================================
 # SERIES TEMPORALES Y DATASET COMPLETO
 # =====================================================================
 
