@@ -25,7 +25,6 @@ from ia_interpretador import interpretar_pregunta, obtener_info_tipo, es_tipo_va
 # IMPORTAR FUNCIONES SQL
 # =========================
 
-# --- COMPRAS / FACTURAS ---
 from sql_compras import (
     get_compras_anio,
     get_total_compras_anio,
@@ -37,25 +36,23 @@ from sql_compras import (
     get_total_compras_articulo_anio,
     get_compras_por_mes_excel,
 
-    # Facturas
     get_ultima_factura_inteligente,
     get_facturas_de_articulo,
     get_detalle_factura_por_numero,
     get_total_factura_por_numero,
 
-    # Top
     get_top_10_proveedores_chatbot,
 )
 
-# --- COMPARATIVAS ---
+
 from sql_comparativas import (
     get_comparacion_proveedor_meses,
-    get_comparacion_proveedor_anios_monedas,
-    get_comparacion_articulo_meses,
     get_comparacion_articulo_anios,
-    get_comparacion_familia_meses_moneda,
+    get_comparacion_proveedor_anios_like,
+    get_comparacion_proveedor_anios_monedas,
     get_comparacion_familia_anios_monedas,
-)
+    get_comparacion_proveedores_meses_multi,
+    get_comparacion_proveedores_anios_multi,
 
 # --- STOCK ---
 from sql_stock import (
