@@ -674,53 +674,58 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     ):
         dispara_facturas_listado = True
 
-    if dispara_facturas_listado:
-        # CANÓNICO: 1 proveedor para evitar traer "todos"
-        proveedores_lista: List[str] = []
-        if provs:
-            proveedores_lista = [provs[0]]
+if dispara_facturas_listado:
+    # CANÓNICO: 1 proveedor para evitar traer "todos"
+    proveedores_lista: List[str] = []
+    if provs:
+        proveedores_lista = [provs[0]]
 
-        if not proveedores_lista:
-            return {
-                "tipo": "no_entendido",
-                "parametros": {},
-                "sugerencia": "Indicá el proveedor. Ej: todas las facturas de Roche noviembre 2025.",
-                "debug": "facturas_proveedor: no encontré proveedor",
-            }
+    if not proveedores_lista:
+        return {
+            "tipo": "no_entendido",
+            "parametros": {},
+            "sugerencia": "Indicá el proveedor. Ej: todas las facturas de Roche noviembre 2025.",
+            "debug": "facturas_proveedor: no encontré proveedor",
+        }
 
-        desde, hasta = _extraer_rango_fechas(texto_original)
+    desde, hasta = _extraer_rango_fechas(texto_original)
 
-        meses_out: List[str] = []
-        if meses_yyyymm:
-            meses_out = meses_yyyymm[:MAX_MESES]
-        else:
-            if meses_nombre and anios:
-                for a in anios:
-                    for mn in meses_nombre:
-                        meses_out.append(_to_yyyymm(a, mn))
-                        if len(meses_out) >= MAX_MESES:
-                            break
+    meses_out: List[str] = []
+    if meses_yyyymm:
+        meses_out = meses_yyyymm[:MAX_MESES]
+    else:
+        if meses_nombre and anios:
+            for a in anios:
+                for mn in meses_nombre:
+                    meses_out.append(_to_yyyymm(a, mn))
                     if len(meses_out) >= MAX_MESES:
                         break
+                if len(meses_out) >= MAX_MESES:
+                    break
 
-        moneda = _extraer_moneda(texto_lower_original)
+    moneda = _extraer_moneda(texto_lower_original)
+
+    # 🔴 CAMBIO CLAVE: artículo SOLO si el usuario lo pidió explícitamente
+    articulo = None
+    if re.search(r"\b(articulo|artículo|producto)\b", texto_lower_original):
         articulo = arts[0] if arts else None
-        limite = _extraer_limite(texto_lower_original)
 
-        return {
-            "tipo": "facturas_proveedor",
-            "parametros": {
-                "proveedores": proveedores_lista,
-                "meses": meses_out or None,
-                "anios": anios or None,
-                "desde": desde,
-                "hasta": hasta,
-                "articulo": articulo,
-                "moneda": moneda,
-                "limite": limite,
-            },
-            "debug": "facturas proveedor (canónico)",
-        }
+    limite = _extraer_limite(texto_lower_original)
+
+    return {
+        "tipo": "facturas_proveedor",
+        "parametros": {
+            "proveedores": proveedores_lista,
+            "meses": meses_out or None,
+            "anios": anios or None,
+            "desde": desde,
+            "hasta": hasta,
+            "articulo": articulo,
+            "moneda": moneda,
+            "limite": limite,
+        },
+        "debug": "facturas proveedor (canónico)",
+    }
 
     # =========================
     # COMPRAS (no comparar)
