@@ -158,6 +158,82 @@ def get_total_compras_proveedor_anio(proveedor_like: str, anio: int) -> dict:
         }
     return {"registros": 0, "total": 0.0}
 
+# =====================================================================
+# FACTURAS POR PROVEEDOR (DETALLE / LISTADO)
+# =====================================================================
+
+def get_facturas_proveedor_detalle(
+    proveedores: list[str],
+    meses: list[str] = None,
+    anios: list[int] = None,
+    desde: str = None,
+    hasta: str = None,
+    articulo: str = None,
+    moneda: str = None,
+    limite: int = None,
+):
+    where = []
+    params = []
+
+    # Proveedor (OBLIGATORIO)
+    prov_clauses = []
+    for p in proveedores:
+        prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
+        params.append(f"%{p.lower()}%")
+    where.append(f"({' OR '.join(prov_clauses)})")
+
+    # Meses
+    if meses:
+        placeholders = ", ".join(["%s"] * len(meses))
+        where.append(f'TRIM("Mes") IN ({placeholders})')
+        params.extend(meses)
+
+    # Años
+    if anios:
+        placeholders = ", ".join(["%s"] * len(anios))
+        where.append(f'"Año"::int IN ({placeholders})')
+        params.extend(anios)
+
+    # Rango fechas
+    if desde:
+        where.append('"Fecha" >= %s')
+        params.append(desde)
+    if hasta:
+        where.append('"Fecha" <= %s')
+        params.append(hasta)
+
+    # Artículo
+    if articulo:
+        where.append('LOWER(TRIM("Articulo")) LIKE %s')
+        params.append(f"%{articulo.lower()}%")
+
+    # Moneda
+    if moneda:
+        where.append('TRIM("Moneda") = %s')
+        params.append(moneda)
+
+    where_sql = " AND ".join(where)
+    limit_sql = f"LIMIT {int(limite)}" if limite else ""
+
+    sql = f"""
+        SELECT
+            "Fecha",
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            "Moneda",
+            "Cantidad",
+            "Precio Unitario",
+            "Total",
+            "Nro Factura"
+        FROM chatbot_raw
+        WHERE {where_sql}
+        ORDER BY "Fecha" DESC
+        {limit_sql}
+    """
+
+    return ejecutar_consulta(sql, tuple(params))
+
+
 
 def get_detalle_compras_proveedor_anios(anios: List[int], proveedores: List[str] = None) -> pd.DataFrame:
     """Detalle de compras por proveedor en varios años."""
