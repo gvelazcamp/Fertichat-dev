@@ -14,6 +14,7 @@ from datetime import datetime
 import streamlit as st
 from openai import OpenAI
 from config import OPENAI_MODEL
+from utils_fechas import _extraer_rango_fechas
 
 # =====================================================================
 # CONFIGURACIÓN OPENAI (opcional)
