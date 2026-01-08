@@ -784,6 +784,35 @@ if __name__ == "__main__":
     print("🛠 Verificando estado del orquestador...")
     print(f"ORQUESTADOR_CARGADO: {st.session_state.get('ORQUESTADOR_CARGADO', None)}")
     print("=" * 60)
+
+def prueba_sql():
+    """
+    Prueba directa para ejecutar la función SQL de facturas proveedor.
+    """
+
+    # Parámetros de prueba
+    proveedores = ["roche"]
+    anios = [2025]
+    meses = None  # Puedes especificar meses o dejarlo como None
+    limite = 500
+
+    try:
+        # Llama directamente a la consulta SQL
+        print("🛠 Ejecutando prueba de SQL para get_facturas_proveedor_detalle...")
+        df = get_facturas_proveedor_detalle(
+            proveedores=proveedores,
+            anios=anios,
+            meses=meses,
+            limite=limite
+        )
+        # ¿Resultados obtenidos?
+        if df is not None and not df.empty:
+            print("✅ Resultados obtenidos desde SQL:")
+            print(df.head())  # Solo imprime las primeras filas
+        else:
+            print("❌ No se encontraron resultados para los parámetros dados.")
+    except Exception as e:
+        print(f"❌ Error en prueba SQL: {e}")
     
     pruebas = [
         "compras 2025",
@@ -796,7 +825,6 @@ if __name__ == "__main__":
         "detalle factura 273279",
         "detalle factura A00273279",
     ]
-
 
     for p in pruebas:
         print(f"\n📝 Pregunta: {p}")
