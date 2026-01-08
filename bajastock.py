@@ -232,7 +232,7 @@ def registrar_baja(
     usuario,
     codigo_interno,
     articulo,
-    cantidadsantidad,
+    cantidad,
     motivo,
     deposito=None,
     lote=None,
@@ -261,8 +261,7 @@ def registrar_baja(
                 %s, %s,
                 %s, %s, %s)
     """, (
-        usuario, ahora.date(), ahora.time(), str(codigo_interno), str(articulo), float(Red),
-        motivo,
+        usuario, ahora.date(), ahora.time(), str(codigo_interno), str(articulo), float(cantidad), motivo,
         deposito, lote, vencimiento,
         stock_antes_lote, stock_despues_lote,
         stock_total_articulo, stock_total_deposito, stock_casa_central
@@ -525,8 +524,6 @@ def mostrar_baja_stock():
 
     # =========================
     # RESULTADOS DE BÚSQUEDA (PERSISTENTES)
-    # - Se muestran al apretar Buscar
-    # - Y se mantienen visibles luego de "Seleccionar"
     # =========================
     if busqueda and btn_buscar:
         with st.spinner("Buscando en stock..."):
@@ -536,7 +533,6 @@ def mostrar_baja_stock():
                 st.session_state["BAJA_LAST_ITEMS"] = items
             except Exception as e:
                 st.error(f"Error al buscar: {str(e)}")
-                items = []
                 st.session_state["BAJA_LAST_QUERY"] = busqueda
                 st.session_state["BAJA_LAST_ITEMS"] = []
 
@@ -572,7 +568,6 @@ def mostrar_baja_stock():
                             "ARTICULO": articulo,
                             "FAMILIA": familia
                         }
-                        st.session_state["BAJA_HINT_FORM"] = True
                         st.rerun()
 
                 st.markdown("---")
@@ -584,9 +579,6 @@ def mostrar_baja_stock():
     # FORMULARIO DE BAJA (APARECE CUANDO YA HAY SELECCIÓN)
     # =========================
     if "item_seleccionado_stock" in st.session_state:
-        if st.session_state.pop("BAJA_HINT_FORM", False):
-            st.info("Completá Depósito / Lote / Cantidad y tocá ✅ Confirmar Baja para que se registre y aparezca en el historial.")
-
         it = st.session_state["item_seleccionado_stock"]
 
         codigo = _norm_str(it.get("CODIGO"))
@@ -625,7 +617,9 @@ def mostrar_baja_stock():
                 st.caption(f"Código: **{codigo}**")
                 st.caption(f"Familia: **{familia or '—'}**")
 
-            lotes_dep = [x for x in lotes if _norm_str(x.get("DEPOSITO")) == _norm_str(deposito_sel)]
+            lotes_dep_all = [x for x in lotes if _norm_str(x.get("DEPOSITO")) == _norm_str(deposito_sel)]
+            # SOLO lotes con stock > 0 (pedido)
+            lotes_dep = [x for x in lotes_dep_all if float(x.get("STOCK_NUM", 0.0) or 0.0) > 0]
 
             total_articulo = _sum_stock(lotes)
             total_deposito = _sum_stock(lotes, filtro_deposito=deposito_sel)
@@ -635,25 +629,19 @@ def mostrar_baja_stock():
             st.caption(f"🏠 Stock en depósito seleccionado: **{_fmt_num(total_deposito)}**")
             st.caption(f"🏛️ Stock en Casa Central: **{_fmt_num(total_casa_central)}**")
 
-            df_lotes = pd.DataFrame([{
-                "LOTE": x.get("LOTE"),
-                "VENCIMIENTO": x.get("VENCIMIENTO"),
-                "STOCK": _fmt_num(float(x.get("STOCK_NUM", 0.0) or 0.0))
-            } for x in lotes_dep])
-
-            if df_lotes.empty:
-                st.warning("No hay lotes en el depósito seleccionado.")
+            if not lotes_dep:
+                st.warning("No hay lotes con stock disponible (> 0) en el depósito seleccionado.")
             else:
+                df_lotes = pd.DataFrame([{
+                    "LOTE": x.get("LOTE"),
+                    "VENCIMIENTO": x.get("VENCIMIENTO"),
+                    "STOCK": _fmt_num(float(x.get("STOCK_NUM", 0.0) or 0.0))
+                } for x in lotes_dep])
+
                 st.markdown("#### Lotes / Vencimientos (orden FIFO/FEFO)")
                 st.dataframe(df_lotes, use_container_width=True, hide_index=True)
 
-                idx_fifo = None
-                for j, x in enumerate(lotes_dep):
-                    if float(x.get("STOCK_NUM", 0.0) or 0.0) > 0:
-                        idx_fifo = j
-                        break
-                if idx_fifo is None:
-                    idx_fifo = 0
+                idx_fifo = 0  # ya está filtrado > 0 y viene ordenado
 
                 usar_fifo = st.checkbox(
                     "✅ Bajar siguiendo FIFO/FEFO automático (recomendado)",
@@ -687,7 +675,8 @@ def mostrar_baja_stock():
                     venc_sel = _norm_str(elegido.get("VENCIMIENTO"))
                     stock_lote_sel = float(elegido.get("STOCK_NUM", 0.0) or 0.0)
 
-                    if idx_fifo is not None and idx != idx_fifo and len(lotes_dep) > 1:
+                    # Aviso si elige un lote que NO es el FIFO recomendado
+                    if idx != idx_fifo and len(lotes_dep) > 1:
                         fifo_ref = lotes_dep[idx_fifo]
                         st.warning(
                             "⚠️ Estás eligiendo un lote que NO es el recomendado por FIFO/FEFO.\n\n"
@@ -703,35 +692,25 @@ def mostrar_baja_stock():
 
                     st.caption(f"Stock lote seleccionado: **{_fmt_num(stock_lote_sel)}**")
 
-                col1x, col2x = st.columns(2)
-
-                with col1x:
-                    if (not usar_fifo) and stock_lote_sel > 0:
-                        cantidad = st.number_input(
-                            "Cantidad a bajar",
-                            min_value=0.01,
-                            value=1.0,
-                            step=1.0,
-                            max_value=float(stock_lote_sel),
-                            key="cantidad_baja_stock"
-                        )
-                    else:
-                        cantidad = st.number_input(
-                            "Cantidad a bajar",
-                            min_value=0.01,
-                            value=1.0,
-                            step=1.0,
-                            key="cantidad_baja_stock"
-                        )
-
-                with col2x:
-                    motivo = st.selectbox(
-                        "Motivo de la baja",
-                        ["Vencimiento", "Rotura", "Pérdida", "Ajuste de inventario", "Consumo interno", "Otro"],
-                        key="motivo_baja_stock"
+                # Cantidad (sin motivo/observación) (pedido)
+                if (not usar_fifo) and stock_lote_sel > 0:
+                    cantidad = st.number_input(
+                        "Cantidad a bajar",
+                        min_value=0.01,
+                        value=1.0,
+                        step=1.0,
+                        max_value=float(stock_lote_sel),
+                        key="cantidad_baja_stock"
+                    )
+                else:
+                    cantidad = st.number_input(
+                        "Cantidad a bajar",
+                        min_value=0.01,
+                        value=1.0,
+                        step=1.0,
+                        key="cantidad_baja_stock"
                     )
 
-                observacion = st.text_input("Observación (opcional)", key="obs_baja_stock")
                 st.markdown("---")
 
                 col_guardar, col_cancelar = st.columns(2)
@@ -739,9 +718,10 @@ def mostrar_baja_stock():
                 with col_guardar:
                     if st.button("✅ Confirmar Baja", type="primary", use_container_width=True):
                         try:
-                            motivo_final = f"{motivo} - {observacion}" if observacion else motivo
+                            motivo_final = "Baja"  # fijo (pedido)
 
-                            if (not usar_fifo) and (len(lotes_dep) > 1) and (idx_fifo is not None):
+                            # Validación de aviso NO FIFO
+                            if (not usar_fifo) and (len(lotes_dep) > 1):
                                 if "baja_lote_sel" in st.session_state:
                                     opcion_txt = st.session_state.get("baja_lote_sel", "")
                                     if opcion_txt:
@@ -750,6 +730,7 @@ def mostrar_baja_stock():
                                             st.error("Tenés un lote anterior. Marcá la confirmación para continuar.")
                                             st.stop()
 
+                            # Aplicar baja
                             if usar_fifo:
                                 resumen = aplicar_baja_fifo(
                                     usuario=usuario_actual,
