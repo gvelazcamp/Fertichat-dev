@@ -22,7 +22,6 @@ def get_connection():
     )
 
 
-
 # =========================
 # HELPERS
 # =========================
@@ -39,15 +38,12 @@ def _to_float(x) -> float:
     if not s:
         return 0.0
     s = s.replace(" ", "")
-    # Dejar solo dígitos, coma, punto y signo
     limpio = "".join(ch for ch in s if ch.isdigit() or ch in [",", ".", "-"])
     if not limpio:
         return 0.0
-    # Si tiene coma y punto, asumimos coma como miles -> quitamos comas
     if "," in limpio and "." in limpio:
         limpio = limpio.replace(",", "")
     else:
-        # Si solo coma, la tomamos como decimal
         limpio = limpio.replace(",", ".")
     try:
         return float(limpio)
@@ -56,8 +52,6 @@ def _to_float(x) -> float:
 
 
 def _fmt_num(x: float) -> str:
-    # Guardamos como texto (la columna "STOCK" es text)
-    # Sin forzar decimales si es entero.
     if x is None:
         return "0"
     try:
@@ -69,10 +63,6 @@ def _fmt_num(x: float) -> str:
 
 
 def _parse_fecha_for_sort(venc_text: str):
-    """
-    Devuelve una clave de orden para vencimiento.
-    Si no parsea, manda al final.
-    """
     s = _norm_str(venc_text)
     if not s:
         return pd.Timestamp.max
@@ -104,7 +94,6 @@ def crear_tabla_historial():
     """)
     conn.commit()
 
-    # Agregar columnas nuevas si faltan (compat)
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS deposito VARCHAR(255)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS lote VARCHAR(255)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS vencimiento VARCHAR(255)""")
@@ -136,7 +125,6 @@ def buscar_items_stock(busqueda: str, limite_filas: int = 400):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    # Traemos filas para poder sumar en Python (STOCK es text y puede venir "raro")
     cur.execute("""
         SELECT
             "FAMILIA",
@@ -157,7 +145,6 @@ def buscar_items_stock(busqueda: str, limite_filas: int = 400):
     cur.close()
     conn.close()
 
-    # Agregamos por (codigo, articulo, familia)
     agg = {}
     for r in filas:
         codigo = _norm_str(r.get("CODIGO"))
@@ -179,11 +166,8 @@ def buscar_items_stock(busqueda: str, limite_filas: int = 400):
         if deposito:
             agg[key]["DEPOSITOS"].add(deposito)
 
-    # Orden por stock total desc
     items = list(agg.values())
     items.sort(key=lambda x: x.get("STOCK_TOTAL", 0.0), reverse=True)
-
-    # Limitar resultados
     return items[:20]
 
 
@@ -211,7 +195,6 @@ def obtener_lotes_item(codigo: str, articulo: str):
     cur.close()
     conn.close()
 
-    # Normalizar y agregar stock_num
     out = []
     for r in filas:
         out.append({
@@ -225,7 +208,6 @@ def obtener_lotes_item(codigo: str, articulo: str):
             "STOCK_NUM": _to_float(r.get("STOCK")),
         })
 
-    # Orden FIFO/FEFO: primero vencimiento más cercano (si no hay venc, al final), luego lote
     out.sort(key=lambda x: (_parse_fecha_for_sort(x.get("VENCIMIENTO")), x.get("LOTE", "")))
     return out
 
@@ -336,7 +318,6 @@ def aplicar_baja_en_lote(
         conn.autocommit = False
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Lock de la fila
         cur.execute("""
             SELECT "STOCK"
             FROM stock
@@ -344,8 +325,8 @@ def aplicar_baja_en_lote(
                 TRIM("CODIGO") = %s
                 AND TRIM("ARTICULO") = %s
                 AND TRIM("DEPOSITO") = %s
-                AND TRIM("LOTE") = %s
-                AND TRIM("VENCIMIENTO") = %s
+                AND COALESCE(TRIM("LOTE"), '') = %s
+                AND COALESCE(TRIM("VENCIMIENTO"), '') = %s
             FOR UPDATE
         """, (codigo, articulo, deposito, lote, vencimiento))
 
@@ -361,7 +342,6 @@ def aplicar_baja_en_lote(
 
         stock_despues = stock_antes - float(cantidad)
 
-        # Update
         cur.execute("""
             UPDATE stock
             SET "STOCK" = %s
@@ -369,11 +349,10 @@ def aplicar_baja_en_lote(
                 TRIM("CODIGO") = %s
                 AND TRIM("ARTICULO") = %s
                 AND TRIM("DEPOSITO") = %s
-                AND TRIM("LOTE") = %s
-                AND TRIM("VENCIMIENTO") = %s
+                AND COALESCE(TRIM("LOTE"), '') = %s
+                AND COALESCE(TRIM("VENCIMIENTO"), '') = %s
         """, (_fmt_num(stock_despues), codigo, articulo, deposito, lote, vencimiento))
 
-        # Totales post-baja
         cur.execute("""
             SELECT "DEPOSITO", "STOCK"
             FROM stock
@@ -392,7 +371,6 @@ def aplicar_baja_en_lote(
         total_deposito = sum(r["STOCK_NUM"] for r in filas_norm if r["DEPOSITO"] == deposito)
         total_casa_central = sum(r["STOCK_NUM"] for r in filas_norm if "casa central" in r["DEPOSITO"].lower())
 
-        # Historial
         registrar_baja(
             usuario=usuario,
             codigo_interno=codigo,
@@ -444,7 +422,7 @@ def aplicar_baja_fifo(
     Baja por FIFO/FEFO automático en un depósito:
     consume primero el lote con vencimiento más cercano (ordenado).
     Si la cantidad supera el stock del primer lote, continúa con el siguiente.
-    Registra UNA entrada de historial por cada lote consumido (para que quede claro).
+    Registra UNA entrada de historial por cada lote consumido.
     """
     codigo = _norm_str(codigo)
     articulo = _norm_str(articulo)
@@ -453,9 +431,11 @@ def aplicar_baja_fifo(
     if cantidad <= 0:
         raise ValueError("La cantidad debe ser mayor a 0.")
 
-    # Traemos lotes ordenados FEFO y filtramos depósito
     lotes_all = obtener_lotes_item(codigo, articulo)
-    lotes_dep = [x for x in lotes_all if _norm_str(x.get("DEPOSITO")) == deposito and float(x.get("STOCK_NUM", 0.0) or 0.0) > 0]
+    lotes_dep = [
+        x for x in lotes_all
+        if _norm_str(x.get("DEPOSITO")) == deposito and float(x.get("STOCK_NUM", 0.0) or 0.0) > 0
+    ]
 
     if not lotes_dep:
         raise ValueError("No hay lotes con stock disponible en el depósito seleccionado.")
@@ -466,6 +446,7 @@ def aplicar_baja_fifo(
     for lt in lotes_dep:
         if restante <= 1e-9:
             break
+
         disponible = float(lt.get("STOCK_NUM", 0.0) or 0.0)
         if disponible <= 1e-9:
             continue
@@ -482,6 +463,7 @@ def aplicar_baja_fifo(
             cantidad=a_bajar,
             motivo_final=motivo_final + " (FIFO/FEFO)"
         )
+
         resumen.append({
             "lote": _norm_str(lt.get("LOTE")),
             "vencimiento": _norm_str(lt.get("VENCIMIENTO")),
@@ -502,7 +484,6 @@ def aplicar_baja_fifo(
 def mostrar_baja_stock():
     """Muestra la pantalla de baja de stock (tomando stock desde tabla 'stock')"""
 
-    # Crear tabla si no existe
     try:
         crear_tabla_historial()
     except Exception:
@@ -510,10 +491,8 @@ def mostrar_baja_stock():
 
     st.markdown("## 🧾 Baja de Stock")
     st.markdown("Buscá por **CODIGO** o por **ARTICULO**, elegí lote/vencimiento y registrá la baja con historial.")
-
     st.markdown("---")
 
-    # Obtener usuario actual
     user = st.session_state.get("user", {})
     usuario_actual = user.get("nombre", user.get("Usuario", "Usuario"))
 
@@ -535,8 +514,9 @@ def mostrar_baja_stock():
 
     # =========================
     # RESULTADOS DE BÚSQUEDA
+    # (IMPORTANTE: SOLO SE MUESTRAN CUANDO APRETÁS BUSCAR)
     # =========================
-    if busqueda and (btn_buscar or "item_seleccionado_stock" in st.session_state):
+    if busqueda and btn_buscar:
         with st.spinner("Buscando en stock..."):
             try:
                 items = buscar_items_stock(busqueda)
@@ -578,9 +558,8 @@ def mostrar_baja_stock():
             except Exception as e:
                 st.error(f"Error al buscar: {str(e)}")
 
-
     # =========================
-    # FORMULARIO DE BAJA (con lotes/vencimientos + aviso FIFO)
+    # FORMULARIO DE BAJA (APARECE CUANDO YA HAY SELECCIÓN)
     # =========================
     if "item_seleccionado_stock" in st.session_state:
         it = st.session_state["item_seleccionado_stock"]
@@ -590,6 +569,7 @@ def mostrar_baja_stock():
         familia = _norm_str(it.get("FAMILIA"))
 
         st.markdown("### 📝 Registrar Baja")
+        st.info(f"Artículo seleccionado: **{codigo} - {articulo}**")
 
         try:
             lotes = obtener_lotes_item(codigo, articulo)
@@ -600,9 +580,8 @@ def mostrar_baja_stock():
         if not lotes:
             st.warning("Este artículo no tiene lotes/stock cargado en la tabla stock.")
         else:
-            # Depósitos disponibles
             depositos = sorted({x.get("DEPOSITO", "") for x in lotes if _norm_str(x.get("DEPOSITO"))})
-            # Default: Casa Central si existe
+
             default_dep = 0
             for idx, d in enumerate(depositos):
                 if "casa central" in d.lower():
@@ -621,7 +600,6 @@ def mostrar_baja_stock():
                 st.caption(f"Código: **{codigo}**")
                 st.caption(f"Familia: **{familia or '—'}**")
 
-            # Filtrar lotes por depósito
             lotes_dep = [x for x in lotes if _norm_str(x.get("DEPOSITO")) == _norm_str(deposito_sel)]
 
             total_articulo = _sum_stock(lotes)
@@ -632,7 +610,6 @@ def mostrar_baja_stock():
             st.caption(f"🏠 Stock en depósito seleccionado: **{_fmt_num(total_deposito)}**")
             st.caption(f"🏛️ Stock en Casa Central: **{_fmt_num(total_casa_central)}**")
 
-            # Tabla chica de lotes
             df_lotes = pd.DataFrame([{
                 "LOTE": x.get("LOTE"),
                 "VENCIMIENTO": x.get("VENCIMIENTO"),
@@ -645,7 +622,6 @@ def mostrar_baja_stock():
                 st.markdown("#### Lotes / Vencimientos (orden FIFO/FEFO)")
                 st.dataframe(df_lotes, use_container_width=True, hide_index=True)
 
-                # Lote recomendado: el primero con stock > 0
                 idx_fifo = None
                 for j, x in enumerate(lotes_dep):
                     if float(x.get("STOCK_NUM", 0.0) or 0.0) > 0:
@@ -654,10 +630,12 @@ def mostrar_baja_stock():
                 if idx_fifo is None:
                     idx_fifo = 0
 
-                # Modo FIFO automático
-                usar_fifo = st.checkbox("✅ Bajar siguiendo FIFO/FEFO automático (recomendado)", value=True, key="baja_fifo_auto")
+                usar_fifo = st.checkbox(
+                    "✅ Bajar siguiendo FIFO/FEFO automático (recomendado)",
+                    value=True,
+                    key="baja_fifo_auto"
+                )
 
-                # Selector de lote (solo si no usa FIFO auto)
                 lote_sel = None
                 venc_sel = None
                 stock_lote_sel = 0.0
@@ -684,7 +662,6 @@ def mostrar_baja_stock():
                     venc_sel = _norm_str(elegido.get("VENCIMIENTO"))
                     stock_lote_sel = float(elegido.get("STOCK_NUM", 0.0) or 0.0)
 
-                    # Aviso si elige un lote que NO es el FIFO recomendado (y existe uno “antes”)
                     if idx_fifo is not None and idx != idx_fifo and len(lotes_dep) > 1:
                         fifo_ref = lotes_dep[idx_fifo]
                         st.warning(
@@ -701,11 +678,9 @@ def mostrar_baja_stock():
 
                     st.caption(f"Stock lote seleccionado: **{_fmt_num(stock_lote_sel)}**")
 
-                # Cantidad + motivo
                 col1x, col2x = st.columns(2)
 
                 with col1x:
-                    # Max sugerido si es manual
                     if (not usar_fifo) and stock_lote_sel > 0:
                         cantidad = st.number_input(
                             "Cantidad a bajar",
@@ -732,7 +707,6 @@ def mostrar_baja_stock():
                     )
 
                 observacion = st.text_input("Observación (opcional)", key="obs_baja_stock")
-
                 st.markdown("---")
 
                 col_guardar, col_cancelar = st.columns(2)
@@ -742,10 +716,7 @@ def mostrar_baja_stock():
                         try:
                             motivo_final = f"{motivo} - {observacion}" if observacion else motivo
 
-                            # Validación de aviso NO FIFO
                             if (not usar_fifo) and (len(lotes_dep) > 1) and (idx_fifo is not None):
-                                # Si eligió no-fifo, exigir confirmación
-                                # (solo si realmente es distinto al fifo recomendado)
                                 if "baja_lote_sel" in st.session_state:
                                     opcion_txt = st.session_state.get("baja_lote_sel", "")
                                     if opcion_txt:
@@ -754,7 +725,6 @@ def mostrar_baja_stock():
                                             st.error("Tenés un lote anterior. Marcá la confirmación para continuar.")
                                             st.stop()
 
-                            # Aplicar baja
                             if usar_fifo:
                                 resumen = aplicar_baja_fifo(
                                     usuario=usuario_actual,
@@ -764,7 +734,6 @@ def mostrar_baja_stock():
                                     cantidad=float(cantidad),
                                     motivo_final=motivo_final
                                 )
-                                # Mensaje
                                 st.success("✅ Baja registrada por FIFO/FEFO.")
                                 for r in resumen:
                                     st.caption(
@@ -791,7 +760,6 @@ def mostrar_baja_stock():
                                 st.caption(f"Resta en {deposito_sel}: **{_fmt_num(res.get('total_deposito', 0.0))}**")
                                 st.caption(f"Resta en Casa Central: **{_fmt_num(res.get('total_casa_central', 0.0))}**")
 
-                            # Reset selección
                             del st.session_state["item_seleccionado_stock"]
                             st.rerun()
 
@@ -815,13 +783,11 @@ def mostrar_baja_stock():
         if historial:
             df = pd.DataFrame(historial)
 
-            # Formatear columnas
             if "fecha" in df.columns:
                 df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce").dt.strftime("%d/%m/%Y")
             if "hora" in df.columns:
                 df["hora"] = df["hora"].astype(str).str[:8]
 
-            # Columnas preferidas (si existen)
             columnas_preferidas = [
                 "fecha", "hora", "usuario",
                 "codigo_interno", "articulo",
@@ -842,6 +808,3 @@ def mostrar_baja_stock():
 
     except Exception as e:
         st.warning(f"No se pudo cargar el historial: {str(e)}")
-
-
-
