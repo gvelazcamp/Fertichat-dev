@@ -527,21 +527,36 @@ def get_facturas_proveedor_detalle(
     articulo: Optional[str] = None,
     moneda: Optional[str] = None,
     limite: int = 5000,
-):
+) -> pd.DataFrame:
+    """
+    Retorna el detalle de facturas de un conjunto de proveedores con filtros flexibles.
+    Parámetros:
+        - proveedores: Lista de nombres o patrones para clientes/proveedores.
+        - meses: Lista de meses (como "01", "02") para filtro.
+        - anios: Lista de años (como 2025) para filtro.
+        - desde, hasta: Fechas inicial y final para rango temporal.
+        - articulo: Patrón de coincidencia para artículo.
+        - moneda: Filtra por tipo de moneda ("USD", "$").
+        - limite: Número máximo de registros a devolver.
+    Retorna:
+        - Un DataFrame con las columnas:
+          Fecha, Proveedor, NroFactura, Tipo, Articulo, Moneda, Total.
+    """
     if not proveedores:
         return pd.DataFrame()
 
+    # Validar límite de resultados
     limite = int(limite or 5000)
-    if limite <= 0:
-        limite = 5000
+    limite = max(limite, 500)  # 500 como límite mínimo
 
+    # Inicializar filtros
     where_parts = [
         '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'
     ]
     params: List[Any] = []
 
     # -------------------------
-    # PROVEEDORES (LIKE)
+    # FILTRO POR PROVEEDORES (LIKE)
     # -------------------------
     prov_clauses = []
     for p in proveedores:
@@ -555,14 +570,14 @@ def get_facturas_proveedor_detalle(
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
     # -------------------------
-    # ARTÍCULO
+    # FILTRO POR ARTÍCULO (LIKE)
     # -------------------------
     if articulo and str(articulo).strip():
         where_parts.append('LOWER(TRIM("Articulo")) LIKE %s')
         params.append(f"%{str(articulo).lower().strip()}%")
 
     # -------------------------
-    # MONEDA
+    # FILTRO POR MONEDA
     # -------------------------
     if moneda and str(moneda).strip():
         m = str(moneda).upper().strip()
@@ -572,19 +587,17 @@ def get_facturas_proveedor_detalle(
             where_parts.append('TRIM("Moneda") = \'$\'')
 
     # -------------------------
-    # TIEMPO (REGLA CLARA)
+    # FILTROS DE TIEMPO
     # -------------------------
     if desde and hasta:
         where_parts.append('"Fecha"::date BETWEEN %s AND %s')
         params.extend([desde, hasta])
-
     elif meses:
         meses_ok = [m for m in meses if m]
         if meses_ok:
             ph = ", ".join(["%s"] * len(meses_ok))
             where_parts.append(f'TRIM("Mes") IN ({ph})')
             params.extend(meses_ok)
-
     elif anios:
         anios_ok = [int(a) for a in anios if a]
         if anios_ok:
@@ -593,7 +606,7 @@ def get_facturas_proveedor_detalle(
             params.extend(anios_ok)
 
     # -------------------------
-    # QUERY FINAL
+    # GENERAR QUERY FINAL
     # -------------------------
     query = f"""
         SELECT
@@ -610,6 +623,7 @@ def get_facturas_proveedor_detalle(
         LIMIT {limite}
     """
 
+    # Ejecutar consulta
     return ejecutar_consulta(query, tuple(params))
 
 # =====================================================================
