@@ -158,82 +158,6 @@ def get_total_compras_proveedor_anio(proveedor_like: str, anio: int) -> dict:
         }
     return {"registros": 0, "total": 0.0}
 
-# =====================================================================
-# FACTURAS POR PROVEEDOR (DETALLE / LISTADO)
-# =====================================================================
-
-def get_facturas_proveedor_detalle(
-    proveedores: list[str],
-    meses: list[str] = None,
-    anios: list[int] = None,
-    desde: str = None,
-    hasta: str = None,
-    articulo: str = None,
-    moneda: str = None,
-    limite: int = None,
-):
-    where = []
-    params = []
-
-    # Proveedor (OBLIGATORIO)
-    prov_clauses = []
-    for p in proveedores:
-        prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
-        params.append(f"%{p.lower()}%")
-    where.append(f"({' OR '.join(prov_clauses)})")
-
-    # Meses
-    if meses:
-        placeholders = ", ".join(["%s"] * len(meses))
-        where.append(f'TRIM("Mes") IN ({placeholders})')
-        params.extend(meses)
-
-    # Años
-    if anios:
-        placeholders = ", ".join(["%s"] * len(anios))
-        where.append(f'"Año"::int IN ({placeholders})')
-        params.extend(anios)
-
-    # Rango fechas
-    if desde:
-        where.append('"Fecha" >= %s')
-        params.append(desde)
-    if hasta:
-        where.append('"Fecha" <= %s')
-        params.append(hasta)
-
-    # Artículo
-    if articulo:
-        where.append('LOWER(TRIM("Articulo")) LIKE %s')
-        params.append(f"%{articulo.lower()}%")
-
-    # Moneda
-    if moneda:
-        where.append('TRIM("Moneda") = %s')
-        params.append(moneda)
-
-    where_sql = " AND ".join(where)
-    limit_sql = f"LIMIT {int(limite)}" if limite else ""
-
-    sql = f"""
-        SELECT
-            "Fecha",
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Articulo") AS Articulo,
-            "Moneda",
-            "Cantidad",
-            "Precio Unitario",
-            "Total",
-            "Nro Factura"
-        FROM chatbot_raw
-        WHERE {where_sql}
-        ORDER BY "Fecha" DESC
-        {limit_sql}
-    """
-
-    return ejecutar_consulta(sql, tuple(params))
-
-
 
 def get_detalle_compras_proveedor_anios(anios: List[int], proveedores: List[str] = None) -> pd.DataFrame:
     """Detalle de compras por proveedor en varios años."""
@@ -439,8 +363,6 @@ def get_total_factura_por_numero(nro_factura: str) -> pd.DataFrame:
         return ejecutar_consulta(sql, ("",))
 
     df = ejecutar_consulta(sql, (variantes[0],))
-    # Si no hay filas “visibles” igualmente SUM devuelve algo, pero si tu ejecutar_consulta
-    # retorna vacío, hacemos fallback igual.
     if df is not None and not df.empty:
         return df
 
@@ -558,7 +480,7 @@ def get_facturas_de_articulo(patron_articulo: str, solo_ultima: bool = False) ->
 
 
 # =========================
-# TODAS LAS FACTURAS DE PROVEEDOR (DETALLE)
+# TODAS LAS FACTURAS DE PROVEEDOR (DETALLE) - ✅ CORREGIDO
 # =========================
 def get_facturas_proveedor_detalle(
     proveedores: List[str],
@@ -572,31 +494,41 @@ def get_facturas_proveedor_detalle(
 ):
     """
     Devuelve detalle de facturas (compras) filtrando por proveedor(es) y tiempo.
-    - meses: lista ["YYYY-MM", ...]  (usa columna Mes)
-    - anios: lista [2025, ...]       (usa columna Año)
-    - desde/hasta: "YYYY-MM-DD"      (usa columna Fecha::date)
+    ✅ CORREGIDO: Ahora usa token corto mejorado para ROCHE y similares
     """
 
     def _short_token_prov(p: str) -> Optional[str]:
-        # token “corto” para matchear proveedores con nombres largos/variables (ej: ROCHE ...)
+        """Extrae el token más significativo del proveedor"""
+        if not p:
+            return None
+            
         stop = {
             "laboratorio", "lab", "sa", "srl", "ltda", "lt", "inc", "ltd",
             "uruguay", "uy", "sociedad", "anonima", "anónima", "de", "del",
-            "la", "el", "y", "e",
+            "la", "el", "y", "e", "international",
         }
+        
+        # Extraer palabras
         raw = re.findall(r"[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9]+", (p or "").lower())
         toks = []
+        
         for t in raw:
+            # Normalizar: quitar acentos y caracteres no alfanuméricos
             tt = re.sub(r"[^a-z0-9]+", "", t.lower())
-            if len(tt) < 4:
+            
+            # ✅ CORREGIDO: Cambiar mínimo a 3 (antes era 4, ahora acepta "bio")
+            if len(tt) < 3:
                 continue
             if tt in stop:
                 continue
-            toks.append(t)
+            toks.append(tt)
+        
         if not toks:
             return None
-        toks.sort(key=lambda x: len(re.sub(r"[^a-z0-9]+", "", x.lower())), reverse=True)
-        return toks[0].strip() if toks[0].strip() else None
+        
+        # Ordenar por longitud (más largo = más específico)
+        toks.sort(key=lambda x: len(x), reverse=True)
+        return toks[0] if toks else None
 
     if not proveedores:
         return pd.DataFrame()
@@ -610,17 +542,19 @@ def get_facturas_proveedor_detalle(
     ]
     params: List[Any] = []
 
-    # Proveedores (OR). Usa: nombre completo + token corto (si aplica) para que ROCHE no se pierda.
+    # ✅ Proveedores (OR) - mejorado
     prov_clauses: List[str] = []
     for p in [str(x).strip() for x in proveedores if str(x).strip()]:
         p_full = p.lower().strip()
-        p_short = _short_token_prov(p)  # ej "roche"
-
-        if p_short and p_short.lower().strip() != p_full and len(p_short.strip()) >= 4:
+        p_short = _short_token_prov(p)
+        
+        if p_short and p_short != p_full and len(p_short) >= 3:
+            # Buscar nombre completo O token corto
             prov_clauses.append('(LOWER(TRIM("Cliente / Proveedor")) LIKE %s OR LOWER(TRIM("Cliente / Proveedor")) LIKE %s)')
             params.append(f"%{p_full}%")
-            params.append(f"%{p_short.lower().strip()}%")
+            params.append(f"%{p_short}%")
         else:
+            # Solo nombre completo
             prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
             params.append(f"%{p_full}%")
 
@@ -677,6 +611,7 @@ def get_facturas_proveedor_detalle(
     ORDER BY "Fecha" DESC NULLS LAST
     LIMIT {limite};
     """
+    
     # =========================
     # DEBUG VISIBLE EN STREAMLIT (opcional)
     # =========================
@@ -690,6 +625,7 @@ def get_facturas_proveedor_detalle(
         pass
 
     return ejecutar_consulta(query, tuple(params))
+
 
 # =====================================================================
 # SERIES TEMPORALES Y DATASET COMPLETO
@@ -733,200 +669,4 @@ def get_detalle_compras(where_clause: str, params: tuple) -> pd.DataFrame:
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
             TRIM("Articulo") AS Articulo,
-            TRIM("Nro. Comprobante") AS Nro_Factura,
-            "Fecha",
-            "Cantidad",
-            "Moneda",
-            {total_expr} AS Total
-        FROM chatbot_raw
-        WHERE {where_clause}
-        ORDER BY "Fecha" DESC NULLS LAST
-    """
-    return ejecutar_consulta(sql, params)
-
-
-def get_compras_por_mes_excel(mes_key: str) -> pd.DataFrame:
-    """Compras de un mes para exportar a Excel."""
-    total_expr = _sql_total_num_expr_general()
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Articulo") AS Articulo,
-            TRIM("Nro. Comprobante") AS Nro_Factura,
-            "Fecha",
-            "Cantidad",
-            "Moneda",
-            {total_expr} AS Total
-        FROM chatbot_raw
-        WHERE TRIM("Mes") = %s
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-        ORDER BY "Fecha" DESC, TRIM("Cliente / Proveedor")
-    """
-    return ejecutar_consulta(sql, (mes_key,))
-
-
-# =====================================================================
-# TOP PROVEEDORES
-# =====================================================================
-
-def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: str = None) -> pd.DataFrame:
-    """Top 10 proveedores."""
-    total_expr = _sql_total_num_expr_general()
-    condiciones = ["(\"Tipo Comprobante\" = 'Compra Contado' OR \"Tipo Comprobante\" LIKE 'Compra%%')"]
-    params = []
-
-    if moneda:
-        mon = moneda.strip().upper()
-        if mon in ("U$S", "U$$", "USD"):
-            total_expr = _sql_total_num_expr_usd()
-            condiciones.append("TRIM(\"Moneda\") IN ('U$S', 'U$$')")
-        else:
-            total_expr = _sql_total_num_expr()
-            condiciones.append("TRIM(\"Moneda\") = '$'")
-
-    if mes:
-        condiciones.append("TRIM(\"Mes\") = %s")
-        params.append(mes)
-    elif anio:
-        condiciones.append("\"Año\"::int = %s")
-        params.append(anio)
-
-    where_sql = " AND ".join(condiciones)
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            SUM({total_expr}) AS Total,
-            COUNT(*) AS Registros
-        FROM chatbot_raw
-        WHERE {where_sql}
-          AND "Cliente / Proveedor" IS NOT NULL
-          AND TRIM("Cliente / Proveedor") <> ''
-        GROUP BY TRIM("Cliente / Proveedor")
-        ORDER BY Total DESC
-        LIMIT 10
-    """
-    return ejecutar_consulta(sql, tuple(params) if params else None)
-
-
-# =====================================================================
-# DASHBOARD
-# =====================================================================
-
-def get_dashboard_totales(anio: int) -> dict:
-    """Totales para dashboard."""
-    total_pesos = _sql_total_num_expr()
-    total_usd = _sql_total_num_expr_usd()
-    sql = f"""
-        SELECT
-            COALESCE(SUM(CASE WHEN TRIM("Moneda") = '$' THEN {total_pesos} ELSE 0 END), 0) AS total_pesos,
-            COALESCE(SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'U$$') THEN {total_usd} ELSE 0 END), 0) AS total_usd,
-            COUNT(DISTINCT "Cliente / Proveedor") AS proveedores,
-            COUNT(DISTINCT "Nro. Comprobante") AS facturas
-        FROM chatbot_raw
-        WHERE "Año"::int = %s
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-    """
-    df = ejecutar_consulta(sql, (anio,))
-    if df is not None and not df.empty:
-        return {
-            "total_pesos": float(df["total_pesos"].iloc[0] or 0),
-            "total_usd": float(df["total_usd"].iloc[0] or 0),
-            "proveedores": int(df["proveedores"].iloc[0] or 0),
-            "facturas": int(df["facturas"].iloc[0] or 0)
-        }
-    return {"total_pesos": 0, "total_usd": 0, "proveedores": 0, "facturas": 0}
-
-
-def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
-    """Compras por mes para dashboard."""
-    total_expr = _sql_total_num_expr_general()
-    sql = f"""
-        SELECT
-            TRIM("Mes") AS Mes,
-            SUM({total_expr}) AS Total
-        FROM chatbot_raw
-        WHERE "Año"::int = %s
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-        GROUP BY TRIM("Mes")
-        ORDER BY TRIM("Mes")
-    """
-    return ejecutar_consulta(sql, (anio,))
-
-
-def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$") -> pd.DataFrame:
-    """Top proveedores para dashboard."""
-    if moneda in ("U$S", "U$$", "USD"):
-        total_expr = _sql_total_num_expr_usd()
-        mon_filter = "TRIM(\"Moneda\") IN ('U$S', 'U$$')"
-    else:
-        total_expr = _sql_total_num_expr()
-        mon_filter = "TRIM(\"Moneda\") = '$'"
-
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            SUM({total_expr}) AS Total
-        FROM chatbot_raw
-        WHERE "Año"::int = %s
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND {mon_filter}
-          AND "Cliente / Proveedor" IS NOT NULL
-          AND TRIM("Cliente / Proveedor") <> ''
-        GROUP BY TRIM("Cliente / Proveedor")
-        ORDER BY Total DESC
-        LIMIT %s
-    """
-    return ejecutar_consulta(sql, (anio, top_n))
-
-
-def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
-    """Gastos por familia para dashboard."""
-    total_expr = _sql_total_num_expr_general()
-    sql = f"""
-        SELECT
-            TRIM(COALESCE("Familia", 'SIN FAMILIA')) AS Familia,
-            SUM({total_expr}) AS Total
-        FROM chatbot_raw
-        WHERE "Año"::int = %s
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-        GROUP BY TRIM(COALESCE("Familia", 'SIN FAMILIA'))
-        ORDER BY Total DESC
-        LIMIT 10
-    """
-    return ejecutar_consulta(sql, (anio,))
-
-
-def get_dashboard_ultimas_compras(limite: int = 10) -> pd.DataFrame:
-    """Últimas compras para dashboard."""
-    total_expr = _sql_total_num_expr_general()
-    sql = f"""
-        SELECT
-            "Fecha",
-            TRIM("Articulo") AS Articulo,
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            {total_expr} AS Total
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-        ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT %s
-    """
-    return ejecutar_consulta(sql, (limite,))
-
-
-def get_total_compras_proveedor_moneda_periodos(periodos: List[str], monedas: List[str] = None) -> pd.DataFrame:
-    """Total de compras por proveedor en múltiples períodos."""
-    total_expr = _sql_total_num_expr_general()
-    periodos_sql = ", ".join(["%s"] * len(periodos))
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Mes") AS Mes,
-            "Moneda",
-            SUM({total_expr}) AS Total
-        FROM chatbot_raw
-        WHERE TRIM("Mes") IN ({periodos_sql})
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-        GROUP BY TRIM("Cliente / Proveedor"), TRIM("Mes"), "Moneda"
-        ORDER BY TRIM("Mes"), Total DESC
-    """
-    return ejecutar_consulta(sql, tuple(periodos))
+            TRIM("Nro. Comprobante") AS N
