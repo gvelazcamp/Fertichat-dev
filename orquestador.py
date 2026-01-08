@@ -8,6 +8,13 @@ try:
 except Exception:
     pass
 
+try:
+    if not st.session_state.get("ORQUESTADOR_CARGADO"):
+        st.session_state["ORQUESTADOR_CARGADO"] = True
+        print("✅ Orquestador activado correctamente.")
+except Exception as e:
+    print(f"❌ Error activando orquestador: {e}")
+
 # =========================
 # ORQUESTADOR V2 - USA IA INTERPRETADOR
 # =========================
