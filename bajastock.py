@@ -1,5 +1,5 @@
 # =========================
-# BAJASTOCK.PY - Baja de stock con historial
+# BAJASTOCK.PY - Baja de stock con historial + ANULAR
 # =========================
 
 import streamlit as st
@@ -52,12 +52,13 @@ def _to_float(x) -> float:
 
 
 def _fmt_num(x: float) -> str:
+    # Guardamos como texto en stock ("STOCK" es text)
     if x is None:
         return "0"
     try:
         if abs(x - round(x)) < 1e-9:
             return str(int(round(x)))
-        return f"{x:.2f}".rstrip("0").rstrip(".")
+        return f"{x:.6f}".rstrip("0").rstrip(".")
     except Exception:
         return "0"
 
@@ -94,6 +95,7 @@ def crear_tabla_historial():
     """)
     conn.commit()
 
+    # columnas existentes del módulo
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS deposito VARCHAR(255)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS lote VARCHAR(255)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS vencimiento VARCHAR(255)""")
@@ -102,8 +104,13 @@ def crear_tabla_historial():
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS stock_total_articulo DECIMAL(14,4)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS stock_total_deposito DECIMAL(14,4)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS stock_casa_central DECIMAL(14,4)""")
-    conn.commit()
 
+    # NUEVO: anulación (pedido)
+    cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS anulada BOOLEAN DEFAULT FALSE""")
+    cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS anulado_por VARCHAR(100)""")
+    cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS anulado_at TIMESTAMP""")
+
+    conn.commit()
     cur.close()
     conn.close()
 
@@ -272,22 +279,128 @@ def registrar_baja(
     conn.close()
 
 
-def obtener_historial(limite=50):
+def obtener_historial(limite=50, incluir_anuladas: bool = False):
     """Obtiene el historial de bajas"""
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    cur.execute("""
-        SELECT * FROM historial_bajas
-        ORDER BY created_at DESC
-        LIMIT %s
-    """, (limite,))
+    if incluir_anuladas:
+        cur.execute("""
+            SELECT * FROM historial_bajas
+            ORDER BY created_at DESC
+            LIMIT %s
+        """, (limite,))
+    else:
+        cur.execute("""
+            SELECT * FROM historial_bajas
+            WHERE COALESCE(anulada, FALSE) = FALSE
+            ORDER BY created_at DESC
+            LIMIT %s
+        """, (limite,))
 
     resultados = cur.fetchall()
     cur.close()
     conn.close()
-
     return resultados
+
+
+# =========================
+# ANULAR BAJA (DEVUELVE STOCK Y MARCA HISTORIAL)
+# =========================
+def anular_baja_por_id(hist_id: int, usuario_anula: str):
+    """
+    1) Busca historial_bajas.id
+    2) Suma la cantidad al mismo depósito/lote/vencimiento en tabla stock
+    3) Marca historial como anulada (NO borra)
+    """
+    conn = get_connection()
+    try:
+        conn.autocommit = False
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Lock del historial
+        cur.execute("""
+            SELECT *
+            FROM historial_bajas
+            WHERE id = %s
+            FOR UPDATE
+        """, (int(hist_id),))
+        h = cur.fetchone()
+        if not h:
+            raise ValueError("No se encontró esa baja en el historial.")
+
+        if bool(h.get("anulada") or False):
+            raise ValueError("Esa baja ya está anulada.")
+
+        codigo = _norm_str(h.get("codigo_interno"))
+        articulo = _norm_str(h.get("articulo"))
+        deposito = _norm_str(h.get("deposito"))
+        lote = _norm_str(h.get("lote"))
+        vencimiento = _norm_str(h.get("vencimiento"))
+        cantidad = float(h.get("cantidad") or 0.0)
+
+        if cantidad <= 0:
+            raise ValueError("La cantidad del historial es inválida (<= 0).")
+
+        if not codigo or not articulo or not deposito:
+            raise ValueError("El historial no tiene CODIGO/ARTICULO/DEPOSITO suficiente para anular.")
+
+        # Lock de la fila stock exacta (mismo criterio que la baja)
+        cur.execute("""
+            SELECT "STOCK"
+            FROM stock
+            WHERE
+                TRIM("CODIGO") = %s
+                AND TRIM("ARTICULO") = %s
+                AND TRIM("DEPOSITO") = %s
+                AND COALESCE(TRIM("LOTE"), '') = %s
+                AND COALESCE(TRIM("VENCIMIENTO"), '') = %s
+            FOR UPDATE
+        """, (codigo, articulo, deposito, lote, vencimiento))
+
+        row = cur.fetchone()
+        if not row:
+            raise ValueError("No se encontró en stock el mismo depósito/lote/vencimiento para devolver la cantidad.")
+
+        stock_actual = _to_float(row.get("STOCK"))
+        stock_nuevo = stock_actual + float(cantidad)
+
+        # Update stock
+        cur.execute("""
+            UPDATE stock
+            SET "STOCK" = %s
+            WHERE
+                TRIM("CODIGO") = %s
+                AND TRIM("ARTICULO") = %s
+                AND TRIM("DEPOSITO") = %s
+                AND COALESCE(TRIM("LOTE"), '') = %s
+                AND COALESCE(TRIM("VENCIMIENTO"), '') = %s
+        """, (_fmt_num(stock_nuevo), codigo, articulo, deposito, lote, vencimiento))
+
+        # Marcar historial como anulada
+        cur.execute("""
+            UPDATE historial_bajas
+            SET anulada = TRUE,
+                anulado_por = %s,
+                anulado_at = NOW(),
+                motivo = COALESCE(motivo, '') || ' | ANULADA'
+            WHERE id = %s
+        """, (_norm_str(usuario_anula), int(hist_id)))
+
+        conn.commit()
+        return {"stock_antes": stock_actual, "stock_despues": stock_nuevo}
+
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
 # =========================
@@ -493,9 +606,11 @@ def mostrar_baja_stock():
     st.markdown("Buscá por **CODIGO** o por **ARTICULO**, elegí depósito/lote/cantidad y confirmá la baja con historial.")
     st.markdown("---")
 
-    # Mensaje persistente luego de confirmar
+    # Mensajes persistentes
     if st.session_state.pop("ULTIMA_BAJA_OK", False):
         st.success("✅ Baja registrada correctamente. Historial actualizado.")
+    if st.session_state.pop("ULTIMA_ANULACION_OK", False):
+        st.success("✅ Baja anulada correctamente. Stock repuesto y historial marcado como ANULADA.")
 
     user = st.session_state.get("user", {})
     usuario_actual = user.get("nombre", user.get("Usuario", "Usuario"))
@@ -516,15 +631,12 @@ def mostrar_baja_stock():
         st.markdown("<br>", unsafe_allow_html=True)
         btn_buscar = st.button("Buscar", type="primary", use_container_width=True)
 
-    # Si cambia la búsqueda y no apretó buscar, limpiamos resultados anteriores
+    # Persistencia de resultados
     last_q = st.session_state.get("BAJA_LAST_QUERY")
     if busqueda and last_q and busqueda != last_q and not btn_buscar:
         st.session_state.pop("BAJA_LAST_ITEMS", None)
         st.session_state.pop("BAJA_LAST_QUERY", None)
 
-    # =========================
-    # RESULTADOS DE BÚSQUEDA (PERSISTENTES)
-    # =========================
     if busqueda and btn_buscar:
         with st.spinner("Buscando en stock..."):
             try:
@@ -576,7 +688,7 @@ def mostrar_baja_stock():
         st.warning("No se encontraron artículos con ese criterio en la tabla stock.")
 
     # =========================
-    # FORMULARIO DE BAJA (APARECE CUANDO YA HAY SELECCIÓN)
+    # FORMULARIO DE BAJA
     # =========================
     if "item_seleccionado_stock" in st.session_state:
         it = st.session_state["item_seleccionado_stock"]
@@ -618,7 +730,7 @@ def mostrar_baja_stock():
                 st.caption(f"Familia: **{familia or '—'}**")
 
             lotes_dep_all = [x for x in lotes if _norm_str(x.get("DEPOSITO")) == _norm_str(deposito_sel)]
-            # SOLO lotes con stock > 0 (pedido)
+            # SOLO stock > 0
             lotes_dep = [x for x in lotes_dep_all if float(x.get("STOCK_NUM", 0.0) or 0.0) > 0]
 
             total_articulo = _sum_stock(lotes)
@@ -641,7 +753,7 @@ def mostrar_baja_stock():
                 st.markdown("#### Lotes / Vencimientos (orden FIFO/FEFO)")
                 st.dataframe(df_lotes, use_container_width=True, hide_index=True)
 
-                idx_fifo = 0  # ya está filtrado > 0 y viene ordenado
+                idx_fifo = 0  # ya filtrado >0 y ordenado
 
                 usar_fifo = st.checkbox(
                     "✅ Bajar siguiendo FIFO/FEFO automático (recomendado)",
@@ -675,7 +787,6 @@ def mostrar_baja_stock():
                     venc_sel = _norm_str(elegido.get("VENCIMIENTO"))
                     stock_lote_sel = float(elegido.get("STOCK_NUM", 0.0) or 0.0)
 
-                    # Aviso si elige un lote que NO es el FIFO recomendado
                     if idx != idx_fifo and len(lotes_dep) > 1:
                         fifo_ref = lotes_dep[idx_fifo]
                         st.warning(
@@ -692,7 +803,7 @@ def mostrar_baja_stock():
 
                     st.caption(f"Stock lote seleccionado: **{_fmt_num(stock_lote_sel)}**")
 
-                # Cantidad (sin motivo/observación) (pedido)
+                # Cantidad (sin motivo)
                 if (not usar_fifo) and stock_lote_sel > 0:
                     cantidad = st.number_input(
                         "Cantidad a bajar",
@@ -712,15 +823,14 @@ def mostrar_baja_stock():
                     )
 
                 st.markdown("---")
-
                 col_guardar, col_cancelar = st.columns(2)
 
                 with col_guardar:
                     if st.button("✅ Confirmar Baja", type="primary", use_container_width=True):
                         try:
-                            motivo_final = "Baja"  # fijo (pedido)
+                            motivo_final = "Baja"
 
-                            # Validación de aviso NO FIFO
+                            # Confirmación si no-fifo
                             if (not usar_fifo) and (len(lotes_dep) > 1):
                                 if "baja_lote_sel" in st.session_state:
                                     opcion_txt = st.session_state.get("baja_lote_sel", "")
@@ -730,7 +840,6 @@ def mostrar_baja_stock():
                                             st.error("Tenés un lote anterior. Marcá la confirmación para continuar.")
                                             st.stop()
 
-                            # Aplicar baja
                             if usar_fifo:
                                 resumen = aplicar_baja_fifo(
                                     usuario=usuario_actual,
@@ -779,13 +888,15 @@ def mostrar_baja_stock():
                         st.rerun()
 
     # =========================
-    # HISTORIAL DE BAJAS
+    # HISTORIAL DE BAJAS + ANULAR
     # =========================
     st.markdown("---")
     st.markdown("### 📋 Historial de Bajas")
 
+    incluir_anuladas = st.checkbox("Mostrar anuladas", value=False, key="hist_mostrar_anuladas")
+
     try:
-        historial = obtener_historial(50)
+        historial = obtener_historial(50, incluir_anuladas=incluir_anuladas)
 
         if historial:
             df = pd.DataFrame(historial)
@@ -794,14 +905,17 @@ def mostrar_baja_stock():
                 df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce").dt.strftime("%d/%m/%Y")
             if "hora" in df.columns:
                 df["hora"] = df["hora"].astype(str).str[:8]
+            if "anulado_at" in df.columns:
+                df["anulado_at"] = pd.to_datetime(df["anulado_at"], errors="coerce").dt.strftime("%d/%m/%Y %H:%M")
 
             columnas_preferidas = [
-                "fecha", "hora", "usuario",
+                "id", "fecha", "hora", "usuario",
                 "codigo_interno", "articulo",
                 "deposito", "lote", "vencimiento",
                 "cantidad",
                 "stock_total_deposito", "stock_casa_central",
-                "motivo"
+                "motivo",
+                "anulada", "anulado_por", "anulado_at"
             ]
             columnas_existentes = [c for c in columnas_preferidas if c in df.columns]
 
@@ -810,6 +924,42 @@ def mostrar_baja_stock():
                 use_container_width=True,
                 hide_index=True
             )
+
+            # Selector de baja para anular (solo las NO anuladas)
+            disponibles = [h for h in historial if not bool(h.get("anulada") or False)]
+            if disponibles:
+                st.markdown("#### ↩️ Anular baja (devuelve stock)")
+
+                opciones = []
+                map_id = {}
+                for h in disponibles:
+                    hid = int(h.get("id"))
+                    lbl = (
+                        f"ID {hid} | {(_norm_str(h.get('fecha')))} {(_norm_str(h.get('hora')))} | "
+                        f"{_norm_str(h.get('codigo_interno'))} - {_norm_str(h.get('articulo'))} | "
+                        f"Dep: {_norm_str(h.get('deposito'))} | Lote: {_norm_str(h.get('lote'))} | "
+                        f"Venc: {_norm_str(h.get('vencimiento'))} | Cant: {_norm_str(h.get('cantidad'))}"
+                    )
+                    opciones.append(lbl)
+                    map_id[lbl] = hid
+
+                sel_lbl = st.selectbox("Seleccioná la baja a anular", options=opciones, key="hist_sel_anular")
+                confirm = st.checkbox("Confirmo que quiero ANULAR esta baja y devolver el stock", value=False, key="hist_confirm_anular")
+
+                if st.button("↩️ Anular selección", type="secondary", use_container_width=True, key="btn_anular_baja"):
+                    if not confirm:
+                        st.error("Marcá la confirmación para anular.")
+                        st.stop()
+                    try:
+                        hid = map_id.get(sel_lbl)
+                        r = anular_baja_por_id(hid, usuario_actual)
+                        st.session_state["ULTIMA_ANULACION_OK"] = True
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"No se pudo anular: {str(e)}")
+            else:
+                st.caption("No hay bajas disponibles para anular (todas están anuladas o no hay registros).")
+
         else:
             st.info("No hay registros de bajas todavía")
 
