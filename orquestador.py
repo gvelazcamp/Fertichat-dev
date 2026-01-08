@@ -785,34 +785,37 @@ if __name__ == "__main__":
     print(f"ORQUESTADOR_CARGADO: {st.session_state.get('ORQUESTADOR_CARGADO', None)}")
     print("=" * 60)
 
-def prueba_sql():
+def prueba_sql_streamlit():
     """
-    Prueba directa para ejecutar la función SQL de facturas proveedor.
+    Muestra los resultados de la consulta SQL en la interfaz de Streamlit.
     """
 
-    # Parámetros de prueba
+    # Parámetros para la prueba
     proveedores = ["roche"]
     anios = [2025]
-    meses = None  # Puedes especificar meses o dejarlo como None
+    meses = None  # Deja meses como None, o pásalos según desees
     limite = 500
 
     try:
-        # Llama directamente a la consulta SQL
-        print("🛠 Ejecutando prueba de SQL para get_facturas_proveedor_detalle...")
+        st.write("🛠 Ejecutando prueba de SQL para `get_facturas_proveedor_detalle` con Streamlit...")
+
+        # Ejecutar la consulta SQL directamente
         df = get_facturas_proveedor_detalle(
             proveedores=proveedores,
             anios=anios,
             meses=meses,
             limite=limite
         )
-        # ¿Resultados obtenidos?
+
+        # Mostrar resultados en la interfaz Streamlit
         if df is not None and not df.empty:
-            print("✅ Resultados obtenidos desde SQL:")
-            print(df.head())  # Solo imprime las primeras filas
+            st.success(f"✅ Resultados obtenidos desde SQL: {len(df)} filas")
+            st.dataframe(df)  # Mostrar DataFrame en la UI
         else:
-            print("❌ No se encontraron resultados para los parámetros dados.")
+            st.error("❌ No se encontraron resultados para los parámetros dados.")
+
     except Exception as e:
-        print(f"❌ Error en prueba SQL: {e}")
+        st.error(f"❌ Error en prueba SQL: {str(e)}")
     
     pruebas = [
         "compras 2025",
