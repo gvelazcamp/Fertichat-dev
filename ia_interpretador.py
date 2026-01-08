@@ -272,10 +272,33 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
     )
     if m:
         raw = str(m.group(3)).strip()
+
+        # =========================
+        # 🔧 PARCHE MÍNIMO:
+        # Evitar confundir AÑO (2023–2026) como "nro_factura"
+        # Ej: "todas las facturas roche 2025" NO debe ir a detalle_factura_numero
+        # =========================
+        if raw.isdigit():
+            try:
+                n = int(raw)
+                if n in ANIOS_VALIDOS:
+                    return None
+            except Exception:
+                pass
+
         nro = _normalizar_nro_factura(raw)
         return nro or None
 
     if re.fullmatch(r"[A-Za-z]?\d{3,}", t):
+        # Idem: si el texto ES un año válido, no es nro de factura
+        if t.isdigit():
+            try:
+                n = int(t)
+                if n in ANIOS_VALIDOS:
+                    return None
+            except Exception:
+                pass
+
         nro = _normalizar_nro_factura(t)
         return nro or None
 
@@ -302,7 +325,7 @@ def _extraer_limite(texto: str, predeterminado: int = 500) -> int:
 
     # Si no se encuentra ningún número, retornar el valor predeterminado
     return predeterminado
-    
+
 # =====================================================================
 # Extraer Monedas
 # =====================================================================
@@ -330,6 +353,7 @@ def _extraer_moneda(texto: str) -> Optional[str]:
 
     # No se detectó ninguna moneda
     return None
+
 # =====================================================================
 # Extraer rango fechas
 # =====================================================================
@@ -351,7 +375,7 @@ def _extraer_rango_fechas(texto: str) -> Tuple[Optional[str], Optional[str]]:
         return fechas[0], None
     # Si no encuentra fechas, retorna None.
     return None, None
-    
+
 # =====================================================================
 # CARGA LISTAS DESDE SUPABASE
 # =====================================================================
@@ -804,7 +828,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # No entendido
     # =========================
     return {"tipo": "no_entendido", "parametros": {}, "debug": "sin coincidencias"}
-    
+
     # =========================
     # COMPARAR COMPRAS
     # =========================
