@@ -379,6 +379,68 @@ def get_lista_depositos_stock() -> list:
 
 
 # =====================================================================
+# BÚSQUEDA EN STOCK POR LOTE
+# =====================================================================
+
+def buscar_stock_por_lote(
+    articulo: str = None,
+    lote: str = None,
+    familia: str = None,
+    deposito: str = None,
+    texto_busqueda: str = None
+) -> pd.DataFrame:
+    """Busca registros en stock_raw por lote y otros filtros."""
+    try:
+        sql = """
+            SELECT 
+                TRIM("Articulo") AS "Artículo",
+                TRIM("Lote") AS "Lote",
+                TRIM("Vencimiento") AS "Vencimiento",
+                TRIM("STOCK") AS "STOCK",
+                TRIM("Familia") AS "Familia",
+                TRIM("Deposito") AS "Depósito"
+            FROM stock_raw
+            WHERE 1=1
+        """
+        params = []
+
+        if articulo:
+            sql += ' AND LOWER(TRIM("Articulo")) LIKE LOWER(%s)'
+            params.append(f"%{articulo}%")
+
+        if lote and lote.strip():
+            sql += ' AND LOWER(TRIM("Lote")) LIKE LOWER(%s)'
+            params.append(f"%{lote.strip()}%")
+
+        if familia:
+            sql += ' AND LOWER(TRIM("Familia")) LIKE LOWER(%s)'
+            params.append(f"%{familia}%")
+
+        if deposito:
+            sql += ' AND LOWER(TRIM("Deposito")) LIKE LOWER(%s)'
+            params.append(f"%{deposito}%")
+
+        if texto_busqueda and texto_busqueda.strip():
+            txt = texto_busqueda.strip()
+            sql += """
+                AND (
+                    LOWER("Articulo") LIKE LOWER(%s) OR
+                    LOWER("Lote") LIKE LOWER(%s) OR
+                    LOWER("Familia") LIKE LOWER(%s)
+                )
+            """
+            params.extend([f"%{txt}%", f"%{txt}%", f"%{txt}%"])
+
+        sql += ' ORDER BY "Vencimiento" ASC LIMIT 500'
+
+        return ejecutar_consulta(sql, tuple(params) if params else None)
+
+    except Exception as e:
+        print(f"❌ Error en buscar_stock_por_lote: {e}")
+        return pd.DataFrame()
+
+
+# =====================================================================
 # FUNCIÓN PARA OBTENER ÚLTIMO MES DISPONIBLE
 # =====================================================================
 
