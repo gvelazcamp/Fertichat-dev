@@ -215,7 +215,7 @@ def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
 
 
 # =====================================================================
-# LISTADOS GENÉRICOS
+# LISTADOS GENÉRICOS - CHATBOT_RAW
 # =====================================================================
 
 def get_lista_proveedores() -> list:
@@ -326,6 +326,10 @@ def get_lista_meses() -> list:
     return df['mes'].tolist()
 
 
+# =====================================================================
+# LISTADOS GENÉRICOS - STOCK_RAW
+# =====================================================================
+
 def get_lista_articulos_stock() -> list:
     """Obtiene lista de artículos únicos de stock_raw."""
     sql = """
@@ -356,6 +360,22 @@ def get_lista_familias_stock() -> list:
         print("⚠️ No se encontraron familias en el stock.")
         return ["Todos"]
     return ["Todos"] + df['familia'].tolist()
+
+
+def get_lista_depositos_stock() -> list:
+    """Obtiene lista de depósitos únicos de stock_raw."""
+    sql = """
+        SELECT DISTINCT TRIM("Deposito") AS deposito
+        FROM stock_raw
+        WHERE "Deposito" IS NOT NULL AND TRIM("Deposito") <> ''
+        ORDER BY deposito
+        LIMIT 100
+    """
+    df = ejecutar_consulta(sql)
+    if df.empty:
+        print("⚠️ No se encontraron depósitos en el stock.")
+        return ["Todos"]
+    return ["Todos"] + df['deposito'].tolist()
 
 
 # =====================================================================
