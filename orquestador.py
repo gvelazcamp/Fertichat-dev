@@ -502,7 +502,6 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             prov_lbl = ", ".join([str(p).upper() for p in proveedores[:3]])
             return f"🧾 Facturas de **{prov_lbl}** ({len(df)} registros):", formatear_dataframe(df), None
 
-
         # =========================================================
         # COMPARACIONES
         # =========================================================
