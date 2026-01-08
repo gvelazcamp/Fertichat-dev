@@ -1,5 +1,5 @@
 # =========================
-# BAJASTOCK.PY - Baja de stock + Movimiento (traslado) con historial
+# BAJASTOCK.PY - Baja de stock + Movimiento (con historial)
 # =========================
 
 import streamlit as st
@@ -9,7 +9,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 # =========================
-# CONEXIÓN A POSTGRESQL
+# CONEXIÓN A POSTGRESQL (SUPABASE)
 # =========================
 def get_connection():
     return psycopg2.connect(
@@ -23,28 +23,6 @@ def get_connection():
 
 
 # =========================
-# KEYS (EVITA COLISIONES CON OTROS MÓDULOS)
-# =========================
-K_PREFIX = "BAJASTOCK_"
-K_ACCION = K_PREFIX + "ACCION"
-K_BUSQ = K_PREFIX + "BUSQUEDA"
-K_ITEM_SEL = K_PREFIX + "ITEM_SEL"
-K_BTN_BUSCAR = K_PREFIX + "BTN_BUSCAR"
-
-K_BAJA_DEP = K_PREFIX + "BAJA_DEP"
-K_BAJA_FIFO = K_PREFIX + "BAJA_FIFO"
-K_BAJA_LOTE_SEL = K_PREFIX + "BAJA_LOTE_SEL"
-K_BAJA_CONFIRM_NO_FIFO = K_PREFIX + "BAJA_CONFIRM_NO_FIFO"
-K_BAJA_CANT = K_PREFIX + "BAJA_CANT"
-
-K_MOV_DEP_ORIG = K_PREFIX + "MOV_DEP_ORIG"
-K_MOV_DEP_DEST = K_PREFIX + "MOV_DEP_DEST"
-K_MOV_LOTE_SEL = K_PREFIX + "MOV_LOTE_SEL"
-K_MOV_CONFIRM_NO_FIFO = K_PREFIX + "MOV_CONFIRM_NO_FIFO"
-K_MOV_CANT = K_PREFIX + "MOV_CANT"
-
-
-# =========================
 # HELPERS
 # =========================
 def _norm_str(x) -> str:
@@ -52,6 +30,10 @@ def _norm_str(x) -> str:
 
 
 def _to_float(x) -> float:
+    """
+    Convierte texto a float de forma tolerante:
+    - "10" / "10.5" / "10,5" / " 10 " / "10 u"
+    """
     s = _norm_str(x)
     if not s:
         return 0.0
@@ -90,51 +72,36 @@ def _parse_fecha_for_sort(venc_text: str):
     return dt
 
 
-def _sum_stock(filas, filtro_deposito: str = None, solo_casa_central: bool = False) -> float:
+def _sum_stock(filas, filtro_deposito: str = None) -> float:
     total = 0.0
     for r in filas:
         dep = _norm_str(r.get("DEPOSITO"))
         if filtro_deposito is not None and dep != _norm_str(filtro_deposito):
             continue
-        if solo_casa_central and ("casa central" not in dep.lower()):
-            continue
         total += float(r.get("STOCK_NUM", 0.0) or 0.0)
     return total
 
 
-# =========================
-# REGLAS DEPÓSITO DESTINO POR FAMILIA (MOVIMIENTO)
-# =========================
-FAMILIA_A_DEPOSITO_DESTINO = {
-    "G": "Generales",
-    "XX": "Inmunoanalisis",
-    "ID": "Inmunodiagnostico",
-    "FB": "Microbiologia",
-    "LP": "Limpieza",
-    "AF": "Alejandra Fajardo",
-    "CT": "Citometria",
-}
-
-
-def _sugerir_deposito_destino_por_familia(familia: str, depositos_disponibles: list) -> str:
-    fam = _norm_str(familia).upper()
-    sugerido = _norm_str(FAMILIA_A_DEPOSITO_DESTINO.get(fam, ""))
-    if not sugerido:
-        return ""
-
-    disp_lower = {d.lower(): d for d in depositos_disponibles}
-    if sugerido.lower() in disp_lower:
-        return disp_lower[sugerido.lower()]
-    return ""
+def _es_casa_central(dep: str) -> bool:
+    return "casa central" in _norm_str(dep).lower()
 
 
 # =========================
-# TABLA HISTORIAL (BAJAS + MOVIMIENTOS)
+# TABLAS HISTORIALES
 # =========================
-def crear_tabla_historial():
+def crear_tablas_historiales():
+    """
+    Crea:
+    - historial_bajas
+    - historial_movimientos
+    (no rompe lo existente: usa IF NOT EXISTS y ADD COLUMN IF NOT EXISTS)
+    """
     conn = get_connection()
     cur = conn.cursor()
 
+    # -------------------------
+    # BAJAS
+    # -------------------------
     cur.execute("""
         CREATE TABLE IF NOT EXISTS historial_bajas (
             id SERIAL PRIMARY KEY,
@@ -143,14 +110,14 @@ def crear_tabla_historial():
             hora TIME,
             codigo_interno VARCHAR(50),
             articulo VARCHAR(255),
-            cantidad DECIMAL(10,2),
-            motivo VARCHAR(255),
+            cantidad DECIMAL(14,4),
             created_at TIMESTAMP DEFAULT NOW()
         )
     """)
     conn.commit()
 
-    # columnas extra (no rompe)
+    # columnas extra (compat)
+    cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS familia VARCHAR(50)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS deposito VARCHAR(255)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS lote VARCHAR(255)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS vencimiento VARCHAR(255)""")
@@ -159,21 +126,48 @@ def crear_tabla_historial():
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS stock_total_articulo DECIMAL(14,4)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS stock_total_deposito DECIMAL(14,4)""")
     cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS stock_casa_central DECIMAL(14,4)""")
-
-    # distinguir BAJA vs MOVIMIENTO
-    cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS tipo_registro VARCHAR(50)""")
-    cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS deposito_origen VARCHAR(255)""")
-    cur.execute("""ALTER TABLE historial_bajas ADD COLUMN IF NOT EXISTS deposito_destino VARCHAR(255)""")
-
     conn.commit()
+
+    # -------------------------
+    # MOVIMIENTOS
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS historial_movimientos (
+            id SERIAL PRIMARY KEY,
+            usuario VARCHAR(100),
+            fecha DATE,
+            hora TIME,
+            familia VARCHAR(50),
+            codigo VARCHAR(50),
+            articulo VARCHAR(255),
+            deposito_origen VARCHAR(255),
+            deposito_destino VARCHAR(255),
+            lote VARCHAR(255),
+            vencimiento VARCHAR(255),
+            cantidad DECIMAL(14,4),
+            stock_origen_antes DECIMAL(14,4),
+            stock_origen_despues DECIMAL(14,4),
+            stock_destino_antes DECIMAL(14,4),
+            stock_destino_despues DECIMAL(14,4),
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    conn.commit()
+
     cur.close()
     conn.close()
 
 
 # =========================
-# STOCK (TABLA: stock)
+# STOCK (TABLA: stock) - BÚSQUEDA Y DETALLE
 # =========================
-def buscar_items_stock(busqueda: str, limite_filas: int = 400):
+def buscar_items_stock(busqueda: str, limite_filas: int = 600):
+    """
+    Busca por:
+    - CODIGO exacto
+    - ARTICULO LIKE
+    Devuelve items agregados con stock total y depósitos.
+    """
     b = _norm_str(busqueda)
     if not b:
         return []
@@ -218,6 +212,7 @@ def buscar_items_stock(busqueda: str, limite_filas: int = 400):
                 "STOCK_TOTAL": 0.0,
                 "DEPOSITOS": set()
             }
+
         agg[key]["STOCK_TOTAL"] += stock_val
         if deposito:
             agg[key]["DEPOSITOS"].add(deposito)
@@ -228,6 +223,7 @@ def buscar_items_stock(busqueda: str, limite_filas: int = 400):
 
 
 def obtener_lotes_item(codigo: str, articulo: str):
+    """Trae lotes/vencimientos para un item (todas las ubicaciones)."""
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -263,56 +259,57 @@ def obtener_lotes_item(codigo: str, articulo: str):
             "STOCK_NUM": _to_float(r.get("STOCK")),
         })
 
+    # Orden FEFO (venc más cercano primero), luego lote
     out.sort(key=lambda x: (_parse_fecha_for_sort(x.get("VENCIMIENTO")), x.get("LOTE", "")))
     return out
 
 
 # =========================
-# HISTORIAL (INSERT + SELECT)
+# HISTORIAL - BAJAS
 # =========================
-def registrar_historial(
+def registrar_baja(
     usuario,
+    familia,
     codigo_interno,
     articulo,
+    deposito,
+    lote,
+    vencimiento,
     cantidad,
-    tipo_registro,  # "BAJA" o "MOVIMIENTO"
-    deposito=None,
-    lote=None,
-    vencimiento=None,
-    deposito_origen=None,
-    deposito_destino=None,
-    motivo=None,
-    stock_antes_lote=None,
-    stock_despues_lote=None,
-    stock_total_articulo=None,
-    stock_total_deposito=None,
-    stock_casa_central=None
+    stock_antes_lote,
+    stock_despues_lote,
+    stock_total_articulo,
+    stock_total_deposito,
+    stock_casa_central
 ):
     conn = get_connection()
     cur = conn.cursor()
 
     ahora = datetime.now()
-    motivo = _norm_str(motivo)  # puede ser ""
-
     cur.execute("""
         INSERT INTO historial_bajas (
-            usuario, fecha, hora, codigo_interno, articulo, cantidad, motivo,
+            usuario, fecha, hora,
+            familia, codigo_interno, articulo,
             deposito, lote, vencimiento,
+            cantidad,
             stock_antes_lote, stock_despues_lote,
-            stock_total_articulo, stock_total_deposito, stock_casa_central,
-            tipo_registro, deposito_origen, deposito_destino
+            stock_total_articulo, stock_total_deposito, stock_casa_central
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s,
-                %s, %s,
-                %s, %s, %s,
-                %s, %s, %s)
+        VALUES (
+            %s, %s, %s,
+            %s, %s, %s,
+            %s, %s, %s,
+            %s,
+            %s, %s,
+            %s, %s, %s
+        )
     """, (
-        usuario, ahora.date(), ahora.time(), str(codigo_interno), str(articulo), float(cantidad), motivo,
+        usuario, ahora.date(), ahora.time(),
+        familia, str(codigo_interno), str(articulo),
         deposito, lote, vencimiento,
-        stock_antes_lote, stock_despues_lote,
-        stock_total_articulo, stock_total_deposito, stock_casa_central,
-        _norm_str(tipo_registro), deposito_origen, deposito_destino
+        float(cantidad),
+        float(stock_antes_lote), float(stock_despues_lote),
+        float(stock_total_articulo), float(stock_total_deposito), float(stock_casa_central)
     ))
 
     conn.commit()
@@ -320,27 +317,102 @@ def registrar_historial(
     conn.close()
 
 
-def obtener_historial(limite=50):
+def obtener_historial_bajas(limite=50):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     cur.execute("""
-        SELECT * FROM historial_bajas
+        SELECT *
+        FROM historial_bajas
         ORDER BY created_at DESC
         LIMIT %s
     """, (limite,))
 
-    resultados = cur.fetchall()
+    res = cur.fetchall()
     cur.close()
     conn.close()
-    return resultados
+    return res
 
 
 # =========================
-# ACCIONES SOBRE STOCK
+# HISTORIAL - MOVIMIENTOS
+# =========================
+def registrar_movimiento(
+    usuario,
+    familia,
+    codigo,
+    articulo,
+    deposito_origen,
+    deposito_destino,
+    lote,
+    vencimiento,
+    cantidad,
+    stock_origen_antes,
+    stock_origen_despues,
+    stock_destino_antes,
+    stock_destino_despues
+):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    ahora = datetime.now()
+    cur.execute("""
+        INSERT INTO historial_movimientos (
+            usuario, fecha, hora,
+            familia, codigo, articulo,
+            deposito_origen, deposito_destino,
+            lote, vencimiento,
+            cantidad,
+            stock_origen_antes, stock_origen_despues,
+            stock_destino_antes, stock_destino_despues
+        )
+        VALUES (
+            %s, %s, %s,
+            %s, %s, %s,
+            %s, %s,
+            %s, %s,
+            %s,
+            %s, %s,
+            %s, %s
+        )
+    """, (
+        usuario, ahora.date(), ahora.time(),
+        familia, codigo, articulo,
+        deposito_origen, deposito_destino,
+        lote, vencimiento,
+        float(cantidad),
+        float(stock_origen_antes), float(stock_origen_despues),
+        float(stock_destino_antes), float(stock_destino_despues)
+    ))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def obtener_historial_movimientos(limite=50):
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    cur.execute("""
+        SELECT *
+        FROM historial_movimientos
+        ORDER BY created_at DESC
+        LIMIT %s
+    """, (limite,))
+
+    res = cur.fetchall()
+    cur.close()
+    conn.close()
+    return res
+
+
+# =========================
+# BAJA - APLICAR EN LOTE
 # =========================
 def aplicar_baja_en_lote(
     usuario: str,
+    familia: str,
     codigo: str,
     articulo: str,
     deposito: str,
@@ -348,17 +420,25 @@ def aplicar_baja_en_lote(
     vencimiento: str,
     cantidad: float
 ):
+    """
+    Baja stock de un lote específico (fila específica) + registra historial.
+    """
+    familia = _norm_str(familia)
     codigo = _norm_str(codigo)
     articulo = _norm_str(articulo)
     deposito = _norm_str(deposito)
     lote = _norm_str(lote)
     vencimiento = _norm_str(vencimiento)
 
+    if float(cantidad) <= 0:
+        raise ValueError("La cantidad debe ser mayor a 0.")
+
     conn = get_connection()
     try:
         conn.autocommit = False
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
+        # Lock de la fila origen
         cur.execute("""
             SELECT "STOCK"
             FROM stock
@@ -376,13 +456,12 @@ def aplicar_baja_en_lote(
             raise ValueError("No se encontró el lote seleccionado en la tabla stock.")
 
         stock_antes = _to_float(row.get("STOCK"))
-        if cantidad <= 0:
-            raise ValueError("La cantidad debe ser mayor a 0.")
-        if cantidad > stock_antes + 1e-9:
+        if float(cantidad) > stock_antes + 1e-9:
             raise ValueError(f"No hay stock suficiente en ese lote. Stock lote: {stock_antes}")
 
         stock_despues = stock_antes - float(cantidad)
 
+        # Update stock lote
         cur.execute("""
             UPDATE stock
             SET "STOCK" = %s
@@ -394,6 +473,7 @@ def aplicar_baja_en_lote(
                 AND COALESCE(TRIM("VENCIMIENTO"), '') = %s
         """, (_fmt_num(stock_despues), codigo, articulo, deposito, lote, vencimiento))
 
+        # Totales post-baja (recalcular del item)
         cur.execute("""
             SELECT "DEPOSITO", "STOCK"
             FROM stock
@@ -410,20 +490,18 @@ def aplicar_baja_en_lote(
 
         total_articulo = sum(r["STOCK_NUM"] for r in filas_norm)
         total_deposito = sum(r["STOCK_NUM"] for r in filas_norm if r["DEPOSITO"] == deposito)
-        total_casa_central = sum(r["STOCK_NUM"] for r in filas_norm if "casa central" in r["DEPOSITO"].lower())
+        total_casa_central = sum(r["STOCK_NUM"] for r in filas_norm if _es_casa_central(r["DEPOSITO"]))
 
-        registrar_historial(
+        # Historial
+        registrar_baja(
             usuario=usuario,
+            familia=familia,
             codigo_interno=codigo,
             articulo=articulo,
-            cantidad=float(cantidad),
-            tipo_registro="BAJA",
             deposito=deposito,
             lote=lote,
             vencimiento=vencimiento,
-            deposito_origen=deposito,
-            deposito_destino=None,
-            motivo="",
+            cantidad=float(cantidad),
             stock_antes_lote=float(stock_antes),
             stock_despues_lote=float(stock_despues),
             stock_total_articulo=float(total_articulo),
@@ -432,6 +510,7 @@ def aplicar_baja_en_lote(
         )
 
         conn.commit()
+
         return {
             "stock_antes_lote": stock_antes,
             "stock_despues_lote": stock_despues,
@@ -453,42 +532,117 @@ def aplicar_baja_en_lote(
             pass
 
 
-def aplicar_movimiento_en_lote(
+def aplicar_baja_fifo(
     usuario: str,
+    familia: str,
     codigo: str,
     articulo: str,
+    deposito: str,
+    cantidad: float
+):
+    """
+    Baja por FEFO (orden vencimiento asc) dentro de un depósito.
+    Registra 1 historial por cada lote consumido.
+    """
+    familia = _norm_str(familia)
+    codigo = _norm_str(codigo)
+    articulo = _norm_str(articulo)
+    deposito = _norm_str(deposito)
+
+    if float(cantidad) <= 0:
+        raise ValueError("La cantidad debe ser mayor a 0.")
+
+    lotes_all = obtener_lotes_item(codigo, articulo)
+    lotes_dep = [
+        x for x in lotes_all
+        if _norm_str(x.get("DEPOSITO")) == deposito and float(x.get("STOCK_NUM", 0.0) or 0.0) > 0
+    ]
+
+    if not lotes_dep:
+        raise ValueError("No hay lotes con stock disponible en el depósito seleccionado.")
+
+    restante = float(cantidad)
+    resumen = []
+
+    for lt in lotes_dep:
+        if restante <= 1e-9:
+            break
+
+        disponible = float(lt.get("STOCK_NUM", 0.0) or 0.0)
+        if disponible <= 1e-9:
+            continue
+
+        a_bajar = min(disponible, restante)
+
+        r = aplicar_baja_en_lote(
+            usuario=usuario,
+            familia=familia,
+            codigo=codigo,
+            articulo=articulo,
+            deposito=deposito,
+            lote=_norm_str(lt.get("LOTE")),
+            vencimiento=_norm_str(lt.get("VENCIMIENTO")),
+            cantidad=float(a_bajar)
+        )
+
+        resumen.append({
+            "lote": _norm_str(lt.get("LOTE")),
+            "vencimiento": _norm_str(lt.get("VENCIMIENTO")),
+            "bajado": float(a_bajar),
+            "stock_lote_restante": float(r.get("stock_despues_lote", 0.0))
+        })
+
+        restante -= float(a_bajar)
+
+    if restante > 1e-6:
+        raise ValueError(f"No alcanzó el stock. Faltó bajar: {restante}")
+
+    return resumen
+
+
+# =========================
+# MOVIMIENTO - APLICAR EN LOTE
+# =========================
+def aplicar_movimiento_en_lote(
+    usuario: str,
     familia: str,
+    codigo: str,
+    articulo: str,
     deposito_origen: str,
     deposito_destino: str,
     lote: str,
     vencimiento: str,
     cantidad: float
 ):
+    """
+    Mueve stock:
+    - Resta en depósito_origen (lote/venc)
+    - Suma en depósito_destino (mismo lote/venc; si no existe fila, la crea)
+    - Registra historial_movimientos
+    """
+    familia = _norm_str(familia)
     codigo = _norm_str(codigo)
     articulo = _norm_str(articulo)
-    familia = _norm_str(familia)
     deposito_origen = _norm_str(deposito_origen)
     deposito_destino = _norm_str(deposito_destino)
     lote = _norm_str(lote)
     vencimiento = _norm_str(vencimiento)
 
     if not deposito_origen:
-        raise ValueError("No elegiste depósito ORIGEN.")
-    if not deposito_destino or deposito_destino == "—":
-        raise ValueError("No elegiste depósito DESTINO.")
-    if deposito_destino.lower() == deposito_origen.lower():
-        raise ValueError("El depósito destino no puede ser igual al origen.")
-    if not lote:
-        raise ValueError("No elegiste lote.")
-    if cantidad <= 0:
+        raise ValueError("No elegiste depósito de origen.")
+    if not deposito_destino:
+        raise ValueError("No elegiste depósito de destino.")
+    if float(cantidad) <= 0:
         raise ValueError("La cantidad debe ser mayor a 0.")
+    if deposito_origen.lower() == deposito_destino.lower():
+        raise ValueError("El depósito destino no puede ser igual al origen.")
 
     conn = get_connection()
     try:
         conn.autocommit = False
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Lock origen
+        # 1) Lock y validar ORIGEN
         cur.execute("""
             SELECT "STOCK"
             FROM stock
@@ -503,14 +657,15 @@ def aplicar_movimiento_en_lote(
 
         row_o = cur.fetchone()
         if not row_o:
-            raise ValueError("No se encontró el lote seleccionado en el depósito ORIGEN.")
+            raise ValueError("No se encontró el lote en el depósito de origen.")
 
-        stock_antes_origen = _to_float(row_o.get("STOCK"))
-        if cantidad > stock_antes_origen + 1e-9:
-            raise ValueError(f"No hay stock suficiente en el ORIGEN. Stock lote: {stock_antes_origen}")
+        stock_origen_antes = _to_float(row_o.get("STOCK"))
+        if float(cantidad) > stock_origen_antes + 1e-9:
+            raise ValueError(f"No hay stock suficiente en origen. Stock: {stock_origen_antes}")
 
-        stock_despues_origen = stock_antes_origen - float(cantidad)
+        stock_origen_despues = stock_origen_antes - float(cantidad)
 
+        # Update ORIGEN
         cur.execute("""
             UPDATE stock
             SET "STOCK" = %s
@@ -520,9 +675,9 @@ def aplicar_movimiento_en_lote(
                 AND TRIM("DEPOSITO") = %s
                 AND COALESCE(TRIM("LOTE"), '') = %s
                 AND COALESCE(TRIM("VENCIMIENTO"), '') = %s
-        """, (_fmt_num(stock_despues_origen), codigo, articulo, deposito_origen, lote, vencimiento))
+        """, (_fmt_num(stock_origen_despues), codigo, articulo, deposito_origen, lote, vencimiento))
 
-        # Lock destino / upsert
+        # 2) DESTINO: si existe fila, lock y update; si no, insert
         cur.execute("""
             SELECT "STOCK"
             FROM stock
@@ -536,6 +691,7 @@ def aplicar_movimiento_en_lote(
         """, (codigo, articulo, deposito_destino, lote, vencimiento))
 
         row_d = cur.fetchone()
+
         if row_d:
             stock_destino_antes = _to_float(row_d.get("STOCK"))
             stock_destino_despues = stock_destino_antes + float(cantidad)
@@ -551,56 +707,38 @@ def aplicar_movimiento_en_lote(
                     AND COALESCE(TRIM("VENCIMIENTO"), '') = %s
             """, (_fmt_num(stock_destino_despues), codigo, articulo, deposito_destino, lote, vencimiento))
         else:
+            stock_destino_antes = 0.0
+            stock_destino_despues = float(cantidad)
+
             cur.execute("""
                 INSERT INTO stock ("FAMILIA","CODIGO","ARTICULO","DEPOSITO","LOTE","VENCIMIENTO","STOCK")
                 VALUES (%s,%s,%s,%s,%s,%s,%s)
-            """, (familia, codigo, articulo, deposito_destino, lote, vencimiento, _fmt_num(float(cantidad))))
+            """, (familia, codigo, articulo, deposito_destino, lote, vencimiento, _fmt_num(stock_destino_despues)))
 
-        # Totales
-        cur.execute("""
-            SELECT "DEPOSITO", "STOCK"
-            FROM stock
-            WHERE TRIM("CODIGO") = %s AND TRIM("ARTICULO") = %s
-        """, (codigo, articulo))
-        rows_all = cur.fetchall()
-
-        filas_norm = []
-        for r in rows_all:
-            filas_norm.append({
-                "DEPOSITO": _norm_str(r.get("DEPOSITO")),
-                "STOCK_NUM": _to_float(r.get("STOCK"))
-            })
-
-        total_articulo = sum(r["STOCK_NUM"] for r in filas_norm)
-        total_origen = sum(r["STOCK_NUM"] for r in filas_norm if r["DEPOSITO"] == deposito_origen)
-        total_casa_central = sum(r["STOCK_NUM"] for r in filas_norm if "casa central" in r["DEPOSITO"].lower())
-
-        registrar_historial(
+        # 3) Historial movimiento
+        registrar_movimiento(
             usuario=usuario,
-            codigo_interno=codigo,
+            familia=familia,
+            codigo=codigo,
             articulo=articulo,
-            cantidad=float(cantidad),
-            tipo_registro="MOVIMIENTO",
-            deposito=deposito_origen,
-            lote=lote,
-            vencimiento=vencimiento,
             deposito_origen=deposito_origen,
             deposito_destino=deposito_destino,
-            motivo="",
-            stock_antes_lote=float(stock_antes_origen),
-            stock_despues_lote=float(stock_despues_origen),
-            stock_total_articulo=float(total_articulo),
-            stock_total_deposito=float(total_origen),
-            stock_casa_central=float(total_casa_central)
+            lote=lote,
+            vencimiento=vencimiento,
+            cantidad=float(cantidad),
+            stock_origen_antes=float(stock_origen_antes),
+            stock_origen_despues=float(stock_origen_despues),
+            stock_destino_antes=float(stock_destino_antes),
+            stock_destino_despues=float(stock_destino_despues)
         )
 
         conn.commit()
+
         return {
-            "stock_origen_antes": stock_antes_origen,
-            "stock_origen_despues": stock_despues_origen,
-            "total_articulo": total_articulo,
-            "total_origen": total_origen,
-            "total_casa_central": total_casa_central
+            "stock_origen_antes": stock_origen_antes,
+            "stock_origen_despues": stock_origen_despues,
+            "stock_destino_antes": stock_destino_antes,
+            "stock_destino_despues": stock_destino_despues
         }
 
     except Exception:
@@ -616,48 +754,100 @@ def aplicar_movimiento_en_lote(
             pass
 
 
+def aplicar_movimiento_fifo(
+    usuario: str,
+    familia: str,
+    codigo: str,
+    articulo: str,
+    deposito_origen: str,
+    deposito_destino: str,
+    cantidad: float
+):
+    """
+    Movimiento por FEFO (orden vencimiento asc) en el depósito de origen.
+    Registra 1 historial por cada lote consumido/movido.
+    """
+    familia = _norm_str(familia)
+    codigo = _norm_str(codigo)
+    articulo = _norm_str(articulo)
+    deposito_origen = _norm_str(deposito_origen)
+    deposito_destino = _norm_str(deposito_destino)
+
+    if float(cantidad) <= 0:
+        raise ValueError("La cantidad debe ser mayor a 0.")
+
+    lotes_all = obtener_lotes_item(codigo, articulo)
+    lotes_o = [
+        x for x in lotes_all
+        if _norm_str(x.get("DEPOSITO")) == deposito_origen and float(x.get("STOCK_NUM", 0.0) or 0.0) > 0
+    ]
+
+    if not lotes_o:
+        raise ValueError("No hay lotes con stock disponible en el depósito de origen.")
+
+    restante = float(cantidad)
+    resumen = []
+
+    for lt in lotes_o:
+        if restante <= 1e-9:
+            break
+
+        disponible = float(lt.get("STOCK_NUM", 0.0) or 0.0)
+        if disponible <= 1e-9:
+            continue
+
+        a_mover = min(disponible, restante)
+
+        r = aplicar_movimiento_en_lote(
+            usuario=usuario,
+            familia=familia,
+            codigo=codigo,
+            articulo=articulo,
+            deposito_origen=deposito_origen,
+            deposito_destino=deposito_destino,
+            lote=_norm_str(lt.get("LOTE")),
+            vencimiento=_norm_str(lt.get("VENCIMIENTO")),
+            cantidad=float(a_mover)
+        )
+
+        resumen.append({
+            "lote": _norm_str(lt.get("LOTE")),
+            "vencimiento": _norm_str(lt.get("VENCIMIENTO")),
+            "movido": float(a_mover),
+            "origen_resta": float(r.get("stock_origen_despues", 0.0)),
+            "destino_queda": float(r.get("stock_destino_despues", 0.0))
+        })
+
+        restante -= float(a_mover)
+
+    if restante > 1e-6:
+        raise ValueError(f"No alcanzó el stock en origen. Faltó mover: {restante}")
+
+    return resumen
+
+
 # =========================
-# UI STREAMLIT
+# UI HELPERS (BUSQUEDA + SELECCION)
 # =========================
-def mostrar_baja_stock():
-    try:
-        crear_tabla_historial()
-    except Exception:
-        pass
-
-    st.markdown("## 🧾 Stock: Baja / Movimiento")
-    st.markdown("---")
-
-    user = st.session_state.get("user", {})
-    usuario_actual = user.get("nombre", user.get("Usuario", "Usuario"))
-
-    accion = st.radio(
-        "Acción",
-        options=["Baja de stock", "Movimiento"],
-        index=0,
-        horizontal=True,
-        key=K_ACCION
-    )
-
-    st.markdown("---")
-
-    # =========================
-    # BÚSQUEDA
-    # =========================
+def _ui_busqueda_y_seleccion(prefix: str, key_sel: str):
+    """
+    Buscador + resultados con botón Seleccionar.
+    IMPORTANTE: keys únicas por prefix para que no choque Baja vs Movimiento.
+    """
     col1, col2 = st.columns([3, 1])
+
     with col1:
         busqueda = st.text_input(
             "🔍 Buscar por CODIGO o ARTICULO",
-            placeholder="Ej: 12345  /  ana profile",
-            key=K_BUSQ
+            placeholder="Ej: OVIP/15  /  rotors  /  gluc3",
+            key=f"{prefix}_busqueda"
         )
+
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        btn_buscar = st.button("Buscar", type="primary", use_container_width=True, key=K_BTN_BUSCAR)
+        btn_buscar = st.button("Buscar", type="primary", use_container_width=True, key=f"{prefix}_btn_buscar")
 
-    # =========================
-    # RESULTADOS
-    # =========================
+    # Resultados SOLO cuando apretás Buscar
     if busqueda and btn_buscar:
         with st.spinner("Buscando en stock..."):
             try:
@@ -685,8 +875,8 @@ def mostrar_baja_stock():
                                 )
 
                             with col_btn:
-                                if st.button("Seleccionar", key=f"{K_PREFIX}SEL_{i}"):
-                                    st.session_state[K_ITEM_SEL] = {
+                                if st.button("Seleccionar", key=f"{prefix}_sel_{i}"):
+                                    st.session_state[key_sel] = {
                                         "CODIGO": codigo,
                                         "ARTICULO": articulo,
                                         "FAMILIA": familia
@@ -694,270 +884,386 @@ def mostrar_baja_stock():
                                     st.rerun()
 
                             st.markdown("---")
+
                 else:
                     st.warning("No se encontraron artículos con ese criterio en la tabla stock.")
 
             except Exception as e:
                 st.error(f"Error al buscar: {str(e)}")
 
-    # =========================
-    # FORMULARIO (si hay selección)
-    # =========================
-    if K_ITEM_SEL in st.session_state:
-        it = st.session_state[K_ITEM_SEL]
+
+# =========================
+# UI - BAJA DE STOCK
+# =========================
+def _ui_baja_stock(usuario_actual: str):
+    key_sel = "item_sel_baja"
+
+    _ui_busqueda_y_seleccion(prefix="baja", key_sel=key_sel)
+
+    # Formulario de BAJA
+    if key_sel in st.session_state:
+        it = st.session_state[key_sel]
+
         codigo = _norm_str(it.get("CODIGO"))
         articulo = _norm_str(it.get("ARTICULO"))
         familia = _norm_str(it.get("FAMILIA"))
 
-        st.markdown("### 📝 Operación")
-        st.info(f"Seleccionado: **{codigo} - {articulo}** | Familia: **{familia or '—'}**")
-
-        if st.button("🔄 Cambiar artículo", use_container_width=True, key=K_PREFIX + "CAMBIAR_ART"):
-            try:
-                del st.session_state[K_ITEM_SEL]
-            except Exception:
-                pass
-            st.rerun()
+        st.markdown("### 🧾 Confirmar Baja")
+        st.info(f"Artículo seleccionado: **{codigo} - {articulo}**")
 
         try:
-            lotes_all = obtener_lotes_item(codigo, articulo)
+            lotes = obtener_lotes_item(codigo, articulo)
         except Exception as e:
             st.error(f"No se pudo cargar lotes del artículo: {str(e)}")
-            lotes_all = []
+            lotes = []
 
-        if not lotes_all:
-            st.warning("Este artículo no tiene lotes/stock cargado en la tabla stock.")
+        # Filtrar SOLO stock > 0
+        lotes = [x for x in lotes if float(x.get("STOCK_NUM", 0.0) or 0.0) > 0]
+
+        if not lotes:
+            st.warning("No hay lotes con stock > 0 para este artículo.")
         else:
-            depositos = sorted({x.get("DEPOSITO", "") for x in lotes_all if _norm_str(x.get("DEPOSITO"))})
+            depositos = sorted({x.get("DEPOSITO", "") for x in lotes if _norm_str(x.get("DEPOSITO"))})
 
-            # Default Casa Central
-            default_dep_cc = 0
+            default_dep = 0
             for idx, d in enumerate(depositos):
-                if "casa central" in d.lower():
-                    default_dep_cc = idx
+                if _es_casa_central(d):
+                    default_dep = idx
                     break
 
-            # =========================
-            # BAJA
-            # =========================
-            if accion == "Baja de stock":
-                colA, colB = st.columns([2, 1])
-                with colA:
-                    deposito_sel = st.selectbox(
-                        "Depósito",
-                        options=depositos,
-                        index=default_dep_cc if depositos else 0,
-                        key=K_BAJA_DEP
-                    )
-                with colB:
-                    total_articulo = _sum_stock(lotes_all)
-                    total_casa_central = _sum_stock(lotes_all, solo_casa_central=True)
-                    st.caption(f"📦 Total artículo: **{_fmt_num(total_articulo)}**")
-                    st.caption(f"🏛️ Casa Central: **{_fmt_num(total_casa_central)}**")
+            colA, colB = st.columns([2, 1])
+            with colA:
+                deposito_sel = st.selectbox(
+                    "Depósito",
+                    options=depositos,
+                    index=default_dep if depositos else 0,
+                    key="baja_dep_sel"
+                )
+            with colB:
+                st.caption(f"Familia: **{familia or '—'}**")
 
-                lotes_dep = [x for x in lotes_all if _norm_str(x.get("DEPOSITO")) == _norm_str(deposito_sel)]
-                lotes_dep = [x for x in lotes_dep if float(x.get("STOCK_NUM", 0.0) or 0.0) > 0]  # SOLO > 0
+            lotes_dep = [x for x in lotes if _norm_str(x.get("DEPOSITO")) == _norm_str(deposito_sel)]
+            lotes_dep = [x for x in lotes_dep if float(x.get("STOCK_NUM", 0.0) or 0.0) > 0]
 
-                if not lotes_dep:
-                    st.warning("No hay lotes con stock (>0) en el depósito seleccionado.")
-                else:
-                    df_lotes = pd.DataFrame([{
-                        "LOTE": x.get("LOTE") or "—",
-                        "VENCIMIENTO": x.get("VENCIMIENTO") or "—",
-                        "STOCK": _fmt_num(float(x.get("STOCK_NUM", 0.0) or 0.0))
-                    } for x in lotes_dep])
+            total_articulo = _sum_stock(lotes)
+            total_deposito = _sum_stock(lotes, filtro_deposito=deposito_sel)
+            total_casa_central = _sum_stock([x for x in lotes if _es_casa_central(x.get("DEPOSITO"))])
 
-                    st.markdown("#### Lotes / Vencimientos (orden FIFO/FEFO)")
-                    st.dataframe(df_lotes, use_container_width=True, hide_index=True)
+            st.caption(f"📦 Stock total artículo (todas): **{_fmt_num(total_articulo)}**")
+            st.caption(f"🏠 Stock en depósito seleccionado: **{_fmt_num(total_deposito)}**")
+            st.caption(f"🏛️ Stock en Casa Central: **{_fmt_num(total_casa_central)}**")
 
-                    idx_fifo = 0  # siempre el primero (ya está ordenado y filtrado >0)
-
-                    usar_fifo = st.checkbox(
-                        "✅ Bajar siguiendo FIFO/FEFO automático (recomendado)",
-                        value=True,
-                        key=K_BAJA_FIFO
-                    )
-
-                    lote_sel = ""
-                    venc_sel = ""
-                    stock_lote_sel = 0.0
-                    confirm_no_fifo = False
-
-                    if not usar_fifo:
-                        opciones = []
-                        for j, x in enumerate(lotes_dep):
-                            opciones.append(
-                                f"{j+1}. Lote: {x.get('LOTE') or '—'} | Venc: {x.get('VENCIMIENTO') or '—'} | Stock: {_fmt_num(float(x.get('STOCK_NUM', 0.0) or 0.0))}"
-                            )
-
-                        opcion = st.selectbox(
-                            "Elegí el lote a bajar",
-                            options=opciones,
-                            index=0,
-                            key=K_BAJA_LOTE_SEL
-                        )
-                        idx_sel = int(opcion.split(".")[0]) - 1
-                        elegido = lotes_dep[idx_sel]
-
-                        lote_sel = _norm_str(elegido.get("LOTE"))
-                        venc_sel = _norm_str(elegido.get("VENCIMIENTO"))
-                        stock_lote_sel = float(elegido.get("STOCK_NUM", 0.0) or 0.0)
-
-                        if idx_sel != idx_fifo and len(lotes_dep) > 1:
-                            fifo_ref = lotes_dep[idx_fifo]
-                            st.warning(
-                                "⚠️ Estás eligiendo un lote que NO es el recomendado por FIFO/FEFO.\n\n"
-                                f"Antes hay: **Lote {fifo_ref.get('LOTE') or '—'}** | "
-                                f"Venc: **{fifo_ref.get('VENCIMIENTO') or '—'}** | "
-                                f"Stock: **{_fmt_num(float(fifo_ref.get('STOCK_NUM', 0.0) or 0.0))}**"
-                            )
-                            confirm_no_fifo = st.checkbox(
-                                "Sí, estoy seguro y quiero bajar este lote igualmente",
-                                value=False,
-                                key=K_BAJA_CONFIRM_NO_FIFO
-                            )
-
-                        st.caption(f"Stock lote seleccionado: **{_fmt_num(stock_lote_sel)}**")
-
-                    if (not usar_fifo) and stock_lote_sel > 0:
-                        cantidad = st.number_input(
-                            "Cantidad a bajar",
-                            min_value=0.01,
-                            value=1.0,
-                            step=1.0,
-                            max_value=float(stock_lote_sel),
-                            key=K_BAJA_CANT
-                        )
-                    else:
-                        cantidad = st.number_input(
-                            "Cantidad a bajar",
-                            min_value=0.01,
-                            value=1.0,
-                            step=1.0,
-                            key=K_BAJA_CANT
-                        )
-
-                    st.markdown("---")
-                    col_guardar, col_cancelar = st.columns(2)
-
-                    with col_guardar:
-                        if st.button("✅ Confirmar Baja", type="primary", use_container_width=True, key=K_PREFIX + "CONFIRM_BAJA"):
-                            try:
-                                if (not usar_fifo) and len(lotes_dep) > 1:
-                                    opcion_txt = st.session_state.get(K_BAJA_LOTE_SEL, "")
-                                    if opcion_txt:
-                                        idx_sel = int(opcion_txt.split(".")[0]) - 1
-                                        if idx_sel != idx_fifo and not st.session_state.get(K_BAJA_CONFIRM_NO_FIFO, False):
-                                            st.error("Tenés un lote anterior. Marcá la confirmación para continuar.")
-                                            st.stop()
-
-                                if usar_fifo:
-                                    lt0 = lotes_dep[0]
-                                    res = aplicar_baja_en_lote(
-                                        usuario=usuario_actual,
-                                        codigo=codigo,
-                                        articulo=articulo,
-                                        deposito=deposito_sel,
-                                        lote=_norm_str(lt0.get("LOTE")),
-                                        vencimiento=_norm_str(lt0.get("VENCIMIENTO")),
-                                        cantidad=float(cantidad)
-                                    )
-                                else:
-                                    res = aplicar_baja_en_lote(
-                                        usuario=usuario_actual,
-                                        codigo=codigo,
-                                        articulo=articulo,
-                                        deposito=deposito_sel,
-                                        lote=lote_sel,
-                                        vencimiento=venc_sel,
-                                        cantidad=float(cantidad)
-                                    )
-
-                                st.success("✅ Baja registrada.")
-                                st.caption(f"Resta total artículo: **{_fmt_num(res.get('total_articulo', 0.0))}**")
-                                st.caption(f"Resta en {deposito_sel}: **{_fmt_num(res.get('total_deposito', 0.0))}**")
-
-                                del st.session_state[K_ITEM_SEL]
-                                st.rerun()
-
-                            except Exception as e:
-                                st.error(f"Error al registrar baja: {str(e)}")
-
-                    with col_cancelar:
-                        if st.button("❌ Cancelar", use_container_width=True, key=K_PREFIX + "CANCEL_BAJA"):
-                            del st.session_state[K_ITEM_SEL]
-                            st.rerun()
-
-            # =========================
-            # MOVIMIENTO
-            # =========================
+            if not lotes_dep:
+                st.warning("No hay lotes con stock > 0 en el depósito seleccionado.")
             else:
-                st.markdown("#### Movimiento (traslado)")
+                # Tabla de lotes (solo stock > 0)
+                df_lotes = pd.DataFrame([{
+                    "LOTE": x.get("LOTE") or "—",
+                    "VENCIMIENTO": x.get("VENCIMIENTO") or "—",
+                    "STOCK": _fmt_num(float(x.get("STOCK_NUM", 0.0) or 0.0))
+                } for x in lotes_dep])
 
-                colA, colB = st.columns(2)
-                with colA:
-                    deposito_origen = st.selectbox(
-                        "Depósito ORIGEN",
-                        options=depositos,
-                        index=default_dep_cc if depositos else 0,
-                        key=K_MOV_DEP_ORIG
-                    )
+                st.markdown("#### Lotes / Vencimientos (orden FIFO/FEFO)")
+                st.dataframe(df_lotes, use_container_width=True, hide_index=True)
 
-                depositos_destino = [d for d in depositos if d.lower() != _norm_str(deposito_origen).lower()]
-                sugerido = _sugerir_deposito_destino_por_familia(familia, depositos_destino)
+                # Índice recomendado (primero con stock>0)
+                idx_fifo = 0
 
-                with colB:
-                    idx_sug = 0
-                    if sugerido and depositos_destino:
-                        for i, d in enumerate(depositos_destino):
-                            if d.lower() == sugerido.lower():
-                                idx_sug = i
-                                break
+                usar_fifo = st.checkbox(
+                    "✅ Bajar siguiendo FIFO/FEFO automático (recomendado)",
+                    value=True,
+                    key="baja_fifo_auto"
+                )
 
-                    deposito_destino = st.selectbox(
-                        "Depósito DESTINO",
-                        options=depositos_destino if depositos_destino else ["—"],
-                        index=idx_sug if (depositos_destino) else 0,
-                        key=K_MOV_DEP_DEST
-                    )
+                lote_sel = None
+                venc_sel = None
+                stock_lote_sel = 0.0
+                confirm_no_fifo = False
 
-                lotes_origen = [x for x in lotes_all if _norm_str(x.get("DEPOSITO")) == _norm_str(deposito_origen)]
-                lotes_origen = [x for x in lotes_origen if float(x.get("STOCK_NUM", 0.0) or 0.0) > 0]  # SOLO > 0
-
-                if not lotes_origen:
-                    st.warning("No hay lotes con stock (>0) en el depósito ORIGEN.")
-                else:
-                    df_lotes = pd.DataFrame([{
-                        "LOTE": x.get("LOTE") or "—",
-                        "VENCIMIENTO": x.get("VENCIMIENTO") or "—",
-                        "STOCK": _fmt_num(float(x.get("STOCK_NUM", 0.0) or 0.0))
-                    } for x in lotes_origen])
-
-                    st.markdown("##### Lotes disponibles en ORIGEN (orden FIFO/FEFO)")
-                    st.dataframe(df_lotes, use_container_width=True, hide_index=True)
-
+                if not usar_fifo:
                     opciones = []
-                    for j, x in enumerate(lotes_origen):
+                    for j, x in enumerate(lotes_dep):
                         opciones.append(
                             f"{j+1}. Lote: {x.get('LOTE') or '—'} | Venc: {x.get('VENCIMIENTO') or '—'} | Stock: {_fmt_num(float(x.get('STOCK_NUM', 0.0) or 0.0))}"
                         )
 
                     opcion = st.selectbox(
-                        "Elegí el lote del ORIGEN para mover",
+                        "Elegí el lote a bajar",
                         options=opciones,
-                        index=0,
-                        key=K_MOV_LOTE_SEL
+                        index=idx_fifo,
+                        key="baja_lote_sel"
                     )
-                    idx_sel = int(opcion.split(".")[0]) - 1
-                    elegido = lotes_origen[idx_sel]
+                    idx = int(opcion.split(".")[0]) - 1
+                    elegido = lotes_dep[idx]
 
                     lote_sel = _norm_str(elegido.get("LOTE"))
                     venc_sel = _norm_str(elegido.get("VENCIMIENTO"))
                     stock_lote_sel = float(elegido.get("STOCK_NUM", 0.0) or 0.0)
 
-                    # Alerta si elige lote no FIFO
-                    if idx_sel != 0 and len(lotes_origen) > 1:
-                        fifo_ref = lotes_origen[0]
+                    # Alerta si NO elige el recomendado (el primero)
+                    if idx != idx_fifo and len(lotes_dep) > 1:
+                        fifo_ref = lotes_dep[idx_fifo]
+                        st.warning(
+                            "⚠️ Estás eligiendo un lote que NO es el recomendado por FIFO/FEFO.\n\n"
+                            f"Antes hay: **Lote {fifo_ref.get('LOTE') or '—'}** | "
+                            f"Venc: **{fifo_ref.get('VENCIMIENTO') or '—'}** | "
+                            f"Stock: **{_fmt_num(float(fifo_ref.get('STOCK_NUM', 0.0) or 0.0))}**"
+                        )
+                        confirm_no_fifo = st.checkbox(
+                            "Sí, estoy seguro y quiero bajar este lote igualmente",
+                            value=False,
+                            key="baja_confirm_no_fifo"
+                        )
+
+                    st.caption(f"Stock lote seleccionado: **{_fmt_num(stock_lote_sel)}**")
+
+                # Cantidad
+                if (not usar_fifo) and stock_lote_sel > 0:
+                    cantidad = st.number_input(
+                        "Cantidad a bajar",
+                        min_value=0.01,
+                        value=1.0,
+                        step=1.0,
+                        max_value=float(stock_lote_sel),
+                        key="baja_cantidad"
+                    )
+                else:
+                    cantidad = st.number_input(
+                        "Cantidad a bajar",
+                        min_value=0.01,
+                        value=1.0,
+                        step=1.0,
+                        key="baja_cantidad"
+                    )
+
+                col_guardar, col_cancelar = st.columns(2)
+
+                with col_guardar:
+                    if st.button("✅ Confirmar Baja", type="primary", use_container_width=True, key="baja_confirmar"):
+                        try:
+                            # Validación alerta NO FIFO
+                            if not usar_fifo and len(lotes_dep) > 1:
+                                opcion_txt = st.session_state.get("baja_lote_sel", "")
+                                if opcion_txt:
+                                    idx_sel = int(opcion_txt.split(".")[0]) - 1
+                                    if idx_sel != idx_fifo and not confirm_no_fifo:
+                                        st.error("Tenés un lote anterior. Marcá la confirmación para continuar.")
+                                        st.stop()
+
+                            # Ejecutar
+                            if usar_fifo:
+                                resumen = aplicar_baja_fifo(
+                                    usuario=usuario_actual,
+                                    familia=familia,
+                                    codigo=codigo,
+                                    articulo=articulo,
+                                    deposito=deposito_sel,
+                                    cantidad=float(cantidad)
+                                )
+                                st.success("✅ Baja registrada (FIFO/FEFO).")
+                                for r in resumen:
+                                    st.caption(
+                                        f"- Lote **{r['lote'] or '—'}** | Venc: **{r['vencimiento'] or '—'}** "
+                                        f"| Bajado: **{_fmt_num(r['bajado'])}** | Resta lote: **{_fmt_num(r['stock_lote_restante'])}**"
+                                    )
+                            else:
+                                res = aplicar_baja_en_lote(
+                                    usuario=usuario_actual,
+                                    familia=familia,
+                                    codigo=codigo,
+                                    articulo=articulo,
+                                    deposito=deposito_sel,
+                                    lote=lote_sel,
+                                    vencimiento=venc_sel,
+                                    cantidad=float(cantidad)
+                                )
+                                st.success(
+                                    f"✅ Baja registrada: {_fmt_num(float(cantidad))} de **{articulo}** "
+                                    f"(Lote {lote_sel or '—'} | Venc {venc_sel or '—'})"
+                                )
+                                st.caption(f"Resta en el lote: **{_fmt_num(res.get('stock_despues_lote', 0.0))}**")
+                                st.caption(f"Resta total artículo: **{_fmt_num(res.get('total_articulo', 0.0))}**")
+                                st.caption(f"Resta en {deposito_sel}: **{_fmt_num(res.get('total_deposito', 0.0))}**")
+                                st.caption(f"Resta en Casa Central: **{_fmt_num(res.get('total_casa_central', 0.0))}**")
+
+                            # Reset selección
+                            del st.session_state[key_sel]
+                            st.rerun()
+
+                        except Exception as e:
+                            st.error(f"Error al registrar baja: {str(e)}")
+
+                with col_cancelar:
+                    if st.button("❌ Cancelar", use_container_width=True, key="baja_cancelar"):
+                        del st.session_state[key_sel]
+                        st.rerun()
+
+    # Historial bajas
+    st.markdown("---")
+    st.markdown("### 📋 Historial de Bajas")
+    try:
+        historial = obtener_historial_bajas(50)
+        if historial:
+            df = pd.DataFrame(historial)
+            if "fecha" in df.columns:
+                df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce").dt.strftime("%d/%m/%Y")
+            if "hora" in df.columns:
+                df["hora"] = df["hora"].astype(str).str[:8]
+
+            cols = [
+                "fecha", "hora", "usuario",
+                "familia", "codigo_interno", "articulo",
+                "deposito", "lote", "vencimiento",
+                "cantidad",
+                "stock_total_deposito", "stock_casa_central"
+            ]
+            cols = [c for c in cols if c in df.columns]
+            st.dataframe(df[cols], use_container_width=True, hide_index=True)
+        else:
+            st.info("No hay registros de bajas todavía")
+    except Exception as e:
+        st.warning(f"No se pudo cargar el historial: {str(e)}")
+
+
+# =========================
+# UI - MOVIMIENTO (CASA CENTRAL -> DESTINO)
+# =========================
+def _ui_movimiento(usuario_actual: str):
+    key_sel = "item_sel_mov"
+
+    # Mapeo sugerido (si no existe, habilita elección manual de destino)
+    FAMILIA_A_DESTINO = {
+        "g": "Generales",
+        "xx": "Inmunoanalisis",
+        "id": "Inmunodiagnostico",
+        "fb": "Microbiologia",
+        "lp": "Limpieza",
+        "af": "Alejandra Fajardo",
+        "ct": "Citometria",
+    }
+
+    _ui_busqueda_y_seleccion(prefix="mov", key_sel=key_sel)
+
+    # Formulario Movimiento
+    if key_sel in st.session_state:
+        it = st.session_state[key_sel]
+
+        codigo = _norm_str(it.get("CODIGO"))
+        articulo = _norm_str(it.get("ARTICULO"))
+        familia = _norm_str(it.get("FAMILIA"))
+
+        st.markdown("### 🔁 Confirmar Movimiento")
+        st.info(f"Artículo seleccionado: **{codigo} - {articulo}**")
+
+        try:
+            lotes = obtener_lotes_item(codigo, articulo)
+        except Exception as e:
+            st.error(f"No se pudo cargar lotes del artículo: {str(e)}")
+            lotes = []
+
+        # Filtrar SOLO stock > 0
+        lotes = [x for x in lotes if float(x.get("STOCK_NUM", 0.0) or 0.0) > 0]
+
+        if not lotes:
+            st.warning("No hay lotes con stock > 0 para este artículo.")
+        else:
+            depositos_disponibles = sorted({x.get("DEPOSITO", "") for x in lotes if _norm_str(x.get("DEPOSITO"))})
+            if not depositos_disponibles:
+                st.warning("No hay depósitos disponibles.")
+                return
+
+            # Origen: default Casa Central si existe
+            default_origen = 0
+            for idx, d in enumerate(depositos_disponibles):
+                if _es_casa_central(d):
+                    default_origen = idx
+                    break
+
+            colO, colD = st.columns([1, 1])
+
+            with colO:
+                deposito_origen = st.selectbox(
+                    "Depósito origen",
+                    options=depositos_disponibles,
+                    index=default_origen,
+                    key="mov_origen_sel"
+                )
+
+            # Destino: por familia (si existe) o manual
+            destino_sugerido = FAMILIA_A_DESTINO.get(_norm_str(familia).lower())
+            with colD:
+                if destino_sugerido:
+                    deposito_destino = destino_sugerido
+                    st.text_input("Depósito destino", value=deposito_destino, disabled=True, key="mov_destino_ro")
+                else:
+                    # Manual (excluye origen)
+                    opciones_dest = [d for d in depositos_disponibles if _norm_str(d).lower() != _norm_str(deposito_origen).lower()]
+                    if not opciones_dest:
+                        opciones_dest = depositos_disponibles
+                    deposito_destino = st.selectbox(
+                        "Depósito destino",
+                        options=opciones_dest,
+                        index=0,
+                        key="mov_destino_sel"
+                    )
+
+            # Lotes del ORIGEN (solo stock > 0)
+            lotes_o = [x for x in lotes if _norm_str(x.get("DEPOSITO")) == _norm_str(deposito_origen)]
+            lotes_o = [x for x in lotes_o if float(x.get("STOCK_NUM", 0.0) or 0.0) > 0]
+
+            if not lotes_o:
+                st.warning("No hay lotes con stock > 0 en el depósito de origen.")
+            else:
+                st.caption(f"Familia: **{familia or '—'}**")
+                st.caption(f"📦 Stock total artículo (todas): **{_fmt_num(_sum_stock(lotes))}**")
+                st.caption(f"🏠 Stock en ORIGEN: **{_fmt_num(_sum_stock(lotes, filtro_deposito=deposito_origen))}**")
+
+                # Tabla lotes origen
+                df_lotes = pd.DataFrame([{
+                    "LOTE": x.get("LOTE") or "—",
+                    "VENCIMIENTO": x.get("VENCIMIENTO") or "—",
+                    "STOCK": _fmt_num(float(x.get("STOCK_NUM", 0.0) or 0.0))
+                } for x in lotes_o])
+
+                st.markdown("#### Lotes / Vencimientos (orden FIFO/FEFO)")
+                st.dataframe(df_lotes, use_container_width=True, hide_index=True)
+
+                idx_fifo = 0  # primero recomendado
+
+                usar_fifo = st.checkbox(
+                    "✅ Mover siguiendo FIFO/FEFO automático (recomendado)",
+                    value=True,
+                    key="mov_fifo_auto"
+                )
+
+                lote_sel = None
+                venc_sel = None
+                stock_lote_sel = 0.0
+                confirm_no_fifo = False
+
+                if not usar_fifo:
+                    opciones = []
+                    for j, x in enumerate(lotes_o):
+                        opciones.append(
+                            f"{j+1}. Lote: {x.get('LOTE') or '—'} | Venc: {x.get('VENCIMIENTO') or '—'} | Stock: {_fmt_num(float(x.get('STOCK_NUM', 0.0) or 0.0))}"
+                        )
+
+                    opcion = st.selectbox(
+                        "Elegí el lote a mover",
+                        options=opciones,
+                        index=idx_fifo,
+                        key="mov_lote_sel"
+                    )
+                    idx = int(opcion.split(".")[0]) - 1
+                    elegido = lotes_o[idx]
+
+                    lote_sel = _norm_str(elegido.get("LOTE"))
+                    venc_sel = _norm_str(elegido.get("VENCIMIENTO"))
+                    stock_lote_sel = float(elegido.get("STOCK_NUM", 0.0) or 0.0)
+
+                    # Alerta si NO elige el recomendado (el primero)
+                    if idx != idx_fifo and len(lotes_o) > 1:
+                        fifo_ref = lotes_o[idx_fifo]
                         st.warning(
                             "⚠️ Estás eligiendo un lote que NO es el recomendado por FIFO/FEFO.\n\n"
                             f"Antes hay: **Lote {fifo_ref.get('LOTE') or '—'}** | "
@@ -967,94 +1273,159 @@ def mostrar_baja_stock():
                         confirm_no_fifo = st.checkbox(
                             "Sí, estoy seguro y quiero mover este lote igualmente",
                             value=False,
-                            key=K_MOV_CONFIRM_NO_FIFO
+                            key="mov_confirm_no_fifo"
                         )
-                    else:
-                        confirm_no_fifo = True
 
                     st.caption(f"Stock lote seleccionado: **{_fmt_num(stock_lote_sel)}**")
 
+                # Cantidad a mover
+                if (not usar_fifo) and stock_lote_sel > 0:
                     cantidad = st.number_input(
                         "Cantidad a mover",
                         min_value=0.01,
                         value=1.0,
                         step=1.0,
                         max_value=float(stock_lote_sel),
-                        key=K_MOV_CANT
+                        key="mov_cantidad"
+                    )
+                else:
+                    cantidad = st.number_input(
+                        "Cantidad a mover",
+                        min_value=0.01,
+                        value=1.0,
+                        step=1.0,
+                        key="mov_cantidad"
                     )
 
-                    st.markdown("---")
-                    col_guardar, col_cancelar = st.columns(2)
+                col_guardar, col_cancelar = st.columns(2)
 
-                    with col_guardar:
-                        if st.button("✅ Confirmar Movimiento", type="primary", use_container_width=True, key=K_PREFIX + "CONFIRM_MOV"):
-                            try:
-                                if not confirm_no_fifo:
-                                    st.error("Tenés un lote anterior. Marcá la confirmación para continuar.")
-                                    st.stop()
+                with col_guardar:
+                    if st.button("✅ Confirmar Movimiento", type="primary", use_container_width=True, key="mov_confirmar"):
+                        try:
+                            # Validación alerta NO FIFO
+                            if not usar_fifo and len(lotes_o) > 1:
+                                opcion_txt = st.session_state.get("mov_lote_sel", "")
+                                if opcion_txt:
+                                    idx_sel = int(opcion_txt.split(".")[0]) - 1
+                                    if idx_sel != idx_fifo and not confirm_no_fifo:
+                                        st.error("Tenés un lote anterior. Marcá la confirmación para continuar.")
+                                        st.stop()
 
-                                res = aplicar_movimiento_en_lote(
+                            if usar_fifo:
+                                resumen = aplicar_movimiento_fifo(
                                     usuario=usuario_actual,
+                                    familia=familia,
                                     codigo=codigo,
                                     articulo=articulo,
+                                    deposito_origen=deposito_origen,
+                                    deposito_destino=deposito_destino,
+                                    cantidad=float(cantidad)
+                                )
+                                st.success("✅ Movimiento registrado (FIFO/FEFO).")
+                                for r in resumen:
+                                    st.caption(
+                                        f"- Lote **{r['lote'] or '—'}** | Venc: **{r['vencimiento'] or '—'}** "
+                                        f"| Movido: **{_fmt_num(r['movido'])}** | "
+                                        f"Origen resta: **{_fmt_num(r['origen_resta'])}** | "
+                                        f"Destino queda: **{_fmt_num(r['destino_queda'])}**"
+                                    )
+                            else:
+                                res = aplicar_movimiento_en_lote(
+                                    usuario=usuario_actual,
                                     familia=familia,
+                                    codigo=codigo,
+                                    articulo=articulo,
                                     deposito_origen=deposito_origen,
                                     deposito_destino=deposito_destino,
                                     lote=lote_sel,
                                     vencimiento=venc_sel,
                                     cantidad=float(cantidad)
                                 )
+                                st.success(
+                                    f"✅ Movimiento registrado: {_fmt_num(float(cantidad))} de **{articulo}** "
+                                    f"(Lote {lote_sel or '—'} | Venc {venc_sel or '—'})"
+                                )
+                                st.caption(f"Origen: {deposito_origen} → queda **{_fmt_num(res.get('stock_origen_despues', 0.0))}**")
+                                st.caption(f"Destino: {deposito_destino} → queda **{_fmt_num(res.get('stock_destino_despues', 0.0))}**")
 
-                                st.success("✅ Movimiento registrado.")
-                                st.caption(f"Origen ({deposito_origen}) resto lote: **{_fmt_num(res.get('stock_origen_despues', 0.0))}**")
-                                st.caption(f"Total artículo: **{_fmt_num(res.get('total_articulo', 0.0))}**")
-
-                                del st.session_state[K_ITEM_SEL]
-                                st.rerun()
-
-                            except Exception as e:
-                                st.error(f"Error al registrar movimiento: {str(e)}")
-
-                    with col_cancelar:
-                        if st.button("❌ Cancelar", use_container_width=True, key=K_PREFIX + "CANCEL_MOV"):
-                            del st.session_state[K_ITEM_SEL]
+                            del st.session_state[key_sel]
                             st.rerun()
 
-    # =========================
-    # HISTORIAL
-    # =========================
+                        except Exception as e:
+                            st.error(f"Error al registrar movimiento: {str(e)}")
+
+                with col_cancelar:
+                    if st.button("❌ Cancelar", use_container_width=True, key="mov_cancelar"):
+                        del st.session_state[key_sel]
+                        st.rerun()
+
+    # Historial movimientos
     st.markdown("---")
-    st.markdown("### 📋 Historial (Bajas y Movimientos)")
-
+    st.markdown("### 📋 Historial de Movimientos")
     try:
-        historial = obtener_historial(50)
-
+        historial = obtener_historial_movimientos(50)
         if historial:
             df = pd.DataFrame(historial)
-
             if "fecha" in df.columns:
                 df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce").dt.strftime("%d/%m/%Y")
             if "hora" in df.columns:
                 df["hora"] = df["hora"].astype(str).str[:8]
 
-            columnas_preferidas = [
+            cols = [
                 "fecha", "hora", "usuario",
-                "tipo_registro",
-                "codigo_interno", "articulo",
+                "familia", "codigo", "articulo",
                 "deposito_origen", "deposito_destino",
-                "deposito", "lote", "vencimiento",
+                "lote", "vencimiento",
                 "cantidad",
-                "stock_total_deposito", "stock_casa_central",
+                "stock_origen_despues", "stock_destino_despues"
             ]
-            columnas_existentes = [c for c in columnas_preferidas if c in df.columns]
-
-            st.dataframe(
-                df[columnas_existentes],
-                use_container_width=True,
-                hide_index=True
-            )
+            cols = [c for c in cols if c in df.columns]
+            st.dataframe(df[cols], use_container_width=True, hide_index=True)
         else:
-            st.info("No hay registros todavía")
-
+            st.info("No hay movimientos todavía")
     except Exception as e:
         st.warning(f"No se pudo cargar el historial: {str(e)}")
+
+
+# =========================
+# ENTRYPOINT STREAMLIT
+# =========================
+def mostrar_baja_stock():
+    """
+    Pantalla única con:
+    - Acción: Baja de stock / Movimiento
+    - En Movimiento: al seleccionar debe abrir el mismo flujo que Baja (lotes + confirmar)
+    """
+    try:
+        crear_tablas_historiales()
+    except Exception:
+        pass
+
+    st.markdown("## 📄 Baja de Stock / Movimiento")
+
+    # Usuario actual
+    user = st.session_state.get("user", {})
+    usuario_actual = user.get("nombre", user.get("Usuario", "Usuario"))
+
+    # Acción (y limpieza de selección al cambiar)
+    accion = st.radio(
+        "Acción",
+        ["Baja de stock", "Movimiento"],
+        index=0,
+        horizontal=True,
+        key="bajastock_accion"
+    )
+
+    last_accion = st.session_state.get("bajastock_last_accion")
+    if last_accion != accion:
+        # Limpia selección del modo anterior (evita “no hace nada” por choque de keys)
+        st.session_state.pop("item_sel_baja", None)
+        st.session_state.pop("item_sel_mov", None)
+        st.session_state["bajastock_last_accion"] = accion
+
+    st.markdown("---")
+
+    if accion == "Baja de stock":
+        _ui_baja_stock(usuario_actual=usuario_actual)
+    else:
+        _ui_movimiento(usuario_actual=usuario_actual)
