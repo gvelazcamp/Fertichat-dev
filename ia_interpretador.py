@@ -282,6 +282,28 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
     return None
 
 # =====================================================================
+# Extraer limite
+# =====================================================================
+def _extraer_limite(texto: str, predeterminado: int = 500) -> int:
+    """
+    Extrae el límite (número máximo de registros) especificado en el texto.
+    Si no se encuentra, devuelve un valor predeterminado.
+    """
+
+    # Buscar valores numéricos en el texto
+    import re
+    numeros = re.findall(r"\b\d+\b", texto)
+
+    # Si se encuentra un número, usar el primero como límite
+    for numero in numeros:
+        n = int(numero)
+        if n > 0:  # Asegurarse de que el límite sea válido
+            return n
+
+    # Si no se encuentra ningún número, retornar el valor predeterminado
+    return predeterminado
+    
+# =====================================================================
 # Extraer Monedas
 # =====================================================================
 def _extraer_moneda(texto: str) -> Optional[str]:
