@@ -80,10 +80,10 @@ def _safe_ident(col_name: str) -> str:
     """
     Escapa un nombre de columna para usar en SQL de forma segura.
     Envuelve el nombre en comillas dobles para Postgres.
-    
+
     Parámetros:
     - col_name: str, nombre de la columna
-    
+
     Retorna:
     - str con el nombre escapado entre comillas dobles
     """
@@ -234,6 +234,57 @@ def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
 # =====================================================================
 # LISTADOS GENÉRICOS - CHATBOT_RAW
 # =====================================================================
+
+def get_valores_unicos(
+    tabla: str,
+    columna: str,
+    incluir_todos: bool = True,
+    label_todos: str = "Todos",
+    limite: int = 500
+) -> list:
+    """
+    Devuelve valores únicos (TRIM) de una columna en una tabla.
+    Pensada para armar filtros/selector sin romper imports existentes.
+
+    Parámetros:
+    - tabla: nombre de la tabla (ej: 'chatbot_raw')
+    - columna: nombre de la columna (ej: 'Cliente / Proveedor')
+    - incluir_todos: si True, antepone label_todos al listado
+    - label_todos: texto del primer item (por defecto 'Todos')
+    - limite: máximo de valores
+
+    Retorna:
+    - list[str]
+    """
+    try:
+        # Sanitización mínima del nombre de tabla (evita caracteres raros)
+        t = str(tabla).strip().strip('"')
+        if not re.fullmatch(r"[A-Za-z0-9_]+", t):
+            print(f"⚠️ Tabla inválida para get_valores_unicos: {tabla}")
+            return [label_todos] if incluir_todos else []
+
+        col_sql = _safe_ident(columna)
+        tabla_sql = f'"{t}"'
+
+        sql = f"""
+            SELECT DISTINCT TRIM({col_sql}) AS valor
+            FROM {tabla_sql}
+            WHERE {col_sql} IS NOT NULL AND TRIM({col_sql}) <> ''
+            ORDER BY valor
+            LIMIT %s
+        """
+        df = ejecutar_consulta(sql, (int(limite),))
+
+        if df.empty:
+            return [label_todos] if incluir_todos else []
+
+        vals = df["valor"].dropna().astype(str).tolist()
+        return ([label_todos] + vals) if incluir_todos else vals
+
+    except Exception as e:
+        print(f"❌ Error en get_valores_unicos: {e}")
+        return [label_todos] if incluir_todos else []
+
 
 def get_lista_proveedores() -> list:
     """Obtiene lista de proveedores únicos."""
@@ -464,10 +515,10 @@ def buscar_stock_por_lote(
 def get_ultimo_mes_disponible_hasta(mes_key: str) -> Optional[str]:
     """
     Busca el último mes disponible en la tabla chatbot_raw hasta el mes indicado.
-    
+
     Parámetros:
     - mes_key: str, formato esperado "YYYY-MM" o "Mes YYYY"
-    
+
     Retorna:
     - str con el mes anterior disponible o None si no hay datos
     """
@@ -482,15 +533,15 @@ def get_ultimo_mes_disponible_hasta(mes_key: str) -> Optional[str]:
             LIMIT 1
         """
         df = ejecutar_consulta(sql, (mes_key,))
-        
+
         if df.empty:
             print(f"⚠️ No se encontró mes disponible hasta {mes_key}")
             return None
-            
+
         mes_encontrado = df['mes'].iloc[0]
         print(f"✅ Último mes disponible hasta {mes_key}: {mes_encontrado}")
         return mes_encontrado
-        
+
     except Exception as e:
         print(f"❌ Error buscando último mes disponible: {e}")
         return None
