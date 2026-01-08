@@ -282,6 +282,28 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
     return None
 
 # =====================================================================
+# Extraer rango fechas
+# =====================================================================
+def _extraer_rango_fechas(texto: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Extrae un rango de fechas del texto dado.
+    Si no encuentra fechas, retorna (None, None).
+    """
+
+    # Regex para encontrar fechas en formato YYYY-MM-DD
+    patron_fecha = r"\b(\d{4}-\d{2}-\d{2})\b"
+    fechas = re.findall(patron_fecha, texto)
+
+    # Si se encuentran 2 o más fechas, las tratamos como rango:
+    if len(fechas) >= 2:
+        return fechas[0], fechas[1]
+    # Si solo hay una fecha, podría estar incompleta:
+    elif len(fechas) == 1:
+        return fechas[0], None
+    # Si no encuentra fechas, retorna None.
+    return None, None
+    
+# =====================================================================
 # CARGA LISTAS DESDE SUPABASE
 # =====================================================================
 @st.cache_data(ttl=60 * 60)
