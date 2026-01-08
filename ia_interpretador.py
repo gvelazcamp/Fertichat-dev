@@ -282,6 +282,33 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
     return None
 
 # =====================================================================
+# Extraer Monedas
+# =====================================================================
+def _extraer_moneda(texto: str) -> Optional[str]:
+    """
+    Extrae la moneda especificada en el texto.
+    Retorna:
+        - "USD" si detecta dólar,
+        - "UYU" o "$" si detecta pesos,
+        - None si no se menciona ninguna moneda.
+    """
+
+    texto = texto.lower()  # Convertir el texto a minúsculas para simplificar la búsqueda.
+
+    # Monedas y sus palabras clave
+    patrones_moneda = {
+        "USD": ["usd", "u$s", "u$$", "dólares", "dolares", "dollar", "dólar", "dolar"],
+        "UYU": ["pesos", "uyu", "$", "moneda nacional"],
+    }
+
+    for moneda, palabras_clave in patrones_moneda.items():
+        for palabra in palabras_clave:
+            if palabra in texto:
+                return moneda
+
+    # No se detectó ninguna moneda
+    return None
+# =====================================================================
 # Extraer rango fechas
 # =====================================================================
 def _extraer_rango_fechas(texto: str) -> Tuple[Optional[str], Optional[str]]:
