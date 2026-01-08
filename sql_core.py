@@ -260,11 +260,50 @@ def get_lista_familias_stock() -> list:
         return ["Todos"]
     return ["Todos"] + df['familia'].tolist()
 
-# Otras funciones similares no han sido modificadas.
+
+# =====================================================================
+# FUNCIÓN PARA OBTENER ÚLTIMO MES DISPONIBLE
+# =====================================================================
+
+def get_ultimo_mes_disponible_hasta(mes_key: str) -> Optional[str]:
+    """
+    Busca el último mes disponible en la tabla chatbot_raw hasta el mes indicado.
+    
+    Parámetros:
+    - mes_key: str, formato esperado "YYYY-MM" o "Mes YYYY"
+    
+    Retorna:
+    - str con el mes anterior disponible o None si no hay datos
+    """
+    try:
+        sql = """
+            SELECT DISTINCT TRIM("Mes") AS mes
+            FROM chatbot_raw
+            WHERE TRIM("Mes") IS NOT NULL 
+              AND TRIM("Mes") <> ''
+              AND TRIM("Mes") <= %s
+            ORDER BY TRIM("Mes") DESC
+            LIMIT 1
+        """
+        df = ejecutar_consulta(sql, (mes_key,))
+        
+        if df.empty:
+            print(f"⚠️ No se encontró mes disponible hasta {mes_key}")
+            return None
+            
+        mes_encontrado = df['mes'].iloc[0]
+        print(f"✅ Último mes disponible hasta {mes_key}: {mes_encontrado}")
+        return mes_encontrado
+        
+    except Exception as e:
+        print(f"❌ Error buscando último mes disponible: {e}")
+        return None
+
 
 # =====================================================================
 # DEPURACIÓN ADICIONAL EN STOCK Y ALERTAS
 # =====================================================================
+
 def get_lotes_por_vencer(dias: int) -> pd.DataFrame:
     sql = """
         SELECT TRIM("Articulo") AS articulo, TRIM("Lote") AS lote, TRIM("Vencimiento") AS vencimiento, TRIM("STOCK") AS stock,
@@ -278,7 +317,6 @@ def get_lotes_por_vencer(dias: int) -> pd.DataFrame:
         print(f"⚠️ No se encontraron lotes por vencer dentro de {dias} días.")
     return df
 
-# Otras funciones listas simplemente añaden validaciones adicionales para el manejo de errores.
 
 # =====================================================================
 # FIN DEL ARCHIVO
