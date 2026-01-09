@@ -287,23 +287,74 @@ def get_facturas_proveedor(
         LIMIT {limite};
     """
 
+    # ✅ DEBUG POTENTE
+    print("\n" + "="*80)
+    print("🔍 DEBUG SQL_FACTURAS - get_facturas_proveedor")
+    print("="*80)
+    print(f"📋 Proveedores buscados: {proveedores}")
+    print(f"📅 Años: {anios}")
+    print(f"📅 Meses: {meses}")
+    print(f"💰 Moneda: {moneda}")
+    print(f"🔢 Límite: {limite}")
+    print("\n📝 SQL generado:")
+    print(query)
+    print("\n🎯 Parámetros:")
+    print(tuple(params))
+    print("="*80)
+
     # DEBUG: Verificar total filas en tabla
-    df_test = ejecutar_consulta("SELECT COUNT(*) as total FROM chatbot_raw", ())
-    print(f"DEBUG: Total filas en chatbot_raw: {df_test.iloc[0]['total'] if df_test is not None and not df_test.empty else '0 o None'}")
-
-    # DEBUG: Guardar en session_state para mostrar en UI
     try:
-        import streamlit as st
-        st.session_state["DEBUG_SQL_FACTURA_QUERY"] = query
-        st.session_state["DEBUG_SQL_FACTURA_PARAMS"] = tuple(params)
-    except Exception:
-        pass
+        df_test = ejecutar_consulta("SELECT COUNT(*) as total FROM chatbot_raw", ())
+        total_filas = df_test.iloc[0]['total'] if (df_test is not None and not df_test.empty) else 0
+        print(f"\n📊 Total filas en chatbot_raw: {total_filas}")
+    except Exception as e:
+        print(f"\n❌ Error contando filas totales: {e}")
 
-    # DEBUG SIMPLE: Imprimir qué tabla y query intenta ejecutar
-    print(f"DEBUG: Intentando consultar tabla 'chatbot_raw' con query: {query.strip()}")
-    print(f"DEBUG: Parámetros: {tuple(params)}")
+    # DEBUG: Verificar si existe el proveedor
+    if proveedores:
+        try:
+            prov_test = proveedores[0].lower()
+            sql_prov = f"SELECT COUNT(*) as total FROM chatbot_raw WHERE LOWER(\"Cliente / Proveedor\") LIKE '%{prov_test}%'"
+            df_prov = ejecutar_consulta(sql_prov, ())
+            total_prov = df_prov.iloc[0]['total'] if (df_prov is not None and not df_prov.empty) else 0
+            print(f"🏢 Registros con proveedor '{proveedores[0]}': {total_prov}")
+        except Exception as e:
+            print(f"❌ Error verificando proveedor: {e}")
 
-    return ejecutar_consulta(query, tuple(params))
+    # DEBUG: Verificar si existe el año
+    if anios:
+        try:
+            sql_anio = f"SELECT COUNT(*) as total FROM chatbot_raw WHERE \"Año\" = {anios[0]}"
+            df_anio = ejecutar_consulta(sql_anio, ())
+            total_anio = df_anio.iloc[0]['total'] if (df_anio is not None and not df_anio.empty) else 0
+            print(f"📅 Registros en año {anios[0]}: {total_anio}")
+        except Exception as e:
+            print(f"❌ Error verificando año: {e}")
+
+    # DEBUG: Verificar proveedor + año combinados
+    if proveedores and anios:
+        try:
+            prov_test = proveedores[0].lower()
+            sql_combo = f"SELECT COUNT(*) as total FROM chatbot_raw WHERE LOWER(\"Cliente / Proveedor\") LIKE '%{prov_test}%' AND \"Año\" = {anios[0]}"
+            df_combo = ejecutar_consulta(sql_combo, ())
+            total_combo = df_combo.iloc[0]['total'] if (df_combo is not None and not df_combo.empty) else 0
+            print(f"🎯 Registros con '{proveedores[0]}' en {anios[0]}: {total_combo}")
+        except Exception as e:
+            print(f"❌ Error verificando combo: {e}")
+
+    print("\n🚀 Ejecutando consulta principal...")
+    print("="*80 + "\n")
+
+    # Ejecutar consulta
+    df = ejecutar_consulta(query, tuple(params))
+
+    # DEBUG resultado
+    if df is not None and not df.empty:
+        print(f"✅ Consulta exitosa: {len(df)} filas obtenidas\n")
+    else:
+        print(f"⚠️ Consulta NO trajo resultados\n")
+
+    return df
 
 
 def get_total_facturas_proveedor(
