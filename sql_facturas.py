@@ -71,11 +71,11 @@ def _sql_monto_neto_num_expr() -> str:
             WHEN TRIM("Monto Neto") LIKE '(%'
               THEN -1 * REPLACE(
                          REPLACE(
-                           REPLACE(
-                             REPLACE(TRIM("Monto Neto"), '(', ''),
+                           REPLACE(TRIM("Monto Neto"), '(', ''),
                            ')', ''),
                          '.', ''),
-                       ',', '.')::numeric
+                       ',', '.'
+                 )::numeric
             ELSE REPLACE(
                    REPLACE(TRIM("Monto Neto"), '.', ''),
                    ',', '.'
