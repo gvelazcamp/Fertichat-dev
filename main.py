@@ -230,6 +230,72 @@ with st.sidebar:
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
 
 # =========================
+# FUNCIÓN PARA MOSTRAR DEBUG (PANTALLA SEPARADA)
+# =========================
+def mostrar_debug():
+    st.header("🔍 Pantalla de Debug Completa")
+    st.write("Aquí se muestra toda la información de debug para diagnosticar problemas en las consultas.")
+    
+    # Última Interpretación
+    if "DBG_INT_LAST" in st.session_state:
+        st.subheader("🎯 Última Interpretación de Pregunta")
+        st.json(st.session_state["DBG_INT_LAST"])
+    else:
+        st.write("No hay interpretación reciente.")
+    
+    # Origen de Facturas
+    if "DBG_FACTURAS_ORIGEN" in st.session_state:
+        st.subheader("📋 Origen de Funciones de Facturas")
+        st.write(f"**Usando:** {st.session_state['DBG_FACTURAS_ORIGEN']}")
+    
+    # Debug SQL
+    st.subheader("🛠 Debug SQL")
+    if st.checkbox("Mostrar detalles SQL (último)", key="show_sql_debug"):
+        st.write("**Tag:**", st.session_state.get("DBG_SQL_LAST_TAG", "N/A"))
+        st.write("**Query:**")
+        st.code(st.session_state.get("DBG_SQL_LAST_QUERY", "No query"), language="sql")
+        st.write("**Params:**", st.session_state.get("DBG_SQL_LAST_PARAMS", []))
+        st.write("**Resultado:**")
+        st.write("- Filas:", st.session_state.get("DBG_SQL_ROWS", 0))
+        st.write("- Columnas:", st.session_state.get("DBG_SQL_COLS", []))
+    else:
+        st.write("Activa el checkbox para ver detalles SQL.")
+    
+    # Estado del Orquestador
+    st.subheader("🚀 Estado del Sistema")
+    st.write(f"**ORQUESTADOR_CARGADO:** {st.session_state.get('ORQUESTADOR_CARGADO', 'No')}")
+    st.write(f"**DEBUG_SQL activado:** {st.session_state.get('DEBUG_SQL', False)}")
+    
+    # Logs Simulados (puedes agregar logs reales aquí)
+    st.subheader("📝 Logs Recientes")
+    logs = [
+        "2024-10-01 10:00: Consulta procesada: 'compras roche'",
+        "2024-10-01 10:05: Error en SQL: tabla no encontrada",
+        # Agrega logs dinámicos si tienes un sistema de logging
+    ]
+    for log in logs:
+        st.text(log)
+    
+    # Opciones de Debug
+    st.subheader("⚙️ Opciones de Debug")
+    if st.button("Limpiar Debug"):
+        keys_to_clear = ["DBG_INT_LAST", "DBG_SQL_LAST_TAG", "DBG_SQL_LAST_QUERY", "DBG_SQL_LAST_PARAMS", "DBG_SQL_ROWS", "DBG_SQL_COLS", "DBG_FACTURAS_ORIGEN"]
+        for key in keys_to_clear:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.success("Debug limpiado.")
+        st.rerun()
+    
+    # Espacio para más info
+    st.subheader("💡 Consejos para Debug")
+    st.markdown("""
+    - Activa "Debug SQL" en el sidebar para capturar consultas.
+    - Revisa la consola del servidor (logs de Streamlit) para prints adicionales.
+    - Si no hay resultados, verifica que la BD tenga datos para el filtro aplicado.
+    - Para facturas, asegúrate de que 'Tipo Comprobante' incluya 'Factura%' además de 'Compra%'.
+    """)
+
+# =========================
 # ROUTER
 # =========================
 menu_actual = st.session_state["radio_menu"]
@@ -245,7 +311,7 @@ elif menu_actual == "🛒 Compras IA":
     Compras_IA()
 
     # =========================
-    # DEBUG (última consulta)
+    # DEBUG (última consulta) - SOLO EN COMPRAS IA
     # =========================
     if st.session_state.get("DEBUG_SQL", False):
         with st.expander("🛠 Debug (última consulta)", expanded=True):
@@ -260,6 +326,9 @@ elif menu_actual == "🛒 Compras IA":
             st.subheader("Resultado")
             st.write("Filas:", st.session_state.get("DBG_SQL_ROWS"))
             st.write("Columnas:", st.session_state.get("DBG_SQL_COLS", []))
+
+elif menu_actual == "🔍 Debug":
+    mostrar_debug()
 
 elif menu_actual == "📦 Stock IA":
     mostrar_resumen_stock_rotativo()
@@ -303,4 +372,3 @@ elif menu_actual == "📑 Comprobantes":
 
 
 st.write("ORQUESTADOR_CARGADO =", st.session_state.get("ORQUESTADOR_CARGADO"))
-
