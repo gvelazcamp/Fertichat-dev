@@ -80,12 +80,11 @@ TABLA_TIPOS = """
 |------|-------------|------------|----------|
 | compras_anio | Todas las compras de un año | anio | "compras 2025" |
 | compras_mes | Todas las compras de un mes | mes (YYYY-MM) | "compras noviembre 2025" |
-| compras_proveedor_anio | Compras de un proveedor en un año | proveedor, anio | "compras roche 2025" |
 | compras_proveedor_mes | Compras de un proveedor en un mes | proveedor, mes (YYYY-MM) | "compras roche noviembre 2025" |
 | comparar_proveedor_meses | Comparar proveedor mes vs mes | proveedor, mes1, mes2, label1, label2 | "comparar compras roche junio julio 2025" |
 | comparar_proveedor_anios | Comparar proveedor año vs año | proveedor, anios | "comparar compras roche 2024 2025" |
 | detalle_factura_numero | Detalle por número de factura | nro_factura | "detalle factura 273279" / "detalle factura A00273279" |
-| facturas_proveedor | Listado/detalle de facturas de un proveedor (NO es compras) | proveedores, meses?, anios?, desde?, hasta?, articulo?, moneda?, limite? | "todas las facturas roche noviembre 2025" / "facturas de tresul 2024" |
+| facturas_proveedor | Listado de facturas/compras de un proveedor (fusionado) | proveedores, meses?, anios?, desde?, hasta?, articulo?, moneda?, limite? | "todas las facturas roche noviembre 2025" / "compras roche 2025" |
 | ultima_factura | Última factura de un artículo/proveedor | patron | "ultima factura vitek" |
 | facturas_articulo | Todas las facturas de un artículo | articulo | "cuando vino vitek" |
 | stock_total | Resumen total de stock | (ninguno) | "stock total" |
@@ -103,7 +102,7 @@ TABLA_CANONICA_50 = r"""
 |---|--------|--------|--------|-------|---------------|--------|
 | 01 | compras | (ninguno) | anio | no | compras_anio | anio |
 | 02 | compras | (ninguno) | mes | no | compras_mes | mes |
-| 03 | compras | proveedor | anio | no | compras_proveedor_anio | proveedor, anio |
+| 03 | compras | proveedor | anio | no | facturas_proveedor | proveedores, anios |
 | 04 | compras | proveedor | mes | no | compras_proveedor_mes | proveedor, mes |
 | 05 | facturas | proveedor | (opcional) | no | facturas_proveedor | proveedores, meses?, anios?, desde?, hasta? |
 """
@@ -540,7 +539,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
         return None
 
     try:
-        response = client.chat.completions.create(
+        response = client.chat_completions.create(
             model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": _get_system_prompt()},
@@ -579,11 +578,6 @@ MAPEO_FUNCIONES = {
         "funcion": "get_compras_anio",
         "params": ["anio"],
         "resumen": "get_total_compras_anio",
-    },
-    "compras_proveedor_anio": {
-        "funcion": "get_detalle_compras_proveedor_anio",
-        "params": ["proveedor", "anio"],
-        "resumen": "get_total_compras_proveedor_anio",
     },
     "compras_proveedor_mes": {
         "funcion": "get_detalle_compras_proveedor_mes",
@@ -708,7 +702,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
     # =================================================================
-    # FACTURAS PROVEEDOR (LISTADO/DETALLE) - sin nro
+    # FACTURAS PROVEEDOR (LISTADO/DETALLE) - Fusionado con "todas las compras"
     # =================================================================
     dispara_facturas_listado = False
 
@@ -716,10 +710,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     if contiene_factura(texto_lower_original) and (_extraer_nro_factura(texto_original) is None):
         dispara_facturas_listado = True
 
-    # También soporta "todas las facturas ..."
+    # Fusionar: También "todas las compras/facturas/comprobantes" -> listado
     if (
         re.search(r"\b(todas|todoas)\b", texto_lower_original)
-        and re.search(r"\b(facturas?|comprobantes?)\b", texto_lower_original)
+        and re.search(r"\b(compras?|facturas?|comprobantes?)\b", texto_lower_original)
         and (_extraer_nro_factura(texto_original) is None)
     ):
         dispara_facturas_listado = True
@@ -779,14 +773,27 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "moneda": moneda,
                 "limite": limite,
             },
-            "debug": f"facturas proveedor(es): {', '.join(proveedores_lista)} | meses: {meses_out} | años: {anios}",
+            "debug": f"facturas/compras proveedor(es): {', '.join(proveedores_lista)} | meses: {meses_out} | años: {anios}",
         }
 
     # =========================
-    # COMPRAS (no comparar)
+    # COMPRAS (no comparar, fusionado con facturas_proveedor para proveedor+año)
     # =========================
     if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original):
-        # Compras proveedor (mes)
+        # Fusionar: compras con proveedor + año -> facturas_proveedor (mismo SQL que facturas)
+        if provs and anios:
+            proveedor = _alias_proveedor(provs[0])
+            return {
+                "tipo": "facturas_proveedor",
+                "parametros": {
+                    "proveedores": [proveedor],
+                    "anios": [anios[0]],
+                    "limite": 5000,
+                },
+                "debug": "compras proveedor año (fusionado con facturas_proveedor)",
+            }
+
+        # Compras proveedor (mes) - queda separado si no hay año
         if provs and (meses_yyyymm or (meses_nombre and anios)):
             proveedor = _alias_proveedor(provs[0])
             if meses_yyyymm:
@@ -801,15 +808,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     "debug": "compras proveedor mes",
                 }
 
-        # Compras proveedor (año)
-        if provs and anios:
-            proveedor = _alias_proveedor(provs[0])
-            return {
-                "tipo": "compras_proveedor_anio",
-                "parametros": {"proveedor": proveedor, "anio": anios[0]},
-                "debug": "compras proveedor año",
-                }
-
         # Compras mes
         if meses_yyyymm:
             return {"tipo": "compras_mes", "parametros": {"mes": meses_yyyymm[0]}, "debug": "compras mes (yyyymm)"}
@@ -817,7 +815,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             mes = _to_yyyymm(anios[0], meses_nombre[0])
             return {"tipo": "compras_mes", "parametros": {"mes": mes}, "debug": "compras mes (nombre+año)"}
 
-        # Compras año
+        # Compras año (sin proveedor)
         if anios:
             return {"tipo": "compras_anio", "parametros": {"anio": anios[0]}, "debug": "compras año"}
 
