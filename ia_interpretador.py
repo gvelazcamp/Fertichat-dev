@@ -62,7 +62,6 @@ NOMBRES_PERSONALES_EXCLUIR = [
 
 # =====================================================================
 # ALIAS / SINÓNIMOS DE PROVEEDOR (fallback cuando BD falla)
-# - NO rompe nada: solo ayuda a NO caer en "compras_anio" cuando hay proveedor
 # =====================================================================
 ALIAS_PROVEEDOR = {
     "roche": "roche",
@@ -203,7 +202,8 @@ def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
             "enero", "febrero", "marzo", "abril", "mayo", "junio",
             "julio", "agosto", "septiembre", "setiembre", "octubre", "noviembre", "diciembre",
             "2023", "2024", "2025", "2026",
-            "usd", "dolar", "dolares", "dólar", "dólares", "pesos", "peso", "uyu", "uru",
+            "usd", "dolar", "dolares", "dólar", "dólares", "dollar", "dólar", "dolar",
+            "pesos", "peso", "uyu", "uru",
         ]
     )
 
@@ -711,7 +711,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     # =================================================================
     # FACTURAS PROVEEDOR (LISTADO/DETALLE) - sin nro
-    # - separado de "compras"
     # =================================================================
     dispara_facturas_listado = False
 
@@ -782,7 +781,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "moneda": moneda,
                 "limite": limite,
             },
-            "debug": "facturas proveedor (canónico)",
+            "debug": f"facturas proveedor(es): {', '.join(proveedores_lista)} | meses: {meses_out} | años: {anios}",
         }
 
     # =========================
@@ -811,7 +810,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "tipo": "compras_proveedor_anio",
                 "parametros": {"proveedor": proveedor, "anio": anios[0]},
                 "debug": "compras proveedor año",
-            }
+                }
 
         # Compras mes
         if meses_yyyymm:
