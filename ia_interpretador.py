@@ -99,7 +99,7 @@ TABLA_TIPOS = """
 # =====================================================================
 TABLA_CANONICA_50 = r"""
 | # | ACCIÓN | OBJETO | TIEMPO | MULTI | TIPO (output) | PARAMS |
-|---|--------|--------|-------|-------|---------------|--------|
+|---|--------|--------|--------|-------|---------------|--------|
 | 01 | compras | (ninguno) | anio | no | compras_anio | anio |
 | 02 | compras | (ninguno) | mes | no | compras_mes | mes |
 | 03 | compras | proveedor | anio | no | facturas_proveedor | proveedores, anios |
@@ -193,7 +193,7 @@ def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
             "todas", "todoas", "toda", "todaslas",
             "factura", "facturas", "comprobante", "comprobantes",
             "compra", "compras",
-            # ✅ NUEVO: sinónimos adicionales
+            # sinónimos adicionales
             "gasto", "gastos", "documento", "documentos",
             "comparar", "comparame", "compara",
             "detalle", "nro", "numero",
@@ -201,19 +201,17 @@ def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
             "enero", "febrero", "marzo", "abril", "mayo", "junio",
             "julio", "agosto", "septiembre", "setiembre", "octubre", "noviembre", "diciembre",
             "2023", "2024", "2025", "2026",
-            "usd", "dolar", "dolares", "dólar", "dólares", "dollar", "dólar", "dolar",
+            "usd", "dolar", "dolares", "dólar", "dólares", "dollar",
             "pesos", "peso", "uyu", "uru",
         ]
     )
 
-    # Primero: si alguna palabra está en ALIAS_PROVEEDOR, usar esa
     for tk in toks:
         if not tk or tk in ignorar:
             continue
         if tk in ALIAS_PROVEEDOR:
             return ALIAS_PROVEEDOR[tk]
 
-    # Segundo: devolver primer token "posible" (mínimo 3)
     for tk in toks:
         if not tk or tk in ignorar:
             continue
@@ -237,7 +235,6 @@ def contiene_comparar(texto: str) -> bool:
     t = texto.lower()
     return bool(re.search(r"\b(comparar|comparame|compara)\b", t))
 
-# ✅ NUEVO: "gastos/documentos" como sinónimo de listado facturas (solo con proveedor)
 def contiene_gastos_o_documentos(texto: str) -> bool:
     if not texto:
         return False
@@ -279,11 +276,6 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
     if m:
         raw = str(m.group(3)).strip()
 
-        # =========================
-        # 🔧 PARCHE MÍNIMO:
-        # Evitar confundir AÑO (2023–2026) como "nro_factura"
-        # Ej: "todas las facturas roche 2025" NO debe ir a detalle_factura_numero
-        # =========================
         if raw.isdigit():
             try:
                 n = int(raw)
@@ -296,7 +288,6 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
         return nro or None
 
     if re.fullmatch(r"[A-Za-z]?\d{3,}", t):
-        # Idem: si el texto ES un año válido, no es nro de factura
         if t.isdigit():
             try:
                 n = int(t)
@@ -314,72 +305,39 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
 # Extraer limite
 # =====================================================================
 def _extraer_limite(texto: str, predeterminado: int = 500) -> int:
-    """
-    Extrae el límite (número máximo de registros) especificado en el texto.
-    Si no se encuentra, devuelve un valor predeterminado.
-    """
-
-    # Buscar valores numéricos en el texto
     import re
     numeros = re.findall(r"\b\d+\b", texto)
-
-    # Si se encuentra un número, usar el primero como límite
     for numero in numeros:
         n = int(numero)
-        if n > 0:  # Asegurarse de que el límite sea válido
+        if n > 0:
             return n
-
-    # Si no se encuentra ningún número, retornar el valor predeterminado
     return predeterminado
 
 # =====================================================================
 # Extraer Monedas
 # =====================================================================
 def _extraer_moneda(texto: str) -> Optional[str]:
-    """
-    Extrae la moneda especificada en el texto.
-    Retorna:
-        - "USD" si detecta dólar,
-        - "UYU" o "$" si detecta pesos,
-        - None si no se menciona ninguna moneda.
-    """
-
-    texto = texto.lower()  # Convertir el texto a minúsculas para simplificar la búsqueda.
-
-    # Monedas y sus palabras clave
+    texto = texto.lower()
     patrones_moneda = {
         "USD": ["usd", "u$s", "u$$", "dólares", "dolares", "dollar", "dólar", "dolar"],
         "UYU": ["pesos", "uyu", "$", "moneda nacional"],
     }
-
     for moneda, palabras_clave in patrones_moneda.items():
         for palabra in palabras_clave:
             if palabra in texto:
                 return moneda
-
-    # No se detectó ninguna moneda
     return None
 
 # =====================================================================
 # Extraer rango fechas
 # =====================================================================
 def _extraer_rango_fechas(texto: str) -> Tuple[Optional[str], Optional[str]]:
-    """
-    Extrae un rango de fechas del texto dado.
-    Si no encuentra fechas, retorna (None, None).
-    """
-
-    # Regex para encontrar fechas en formato YYYY-MM-DD
     patron_fecha = r"\b(\d{4}-\d{2}-\d{2})\b"
     fechas = re.findall(patron_fecha, texto)
-
-    # Si se encuentran 2 o más fechas, las tratamos como rango:
     if len(fechas) >= 2:
         return fechas[0], fechas[1]
-    # Si solo hay una fecha, podría estar incompleta:
     elif len(fechas) == 1:
         return fechas[0], None
-    # Si no encuentra fechas, retorna None.
     return None, None
 
 # =====================================================================
@@ -462,17 +420,12 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
     return out
 
 # =====================================================================
-# PARSEO DE PARÁMETROS: Mes a Meses y nuevos campos
+# PARSEO DE PARÁMETROS: Mes a Meses
 # =====================================================================
 def normalizar_parametros(params: dict) -> dict:
-    """
-    Normaliza parámetros relacionados con mes, meses, rango de fechas, moneda y límites.
-    """
     if "mes" in params:
         mes = params.get("mes")
         params["meses"] = [mes] if isinstance(mes, str) else mes
-
-    # Manejo de otras claves si necesitas normalizaciones adicionales
     return params
 
 # =====================================================================
@@ -669,57 +622,39 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
 
-    # =========================
-    # FAST-PATH: detalle factura por número (NO mezclar con listado facturas)
-    # =========================
+    # FAST-PATH: detalle factura por número
     if contiene_factura(texto_lower_original):
         nro = _extraer_nro_factura(texto_original)
         if nro:
+            print(f"\n[INTÉRPRETE] DETALLE FACTURA NRO={nro}")
             return {
                 "tipo": "detalle_factura_numero",
                 "parametros": {"nro_factura": nro},
                 "debug": f"factura nro={nro}",
             }
 
-    # =========================
-    # Normalización base
-    # =========================
     texto_limpio = limpiar_consulta(texto_original)
     texto_lower = texto_limpio.lower()
 
-    # =========================
-    # Índices (proveedores / artículos) desde BD
-    # =========================
     idx_prov, idx_art = _get_indices()
-
     provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
     arts = _match_best(texto_lower, idx_art, max_items=MAX_ARTICULOS)
 
-    # =========================
-    # Fallback proveedor (si BD no detectó)
-    # =========================
     if not provs:
         prov_libre = _extraer_proveedor_libre(texto_lower_original)
         if prov_libre:
             provs = [_alias_proveedor(prov_libre)]
 
-    # =========================
-    # Tiempo: años y meses
-    # =========================
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
-    # =================================================================
-    # FACTURAS PROVEEDOR (LISTADO/DETALLE) - Fusionado con "todas las compras"
-    # =================================================================
+    # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
 
-    # Si pide facturas/comprobantes y NO dio nro -> listado
     if contiene_factura(texto_lower_original) and (_extraer_nro_factura(texto_original) is None):
         dispara_facturas_listado = True
 
-    # Fusionar: También "todas las compras/facturas/comprobantes" -> listado
     if (
         re.search(r"\b(todas|todoas)\b", texto_lower_original)
         and re.search(r"\b(compras?|facturas?|comprobantes?)\b", texto_lower_original)
@@ -727,7 +662,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     ):
         dispara_facturas_listado = True
 
-    # ✅ NUEVO: "gastos/documentos + proveedor" -> listado facturas_proveedor (sin romper compras proveedor mes)
     if (
         (not contiene_comparar(texto_lower_original))
         and provs
@@ -737,12 +671,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         dispara_facturas_listado = True
 
     if dispara_facturas_listado:
-        # ✅ CORREGIDO: usar fallback si BD no detectó proveedor
         proveedores_lista: List[str] = []
         if provs:
             proveedores_lista = [provs[0]]
         else:
-            # 🔧 FALLBACK: intentar extraer proveedor libre
             prov_libre = _extraer_proveedor_libre(texto_lower_original)
             if prov_libre:
                 proveedores_lista = [_alias_proveedor(prov_libre)]
@@ -772,12 +704,20 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
         moneda = _extraer_moneda(texto_lower_original)
 
-        # 🔴 CLAVE: artículo SOLO si el usuario lo pidió explícitamente
         articulo = None
         if re.search(r"\b(articulo|artículo|producto)\b", texto_lower_original):
             articulo = arts[0] if arts else None
 
         limite = _extraer_limite(texto_lower_original)
+
+        print("\n[INTÉRPRETE] FACTURAS_PROVEEDOR")
+        print(f"  Pregunta    : {texto_original}")
+        print(f"  Proveedores : {proveedores_lista}")
+        print(f"  Meses       : {meses_out}")
+        print(f"  Años        : {anios}")
+        print(f"  Moneda      : {moneda}")
+        print(f"  Artículo    : {articulo}")
+        print(f"  Límite      : {limite}")
 
         return {
             "tipo": "facturas_proveedor",
@@ -794,15 +734,14 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "debug": f"facturas/compras proveedor(es): {', '.join(proveedores_lista)} | meses: {meses_out} | años: {anios}",
         }
 
-    # =========================
-    # COMPRAS (no comparar, fusionado con facturas_proveedor para proveedor+año)
-    # =========================
+    # COMPRAS (fusionado con facturas_proveedor para proveedor+año)
     if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original):
-        # Fusionar: compras con proveedor + año -> facturas_proveedor (mismo SQL que facturas)
         if provs and anios:
             proveedor = _alias_proveedor(provs[0])
-            # ✅ AGREGAR DEBUG AQUÍ
-            print(f"\n🔄 FUSIÓN: 'compras {proveedor} {anios[0]}' → tipo 'facturas_proveedor'. Parámetros: proveedores=[{proveedor}], anios={anios}")
+            print("\n[INTÉRPRETE] FUSIÓN COMPRAS→FACTURAS")
+            print(f"  Pregunta    : {texto_original}")
+            print(f"  Proveedores : {provs}")
+            print(f"  Años        : {anios}")
             return {
                 "tipo": "facturas_proveedor",
                 "parametros": {
@@ -813,7 +752,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "debug": "compras proveedor año (fusionado con facturas_proveedor)",
             }
 
-        # Compras proveedor (mes) - queda separado si no hay año
         if provs and (meses_yyyymm or (meses_nombre and anios)):
             proveedor = _alias_proveedor(provs[0])
             if meses_yyyymm:
@@ -822,26 +760,35 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 mes = _to_yyyymm(anios[0], meses_nombre[0]) if anios and meses_nombre else None
 
             if mes:
+                print("\n[INTÉRPRETE] COMPRAS_PROVEEDOR_MES")
+                print(f"  Pregunta : {texto_original}")
+                print(f"  Prov     : {proveedor}")
+                print(f"  Mes      : {mes}")
                 return {
                     "tipo": "compras_proveedor_mes",
                     "parametros": {"proveedor": proveedor, "mes": mes},
                     "debug": "compras proveedor mes",
                 }
 
-        # Compras mes
         if meses_yyyymm:
+            print("\n[INTÉRPRETE] COMPRAS_MES")
+            print(f"  Pregunta : {texto_original}")
+            print(f"  Mes      : {meses_yyyymm[0]}")
             return {"tipo": "compras_mes", "parametros": {"mes": meses_yyyymm[0]}, "debug": "compras mes (yyyymm)"}
         if meses_nombre and anios:
             mes = _to_yyyymm(anios[0], meses_nombre[0])
+            print("\n[INTÉRPRETE] COMPRAS_MES nombre+año")
+            print(f"  Pregunta : {texto_original}")
+            print(f"  Mes      : {mes}")
             return {"tipo": "compras_mes", "parametros": {"mes": mes}, "debug": "compras mes (nombre+año)"}
 
-        # Compras año (sin proveedor)
         if anios:
+            print("\n[INTÉRPRETE] COMPRAS_ANIO")
+            print(f"  Pregunta : {texto_original}")
+            print(f"  Año      : {anios[0]}")
             return {"tipo": "compras_anio", "parametros": {"anio": anios[0]}, "debug": "compras año"}
 
-    # =========================
-    # COMPARAR COMPRAS
-    # =========================
+    # COMPARAR
     if contiene_comparar(texto_lower_original):
         meses_cmp: List[str] = []
         if meses_yyyymm:
@@ -907,17 +854,12 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "debug": "comparar: faltan 2 meses o 2 años (o proveedor)",
         }
 
-    # =========================
     # STOCK
-    # =========================
     if "stock" in texto_lower_original:
         if arts:
             return {"tipo": "stock_articulo", "parametros": {"articulo": arts[0]}, "debug": "stock articulo"}
         return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
 
-    # =========================
-    # DEFAULT: OpenAI (si está habilitado)
-    # =========================
     out_ai = _interpretar_con_openai(texto_original)
     if out_ai:
         return out_ai
