@@ -508,6 +508,9 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             # if not params.get("anios"):
             #     params["anios"] = [2025]
 
+            # Set debug tag específico
+            st.session_state["DBG_SQL_LAST_TAG"] = "sql_facturas - facturas_proveedor"
+
             df = get_facturas_proveedor_detalle(
                 proveedores=proveedores_raw,
                 meses=params.get("meses"),
@@ -528,6 +531,7 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
                 # DEBUG POTENTE: Mostrar params y detalles cuando no hay resultados
                 debug_msg = f"⚠️ **DEBUG DETALLADO:** No se encontraron resultados para '{pregunta_original}'.\n\n"
                 debug_msg += f"**Tipo detectado:** {tipo}\n"
+                debug_msg += f"**Módulo SQL usado:** sql_facturas\n"
                 debug_msg += f"**Parámetros extraídos:**\n"
                 for k, v in params.items():
                     debug_msg += f"- {k}: {v}\n"
