@@ -431,7 +431,7 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             anio = params.get("anio")
 
             if not articulo or not anio:
-                return "❌ Falta artículo o año.", None, None
+                return "❌ Falta artículo o mes.", None, None
 
             resumen = get_total_compras_articulo_anio(articulo, anio)
             df = get_detalle_compras_articulo_anio(articulo, anio)
@@ -502,6 +502,10 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             proveedores_raw = [str(p).strip() for p in proveedores if str(p).strip()]
             if not proveedores_raw:
                 return "❌ Indicá el proveedor. Ej: todas las facturas roche 2025", None, None
+
+            # Default a 2025 si no se especifica año (para coincidir con el SQL de Supabase)
+            if not params.get("anios"):
+                params["anios"] = [2025]
 
             df = get_facturas_proveedor_detalle(
                 proveedores=proveedores_raw,
