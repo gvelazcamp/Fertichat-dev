@@ -4,32 +4,18 @@
 
 import streamlit as st
 
-# =========================
-# ESTADO / DEBUG DE CARGA (FORZADO)
-# =========================
+# Marcar cargado (visible para debug)
 ORQUESTADOR_CARGADO = True
 ORQUESTADOR_ERROR = None
 
-
-def _init_orquestador_state():
-    """
-    Fuerza ORQUESTADOR_CARGADO en:
-    - global (ORQUESTADOR_CARGADO)
-    - session_state (st.session_state["ORQUESTADOR_CARGADO"])
-    Así, en tu debug NO debería aparecer None.
-    """
-    global ORQUESTADOR_CARGADO, ORQUESTADOR_ERROR
-    ORQUESTADOR_CARGADO = True
-    ORQUESTADOR_ERROR = None
-    try:
+# Asegurar que en session_state NO quede None
+try:
+    if st.session_state.get("ORQUESTADOR_CARGADO", None) is None:
         st.session_state["ORQUESTADOR_CARGADO"] = True
-        st.session_state["ORQUESTADOR_ERROR"] = None
-    except Exception as e:
-        ORQUESTADOR_ERROR = str(e)
-
-
-# Ejecutar al importar (y también se vuelve a ejecutar por seguridad en cada pregunta)
-_init_orquestador_state()
+    else:
+        st.session_state["ORQUESTADOR_CARGADO"] = True
+except Exception:
+    pass
 
 # =========================
 # ORQUESTADOR V2 - USA IA INTERPRETADOR
@@ -48,6 +34,7 @@ from ia_interpretador import interpretar_pregunta, obtener_info_tipo, es_tipo_va
 # =========================
 
 # --- COMPRAS / FACTURAS ---
+# Import “base” (los que suelen existir)
 from sql_compras import (
     get_compras_anio,
     get_total_compras_anio,
@@ -57,7 +44,7 @@ from sql_compras import (
     get_detalle_compras_articulo_anio,
     get_total_compras_articulo_anio,
     get_compras_por_mes_excel,
-    # Facturas (fallback si NO existe sql_facturas)
+    # Facturas (compat)
     get_ultima_factura_inteligente,
     get_facturas_de_articulo,
     get_detalle_factura_por_numero,
@@ -67,6 +54,7 @@ from sql_compras import (
 )
 
 # --- COMPAT: algunas versiones tuyas tienen nombres distintos ---
+# Detalle proveedor año: a veces se llama get_detalle_compras_proveedor_anio, a veces get_detalle_facturas_proveedor_anio
 try:
     from sql_compras import get_detalle_compras_proveedor_anio as _get_detalle_prov_anio
 except Exception:
@@ -99,9 +87,9 @@ def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int, limite: i
     return pd.DataFrame()
 
 
-# Total facturas proveedor (fallback)
+# Total facturas proveedor: en tu SQL aparece como get_total_facturas_proveedor (plural)
 try:
-    from sql_compras import get_total_factura_proveedor as get_total_factura_proveedor
+    from sql_compras import get_total_factura_proveedor as get_total_factura_proveedor  # si existe en tu repo
 except Exception:
     try:
         from sql_compras import get_total_facturas_proveedor as get_total_factura_proveedor
@@ -110,51 +98,79 @@ except Exception:
             return pd.DataFrame()
 
 
-# Facturas por proveedor (detalle) - fallback
+# =========================================================
+# FACTURAS: forzar uso de SQL_FACTURAS si existe (SIN romper)
+# =========================================================
+
 try:
-    from sql_queries import get_facturas_proveedor_detalle as get_facturas_proveedor_detalle
+    import sql_facturas as sqlq_facturas
+except Exception:
+    sqlq_facturas = None
+
+# Fallback antiguo (si tu repo lo tenía en sql_queries o sql_compras)
+try:
+    from sql_queries import get_facturas_proveedor_detalle as _get_facturas_proveedor_detalle_fallback
 except Exception:
     try:
-        from sql_compras import get_facturas_proveedor_detalle as get_facturas_proveedor_detalle
+        from sql_compras import get_facturas_proveedor_detalle as _get_facturas_proveedor_detalle_fallback
     except Exception:
-        def get_facturas_proveedor_detalle(*args, **kwargs) -> pd.DataFrame:
+        _get_facturas_proveedor_detalle_fallback = None
+
+
+def get_facturas_proveedor_detalle(
+    proveedores: List[str],
+    meses: Optional[List[str]] = None,
+    anios: Optional[List[int]] = None,
+    desde: Optional[str] = None,
+    hasta: Optional[str] = None,
+    articulo: Optional[str] = None,
+    moneda: Optional[str] = None,
+    limite: int = 5000,
+) -> pd.DataFrame:
+    """
+    Wrapper para que 'facturas_proveedor' SIEMPRE tome SQL_FACTURAS si está.
+    """
+    # Preferir SQL_FACTURAS (tu pedido)
+    if sqlq_facturas is not None and hasattr(sqlq_facturas, "get_facturas_proveedor"):
+        try:
+            return sqlq_facturas.get_facturas_proveedor(
+                proveedores=proveedores,
+                meses=meses,
+                anios=anios,
+                desde=desde,
+                hasta=hasta,
+                articulo=articulo,
+                moneda=moneda,
+                limite=limite,
+            )
+        except Exception:
             return pd.DataFrame()
 
+    # Fallback antiguo
+    if _get_facturas_proveedor_detalle_fallback is not None:
+        try:
+            return _get_facturas_proveedor_detalle_fallback(
+                proveedores=proveedores,
+                meses=meses,
+                anios=anios,
+                desde=desde,
+                hasta=hasta,
+                articulo=articulo,
+                moneda=moneda,
+                limite=limite,
+            )
+        except Exception:
+            try:
+                return _get_facturas_proveedor_detalle_fallback(proveedores, meses, anios, moneda, limite)
+            except Exception:
+                return pd.DataFrame()
 
-# =========================
-# OVERRIDE FACTURAS: USAR SQL_FACTURAS SI EXISTE (LO QUE PEDISTE)
-# =========================
-try:
-    from sql_facturas import (
-        get_facturas_proveedor as _sf_get_facturas_proveedor,
-        get_total_facturas_proveedor as _sf_get_total_facturas_proveedor,
-        get_detalle_factura_por_numero as _sf_get_detalle_factura_por_numero,
-        get_total_factura_por_numero as _sf_get_total_factura_por_numero,
-        get_ultima_factura_inteligente as _sf_get_ultima_factura_inteligente,
-        get_facturas_articulo as _sf_get_facturas_articulo,
-    )
-
-    # Reemplazar SOLO las funciones de FACTURAS (sin tocar compras/comparativas/stock)
-    get_facturas_proveedor_detalle = _sf_get_facturas_proveedor
-    get_total_factura_proveedor = _sf_get_total_facturas_proveedor
-    get_detalle_factura_por_numero = _sf_get_detalle_factura_por_numero
-    get_total_factura_por_numero = _sf_get_total_factura_por_numero
-    get_ultima_factura_inteligente = _sf_get_ultima_factura_inteligente
-
-    # Compat: tu orquestador importa "get_facturas_de_articulo"
-    get_facturas_de_articulo = _sf_get_facturas_articulo
-
-    try:
-        st.session_state["DBG_FACTURAS_ORIGEN"] = "sql_facturas"
-    except Exception:
-        pass
-
-except Exception:
-    # Si sql_facturas no existe todavía, queda todo como estaba.
-    pass
+    return pd.DataFrame()
 
 
-# --- COMPARATIVAS + GASTOS ---
+# =========================================================
+# COMPARATIVAS + GASTOS (según tu sql_comparativas.py)
+# =========================================================
 from sql_comparativas import (
     get_comparacion_proveedor_meses,
     get_comparacion_articulo_anios,
@@ -169,6 +185,8 @@ from sql_comparativas import (
     get_gastos_secciones_detalle_completo,
 )
 
+# Estas 2 pueden no existir en tu sql_comparativas.py actual.
+# Las dejo opcionales para que NO rompa el import del orquestador.
 try:
     from sql_comparativas import get_comparacion_articulo_meses
 except Exception:
@@ -264,12 +282,16 @@ def procesar_pregunta_v2(pregunta: str) -> Tuple[str, Optional[pd.DataFrame], Op
     - sugerencia_info: dict o None
     """
 
-    # Forzar estado en cada pregunta (para que NO quede None)
-    _init_orquestador_state()
-
     print(f"\n{'='*60}")
     print(f"📝 PREGUNTA: {pregunta}")
     print(f"{'='*60}")
+
+    # Asegurar que en session_state NO quede None
+    try:
+        if st.session_state.get("ORQUESTADOR_CARGADO", None) is None:
+            st.session_state["ORQUESTADOR_CARGADO"] = True
+    except Exception:
+        pass
 
     interpretacion = interpretar_pregunta(pregunta)
 
@@ -281,6 +303,7 @@ def procesar_pregunta_v2(pregunta: str) -> Tuple[str, Optional[pd.DataFrame], Op
     print(f"📦 PARAMS: {params}")
     print(f"🔍 DEBUG: {debug}")
 
+    # DEBUG (interpretación)
     try:
         if st.session_state.get("DEBUG_SQL", False):
             st.session_state["DBG_INT_LAST"] = {
@@ -292,19 +315,23 @@ def procesar_pregunta_v2(pregunta: str) -> Tuple[str, Optional[pd.DataFrame], Op
     except Exception:
         pass
 
+    # Conversación
     if tipo == "conversacion":
         respuesta = responder_con_openai(pregunta, "conversacion")
         return f"💬 {respuesta}", None, None
 
+    # Conocimiento general
     if tipo == "conocimiento":
         respuesta = responder_con_openai(pregunta, "conocimiento")
         return f"📚 {respuesta}", None, None
 
+    # Fallback: si no entendió pero pide detalle factura
     if tipo == "no_entendido":
         nro_fb = _extraer_nro_factura_fallback(pregunta)
         if nro_fb:
             return _ejecutar_consulta("detalle_factura_numero", {"nro_factura": nro_fb}, pregunta)
 
+    # No entendido → sugerencia
     if tipo == "no_entendido":
         sugerencia = interpretacion.get("sugerencia", "No entendí tu pregunta.")
         alternativas = interpretacion.get("alternativas", [])
@@ -431,7 +458,7 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             anio = params.get("anio")
 
             if not articulo or not anio:
-                return "❌ Falta artículo o mes.", None, None
+                return "❌ Falta artículo o año.", None, None
 
             resumen = get_total_compras_articulo_anio(articulo, anio)
             df = get_detalle_compras_articulo_anio(articulo, anio)
@@ -471,18 +498,21 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             if df is None or df.empty:
                 return f"No encontré detalle para la factura {nro}.", None, None
 
-            total_info = get_total_factura_por_numero(nro)
+            total_df = get_total_factura_por_numero(nro)
 
-            # Compat: puede venir dict (sql_facturas) o DataFrame (sql_compras viejo)
-            total_fact = 0.0
-            try:
-                if isinstance(total_info, dict):
-                    total_fact = float(total_info.get("total", 0) or total_info.get("total_factura", 0) or 0)
-                elif isinstance(total_info, pd.DataFrame) and (not total_info.empty):
-                    if "total_factura" in total_info.columns:
-                        total_fact = float(total_info["total_factura"].iloc[0] or 0)
-            except Exception:
-                total_fact = 0.0
+            total_fact = 0
+            # Si tu función retorna dict, soportarlo también
+            if isinstance(total_df, dict):
+                try:
+                    total_fact = float(total_df.get("total", 0) or 0)
+                except Exception:
+                    total_fact = 0
+            else:
+                if total_df is not None and not total_df.empty and "total_factura" in total_df.columns:
+                    try:
+                        total_fact = float(total_df["total_factura"].iloc[0] or 0)
+                    except Exception:
+                        total_fact = 0
 
             total_fmt = f"${total_fact:,.0f}".replace(",", ".") if total_fact else ""
             titulo = f"🧾 Detalle factura **{nro}**"
@@ -492,7 +522,7 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             return titulo + ":", formatear_dataframe(df), None
 
         # =========================================================
-        # FACTURAS (LISTADO)  <-- AHORA SALE DESDE sql_facturas SI EXISTE
+        # FACTURAS (LISTADO)
         # =========================================================
         if tipo in ("facturas_proveedor", "facturas_proveedor_detalle"):
             proveedores = params.get("proveedores", [])
@@ -503,9 +533,16 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             if not proveedores_raw:
                 return "❌ Indicá el proveedor. Ej: todas las facturas roche 2025", None, None
 
-            # Default a 2025 si no se especifica año (para coincidir con el SQL de Supabase)
-            if not params.get("anios"):
-                params["anios"] = [2025]
+            # Debug: origen real
+            try:
+                if st.session_state.get("DEBUG_SQL", False):
+                    st.session_state["DBG_SQL_LAST_ORIGEN"] = (
+                        "sql_facturas.get_facturas_proveedor"
+                        if (sqlq_facturas is not None and hasattr(sqlq_facturas, "get_facturas_proveedor"))
+                        else "fallback (sql_queries/sql_compras)"
+                    )
+            except Exception:
+                pass
 
             df = get_facturas_proveedor_detalle(
                 proveedores=proveedores_raw,
@@ -756,6 +793,9 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
 
             return f"📦 **Lote {str(lote).upper()}:**", formatear_dataframe(df), None
 
+        # =========================================================
+        # TIPO NO RECONOCIDO
+        # =========================================================
         return f"❌ Tipo de consulta '{tipo}' no implementado.", None, None
 
     except Exception as e:
@@ -781,6 +821,7 @@ def procesar_pregunta(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
 
 
 def procesar_pregunta_router(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
+    """Alias para compatibilidad con ui_compras.py"""
     return procesar_pregunta(pregunta)
 
 
