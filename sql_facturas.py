@@ -171,12 +171,14 @@ def get_facturas_proveedor(
     ]
     params: List[Any] = []
 
-    # Proveedores (OR)
+    # Proveedores (OR) - MISMA LÓGICA QUE TU SQL
     prov_clauses: List[str] = []
     for p in [str(x).strip() for x in proveedores if str(x).strip()]:
-        p_lower = p.lower().strip()
+        # Limpiar el patron: remover caracteres especiales, spaces extras
+        p_clean = p.lower().strip()
+        # Usar LIKE con % al inicio y final (igual que tu SQL)
         prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
-        params.append(f"%{p_lower}%")
+        params.append(f"%{p_clean}%")
 
     where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
@@ -209,13 +211,19 @@ def get_facturas_proveedor(
                 where_parts.append(f'TRIM("Mes") IN ({ph})')
                 params.extend(meses_ok)
 
-        # Años (solo si NO hay meses)
+        # Años (solo si NO hay meses) - MISMO FORMATO QUE TU SQL
         if (not meses) and anios:
             anios_ok = [int(a) for a in (anios or []) if a]
             if anios_ok:
-                ph = ", ".join(["%s"] * len(anios_ok))
-                where_parts.append(f'"Año"::int IN ({ph})')
-                params.extend(anios_ok)
+                # Si es un solo año, usar = en vez de IN
+                if len(anios_ok) == 1:
+                    where_parts.append('"Año"::int = %s')
+                    params.append(anios_ok[0])
+                else:
+                    # Para múltiples años, usar IN
+                    ph = ", ".join(["%s"] * len(anios_ok))
+                    where_parts.append(f'"Año"::int IN ({ph})')
+                    params.extend(anios_ok)
 
     total_expr = _sql_total_num_expr_general()
     
@@ -294,9 +302,13 @@ def get_total_facturas_proveedor(
         if (not meses) and anios:
             anios_ok = [int(a) for a in (anios or []) if a]
             if anios_ok:
-                ph = ", ".join(["%s"] * len(anios_ok))
-                where_parts.append(f'"Año"::int IN ({ph})')
-                params.extend(anios_ok)
+                if len(anios_ok) == 1:
+                    where_parts.append('"Año"::int = %s')
+                    params.append(anios_ok[0])
+                else:
+                    ph = ", ".join(["%s"] * len(anios_ok))
+                    where_parts.append(f'"Año"::int IN ({ph})')
+                    params.extend(anios_ok)
 
     total_pesos = _sql_total_num_expr()
     total_usd = _sql_total_num_expr_usd()
@@ -448,9 +460,13 @@ def get_resumen_facturas_por_proveedor(
     if (not meses) and anios:
         anios_ok = [int(a) for a in (anios or []) if a]
         if anios_ok:
-            ph = ", ".join(["%s"] * len(anios_ok))
-            where_parts.append(f'"Año"::int IN ({ph})')
-            params.extend(anios_ok)
+            if len(anios_ok) == 1:
+                where_parts.append('"Año"::int = %s')
+                params.append(anios_ok[0])
+            else:
+                ph = ", ".join(["%s"] * len(anios_ok))
+                where_parts.append(f'"Año"::int IN ({ph})')
+                params.extend(anios_ok)
 
     total_expr = _sql_total_num_expr_general()
     
@@ -514,9 +530,13 @@ def get_facturas_por_rango_monto(
         params.extend(meses)
     
     if (not meses) and anios:
-        ph = ", ".join(["%s"] * len(anios))
-        where_parts.append(f'"Año"::int IN ({ph})')
-        params.extend(anios)
+        if len(anios) == 1:
+            where_parts.append('"Año"::int = %s')
+            params.append(anios[0])
+        else:
+            ph = ", ".join(["%s"] * len(anios))
+            where_parts.append(f'"Año"::int IN ({ph})')
+            params.extend(anios)
 
     total_expr = _sql_total_num_expr_general()
     
