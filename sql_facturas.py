@@ -183,7 +183,7 @@ def get_facturas_proveedor(
     """
     Lista facturas por proveedor(es) con la lógica:
     - Tipo Comprobante: Compra Contado OR ILIKE 'Compra%' OR ILIKE 'Factura%'
-    - Año: "Año" = %s (sin cast)
+    - Año: "Año" = %s
     - Proveedor: LOWER("Cliente / Proveedor") LIKE %s
     - Monto: SUM(conversión de "Monto Neto")
     """
@@ -206,6 +206,7 @@ def get_facturas_proveedor(
     ]
     params: List[Any] = []
 
+    # Proveedores (OR)
     prov_clauses: List[str] = []
     for p in [str(x).strip() for x in proveedores if str(x).strip()]:
         p_clean = p.lower().strip()
@@ -213,10 +214,12 @@ def get_facturas_proveedor(
         params.append(f"%{p_clean}%")
     where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
+    # Artículo (opcional)
     if articulo and str(articulo).strip():
         where_parts.append('LOWER(TRIM("Articulo")) LIKE %s')
         params.append(f"%{str(articulo).lower().strip()}%")
 
+    # Moneda (opcional)
     if moneda and str(moneda).strip():
         m = str(moneda).strip().upper()
         if m in ("USD", "U$S", "U$$", "US$"):
@@ -227,6 +230,7 @@ def get_facturas_proveedor(
             where_parts.append('UPPER(TRIM("Moneda")) LIKE %s')
             params.append(f"%{m}%")
 
+    # Tiempo (rango > meses > años)
     if desde and hasta:
         where_parts.append('"Fecha"::date BETWEEN %s AND %s')
         params.extend([desde, hasta])
@@ -278,6 +282,7 @@ def get_facturas_proveedor(
     print(f"DEBUG: Total filas en chatbot_raw: {df_test.iloc[0]['total'] if df_test is not None and not df_test.empty else '0 o None'}")
 
     try:
+        import streamlit as st
         st.session_state["DEBUG_SQL_FACTURA_QUERY"] = query
         st.session_state["DEBUG_SQL_FACTURA_PARAMS"] = tuple(params)
     except Exception:
