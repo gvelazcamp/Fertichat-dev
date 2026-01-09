@@ -99,7 +99,7 @@ TABLA_TIPOS = """
 # =====================================================================
 TABLA_CANONICA_50 = r"""
 | # | ACCIÓN | OBJETO | TIEMPO | MULTI | TIPO (output) | PARAMS |
-|---|--------|--------|--------|-------|---------------|--------|
+|---|--------|--------|-------|-------|---------------|--------|
 | 01 | compras | (ninguno) | anio | no | compras_anio | anio |
 | 02 | compras | (ninguno) | mes | no | compras_mes | mes |
 | 03 | compras | proveedor | anio | no | facturas_proveedor | proveedores, anios |
@@ -801,6 +801,8 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         # Fusionar: compras con proveedor + año -> facturas_proveedor (mismo SQL que facturas)
         if provs and anios:
             proveedor = _alias_proveedor(provs[0])
+            # ✅ AGREGAR DEBUG AQUÍ
+            print(f"\n🔄 FUSIÓN: 'compras {proveedor} {anios[0]}' → tipo 'facturas_proveedor'. Parámetros: proveedores=[{proveedor}], anios={anios}")
             return {
                 "tipo": "facturas_proveedor",
                 "parametros": {
