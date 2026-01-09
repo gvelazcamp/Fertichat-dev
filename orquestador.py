@@ -7,10 +7,11 @@ import streamlit as st
 # Marcar cargado (visible para debug)
 ORQUESTADOR_CARGADO = True
 ORQUESTADOR_ERROR = None
+
 try:
     st.session_state["ORQUESTADOR_CARGADO"] = True
-except Exception:
-    pass
+except Exception as e:
+    ORQUESTADOR_ERROR = str(e)
 
 # =========================
 # ORQUESTADOR V2 - USA IA INTERPRETADOR
@@ -39,7 +40,7 @@ from sql_compras import (
     get_detalle_compras_articulo_anio,
     get_total_compras_articulo_anio,
     get_compras_por_mes_excel,
-    # Facturas (quedan, pero abajo se "FORZA" sql_facturas si existe)
+    # Facturas (compat)
     get_ultima_factura_inteligente,
     get_facturas_de_articulo,
     get_detalle_factura_por_numero,
@@ -48,23 +49,13 @@ from sql_compras import (
     get_top_10_proveedores_chatbot,
 )
 
-# --- FORZAR FACTURAS DESDE SQL_FACTURAS (SI EXISTE) ---
-# (No rompe: si falla, queda lo de sql_compras)
+# ✅ FORZAR FACTURAS (módulo específico)
+_SQL_FACTURAS_IMPORT_ERROR = None
 try:
-    from sql_facturas import (
-        get_ultima_factura_inteligente as get_ultima_factura_inteligente,
-        get_detalle_factura_por_numero as get_detalle_factura_por_numero,
-        get_total_factura_por_numero as get_total_factura_por_numero,
-    )
-except Exception:
-    pass
-
-# Intentar mapear "facturas de articulo" a sql_facturas si existe
-try:
-    from sql_facturas import get_facturas_articulo as get_facturas_de_articulo
-except Exception:
-    pass
-
+    import sql_facturas as sqlq_facturas
+except Exception as e:
+    sqlq_facturas = None
+    _SQL_FACTURAS_IMPORT_ERROR = str(e)
 
 # --- COMPAT: algunas versiones tuyas tienen nombres distintos ---
 # Detalle proveedor año: a veces se llama get_detalle_compras_proveedor_anio, a veces get_detalle_facturas_proveedor_anio
@@ -100,30 +91,22 @@ def get_detalle_compras_proveedor_anio(proveedor_like: str, anio: int, limite: i
     return pd.DataFrame()
 
 
-# Total facturas proveedor (preferente: sql_facturas)
+# Total facturas proveedor: en tu SQL aparece como get_total_facturas_proveedor (plural)
 try:
-    from sql_facturas import get_total_facturas_proveedor as get_total_factura_proveedor
+    from sql_compras import get_total_factura_proveedor as get_total_factura_proveedor  # si existe en tu repo
 except Exception:
-    # fallback a tus versiones anteriores
     try:
-        from sql_compras import get_total_factura_proveedor as get_total_factura_proveedor  # si existe en tu repo
+        from sql_compras import get_total_facturas_proveedor as get_total_factura_proveedor
     except Exception:
-        try:
-            from sql_compras import get_total_facturas_proveedor as get_total_factura_proveedor
-        except Exception:
-            def get_total_factura_proveedor(*args, **kwargs) -> Any:
-                return {"registros": 0, "facturas": 0, "total_pesos": 0, "total_usd": 0}
+        def get_total_factura_proveedor(*args, **kwargs) -> pd.DataFrame:
+            return pd.DataFrame()
 
 
-# Facturas por proveedor (detalle) - FORZAR SQL_FACTURAS
+# Facturas por proveedor (detalle) - puede vivir en sql_queries.py o sql_compras.py (lo dejamos por compat, pero NO lo usamos para facturas_proveedor)
 try:
-    from sql_facturas import get_facturas_proveedor as get_facturas_proveedor_detalle
+    from sql_queries import get_facturas_proveedor_detalle as get_facturas_proveedor_detalle
 except Exception:
-    # fallback si no existe sql_facturas en tu repo
-    try:
-        from sql_queries import get_facturas_proveedor_detalle as get_facturas_proveedor_detalle
-    except Exception:
-        from sql_compras import get_facturas_proveedor_detalle as get_facturas_proveedor_detalle
+    from sql_compras import get_facturas_proveedor_detalle as get_facturas_proveedor_detalle
 
 
 # --- COMPARATIVAS + GASTOS (según tu sql_comparativas.py) ---
@@ -172,6 +155,24 @@ from sql_stock import (
 # Importar utilidades
 from utils_format import formatear_dataframe
 from utils_openai import responder_con_openai
+
+
+# =====================================================================
+# ORQUESTADOR - MARCAR CARGADO (ANTI-NONE)
+# =====================================================================
+
+def _mark_orquestador_loaded():
+    """
+    Evita que en debug aparezca ORQUESTADOR_CARGADO=None:
+    - deja ORQUESTADOR_CARGADO=True
+    - setea st.session_state["ORQUESTADOR_CARGADO"]=True cada vez que procesás una pregunta
+    """
+    global ORQUESTADOR_CARGADO, ORQUESTADOR_ERROR
+    ORQUESTADOR_CARGADO = True
+    try:
+        st.session_state["ORQUESTADOR_CARGADO"] = True
+    except Exception as e:
+        ORQUESTADOR_ERROR = str(e)
 
 
 # =====================================================================
@@ -237,6 +238,8 @@ def procesar_pregunta_v2(pregunta: str) -> Tuple[str, Optional[pd.DataFrame], Op
     - df: DataFrame o None
     - sugerencia_info: dict o None
     """
+
+    _mark_orquestador_loaded()
 
     print(f"\n{'='*60}")
     print(f"📝 PREGUNTA: {pregunta}")
@@ -304,6 +307,8 @@ def procesar_pregunta_v2(pregunta: str) -> Tuple[str, Optional[pd.DataFrame], Op
 def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple[str, Optional[pd.DataFrame], None]:
     """Ejecuta la consulta SQL según el tipo de consulta."""
     try:
+        _mark_orquestador_loaded()
+
         # =========================================================
         # COMPRAS
         # =========================================================
@@ -436,42 +441,36 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             return f"📦 Compras de {mes} ({len(df)} registros):", formatear_dataframe(df), None
 
         # =========================================================
-        # DETALLE FACTURA POR NÚMERO
+        # DETALLE FACTURA POR NÚMERO (FORZADO A SQL_FACTURAS)
         # =========================================================
         if tipo == "detalle_factura_numero":
             nro = params.get("nro_factura")
             if not nro:
                 return "❌ Falta número de factura.", None, None
 
-            # Debug: confirmar handler
+            if sqlq_facturas is None:
+                return f"❌ No pude importar sql_facturas.py: {_SQL_FACTURAS_IMPORT_ERROR}", None, None
+
+            # ✅ Debug: confirma handler exacto
             try:
-                st.session_state["DBG_SQL_HANDLER"] = "sql_facturas.get_detalle_factura_por_numero / get_total_factura_por_numero"
+                st.session_state["DBG_SQL_HANDLER"] = "sql_facturas.get_detalle_factura_por_numero + sql_facturas.get_total_factura_por_numero"
             except Exception:
                 pass
 
-            df = get_detalle_factura_por_numero(nro)
+            df = sqlq_facturas.get_detalle_factura_por_numero(nro)
             if df is None or df.empty:
                 return f"No encontré detalle para la factura {nro}.", None, None
 
-            total_obj = get_total_factura_por_numero(nro)
+            total_obj = sqlq_facturas.get_total_factura_por_numero(nro)
+
             total_fact = 0.0
             moneda_total = ""
-
-            # ✅ Compatible: si devuelve dict (sql_facturas) o DataFrame (otras versiones)
             if isinstance(total_obj, dict):
                 try:
                     total_fact = float(total_obj.get("total", 0) or 0)
                 except Exception:
                     total_fact = 0.0
                 moneda_total = str(total_obj.get("moneda", "") or "")
-            elif isinstance(total_obj, pd.DataFrame):
-                try:
-                    if (total_obj is not None) and (not total_obj.empty) and ("total_factura" in total_obj.columns):
-                        total_fact = float(total_obj["total_factura"].iloc[0] or 0)
-                    if (total_obj is not None) and (not total_obj.empty) and ("Moneda" in total_obj.columns):
-                        moneda_total = str(total_obj["Moneda"].iloc[0] or "")
-                except Exception:
-                    total_fact = 0.0
 
             total_fmt = f"${total_fact:,.0f}".replace(",", ".") if total_fact else ""
             titulo = f"🧾 Detalle factura **{nro}**"
@@ -484,7 +483,7 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             return titulo + ":", formatear_dataframe(df), None
 
         # =========================================================
-        # FACTURAS (LISTADO)
+        # FACTURAS (LISTADO) (FORZADO A SQL_FACTURAS)
         # =========================================================
         if tipo in ("facturas_proveedor", "facturas_proveedor_detalle"):
             proveedores = params.get("proveedores", [])
@@ -495,14 +494,17 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             if not proveedores_raw:
                 return "❌ Indicá el proveedor. Ej: todas las facturas roche 2025", None, None
 
-            # Debug: confirmar handler
+            if sqlq_facturas is None:
+                return f"❌ No pude importar sql_facturas.py: {_SQL_FACTURAS_IMPORT_ERROR}", None, None
+
+            # ✅ Debug: confirma handler exacto
             try:
                 st.session_state["DBG_SQL_HANDLER"] = "sql_facturas.get_facturas_proveedor"
             except Exception:
                 pass
 
-            df = get_facturas_proveedor_detalle(
-                proveedores=proveedores_raw,  # <-- raw (roche). El LIKE lo hace SQL_FACTURAS.
+            df = sqlq_facturas.get_facturas_proveedor(
+                proveedores=proveedores_raw,
                 meses=params.get("meses"),
                 anios=params.get("anios"),
                 desde=params.get("desde"),
@@ -789,8 +791,16 @@ def procesar_pregunta_router(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]
 if __name__ == "__main__":
     print("=" * 60)
     print("🛠 Verificando estado del orquestador...")
+
+    try:
+        _mark_orquestador_loaded()
+    except Exception:
+        pass
+
     try:
         print(f"ORQUESTADOR_CARGADO (session): {st.session_state.get('ORQUESTADOR_CARGADO', None)}")
     except Exception:
         print("ORQUESTADOR_CARGADO (session): n/a")
+
+    print(f"ORQUESTADOR_CARGADO (variable): {ORQUESTADOR_CARGADO}")
     print("=" * 60)
