@@ -287,6 +287,10 @@ def get_facturas_proveedor(
         LIMIT {limite};
     """
 
+    # DEBUG: Verificar total filas en tabla
+    df_test = ejecutar_consulta("SELECT COUNT(*) as total FROM chatbot_raw", ())
+    print(f"DEBUG: Total filas en chatbot_raw: {df_test.iloc[0]['total'] if df_test is not None and not df_test.empty else '0 o None'}")
+
     # DEBUG: Guardar en session_state para mostrar en UI
     try:
         import streamlit as st
