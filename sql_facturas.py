@@ -1,8 +1,7 @@
 # =========================
-# SQL_FACTURAS.PY - CONSULTAS DE FACTURAS
+# SQL_FACTURAS.PY - CONSULTAS DE FACTURAS (VERSIÓN FORZADA)
 # =========================
 
-import re
 import pandas as pd
 from typing import List, Optional, Any
 from sql_core import (
@@ -61,6 +60,7 @@ def _factura_variantes(nro_factura: str) -> List[str]:
 # =====================================================================
 
 def _sql_monto_neto_num_expr() -> str:
+    # dejamos este helper para otras funciones (resúmenes, rangos, etc.)
     return """
         (
           CASE
@@ -167,7 +167,7 @@ def get_total_factura_por_numero(nro_factura: str) -> dict:
 
 
 # =====================================================================
-# FACTURAS POR PROVEEDOR
+# FACTURAS POR PROVEEDOR (FORZADO AL SQL CANÓNICO)
 # =====================================================================
 
 def get_facturas_proveedor(
@@ -181,81 +181,23 @@ def get_facturas_proveedor(
     limite: int = 5000,
 ) -> pd.DataFrame:
     """
-    Lista facturas por proveedor(es) con la lógica:
-    - Tipo Comprobante: Compra Contado OR ILIKE 'Compra%' OR ILIKE 'Factura%'
-    - Año: "Año" = %s
-    - Proveedor: LOWER("Cliente / Proveedor") LIKE %s
-    - Monto: SUM(conversión de "Monto Neto")
+    FORZADO: usa siempre el SQL canónico que probaste en Supabase.
+
+    Ignora meses, desde, hasta, moneda y artículo.
+    Usa solo:
+    - primer proveedor de la lista
+    - primer año de la lista
     """
 
     if not proveedores:
         return pd.DataFrame()
+    if not anios:
+        return pd.DataFrame()
 
-    limite = int(limite or 5000)
-    if limite <= 0:
-        limite = 5000
+    prov = str(proveedores[0]).strip()
+    anio = int(anios[0])
 
-    where_parts = [
-        """
-        (
-          "Tipo Comprobante" = 'Compra Contado'
-          OR "Tipo Comprobante" ILIKE 'Compra%'
-          OR "Tipo Comprobante" ILIKE 'Factura%'
-        )
-        """.strip()
-    ]
-    params: List[Any] = []
-
-    # Proveedores (OR)
-    prov_clauses: List[str] = []
-    for p in [str(x).strip() for x in proveedores if str(x).strip()]:
-        p_clean = p.lower().strip()
-        prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
-        params.append(f"%{p_clean}%")
-    where_parts.append("(" + " OR ".join(prov_clauses) + ")")
-
-    # Artículo (opcional)
-    if articulo and str(articulo).strip():
-        where_parts.append('LOWER(TRIM("Articulo")) LIKE %s')
-        params.append(f"%{str(articulo).lower().strip()}%")
-
-    # Moneda (opcional)
-    if moneda and str(moneda).strip():
-        m = str(moneda).strip().upper()
-        if m in ("USD", "U$S", "U$$", "US$"):
-            where_parts.append('TRIM("Moneda") IN (\'U$S\', \'U$$\', \'USD\', \'US$\')')
-        elif m in ("$", "PESOS", "UYU", "URU"):
-            where_parts.append('TRIM("Moneda") = \'$\'')
-        else:
-            where_parts.append('UPPER(TRIM("Moneda")) LIKE %s')
-            params.append(f"%{m}%")
-
-    # Tiempo (rango > meses > años)
-    if desde and hasta:
-        where_parts.append('"Fecha"::date BETWEEN %s AND %s')
-        params.extend([desde, hasta])
-    else:
-        if meses:
-            meses_ok = [m for m in (meses or []) if m]
-            if meses_ok:
-                ph = ", ".join(["%s"] * len(meses_ok))
-                where_parts.append(f'TRIM("Mes") IN ({ph})')
-                params.extend(meses_ok)
-
-        if (not meses) and anios:
-            anios_ok = [int(a) for a in (anios or []) if a]
-            if anios_ok:
-                if len(anios_ok) == 1:
-                    where_parts.append('"Año" = %s')
-                    params.append(anios_ok[0])
-                else:
-                    ph = ", ".join(["%s"] * len(anios_ok))
-                    where_parts.append(f'"Año" IN ({ph})')
-                    params.extend(anios_ok)
-
-    monto_expr = _sql_monto_neto_num_expr()
-
-    query = f"""
+    query = """
         SELECT
           ROW_NUMBER() OVER (ORDER BY "Fecha"::date, "Nro. Comprobante") AS nro,
           TRIM("Cliente / Proveedor") AS proveedor,
@@ -263,35 +205,51 @@ def get_facturas_proveedor(
           "Tipo Comprobante",
           "Nro. Comprobante",
           "Moneda",
-          SUM({monto_expr}) AS monto_neto
+          SUM(
+            CASE
+              WHEN TRIM("Monto Neto") LIKE '(%'
+                THEN -1 * REPLACE(
+                           REPLACE(
+                             REPLACE(
+                               REPLACE(TRIM("Monto Neto"), '(', ''),
+                             ')', ''),
+                           '.', ''),
+                         ',', '.')::numeric
+              ELSE REPLACE(
+                     REPLACE(TRIM("Monto Neto"), '.', ''),
+                     ',', '.'
+                   )::numeric
+            END
+          ) AS monto_neto
         FROM chatbot_raw
-        WHERE {" AND ".join(where_parts)}
+        WHERE
+          (
+            "Tipo Comprobante" = 'Compra Contado'
+            OR "Tipo Comprobante" ILIKE 'Compra%'
+            OR "Tipo Comprobante" ILIKE 'Factura%'
+          )
+          AND LOWER("Cliente / Proveedor") LIKE LOWER(%s)
+          AND "Año" = %s
         GROUP BY
           TRIM("Cliente / Proveedor"),
           "Fecha",
           "Tipo Comprobante",
           "Nro. Comprobante",
           "Moneda"
-        ORDER BY
-          nro
-        LIMIT {limite};
+        ORDER BY nro
     """
 
-    # DEBUG tabla
-    df_test = ejecutar_consulta("SELECT COUNT(*) as total FROM chatbot_raw", ())
-    print(f"DEBUG: Total filas en chatbot_raw: {df_test.iloc[0]['total'] if df_test is not None and not df_test.empty else '0 o None'}")
+    params = (f"%{prov.lower()}%", anio)
 
-    try:
-        import streamlit as st
-        st.session_state["DEBUG_SQL_FACTURA_QUERY"] = query
-        st.session_state["DEBUG_SQL_FACTURA_PARAMS"] = tuple(params)
-    except Exception:
-        pass
+    print("\n=== DEBUG get_facturas_proveedor (FORZADO) ===")
+    print(f"Proveedor: {prov}")
+    print(f"Año      : {anio}")
+    print("SQL:")
+    print(query)
+    print("Parámetros:", params)
+    print("=============================================")
 
-    print(f"DEBUG: Intentando consultar tabla 'chatbot_raw' con query: {query.strip()}")
-    print(f"DEBUG: Parámetros: {tuple(params)}")
-
-    return ejecutar_consulta(query, tuple(params))
+    return ejecutar_consulta(query, params)
 
 
 def get_total_facturas_proveedor(
@@ -303,7 +261,10 @@ def get_total_facturas_proveedor(
     articulo: Optional[str] = None,
     moneda: Optional[str] = None,
 ) -> dict:
-    """Totales por proveedor(es) usando la misma conversión de Monto Neto."""
+    """
+    Totales por proveedor(es) usando la misma conversión de Monto Neto.
+    No lo tocamos (puede seguir usando lógica dinámica).
+    """
     if not proveedores:
         return {"registros": 0, "total_pesos": 0, "total_usd": 0, "facturas": 0}
 
@@ -481,7 +442,7 @@ def get_facturas_articulo(
 
 
 # =====================================================================
-# RESUMEN DE FACTURAS (AGRUPADO)
+# RESUMEN Y RANGO (como los tenías)
 # =====================================================================
 
 def get_resumen_facturas_por_proveedor(
@@ -489,9 +450,6 @@ def get_resumen_facturas_por_proveedor(
     anios: Optional[List[int]] = None,
     moneda: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
-    Resumen agrupado: total por proveedor + cantidad de facturas.
-    """
     where_parts = [
         """
         (
@@ -548,10 +506,6 @@ def get_resumen_facturas_por_proveedor(
     return ejecutar_consulta(sql, tuple(params) if params else None)
 
 
-# =====================================================================
-# BÚSQUEDA DE FACTURAS POR RANGO DE MONTOS
-# =====================================================================
-
 def get_facturas_por_rango_monto(
     monto_min: float,
     monto_max: float,
@@ -561,9 +515,6 @@ def get_facturas_por_rango_monto(
     moneda: Optional[str] = None,
     limite: int = 100
 ) -> pd.DataFrame:
-    """
-    Busca facturas dentro de un rango de montos.
-    """
     where_parts = [
         """
         (
