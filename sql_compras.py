@@ -92,7 +92,6 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
 
     df = ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
 
-    # FALLBACK AUTOMÁTICO DE MES
     if df.empty:
         mes_alt = get_ultimo_mes_disponible_hasta(mes_key)
         if mes_alt and mes_alt != mes_key:
@@ -114,14 +113,10 @@ def get_detalle_facturas_proveedor_anio(
     limite: int = 5000
 ) -> pd.DataFrame:
     """Detalle de facturas de un proveedor en uno o varios años."""
-    
-    # Ordenar y preparar listado de años
     anios = sorted(anios)
-    anios_sql = ", ".join(map(str, anios))  # Combinación de años en una sola cadena SQL
-    
+    anios_sql = ", ".join(map(str, anios))
     total_expr = _sql_total_num_expr_general()
 
-    # Manejo de moneda (opcional)
     moneda_sql = ""
     if moneda:
         moneda = moneda.strip().upper()
@@ -130,7 +125,6 @@ def get_detalle_facturas_proveedor_anio(
         elif moneda in ("$", "UYU"):
             moneda_sql = "AND TRIM(\"Moneda\") = '$'"
 
-    # Manejo de proveedores
     prov_where = ""
     prov_params = []
     if proveedores:
@@ -138,7 +132,6 @@ def get_detalle_facturas_proveedor_anio(
         prov_params = [f"%{p.lower()}%" for p in proveedores]
         prov_where = f"AND ({' OR '.join(parts)})"
 
-    # Consulta SQL
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -190,7 +183,6 @@ def get_total_compras_proveedor_anio(
 # =====================================================================
 
 def get_detalle_compras_articulo_mes(articulo_like: str, mes_key: str) -> pd.DataFrame:
-    """Detalle de compras de un artículo en un mes específico."""
     articulo_like = (articulo_like or "").strip().lower()
     total_expr = _sql_total_num_expr_general()
     sql = f"""
@@ -216,7 +208,6 @@ def get_detalle_compras_articulo_mes(articulo_like: str, mes_key: str) -> pd.Dat
 # =====================================================================
 
 def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: int = 500) -> pd.DataFrame:
-    """Detalle de compras de un artículo en un año."""
     total_expr = _sql_total_num_expr_general()
     if limite is None:
         limite = 500
@@ -240,7 +231,6 @@ def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: int
 
 
 def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
-    """Total de compras de un artículo en un año."""
     total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
@@ -265,7 +255,6 @@ def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
 # =====================================================================
 
 def _factura_variantes(nro_factura: str) -> List[str]:
-    """Genera variantes de número de factura."""
     s = (nro_factura or "").strip().upper()
     if not s:
         return []
@@ -300,7 +289,6 @@ def _factura_variantes(nro_factura: str) -> List[str]:
 
 
 def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
-    """Detalle de una factura por número."""
     total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
@@ -335,7 +323,6 @@ def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
 
 
 def get_total_factura_por_numero(nro_factura: str) -> pd.DataFrame:
-    """Total de una factura."""
     total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT COALESCE(SUM({total_expr}), 0) AS total_factura
@@ -361,7 +348,6 @@ def get_total_factura_por_numero(nro_factura: str) -> pd.DataFrame:
 
 
 def get_ultima_factura_de_articulo(patron_articulo: str) -> pd.DataFrame:
-    """Última factura de un artículo."""
     total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
@@ -382,7 +368,6 @@ def get_ultima_factura_de_articulo(patron_articulo: str) -> pd.DataFrame:
 
 
 def get_ultima_factura_inteligente(patron: str) -> pd.DataFrame:
-    """Busca última factura por artículo O proveedor."""
     patron = (patron or "").strip().lower()
     total_expr = _sql_total_num_expr_general()
 
@@ -425,7 +410,6 @@ def get_ultima_factura_inteligente(patron: str) -> pd.DataFrame:
 
 
 def get_ultima_factura_numero_de_articulo(patron_articulo: str) -> Optional[str]:
-    """Obtiene solo el número de la última factura."""
     sql = """
         SELECT TRIM("Nro. Comprobante") AS nro_factura
         FROM chatbot_raw
@@ -441,7 +425,6 @@ def get_ultima_factura_numero_de_articulo(patron_articulo: str) -> Optional[str]
 
 
 def get_facturas_de_articulo(patron_articulo: str, solo_ultima: bool = False) -> pd.DataFrame:
-    """Lista de facturas de un artículo."""
     total_expr = _sql_total_num_expr_general()
     limit_sql = "LIMIT 1" if solo_ultima else "LIMIT 50"
     sql = f"""
@@ -517,7 +500,7 @@ def get_total_facturas_proveedor(
 
 
 # =========================
-# FACTURAS PROVEEDOR (DETALLE)  ✅ CORREGIDO A LIKE %...%
+# FACTURAS PROVEEDOR (DETALLE)
 # =========================
 def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, articulo, moneda, limite):
     """
@@ -527,7 +510,17 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
 
     total_expr = _sql_total_num_expr_general()
 
-    # Limite seguro
+    # 🔍 DEBUG ENTRADA
+    print("\n[SQL_COMPRAS] get_facturas_proveedor_detalle() llamado con:")
+    print(f"  proveedores = {proveedores}")
+    print(f"  meses       = {meses}")
+    print(f"  anios       = {anios}")
+    print(f"  desde       = {desde}")
+    print(f"  hasta       = {hasta}")
+    print(f"  articulo    = {articulo}")
+    print(f"  moneda      = {moneda}")
+    print(f"  limite      = {limite}")
+
     if limite is None:
         limite = 5000
     try:
@@ -537,17 +530,11 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
     if limite <= 0:
         limite = 5000
 
-    # -------------------------
-    # WHERE base
-    # -------------------------
     where_parts = [
         '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'
     ]
     params: List[Any] = []
 
-    # -------------------------
-    # FILTRO POR PROVEEDORES (LIKE)
-    # -------------------------
     prov_clauses = []
     for p in (proveedores or []):
         p = str(p).strip().lower()
@@ -559,19 +546,12 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
     if prov_clauses:
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
     else:
-        # sin proveedor no hacemos nada (evita traer todo)
         return pd.DataFrame()
 
-    # -------------------------
-    # FILTRO POR ARTÍCULO (LIKE)
-    # -------------------------
     if articulo and str(articulo).strip():
         where_parts.append('LOWER(TRIM("Articulo")) LIKE %s')
         params.append(f"%{str(articulo).lower().strip()}%")
 
-    # -------------------------
-    # FILTRO POR MONEDA
-    # -------------------------
     if moneda and str(moneda).strip():
         m = str(moneda).upper().strip()
         if m in ("USD", "U$S", "U$$", "US$"):
@@ -579,9 +559,6 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
         elif m in ("$", "UYU", "PESOS"):
             where_parts.append('TRIM("Moneda") = \'$\'')
 
-    # -------------------------
-    # FILTROS DE TIEMPO (prioridad: rango > meses > años)
-    # -------------------------
     if desde and hasta:
         where_parts.append('"Fecha"::date BETWEEN %s AND %s')
         params.extend([desde, hasta])
@@ -605,9 +582,6 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
             where_parts.append(f'"Año" IN ({ph})')
             params.extend(anios_ok)
 
-    # -------------------------
-    # QUERY FINAL (mismo estilo que compras_proveedor_mes)
-    # -------------------------
     query = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -624,18 +598,16 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
     """
     params.append(limite)
 
-    # Debug opcional
     print(f"\n🛠 SQL generado (facturas_proveedor_detalle): {query}")
     print(f"🛠 Parámetros: {params}")
 
     return ejecutar_consulta(query, tuple(params))
 
 # =====================================================================
-# SERIES TEMPORALES Y DATASET COMPLETO
+# SERIES / DASHBOARD (igual que antes)
 # =====================================================================
 
 def get_serie_compras_agregada(where_clause: str, params: tuple) -> pd.DataFrame:
-    """Serie temporal agregada."""
     total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
@@ -666,7 +638,6 @@ def get_dataset_completo(where_clause: str, params: tuple):
 
 
 def get_detalle_compras(where_clause: str, params: tuple) -> pd.DataFrame:
-    """Detalle de compras con where personalizado."""
     total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
@@ -685,7 +656,6 @@ def get_detalle_compras(where_clause: str, params: tuple) -> pd.DataFrame:
 
 
 def get_compras_por_mes_excel(mes_key: str) -> pd.DataFrame:
-    """Compras de un mes para exportar a Excel."""
     total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
@@ -704,12 +674,7 @@ def get_compras_por_mes_excel(mes_key: str) -> pd.DataFrame:
     return ejecutar_consulta(sql, (mes_key,))
 
 
-# =====================================================================
-# TOP PROVEEDORES
-# =====================================================================
-
 def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: str = None) -> pd.DataFrame:
-    """Top 10 proveedores."""
     total_expr = _sql_total_num_expr_general()
     condiciones = ["(\"Tipo Comprobante\" = 'Compra Contado' OR \"Tipo Comprobante\" LIKE 'Compra%%')"]
     params = []
@@ -747,12 +712,7 @@ def get_top_10_proveedores_chatbot(moneda: str = None, anio: int = None, mes: st
     return ejecutar_consulta(sql, tuple(params) if params else None)
 
 
-# =====================================================================
-# DASHBOARD
-# =====================================================================
-
 def get_dashboard_totales(anio: int) -> dict:
-    """Totales para dashboard."""
     total_pesos = _sql_total_num_expr()
     total_usd = _sql_total_num_expr_usd()
     sql = f"""
@@ -777,7 +737,6 @@ def get_dashboard_totales(anio: int) -> dict:
 
 
 def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
-    """Compras por mes para dashboard."""
     total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
@@ -793,7 +752,6 @@ def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
 
 
 def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$") -> pd.DataFrame:
-    """Top proveedores para dashboard."""
     if moneda in ("U$S", "U$$", "USD"):
         total_expr = _sql_total_num_expr_usd()
         mon_filter = "TRIM(\"Moneda\") IN ('U$S', 'U$$')"
@@ -819,7 +777,6 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
 
 
 def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
-    """Gastos por familia para dashboard."""
     total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
@@ -836,7 +793,6 @@ def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
 
 
 def get_dashboard_ultimas_compras(limite: int = 10) -> pd.DataFrame:
-    """Últimas compras para dashboard."""
     total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
@@ -853,7 +809,6 @@ def get_dashboard_ultimas_compras(limite: int = 10) -> pd.DataFrame:
 
 
 def get_total_compras_proveedor_moneda_periodos(periodos: List[str], monedas: List[str] = None) -> pd.DataFrame:
-    """Total de compras por proveedor en múltiples períodos."""
     total_expr = _sql_total_num_expr_general()
     periodos_sql = ", ".join(["%s"] * len(periodos))
     sql = f"""
