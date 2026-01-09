@@ -42,8 +42,10 @@ from sql_compras import (
     get_detalle_factura_por_numero,
     get_total_factura_por_numero,
     get_top_10_proveedores_chatbot,
-    get_facturas_proveedor_detalle,
 )
+
+# Importamos la versión forzada de facturas_proveedor
+from sql_facturas import get_facturas_proveedor as get_facturas_proveedor_detalle
 
 from sql_comparativas import (
     get_comparacion_proveedor_meses,
@@ -180,12 +182,7 @@ def procesar_pregunta_v2(pregunta: str) -> Tuple[str, Optional[pd.DataFrame], Op
 def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple[str, Optional[pd.DataFrame], None]:
     try:
         # =========================================================
-        # COMPRAS (año, mes, etc.) -> aquí iría todo tu código previo
-        # (para abreviar, foco en facturas_proveedor)
-        # =========================================================
-
-        # =========================================================
-        # FACTURAS (LISTADO)
+        # FACTURAS (LISTADO) - usa SIEMPRE sql_facturas.get_facturas_proveedor
         # =========================================================
         if tipo in ("facturas_proveedor", "facturas_proveedor_detalle"):
             proveedores = params.get("proveedores", [])
@@ -196,9 +193,9 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
             if not proveedores_raw:
                 return "❌ Indicá el proveedor. Ej: todas las facturas roche 2025", None, None
 
-            st.session_state["DBG_SQL_LAST_TAG"] = "facturas_proveedor"
+            st.session_state["DBG_SQL_LAST_TAG"] = "facturas_proveedor (forzado sql_facturas)"
 
-            print("\n[ORQUESTADOR] Llamando get_facturas_proveedor_detalle() con:")
+            print("\n[ORQUESTADOR] Llamando get_facturas_proveedor_detalle() con (FORZADO):")
             print(f"  proveedores = {proveedores_raw}")
             print(f"  meses       = {params.get('meses')}")
             print(f"  anios       = {params.get('anios')}")
@@ -225,16 +222,15 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
                 debug_msg += f"**Parámetros extraídos:**\n"
                 for k, v in params.items():
                     debug_msg += f"- {k}: {v}\n"
-                debug_msg += "\nRevisá la consola del servidor para ver el SQL impreso (🛠 SQL generado (facturas_proveedor_detalle))."
+                debug_msg += "\nRevisá la consola del servidor para ver el SQL impreso (🛠 SQL get_facturas_proveedor FORZADO)."
                 return debug_msg, None, None
 
             prov_lbl = ", ".join([p.upper() for p in proveedores_raw[:3]])
             return f"🧾 Facturas de **{prov_lbl}** ({len(df)} registros):", formatear_dataframe(df), None
 
         # =========================================================
-        # OTROS TIPOS (no copiados por brevedad, igual que tu versión)
+        # OTROS TIPOS (año, mes, stock, comparativas, etc.)
         # =========================================================
-
         return f"❌ Tipo de consulta '{tipo}' no implementado.", None, None
 
     except Exception as e:
