@@ -80,16 +80,8 @@ def _safe_ident(col_name: str) -> str:
     """
     Escapa un nombre de columna para usar en SQL de forma segura.
     Envuelve el nombre en comillas dobles para Postgres.
-
-    Parámetros:
-    - col_name: str, nombre de la columna
-
-    Retorna:
-    - str con el nombre escapado entre comillas dobles
     """
-    # Remover comillas existentes y espacios en blanco
     clean = str(col_name).strip().strip('"')
-    # Envolver en comillas dobles para Postgres
     return f'"{clean}"'
 
 
@@ -185,19 +177,15 @@ def _sql_total_num_expr_general() -> str:
 
 
 # =====================================================================
-# EJECUTOR SQL
+# EJECUTOR SQL  ✅ USANDO CURSOR (NO read_sql_query)
 # =====================================================================
 
 def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
     """
     Ejecuta una consulta SQL y retorna los resultados en un DataFrame.
 
-    Parámetros:
-    - query: str, el SQL a ejecutar.
-    - params: tuple o None, los parámetros para la consulta (opcional).
-
-    Retorna:
-    - pd.DataFrame con los resultados de la consulta.
+    Usa cursor psycopg2 en vez de pd.read_sql_query para evitar conflictos
+    con % y placeholders %s que causaban "tuple index out of range".
     """
     try:
         conn = get_db_connection()
@@ -208,15 +196,27 @@ def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
         if params is None:
             params = ()
 
-        # Agregar logs del SQL y parámetros
+        # Logs de debug
         print("\n🛠 SQL ejecutado:")
         print(query)
         print("🛠 Parámetros usados:")
         print(params)
 
-        # Ejecutar la consulta y retornar resultados
-        df = pd.read_sql_query(query, conn, params=params)
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            if cur.description is None:
+                # Sentencias sin resultado (INSERT/UPDATE/DELETE)
+                conn.commit()
+                conn.close()
+                print("✅ Consulta sin retorno ejecutada.")
+                return pd.DataFrame()
+
+            cols = [d[0] for d in cur.description]
+            rows = cur.fetchall()
+
         conn.close()
+
+        df = pd.DataFrame(rows, columns=cols)
 
         if df.empty:
             print("⚠️ Consulta ejecutada, pero no devolvió resultados.")
@@ -245,19 +245,8 @@ def get_valores_unicos(
     """
     Devuelve valores únicos (TRIM) de una columna en una tabla.
     Pensada para armar filtros/selector sin romper imports existentes.
-
-    Parámetros:
-    - tabla: nombre de la tabla (ej: 'chatbot_raw')
-    - columna: nombre de la columna (ej: 'Cliente / Proveedor')
-    - incluir_todos: si True, antepone label_todos al listado
-    - label_todos: texto del primer item (por defecto 'Todos')
-    - limite: máximo de valores
-
-    Retorna:
-    - list[str]
     """
     try:
-        # Sanitización mínima del nombre de tabla (evita caracteres raros)
         t = str(tabla).strip().strip('"')
         if not re.fullmatch(r"[A-Za-z0-9_]+", t):
             print(f"⚠️ Tabla inválida para get_valores_unicos: {tabla}")
@@ -501,7 +490,7 @@ def buscar_stock_por_lote(
 
         sql += ' ORDER BY "Vencimiento" ASC LIMIT 500'
 
-        return ejecutar_consulta(sql, tuple(params) if params else None)
+        return ejecutar_consulta(sql, tuple(params) if params else ())
 
     except Exception as e:
         print(f"❌ Error en buscar_stock_por_lote: {e}")
@@ -515,12 +504,6 @@ def buscar_stock_por_lote(
 def get_ultimo_mes_disponible_hasta(mes_key: str) -> Optional[str]:
     """
     Busca el último mes disponible en la tabla chatbot_raw hasta el mes indicado.
-
-    Parámetros:
-    - mes_key: str, formato esperado "YYYY-MM" o "Mes YYYY"
-
-    Retorna:
-    - str con el mes anterior disponible o None si no hay datos
     """
     try:
         sql = """
