@@ -17,7 +17,7 @@ from sql_core import (
 # (incluye Compra Crédito, Compra Contado, etc.)
 # =====================================================================
 
-_SQL_WHERE_TIPO_COMPRA = '(TRIM("Tipo Comprobante") = \'Compra Contado\' OR TRIM("Tipo Comprobante") ILIKE \'Compra%\')'
+_SQL_WHERE_TIPO_COMPRA = '(TRIM("Tipo Comprobante") = \'Compra Contado\' OR TRIM("Tipo Comprobante") ILIKE \'Compra%\' OR TRIM("Tipo Comprobante") ILIKE \'Factura%\')'
 
 
 # =====================================================================
@@ -158,8 +158,8 @@ def get_facturas_proveedor(
     """
     Lista facturas (que en tu DB están como compras) por proveedor.
     Mismo WHERE que tu SQL manual:
-      - Tipo Comprobante = 'Compra Contado' OR ILIKE 'Compra%'
-      - Año 2025, proveedor LIKE '%roche%'
+      - Tipo Comprobante = 'Compra Contado' OR ILIKE 'Compra%' OR ILIKE 'Factura%'
+      - Agrupado por factura, con total sumado
     """
     if not proveedores:
         return pd.DataFrame()
@@ -222,24 +222,25 @@ def get_facturas_proveedor(
 
     total_expr = _sql_total_num_expr_general()
 
-    # Incluyo columnas que vos viste en Supabase + Total calculado
+    # Query agrupada por factura, como el SQL de Supabase
     query = f"""
         SELECT
+            ROW_NUMBER() OVER (ORDER BY "Fecha"::date, "Nro. Comprobante") AS nro,
+            TRIM("Cliente / Proveedor") AS Proveedor,
             "Fecha",
             TRIM("Tipo Comprobante") AS TipoComprobante,
             TRIM("Nro. Comprobante") AS NroFactura,
-            TRIM("Cliente / Proveedor") AS Proveedor,
             "Moneda",
-            "Monto Neto",
-            "Año",
-            "Mes",
-            TRIM("Articulo") AS Articulo,
-            "Cantidad",
-            "Precio Unitario" AS PrecioUnitario,
-            {total_expr} AS Total
+            SUM({total_expr}) AS Total
         FROM chatbot_raw
         WHERE {" AND ".join(where_parts)}
-        ORDER BY "Fecha" DESC
+        GROUP BY
+            TRIM("Cliente / Proveedor"),
+            "Fecha",
+            "Tipo Comprobante",
+            "Nro. Comprobante",
+            "Moneda"
+        ORDER BY nro
         LIMIT {limite};
     """
 
