@@ -198,6 +198,17 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         _dbg_set_result(df)
         return df
 
+    # AGREGADO: COMPRAS MÚLTIPLES
+    elif tipo == "compras_multiples":
+        df = sqlq_compras.get_compras_multiples(
+            proveedores=parametros.get("proveedores", []),
+            meses=parametros.get("meses", []),
+            anios=parametros.get("anios", []),
+            limite=parametros.get("limite", 5000)
+        )
+        _dbg_set_result(df)
+        return df
+
     # ===== COMPARATIVAS =====
     elif tipo == "comparar_proveedor_meses":
         df = sqlq_comparativas.get_comparacion_proveedor_meses(
