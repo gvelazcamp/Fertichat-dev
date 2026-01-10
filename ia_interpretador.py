@@ -867,16 +867,31 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     # COMPRAS (fusionado con facturas_proveedor para proveedor+año)
     if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original):
-        # ✅ EXTRAER PROVEEDORES CON COMA (MÚLTIPLES)
+        # ✅ EXTRAER PROVEEDORES CON COMA (MÚLTIPLES) - MEJORADO
         proveedores_multiples: List[str] = []
-        match_multi = re.search(r"compras?\s+([^,]+(?:,\s*[^,]+)*)", texto_lower_original, re.IGNORECASE)
-        if match_multi:
-            prov_texto = match_multi.group(1).strip()
-            if "," in prov_texto:
-                proveedores_multiples = [p.strip() for p in prov_texto.split(",") if p.strip()]
+        parts = texto_lower_original.split()
+        if "compras" in parts or "compra" in parts:
+            idx = parts.index("compras") if "compras" in parts else parts.index("compra")
+            after_compras = parts[idx+1:]
+            
+            # Encontrar el primer mes o año para detener
+            first_stop = None
+            for i, p in enumerate(after_compras):
+                clean_p = re.sub(r"[^\w]", "", p)  # quitar comas
+                if clean_p in MESES or (clean_p.isdigit() and int(clean_p) in ANIOS_VALIDOS):
+                    first_stop = i
+                    break
+            
+            if first_stop is not None:
+                proveedores_texto = " ".join(after_compras[:first_stop])
+            else:
+                proveedores_texto = " ".join(after_compras)
+            
+            if "," in proveedores_texto:
+                proveedores_multiples = [p.strip() for p in proveedores_texto.split(",") if p.strip()]
                 proveedores_multiples = [_alias_proveedor(p) for p in proveedores_multiples if p]
             else:
-                proveedores_multiples = [_alias_proveedor(prov_texto)] if prov_texto else []
+                proveedores_multiples = [_alias_proveedor(proveedores_texto)] if proveedores_texto else []
 
         if proveedores_multiples:
             provs = proveedores_multiples  # Usar los múltiples
