@@ -901,16 +901,19 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             if len(provs) > 1:
                 # MÚLTIPLES PROVEEDORES + MES/AÑO
                 if meses_yyyymm:
-                    meses_out = meses_yyyymm[:MAX_MESES]
+                    meses_nombres = []
+                    for m_yyyy in meses_yyyymm:
+                        if "-" in m_yyyy:
+                            parts_m = m_yyyy.split("-")
+                            if len(parts_m) == 2 and parts_m[1].isdigit():
+                                mm = int(parts_m[1])
+                                for nombre, num in MESES.items():
+                                    if num == f"{mm:02d}":
+                                        meses_nombres.append(nombre)
+                                        break
+                    meses_out = meses_nombres
                 else:
-                    meses_out = []
-                    for a in anios:
-                        for mn in meses_nombre:
-                            meses_out.append(_to_yyyymm(a, mn))
-                            if len(meses_out) >= MAX_MESES:
-                                break
-                        if len(meses_out) >= MAX_MESES:
-                            break
+                    meses_out = meses_nombre[:MAX_MESES]
 
                 print("\n[INTÉRPRETE] COMPRAS_MULTIPLE_PROVEEDORES_MES")
                 print(f"  Pregunta    : {texto_original}")
