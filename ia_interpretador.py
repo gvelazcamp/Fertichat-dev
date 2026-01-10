@@ -90,7 +90,7 @@ TABLA_TIPOS = """
 | stock_total | Resumen total de stock | (ninguno) | "stock total" |
 | stock_articulo | Stock de un artículo | articulo | "stock vitek" |
 | listado_facturas_anio | Listado/resumen de facturas por año agrupadas por proveedor | anio | "listado facturas 2025" / "total facturas 2025" |
-| total_facturas_por_moneda_anio | Total de facturas por moneda en un año | anio | "total 2025 por moneda" |
+| total_facturas_por_moneda_anio | Total de facturas por moneda en un año | anio | "total 2025" / "totales 2025" |
 | conversacion | Saludos | (ninguno) | "hola", "gracias" |
 | conocimiento | Preguntas generales | (ninguno) | "que es HPV" |
 | no_entendido | No se entiende | sugerencia | - |
@@ -101,7 +101,7 @@ TABLA_TIPOS = """
 # =====================================================================
 TABLA_CANONICA_50 = r"""
 | # | ACCIÓN | OBJETO | TIEMPO | MULTI | TIPO (output) | PARAMS |
-|---|---|--------|--------|-------|---------------|--------|
+|---|--------|--------|--------|-------|---------------|--------|
 | 01 | compras | (ninguno) | anio | no | compras_anio | anio |
 | 02 | compras | (ninguno) | mes | no | compras_mes | mes |
 | 03 | compras | proveedor | anio | no | facturas_proveedor | proveedores, anios |
@@ -673,10 +673,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             }
 
     # FAST-PATH: total facturas por moneda año
-    if "total" in texto_lower_original and "facturas" in texto_lower_original and "moneda" in texto_lower_original:
-        anios = _extraer_anios(texto_lower_original)
-        if anios:
-            anio = anios[0]
+    if re.search(r"\b(total|totales)\b", texto_lower_original) and re.search(r"\b(2023|2024|2025|2026)\b", texto_lower_original):
+        anios_total = _extraer_anios(texto_lower_original)
+        if anios_total:
+            anio = anios_total[0]
             print(f"\n[INTÉRPRETE] TOTAL FACTURAS POR MONEDA AÑO={anio}")
             try:
                 st.session_state["DBG_INT_LAST"] = {
@@ -760,7 +760,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         if len(meses_out) >= MAX_MESES:
                             break
                     if len(meses_out) >= MAX_MESES:
-                            break
+                        break
 
         moneda = _extraer_moneda(texto_lower_original)
 
@@ -862,7 +862,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     "debug": "compras proveedor año (fusionado con facturas_proveedor)",
                 }
             except Exception:
-                pass
+                    pass
 
             return {
                 "tipo": "facturas_proveedor",
@@ -972,6 +972,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     return {
         "tipo": "no_entendido",
         "parametros": {},
-        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025",
+        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025 | total 2025",
         "debug": "no match",
     }
