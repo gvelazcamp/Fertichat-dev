@@ -1,3 +1,4 @@
+
 # =========================
 # SQL COMPRAS - CONSULTAS TRANSACCIONALES
 # =========================
@@ -100,19 +101,58 @@ def get_compras_multiples(
 ) -> pd.DataFrame:
     """
     Detalle de compras para múltiples proveedores, meses y años.
-    Ejemplo: proveedores=["roche", "biodiagnostico"], meses=["octubre", "noviembre"], anios=[2024, 2025]
+    Ejemplo: proveedores=["roche", "biodiagnostico"], meses=["2025-07"], anios=[2025]
     """
-    # Usa la función existente get_facturas_proveedor_detalle para consistencia
-    return get_facturas_proveedor_detalle(
-        proveedores=proveedores,
-        meses=meses,
-        anios=anios,
-        desde=None,
-        hasta=None,
-        articulo=None,
-        moneda=None,
-        limite=limite
-    )
+    if not proveedores:
+        return pd.DataFrame()
+
+    where_parts = [
+        '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'
+    ]
+    params: List[Any] = []
+
+    prov_clauses = []
+    for p in proveedores:
+        p = str(p).strip().lower()
+        if not p:
+            continue
+        prov_clauses.append('LOWER(TRIM(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace("Cliente / Proveedor", \'á\', \'a\'), \'é\', \'e\'), \'í\', \'i\'), \'ó\', \'o\'), \'ú\', \'u\'), \'Á\', \'A\'), \'É\', \'E\'), \'Í\', \'I\'), \'Ó\', \'O\'), \'Ú\', \'U\'))) LIKE %s')
+        params.append(f"%{p}%")
+
+    if prov_clauses:
+        where_parts.append("(" + " OR ".join(prov_clauses) + ")")
+
+    if meses:
+        meses_ok = [m for m in (meses or []) if m]
+        if meses_ok:
+            ph = ", ".join(["%s"] * len(meses_ok))
+            where_parts.append(f'LOWER(TRIM("Mes")) IN ({ph})')
+            params.extend([m.lower() for m in meses_ok])
+
+    if anios:
+        anios_ok: List[int] = []
+        for a in (anios or []):
+            if isinstance(a, int):
+                anios_ok.append(a)
+        if anios_ok:
+            ph = ", ".join(["%s"] * len(anios_ok))
+            where_parts.append(f'"Año" IN ({ph})')
+            params.extend(anios_ok)
+
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            TRIM("Nro. Comprobante") AS Nro_Factura,
+            "Fecha",
+            "Cantidad",
+            "Moneda"
+        FROM chatbot_raw
+        WHERE {" AND ".join(where_parts)}
+        ORDER BY "Fecha" DESC NULLS LAST
+        LIMIT {limite}
+    """
+    return ejecutar_consulta(sql, tuple(params))
 
 
 # =====================================================================
