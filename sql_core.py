@@ -10,7 +10,6 @@ import streamlit as st
 
 try:
     import psycopg2
-    from psycopg2.extras import RealDictCursor
 except ImportError:
     psycopg2 = None
 
@@ -25,22 +24,18 @@ def get_db_connection():
         print("❌ psycopg2 no instalado")
         return None
     try:
-        # Obtener credenciales de la base de datos
         host = st.secrets.get("DB_HOST", os.getenv("DB_HOST"))
         port = st.secrets.get("DB_PORT", os.getenv("DB_PORT", "5432"))
         dbname = st.secrets.get("DB_NAME", os.getenv("DB_NAME", "postgres"))
         user = st.secrets.get("DB_USER", os.getenv("DB_USER"))
         password = st.secrets.get("DB_PASSWORD", os.getenv("DB_PASSWORD"))
 
-        # DEBUG: ver qué credenciales se están usando realmente
         print("DEBUG DB CREDS:", host, port, dbname, user)
 
-        # Verificación previa de las credenciales
         if not host or not user or not password:
             print("❌ Faltan credenciales para la conexión.")
             return None
 
-        # Establecer conexión
         conn = psycopg2.connect(
             host=host,
             port=port,
@@ -80,12 +75,12 @@ COL_MONTO = '"Monto Neto"'
 # =====================================================================
 
 def _safe_ident(col_name: str) -> str:
-    """Escapa un nombre de columna para usar en SQL de forma segura."""
     clean = str(col_name).strip().strip('"')
     return f'"{clean}"'
 
 
 def _sql_fecha_expr() -> str:
+    """Expresión estándar de fecha para usar en SQL (la usa ui_buscador)."""
     return '"Fecha"'
 
 
@@ -148,7 +143,10 @@ def _sql_total_num_expr_usd() -> str:
 
 
 def _sql_total_num_expr_general() -> str:
-    """Convierte Monto Neto a número (sirve para $ o U$S)."""
+    """
+    Convierte Monto Neto a número (sirve para $ o U$S).
+    Se usa tanto en ui_buscador como en sql_facturas.
+    """
     limpio = """
         REPLACE(
             REPLACE(
@@ -183,9 +181,6 @@ def _sql_total_num_expr_general() -> str:
 def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
     """
     Ejecuta una consulta SQL y retorna los resultados en un DataFrame.
-
-    Usa cursor psycopg2 en vez de pd.read_sql_query para evitar conflictos
-    con % y placeholders %s.
     """
     try:
         conn = get_db_connection()
@@ -230,48 +225,52 @@ def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
 
 
 # =====================================================================
-# LISTADOS Y HELPERS QUE YA USABAS
-# (los dejo como los tenías, no son el origen del fallo)
+# LISTAS / LOOKUPS
 # =====================================================================
 
-def get_valores_unicos(
-    tabla: str,
-    columna: str,
-    incluir_todos: bool = True,
-    label_todos: str = "Todos",
-    limite: int = 500
-) -> list:
+def get_lista_proveedores() -> list:
+    sql = """
+        SELECT DISTINCT TRIM("Cliente / Proveedor") AS proveedor
+        FROM chatbot_raw
+        WHERE "Cliente / Proveedor" IS NOT NULL AND TRIM("Cliente / Proveedor") <> ''
+        ORDER BY proveedor
+        LIMIT 500
     """
-    Devuelve valores únicos (TRIM) de una columna en una tabla.
-    Pensada para armar filtros/selector.
+    df = ejecutar_consulta(sql)
+    if df.empty:
+        print("⚠️ No se encontraron proveedores en la base de datos.")
+        return ["Todos"]
+    return ["Todos"] + df["proveedor"].tolist()
+
+
+def get_lista_articulos() -> list:
+    sql = """
+        SELECT DISTINCT TRIM("Articulo") AS articulo
+        FROM chatbot_raw
+        WHERE "Articulo" IS NOT NULL AND TRIM("Articulo") <> ''
+        ORDER BY articulo
+        LIMIT 500
     """
-    try:
-        t = str(tabla).strip().strip('"')
-        if not re.fullmatch(r"[A-Za-z0-9_]+", t):
-            print(f"⚠️ Tabla inválida para get_valores_unicos: {tabla}")
-            return [label_todos] if incluir_todos else []
+    df = ejecutar_consulta(sql)
+    if df.empty:
+        print("⚠️ No se encontraron artículos en la base de datos.")
+        return ["Todos"]
+    return ["Todos"] + df["articulo"].tolist()
 
-        col_sql = _safe_ident(columna)
-        tabla_sql = f'"{t}"'
 
-        sql = f"""
-            SELECT DISTINCT TRIM({col_sql}) AS valor
-            FROM {tabla_sql}
-            WHERE {col_sql} IS NOT NULL AND TRIM({col_sql}) <> ''
-            ORDER BY valor
-            LIMIT %s
-        """
-        df = ejecutar_consulta(sql, (int(limite),))
-
-        if df.empty:
-            return [label_todos] if incluir_todos else []
-
-        vals = df["valor"].dropna().astype(str).tolist()
-        return ([label_todos] + vals) if incluir_todos else vals
-
-    except Exception as e:
-        print(f"❌ Error en get_valores_unicos: {e}")
-        return [label_todos] if incluir_todos else []
+def get_lista_tipos_comprobante() -> list:
+    sql = """
+        SELECT DISTINCT TRIM("Tipo Comprobante") AS tipo
+        FROM chatbot_raw
+        WHERE "Tipo Comprobante" IS NOT NULL AND TRIM("Tipo Comprobante") <> ''
+        ORDER BY tipo
+        LIMIT 100
+    """
+    df = ejecutar_consulta(sql)
+    if df.empty:
+        print("⚠️ No se encontraron tipos de comprobante.")
+        return ["Todos"]
+    return ["Todos"] + df["tipo"].tolist()
 
 
 def get_lista_anios() -> list:
@@ -302,35 +301,83 @@ def get_lista_meses() -> list:
     return df["mes"].tolist()
 
 
+# ====== LISTAS PARA STOCK (ui_buscador) ======
+
+def get_lista_articulos_stock() -> list:
+    sql = """
+        SELECT DISTINCT TRIM("Articulo") AS articulo
+        FROM stock_raw
+        WHERE "Articulo" IS NOT NULL AND TRIM("Articulo") <> ''
+        ORDER BY articulo
+        LIMIT 500
+    """
+    df = ejecutar_consulta(sql)
+    if df.empty:
+        print("⚠️ No se encontraron artículos en el stock.")
+        return ["Todos"]
+    return ["Todos"] + df["articulo"].tolist()
+
+
+def get_lista_familias_stock() -> list:
+    sql = """
+        SELECT DISTINCT TRIM("Familia") AS familia
+        FROM stock_raw
+        WHERE "Familia" IS NOT NULL AND TRIM("Familia") <> ''
+        ORDER BY familia
+        LIMIT 500
+    """
+    df = ejecutar_consulta(sql)
+    if df.empty:
+        print("⚠️ No se encontraron familias en el stock.")
+        return ["Todos"]
+    return ["Todos"] + df["familia"].tolist()
+
+
+def get_lista_depositos_stock() -> list:
+    sql = """
+        SELECT DISTINCT TRIM("Deposito") AS deposito
+        FROM stock_raw
+        WHERE "Deposito" IS NOT NULL AND TRIM("Deposito") <> ''
+        ORDER BY deposito
+        LIMIT 100
+    """
+    df = ejecutar_consulta(sql)
+    if df.empty:
+        print("⚠️ No se encontraron depósitos en el stock.")
+        return ["Todos"]
+    return ["Todos"] + df["deposito"].tolist()
+
+
 # =====================================================================
-# FUNCIÓN PARA OBTENER ÚLTIMO MES DISPONIBLE  ✅ (LA QUE FALTABA)
+# BÚSQUEDA EN STOCK POR LOTE (para ui_buscador)
 # =====================================================================
 
-def get_ultimo_mes_disponible_hasta(mes_key: str) -> Optional[str]:
-    """
-    Busca el último mes disponible en la tabla chatbot_raw hasta el mes indicado.
-    Se usa desde sql_compras.py.
-    """
+def buscar_stock_por_lote(
+    articulo: str = None,
+    lote: str = None,
+    familia: str = None,
+    deposito: str = None,
+    texto_busqueda: str = None
+) -> pd.DataFrame:
+    """Busca registros en stock_raw por lote y otros filtros."""
     try:
         sql = """
-            SELECT DISTINCT TRIM("Mes") AS mes
-            FROM chatbot_raw
-            WHERE TRIM("Mes") IS NOT NULL 
-              AND TRIM("Mes") <> ''
-              AND TRIM("Mes") <= %s
-            ORDER BY TRIM("Mes") DESC
-            LIMIT 1
+            SELECT 
+                TRIM("Articulo") AS "Artículo",
+                TRIM("Lote") AS "Lote",
+                TRIM("Vencimiento") AS "Vencimiento",
+                TRIM("STOCK") AS "STOCK",
+                TRIM("Familia") AS "Familia",
+                TRIM("Deposito") AS "Depósito"
+            FROM stock_raw
+            WHERE 1=1
         """
-        df = ejecutar_consulta(sql, (mes_key,))
+        params = []
 
-        if df.empty:
-            print(f"⚠️ No se encontró mes disponible hasta {mes_key}")
-            return None
+        if articulo:
+            sql += ' AND LOWER(TRIM("Articulo")) LIKE LOWER(%s)'
+            params.append(f"%{articulo}%")
 
-        mes_encontrado = df["mes"].iloc[0]
-        print(f"✅ Último mes disponible hasta {mes_key}: {mes_encontrado}")
-        return mes_encontrado
-
-    except Exception as e:
-        print(f"❌ Error buscando último mes disponible: {e}")
-        return None
+        if lote and lote.strip():
+            sql += ' AND LOWER(TRIM("Lote")) LIKE LOWER(%s)'
+            params.append(f"%
