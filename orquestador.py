@@ -216,6 +216,14 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str) -> Tuple
                 limite=params.get("limite", 5000),
             )
 
+            # guardar resultado en debug
+            try:
+                if st.session_state.get("DEBUG_SQL", False):
+                    st.session_state["DBG_SQL_ROWS"] = 0 if df is None else len(df)
+                    st.session_state["DBG_SQL_COLS"] = [] if df is None or df.empty else list(df.columns)
+            except Exception:
+                pass
+
             if df is None or df.empty:
                 debug_msg = f"⚠️ No se encontraron resultados para '{pregunta_original}'.\n\n"
                 debug_msg += f"**Tipo detectado:** {tipo}\n"
