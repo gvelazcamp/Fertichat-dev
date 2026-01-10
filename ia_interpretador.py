@@ -763,6 +763,34 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     # COMPRAS (fusionado con facturas_proveedor para proveedor+año)
     if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original):
+        # ✅ PRIORIZAR MES SOBRE AÑO
+        if provs and (meses_yyyymm or (meses_nombre and anios)):
+            proveedor = _alias_proveedor(provs[0])
+            if meses_yyyymm:
+                mes = meses_yyyymm[0]
+            else:
+                mes = _to_yyyymm(anios[0], meses_nombre[0]) if anios and meses_nombre else None
+
+            if mes:
+                print("\n[INTÉRPRETE] COMPRAS_PROVEEDOR_MES")
+                print(f"  Pregunta : {texto_original}")
+                print(f"  Prov     : {proveedor}")
+                print(f"  Mes      : {mes}")
+                try:
+                    st.session_state["DBG_INT_LAST"] = {
+                        "pregunta": texto_original,
+                        "tipo": "compras_proveedor_mes",
+                        "parametros": {"proveedor": proveedor, "mes": mes},
+                        "debug": "compras proveedor mes",
+                    }
+                except Exception:
+                    pass
+                return {
+                    "tipo": "compras_proveedor_mes",
+                    "parametros": {"proveedor": proveedor, "mes": mes},
+                    "debug": "compras proveedor mes",
+                }
+
         if provs and anios:
             proveedor = _alias_proveedor(provs[0])
             print("\n[INTÉRPRETE] FUSIÓN COMPRAS→FACTURAS")
@@ -793,33 +821,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 },
                 "debug": "compras proveedor año (fusionado con facturas_proveedor)",
             }
-
-        if provs and (meses_yyyymm or (meses_nombre and anios)):
-            proveedor = _alias_proveedor(provs[0])
-            if meses_yyyymm:
-                mes = meses_yyyymm[0]
-            else:
-                mes = _to_yyyymm(anios[0], meses_nombre[0]) if anios and meses_nombre else None
-
-            if mes:
-                print("\n[INTÉRPRETE] COMPRAS_PROVEEDOR_MES")
-                print(f"  Pregunta : {texto_original}")
-                print(f"  Prov     : {proveedor}")
-                print(f"  Mes      : {mes}")
-                try:
-                    st.session_state["DBG_INT_LAST"] = {
-                        "pregunta": texto_original,
-                        "tipo": "compras_proveedor_mes",
-                        "parametros": {"proveedor": proveedor, "mes": mes},
-                        "debug": "compras proveedor mes",
-                    }
-                except Exception:
-                    pass
-                return {
-                    "tipo": "compras_proveedor_mes",
-                    "parametros": {"proveedor": proveedor, "mes": mes},
-                    "debug": "compras proveedor mes",
-                }
 
         if meses_yyyymm:
             mes0 = meses_yyyymm[0]
