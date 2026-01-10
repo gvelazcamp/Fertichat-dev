@@ -670,6 +670,24 @@ def get_total_facturas_por_moneda_anio(anio: int) -> pd.DataFrame:
     return ejecutar_consulta(sql, (anio,))
 
 # =========================
+# TOTAL FACTURAS POR MONEDA - GENÉRICO (TODOS LOS AÑOS)
+# =========================
+def get_total_facturas_por_moneda_todos_anios() -> pd.DataFrame:
+    """Total de facturas por moneda acumulando todos los años disponibles."""
+    total_expr = _sql_total_num_expr_general()  # Usa la expresión estándar para consistencia
+    sql = f"""
+        SELECT
+            TRIM("Moneda") AS Moneda,
+            COUNT(DISTINCT "Nro. Comprobante") AS total_facturas,
+            COALESCE(SUM({total_expr}), 0) AS monto_total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+        GROUP BY TRIM("Moneda")
+        ORDER BY monto_total DESC
+    """
+    return ejecutar_consulta(sql, ())
+
+# =========================
 # TOTAL COMPRAS POR MONEDA AÑO
 # =========================
 def get_total_compras_por_moneda_anio(anio: int) -> pd.DataFrame:
