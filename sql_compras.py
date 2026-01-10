@@ -674,18 +674,15 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
         elif m in ("$", "UYU", "PESOS"):
             where_parts.append('TRIM("Moneda") = \'$\'')
 
-    if desde and hasta:
-        where_parts.append('"Fecha"::date BETWEEN %s AND %s')
-        params.extend([desde, hasta])
-
-    elif meses:
+    # MODIFICACIÓN: Permitir filtros combinados de meses y años
+    if meses:
         meses_ok = [m for m in (meses or []) if m]
         if meses_ok:
             ph = ", ".join(["%s"] * len(meses_ok))
             where_parts.append(f'TRIM("Mes") IN ({ph})')
             params.extend(meses_ok)
 
-    elif anios:
+    if anios:
         anios_ok: List[int] = []
         for a in (anios or []):
             if isinstance(a, int):
@@ -694,6 +691,10 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
             ph = ", ".join(["%s"] * len(anios_ok))
             where_parts.append(f'"Año" IN ({ph})')
             params.extend(anios_ok)
+
+    if desde and hasta:
+        where_parts.append('"Fecha"::date BETWEEN %s AND %s')
+        params.extend([desde, hasta])
 
     sql = f"""
         SELECT
