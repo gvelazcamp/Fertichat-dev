@@ -14,13 +14,33 @@ from sql_core import (
     ejecutar_consulta,
     _sql_total_num_expr_general,
 )
-from sql_compras import (
-    get_dashboard_totales,
-    get_dashboard_compras_por_mes,
-    get_dashboard_top_proveedores,
-    get_dashboard_gastos_familia,
-    get_dashboard_ultimas_compras,
+from sql_stock import (
+    get_alertas_vencimiento_multiple,
 )
+
+# =========================
+# PLACEHOLDER FUNCTIONS (TODO: Implement these in sql_compras or sql_dashboard)
+# =========================
+
+def get_dashboard_totales(anio: int) -> dict:
+    """Placeholder function - needs implementation"""
+    return {'total_pesos': 0, 'total_usd': 0, 'proveedores': 0, 'facturas': 0}
+
+def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
+    """Placeholder function - needs implementation"""
+    return pd.DataFrame()
+
+def get_dashboard_top_proveedores(anio: int, limite: int, moneda: str) -> pd.DataFrame:
+    """Placeholder function - needs implementation"""
+    return pd.DataFrame()
+
+def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
+    """Placeholder function - needs implementation"""
+    return pd.DataFrame()
+
+def get_dashboard_ultimas_compras(limite: int) -> pd.DataFrame:
+    """Placeholder function - needs implementation"""
+    return pd.DataFrame()
 
 # =========================
 # 📊 DASHBOARD
