@@ -550,6 +550,11 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
     if limite <= 0:
         limite = 5000
 
+    # Si no hay proveedores, meses, desde/hasta, articulo, moneda, solo anios, usar get_compras_anio
+    if not proveedores and not meses and not desde and not hasta and not articulo and not moneda and anios:
+        # Caso general: todas las facturas del año
+        return get_compras_anio(anios[0], limite)
+
     # QUERY SIMPLIFICADO PARA EVITAR ERRORES EN CONSTRUCCIÓN DE WHERE
     if proveedores and anios and not meses and not desde and not hasta and not articulo and not moneda:
         # Caso simple: solo proveedores y años
