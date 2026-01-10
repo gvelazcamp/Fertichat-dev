@@ -21,33 +21,6 @@ from sql_compras import (
 )
 
 # =========================
-# FUNCIÓN AUXILIAR PARA ALERTAS
-# =========================
-def get_alertas_vencimiento_multiple(limite: int = 5) -> list:
-    """Obtiene alertas de vencimientos próximos"""
-    try:
-        sql = """
-            SELECT
-                TRIM("Articulo") AS articulo,
-                "Vencimiento" AS vencimiento,
-                (DATE("Vencimiento") - CURRENT_DATE) AS dias_restantes
-            FROM chatbot_raw
-            WHERE "Vencimiento" IS NOT NULL
-              AND DATE("Vencimiento") >= CURRENT_DATE
-              AND DATE("Vencimiento") <= CURRENT_DATE + INTERVAL '90 days'
-            ORDER BY "Vencimiento" ASC
-            LIMIT %s
-        """
-        df = ejecutar_consulta(sql, (limite,))
-        if df is not None and not df.empty:
-            return df.to_dict('records')
-        return []
-    except Exception as e:
-        print(f"Error en get_alertas_vencimiento_multiple: {e}")
-        return []
-
-
-# =========================
 # 📊 DASHBOARD
 # =========================
 
@@ -228,7 +201,7 @@ def mostrar_dashboard():
             if alertas:
                 st.markdown("**⚠️ Próximos vencimientos:**")
                 for alerta in alertas[:3]:
-                    # Soportar ambos nombres de clave
+                    # ✅ FIX mínimo: soportar ambos nombres de clave (dias_restantes / dias)
                     dias = alerta.get('dias_restantes', alerta.get('dias', None))
                     try:
                         dias = int(dias) if dias is not None else 999999
@@ -246,7 +219,7 @@ def mostrar_dashboard():
             else:
                 st.success("✅ No hay vencimientos próximos")
         except Exception as e:
-            st.info("No hay alertas de vencimiento disponibles")
+            st.error(f"Error cargando alertas: {e}")
 
         st.markdown("---")
 
@@ -263,7 +236,7 @@ def mostrar_dashboard():
             else:
                 st.info("No hay compras recientes")
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Error cargando últimas compras: {e}")
 
 
 # =========================
@@ -273,7 +246,7 @@ def mostrar_dashboard():
 def mostrar_indicadores_ia():
     url = "https://app.powerbi.com/view?r=eyJrIjoiMTBhMGY0ZjktYmM1YS00OTM4LTg3ZjItMTEzYWVmZWNkMGIyIiwidCI6ImQxMzBmYmU3LTFiZjAtNDczNi1hM2Q5LTQ1YjBmYWUwMDVmYSIsImMiOjR9"
 
-    scale = 0.50  # Zoom 50%
+    scale = 0.50  # ✅ Zoom 65%
 
     st.markdown(
         f"""
@@ -281,9 +254,9 @@ def mostrar_indicadores_ia():
           .pbi-wrap {{
             width: 100%;
             height: 92vh;
-            padding: 18px 24px;
+            padding: 18px 24px;   /* aire alrededor */
             box-sizing: border-box;
-            overflow: hidden;
+            overflow: hidden;     /* evita scroll extra por el scale */
           }}
 
           .pbi-iframe {{
@@ -334,6 +307,7 @@ def _get_totales_anio(anio: int) -> dict:
 
     params = (anio,)
 
+    # DEBUG (opcional)
     if DEBUG_MODE:
         st.session_state.debug = {
             "pregunta": "total compras por año",
@@ -436,7 +410,7 @@ def mostrar_resumen_compras_rotativo():
         for col in dfp.columns:
             if col.lower() == "proveedor":
                 nombre = str(row[col]) if pd.notna(row[col]) else "—"
-                prov_nom = " ".join(nombre.split()[:2])  # SOLO 2 PALABRAS
+                prov_nom = " ".join(nombre.split()[:2])  # ✅ SOLO 2 PALABRAS
             elif col.lower() == "total_$":
                 prov_pesos = _safe_float(row[col])
             elif col.lower() == "total_usd":
@@ -448,7 +422,7 @@ def mostrar_resumen_compras_rotativo():
     mes_txt = f"$ {_fmt_num_latam(tot_mes['pesos'], 0)}"
     mes_sub = f"U$S {_fmt_num_latam(tot_mes['usd'], 0)}"
     
-    # CSS RESPONSIVE PARA Z FLIP 5
+    # 🎨 CSS – RESPONSIVE PARA Z FLIP 5
     st.markdown(
         """
         <style>
@@ -494,7 +468,9 @@ def mostrar_resumen_compras_rotativo():
             margin: 0;
           }
           
-          /* MOBILE RESPONSIVE (Z Flip 5) */
+          /* ========================================
+             MOBILE RESPONSIVE (Z Flip 5 y similares)
+             ======================================== */
           @media (max-width: 768px) {
             .mini-resumen {
               flex-direction: column;
@@ -527,7 +503,6 @@ def mostrar_resumen_compras_rotativo():
             .mini-s {
               font-size: 0.85rem;
               color: #475569 !important;
-              font-weight: 500;
             }
           }
           
@@ -547,8 +522,11 @@ def mostrar_resumen_compras_rotativo():
             }
           }
           
-          /* FIX INPUT BUSCADOR EN MÓVIL */
+          /* ========================================
+             FIX INPUT BUSCADOR EN MÓVIL
+             ======================================== */
           @media (max-width: 768px) {
+            /* Input de búsqueda "Escribí tu consulta..." */
             .block-container input[type="text"],
             .block-container textarea,
             [data-baseweb="input"] input,
@@ -559,11 +537,13 @@ def mostrar_resumen_compras_rotativo():
               height: auto !important;
             }
             
+            /* Contenedor del input */
             [data-baseweb="input"],
             [data-baseweb="textarea"] {
               min-height: auto !important;
             }
             
+            /* Placeholder text */
             .block-container input::placeholder,
             .block-container textarea::placeholder {
               font-size: 14px !important;
@@ -575,7 +555,7 @@ def mostrar_resumen_compras_rotativo():
         unsafe_allow_html=True
     )
     
-    # HTML FINAL
+    # 🧾 HTML FINAL
     st.markdown(
         f"""
         <div class="mini-resumen">
@@ -598,3 +578,28 @@ def mostrar_resumen_compras_rotativo():
         """,
         unsafe_allow_html=True
     )
+
+
+# =========================
+# FUNCIONES ADICIONALES PARA ALERTAS
+# =========================
+
+def get_alertas_vencimiento_multiple(cantidad: int = 5) -> list:
+    """Obtiene alertas de vencimiento de artículos próximos a vencer."""
+    # Asumiendo que hay una tabla o lógica para vencimientos; ajusta según tu esquema
+    # Ejemplo: consulta a una tabla de stock con fechas de vencimiento
+    sql = f"""
+        SELECT
+            TRIM("Articulo") AS articulo,
+            "Fecha Vencimiento" AS vencimiento,
+            EXTRACT(DAY FROM "Fecha Vencimiento"::date - CURRENT_DATE) AS dias_restantes
+        FROM stock_table  -- Cambia por tu tabla real
+        WHERE "Fecha Vencimiento"::date > CURRENT_DATE
+          AND EXTRACT(DAY FROM "Fecha Vencimiento"::date - CURRENT_DATE) <= 30
+        ORDER BY "Fecha Vencimiento"::date ASC
+        LIMIT %s
+    """
+    df = ejecutar_consulta(sql, (cantidad,))
+    if df is not None and not df.empty:
+        return df.to_dict('records')
+    return []
