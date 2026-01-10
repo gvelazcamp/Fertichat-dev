@@ -145,7 +145,7 @@ def _sql_total_num_expr_usd() -> str:
 def _sql_total_num_expr_general() -> str:
     """
     Convierte Monto Neto a número (sirve para $ o U$S).
-    Se usa tanto en ui_buscador como en sql_facturas.
+    Se usa en ui_buscador y sql_facturas.
     """
     limpio = """
         REPLACE(
@@ -349,7 +349,7 @@ def get_lista_depositos_stock() -> list:
 
 
 # =====================================================================
-# BÚSQUEDA EN STOCK POR LOTE (para ui_buscador)
+# BÚSQUEDA EN STOCK POR LOTE (usada por ui_buscador)
 # =====================================================================
 
 def buscar_stock_por_lote(
@@ -380,4 +380,64 @@ def buscar_stock_por_lote(
 
         if lote and lote.strip():
             sql += ' AND LOWER(TRIM("Lote")) LIKE LOWER(%s)'
-            params.append(f"%
+            params.append(f"%{lote.strip()}%")
+
+        if familia:
+            sql += ' AND LOWER(TRIM("Familia")) LIKE LOWER(%s)'
+            params.append(f"%{familia}%")
+
+        if deposito:
+            sql += ' AND LOWER(TRIM("Deposito")) LIKE LOWER(%s)'
+            params.append(f"%{deposito}%")
+
+        if texto_busqueda and texto_busqueda.strip():
+            txt = texto_busqueda.strip()
+            sql += """
+                AND (
+                    LOWER("Articulo") LIKE LOWER(%s) OR
+                    LOWER("Lote") LIKE LOWER(%s) OR
+                    LOWER("Familia") LIKE LOWER(%s)
+                )
+            """
+            params.extend([f"%{txt}%", f"%{txt}%", f"%{txt}%"])
+
+        sql += ' ORDER BY "Vencimiento" ASC LIMIT 500'
+
+        return ejecutar_consulta(sql, tuple(params) if params else ())
+
+    except Exception as e:
+        print(f"❌ Error en buscar_stock_por_lote: {e}")
+        return pd.DataFrame()
+
+
+# =====================================================================
+# FUNCIÓN PARA OBTENER ÚLTIMO MES DISPONIBLE (usada por sql_compras)
+# =====================================================================
+
+def get_ultimo_mes_disponible_hasta(mes_key: str) -> Optional[str]:
+    """
+    Busca el último mes disponible en la tabla chatbot_raw hasta el mes indicado.
+    """
+    try:
+        sql = """
+            SELECT DISTINCT TRIM("Mes") AS mes
+            FROM chatbot_raw
+            WHERE TRIM("Mes") IS NOT NULL 
+              AND TRIM("Mes") <> ''
+              AND TRIM("Mes") <= %s
+            ORDER BY TRIM("Mes") DESC
+            LIMIT 1
+        """
+        df = ejecutar_consulta(sql, (mes_key,))
+
+        if df.empty:
+            print(f"⚠️ No se encontró mes disponible hasta {mes_key}")
+            return None
+
+        mes_encontrado = df["mes"].iloc[0]
+        print(f"✅ Último mes disponible hasta {mes_key}: {mes_encontrado}")
+        return mes_encontrado
+
+    except Exception as e:
+        print(f"❌ Error buscando último mes disponible: {e}")
+        return None
