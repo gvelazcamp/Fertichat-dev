@@ -81,6 +81,7 @@ TABLA_TIPOS = """
 | compras_anio | Todas las compras de un año | anio | "compras 2025" |
 | compras_mes | Todas las compras de un mes | mes (YYYY-MM) | "compras noviembre 2025" |
 | compras_proveedor_mes | Compras de un proveedor en un mes | proveedor, mes (YYYY-MM) | "compras roche noviembre 2025" |
+| compras_multiples | Compras de múltiples proveedores, meses y años | proveedores, meses, anios | "compras roche, biodiagnostico noviembre 2025" |
 | comparar_proveedor_meses | Comparar proveedor mes vs mes | proveedor, mes1, mes2, label1, label2 | "comparar compras roche junio julio 2025" |
 | comparar_proveedor_anios | Comparar proveedor año vs año | proveedor, anios | "comparar compras roche 2024 2025" |
 | detalle_factura_numero | Detalle por número de factura | nro_factura | "detalle factura 273279" / "detalle factura A00273279" |
@@ -108,6 +109,7 @@ TABLA_CANONICA_50 = r"""
 | 02 | compras | (ninguno) | mes | no | compras_mes | mes |
 | 03 | compras | proveedor | anio | no | facturas_proveedor | proveedores, anios |
 | 04 | compras | proveedor | mes | no | compras_proveedor_mes | proveedor, mes |
+| 05 | compras | proveedores | mes | si | compras_multiples | proveedores, meses, anios |
 """
 
 # =====================================================================
@@ -431,7 +433,7 @@ def normalizar_parametros(params: dict) -> dict:
     return params
 
 # =====================================================================
-#  PARSEO DE RANGO DE FECHAS + MONEDA + LÍMITE
+# PARSEO DE RANGO DE FECHAS + MONEDA + LÍMITE
 # =====================================================================
 def _extraer_anios(texto: str) -> List[int]:
     anios = re.findall(r"(2023|2024|2025|2026)", texto)
@@ -551,6 +553,10 @@ MAPEO_FUNCIONES = {
     "compras_mes": {
         "funcion": "get_compras_por_mes_excel",
         "params": ["mes"],
+    },
+    "compras_multiples": {
+        "funcion": "get_compras_multiples",
+        "params": ["proveedores", "meses", "anios"],
     },
     "detalle_factura_numero": {
         "funcion": "get_detalle_factura_por_numero",
@@ -861,8 +867,67 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     # COMPRAS (fusionado con facturas_proveedor para proveedor+año)
     if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original):
+        # ✅ EXTRAER PROVEEDORES CON COMA (MÚLTIPLES)
+        proveedores_multiples: List[str] = []
+        match_multi = re.search(r"compras?\s+([^,]+(?:,\s*[^,]+)*)", texto_lower_original, re.IGNORECASE)
+        if match_multi:
+            prov_texto = match_multi.group(1).strip()
+            if "," in prov_texto:
+                proveedores_multiples = [p.strip() for p in prov_texto.split(",") if p.strip()]
+                proveedores_multiples = [_alias_proveedor(p) for p in proveedores_multiples if p]
+            else:
+                proveedores_multiples = [_alias_proveedor(prov_texto)] if prov_texto else []
+
+        if proveedores_multiples:
+            provs = proveedores_multiples  # Usar los múltiples
+
         # ✅ PRIORIZAR MES SOBRE AÑO
         if provs and (meses_yyyymm or (meses_nombre and anios)):
+            if len(provs) > 1:
+                # MÚLTIPLES PROVEEDORES + MES/AÑO
+                if meses_yyyymm:
+                    meses_out = meses_yyyymm[:MAX_MESES]
+                else:
+                    meses_out = []
+                    for a in anios:
+                        for mn in meses_nombre:
+                            meses_out.append(_to_yyyymm(a, mn))
+                            if len(meses_out) >= MAX_MESES:
+                                break
+                        if len(meses_out) >= MAX_MESES:
+                            break
+
+                print("\n[INTÉRPRETE] COMPRAS_MULTIPLE_PROVEEDORES_MES")
+                print(f"  Pregunta    : {texto_original}")
+                print(f"  Proveedores : {provs}")
+                print(f"  Meses       : {meses_out}")
+                print(f"  Años        : {anios}")
+
+                try:
+                    st.session_state["DBG_INT_LAST"] = {
+                        "pregunta": texto_original,
+                        "tipo": "compras_multiples",
+                        "parametros": {
+                            "proveedores": provs,
+                            "meses": meses_out,
+                            "anios": anios,
+                        },
+                        "debug": "compras múltiples proveedores mes/año",
+                    }
+                except Exception:
+                    pass
+
+                return {
+                    "tipo": "compras_multiples",
+                    "parametros": {
+                        "proveedores": provs,
+                        "meses": meses_out,
+                        "anios": anios,
+                    },
+                    "debug": "compras múltiples proveedores mes/año",
+                }
+
+            # UN SOLO PROVEEDOR
             proveedor = _alias_proveedor(provs[0])
             if meses_yyyymm:
                 mes = meses_yyyymm[0]
@@ -890,6 +955,38 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 }
 
         if provs and anios:
+            if len(provs) > 1:
+                # MÚLTIPLES PROVEEDORES + AÑO
+                print("\n[INTÉRPRETE] COMPRAS_MULTIPLE_PROVEEDORES_ANIO")
+                print(f"  Pregunta    : {texto_original}")
+                print(f"  Proveedores : {provs}")
+                print(f"  Años        : {anios}")
+
+                try:
+                    st.session_state["DBG_INT_LAST"] = {
+                        "pregunta": texto_original,
+                        "tipo": "compras_multiples",
+                        "parametros": {
+                            "proveedores": provs,
+                            "meses": None,
+                            "anios": anios,
+                        },
+                        "debug": "compras múltiples proveedores año",
+                    }
+                except Exception:
+                    pass
+
+                return {
+                    "tipo": "compras_multiples",
+                    "parametros": {
+                        "proveedores": provs,
+                        "meses": None,
+                        "anios": anios,
+                    },
+                    "debug": "compras múltiples proveedores año",
+                }
+
+            # UN SOLO PROVEEDOR
             proveedor = _alias_proveedor(provs[0])
             print("\n[INTÉRPRETE] FUSIÓN COMPRAS→FACTURAS")
             print(f"  Pregunta    : {texto_original}")
