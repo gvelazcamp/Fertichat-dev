@@ -196,7 +196,7 @@ def get_detalle_compras_articulo_mes(articulo_like: str, mes_key: str) -> pd.Dat
             "Cantidad",
             "Moneda",
             TRIM("Monto Neto") AS Total
-        FROM chatbot_raw
+        FROM chatbot_raw 
         WHERE LOWER(TRIM("Articulo")) LIKE %s
           AND "Mes" = %s
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
@@ -873,3 +873,31 @@ def get_total_compras_proveedor_moneda_periodos(periodos: List[str], monedas: Li
         ORDER BY TRIM("Mes"), Total DESC
     """
     return ejecutar_consulta(sql, tuple(periodos))
+
+
+# =========================
+# NUEVA FUNCIÓN: LISTADO FACTURAS POR AÑO
+# =========================
+def get_listado_facturas_por_anio(anio: int) -> pd.DataFrame:
+    """Listado de facturas agrupadas por proveedor y moneda para un año específico."""
+    total_expr = _sql_total_num_expr_general()
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS proveedor,
+            "Moneda",
+            COUNT(DISTINCT "Nro. Comprobante") AS cantidad_facturas,
+            SUM({total_expr}) AS monto_total
+        FROM chatbot_raw
+        WHERE
+            "Fecha"::date >= DATE '{anio}-01-01'
+            AND "Fecha"::date < DATE '{anio + 1}-01-01'
+            AND (
+                "Tipo Comprobante" ILIKE 'Compra%'
+                OR "Tipo Comprobante" ILIKE 'Factura%'
+            )
+        GROUP BY
+            TRIM("Cliente / Proveedor"),
+            "Moneda"
+        ORDER BY proveedor, "Moneda"
+    """
+    return ejecutar_consulta(sql, ())
