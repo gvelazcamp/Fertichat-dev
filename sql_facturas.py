@@ -65,22 +65,26 @@ def _factura_variantes(nro_factura: str) -> List[str]:
 def _sql_monto_neto_num_expr() -> str:
     """
     Normaliza "Monto Neto" a NUMERIC, manejando paréntesis como negativos, puntos y comas.
+    Maneja formatos: 1.234,56 (Europeo: . mil, , decimal) o 1,234.56 (Americano: , mil, . decimal).
     """
     return """
         (
           CASE
             WHEN TRIM("Monto Neto") LIKE '(%'
-              THEN -1 * REPLACE(
-                         REPLACE(
-                           REPLACE(TRIM("Monto Neto"), '(', ''),
-                           ')', ''),
-                         '.', ''),
-                       ',', '.'
-                 )::numeric
-            ELSE REPLACE(
-                   REPLACE(TRIM("Monto Neto"), '.', ''),
-                   ',', '.'
-                 )::numeric
+              THEN -1 * (
+                CASE
+                  WHEN POSITION(',' IN REPLACE(REPLACE(TRIM("Monto Neto"), '(', ''), ')', '')) > 0
+                    THEN REPLACE(REPLACE(REPLACE(TRIM("Monto Neto"), '(', ''), ')', ''), '.', '')::numeric
+                    ELSE REPLACE(REPLACE(TRIM("Monto Neto"), '(', ''), ')', '')::numeric
+                  END
+              )
+            ELSE (
+              CASE
+                WHEN POSITION(',' IN TRIM("Monto Neto")) > 0
+                  THEN REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.')::numeric
+                  ELSE REPLACE(TRIM("Monto Neto"), ',', '')::numeric
+                END
+            )
           END
         )
     """
