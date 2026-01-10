@@ -91,6 +91,8 @@ TABLA_TIPOS = """
 | stock_articulo | Stock de un artículo | articulo | "stock vitek" |
 | listado_facturas_anio | Listado/resumen de facturas por año agrupadas por proveedor | anio | "listado facturas 2025" / "total facturas 2025" |
 | total_facturas_por_moneda_anio | Total de facturas por moneda en un año | anio | "total 2025" / "totales 2025" |
+| total_facturas_por_moneda_generico | Total de facturas por moneda (todos los años) | (ninguno) | "total facturas por moneda" |
+| total_compras_por_moneda_generico | Total de compras por moneda (todos los años) | (ninguno) | "total compras por moneda" |
 | conversacion | Saludos | (ninguno) | "hola", "gracias" |
 | conocimiento | Preguntas generales | (ninguno) | "que es HPV" |
 | no_entendido | No se entiende | sugerencia | - |
@@ -106,7 +108,6 @@ TABLA_CANONICA_50 = r"""
 | 02 | compras | (ninguno) | mes | no | compras_mes | mes |
 | 03 | compras | proveedor | anio | no | facturas_proveedor | proveedores, anios |
 | 04 | compras | proveedor | mes | no | compras_proveedor_mes | proveedor, mes |
-| 05 | facturas | proveedor | (opcional) | no | facturas_proveedor | proveedores, meses?, anios?, desde?, hasta? |
 """
 
 # =====================================================================
@@ -513,6 +514,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
         )
         content = response.choices[0].message.content.strip()
         content = re.sub(r"```json\s*", "", content)
+        content = re.sub(r"```json\s*", "", content).strip()
         content = re.sub(r"```\s*", "", content).strip()
         out = json.loads(content)
 
@@ -575,7 +577,7 @@ MAPEO_FUNCIONES = {
         "params": ["patron"],
     },
     "facturas_articulo": {
-        "funcion": "get_facturas_de_articulo",
+        "funcion": "get_facturas_articulo",
         "params": ["articulo"],
     },
     "stock_total": {
@@ -597,6 +599,14 @@ MAPEO_FUNCIONES = {
     "total_facturas_por_moneda_anio": {
         "funcion": "get_total_facturas_por_moneda_anio",
         "params": ["anio"],
+    },
+    "total_facturas_por_moneda_generico": {
+        "funcion": "get_total_facturas_por_moneda_todos_anios",
+        "params": [],
+    },
+    "total_compras_por_moneda_generico": {
+        "funcion": "get_total_compras_por_moneda_todos_anios",
+        "params": [],
     },
 }
 
@@ -692,6 +702,42 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "parametros": {"anio": anio},
                 "debug": f"total facturas por moneda año {anio}",
             }
+
+    # FAST-PATH: total facturas por moneda generico (sin año)
+    if re.search(r"\b(total|totales)\b", texto_lower_original) and re.search(r"\bfacturas?\b", texto_lower_original) and re.search(r"\bmoneda\b", texto_lower_original) and not re.search(r"\d{4}", texto_lower_original):
+        print(f"\n[INTÉRPRETE] TOTAL FACTURAS POR MONEDA GENERICO")
+        try:
+            st.session_state["DBG_INT_LAST"] = {
+                "pregunta": texto_original,
+                "tipo": "total_facturas_por_moneda_generico",
+                "parametros": {},
+                "debug": "total facturas por moneda generico",
+            }
+        except Exception:
+            pass
+        return {
+            "tipo": "total_facturas_por_moneda_generico",
+            "parametros": {},
+            "debug": "total facturas por moneda generico",
+        }
+
+    # FAST-PATH: total compras por moneda generico (sin año)
+    if re.search(r"\b(total|totales)\b", texto_lower_original) and re.search(r"\bcompras?\b", texto_lower_original) and re.search(r"\bmoneda\b", texto_lower_original) and not re.search(r"\d{4}", texto_lower_original):
+        print(f"\n[INTÉRPRETE] TOTAL COMPRAS POR MONEDA GENERICO")
+        try:
+            st.session_state["DBG_INT_LAST"] = {
+                "pregunta": texto_original,
+                "tipo": "total_compras_por_moneda_generico",
+                "parametros": {},
+                "debug": "total compras por moneda generico",
+            }
+        except Exception:
+            pass
+        return {
+            "tipo": "total_compras_por_moneda_generico",
+            "parametros": {},
+            "debug": "total compras por moneda generico",
+        }
 
     texto_limpio = limpiar_consulta(texto_original)
     texto_lower = texto_limpio.lower()
@@ -972,6 +1018,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     return {
         "tipo": "no_entendido",
         "parametros": {},
-        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025 | total 2025",
+        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025 | total 2025 | total facturas por moneda | total compras por moneda",
         "debug": "no match",
     }
