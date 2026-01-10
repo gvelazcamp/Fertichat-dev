@@ -90,6 +90,7 @@ TABLA_TIPOS = """
 | stock_total | Resumen total de stock | (ninguno) | "stock total" |
 | stock_articulo | Stock de un artículo | articulo | "stock vitek" |
 | listado_facturas_anio | Listado/resumen de facturas por año agrupadas por proveedor | anio | "listado facturas 2025" / "total facturas 2025" |
+| total_anio_por_moneda | Total de facturas por moneda para un año | anio | "total 2025" / "total facturas 2025 por moneda" |
 | conversacion | Saludos | (ninguno) | "hola", "gracias" |
 | conocimiento | Preguntas generales | (ninguno) | "que es HPV" |
 | no_entendido | No se entiende | sugerencia | - |
@@ -505,7 +506,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
             model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": _get_system_prompt()},
-                {"role": "user", "content": pregunta},
+                {"user": "content": pregunta},
             ],
             temperature=0.1,
             max_tokens=500,
@@ -593,6 +594,10 @@ MAPEO_FUNCIONES = {
         "funcion": "get_listado_facturas_por_anio",
         "params": ["anio"],
     },
+    "total_anio_por_moneda": {
+        "funcion": "get_total_anio_por_moneda",
+        "params": ["anio"],
+    },
 }
 
 def obtener_info_tipo(tipo: str) -> Optional[Dict]:
@@ -626,6 +631,28 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
 
+    # FAST-PATH: total por moneda año
+    if re.search(r"\btotal(es)?\b", texto_lower_original) and not re.search(r"\b(listado|lista)\b", texto_lower_original):
+        anios_total = _extraer_anios(texto_lower_original)
+        if anios_total:
+            anio = anios_total[0]
+            if re.search(r"\b(facturas?|compras?|moneda)\b", texto_lower_original) or not any(re.search(r"\b(proveedor|articulo|stock)\b", texto_lower_original)):
+                print(f"\n[INTÉRPRETE] TOTAL AÑO POR MONEDA={anio}")
+                try:
+                    st.session_state["DBG_INT_LAST"] = {
+                        "pregunta": texto_original,
+                        "tipo": "total_anio_por_moneda",
+                        "parametros": {"anio": anio},
+                        "debug": f"total año {anio} por moneda",
+                    }
+                except Exception:
+                    pass
+                return {
+                    "tipo": "total_anio_por_moneda",
+                    "parametros": {"anio": anio},
+                    "debug": f"total año {anio} por moneda",
+                }
+
     # FAST-PATH: listado facturas por año
     if re.search(r"\b(listado|lista)\b", texto_lower_original) and re.search(r"\bfacturas?\b", texto_lower_original):
         anios_listado = _extraer_anios(texto_lower_original)
@@ -645,27 +672,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "tipo": "listado_facturas_anio",
                 "parametros": {"anio": anio},
                 "debug": f"listado facturas año {anio}",
-            }
-
-    # FAST-PATH: todas las facturas + año
-    if re.search(r"\b(todas|todoas)\b", texto_lower_original) and re.search(r"\bfacturas?\b", texto_lower_original):
-        anios_todas = _extraer_anios(texto_lower_original)
-        if anios_todas:
-            anio = anios_todas[0]
-            print(f"\n[INTÉRPRETE] TODAS LAS FACTURAS AÑO={anio}")
-            try:
-                st.session_state["DBG_INT_LAST"] = {
-                    "pregunta": texto_original,
-                    "tipo": "listado_facturas_anio",
-                    "parametros": {"anio": anio},
-                    "debug": f"todas las facturas año {anio}",
-                }
-            except Exception:
-                pass
-            return {
-                "tipo": "listado_facturas_anio",
-                "parametros": {"anio": anio},
-                "debug": f"todas las facturas año {anio}",
             }
 
     # FAST-PATH: detalle factura por número
@@ -967,6 +973,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     return {
         "tipo": "no_entendido",
         "parametros": {},
-        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025",
+        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025 | total 2025",
         "debug": "no match",
     }
