@@ -120,7 +120,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     _dbg_set_sql(
         tag=tipo,
-        query=f"-- Ejecutando tipo: {tipo}\n-- (SQL real en sql_compras/sql_comparativas/sql_facturas)\n",
+        query=f"-- Ejecutando tipo: {tipo}\\n-- (SQL real en sql_compras/sql_comparativas/sql_facturas)\\n",
         params=parametros,
         df=None,
     )
@@ -245,8 +245,8 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         _dbg_set_result(df)
         return df
 
-    # ===== TOTAL AÑO POR MONEDA =====
-    elif tipo == "total_anio_por_moneda":
+    # ===== TOTAL FACTURAS POR MONEDA AÑO =====
+    elif tipo == "total_facturas_por_moneda_anio":
         df = sqlq_compras.get_total_facturas_por_moneda_anio(parametros["anio"])
         _dbg_set_result(df)
         return df
@@ -344,7 +344,7 @@ def Compras_IA():
             respuesta_content = "🤔 No entendí bien tu pregunta."
             sugerencia = resultado.get("sugerencia", "")
             if sugerencia:
-                respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
+                respuesta_content += f"\\n\\n**Sugerencia:** {sugerencia}"
 
         else:
             try:
@@ -380,10 +380,10 @@ def Compras_IA():
                             respuesta_content = (
                                 f"✅ **Listado de Facturas {anio}** - {len(resultado_sql)} proveedores"
                             )
-                        elif tipo == "total_anio_por_moneda":
+                        elif tipo == "total_facturas_por_moneda_anio":
                             anio = parametros.get("anio", "")
                             respuesta_content = (
-                                f"✅ **Total {anio} por Moneda** - {len(resultado_sql)} filas"
+                                f"✅ **Total de Facturas {anio} por Moneda** - {len(resultado_sql)} filas"
                             )
                         else:
                             respuesta_content = (
