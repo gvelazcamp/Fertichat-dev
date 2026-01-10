@@ -329,6 +329,30 @@ elif menu_actual == "🛒 Compras IA":
             st.write("Filas:", st.session_state.get("DBG_SQL_ROWS"))
             st.write("Columnas:", st.session_state.get("DBG_SQL_COLS", []))
 
+    # =========================
+    # TEST DIRECTO ROCHE 2025
+    # =========================
+    st.markdown("---")
+    st.subheader("🧪 Test directo Roche 2025 (debug duro)")
+
+    if st.button("Probar SQL directo Roche 2025"):
+        sql_test = """
+            SELECT
+              "Año",
+              "Tipo Comprobante",
+              TRIM("Cliente / Proveedor") AS proveedor,
+              COUNT(*) AS filas
+            FROM chatbot_raw
+            WHERE "Año" = 2025
+              AND LOWER(TRIM("Cliente / Proveedor")) LIKE '%roche%'
+            GROUP BY "Año", "Tipo Comprobante", TRIM("Cliente / Proveedor")
+            ORDER BY "Tipo Comprobante";
+        """
+        st.code(sql_test, language="sql")
+        df_test = ejecutar_consulta(sql_test, ())
+        st.write("Shape (filas, columnas):", df_test.shape)
+        st.dataframe(df_test)
+
 elif menu_actual == "🔍 Debug SQL factura":
     mostrar_debug_sql_factura()
 
