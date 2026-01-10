@@ -509,12 +509,13 @@ def get_total_facturas_proveedor(
 
 
 # =========================
-# FACTURAS PROVEEDOR (DETALLE) - MODIFICADO: QUERY SIMPLIFICADO PARA AÑO
+# FACTURAS PROVEEDOR (DETALLE) - MODIFICADO PARA PERMITIR TODAS LAS FACTURAS SIN PROVEEDOR
 # =========================
 def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, articulo, moneda, limite):
     """
     Listado/detalle de facturas para proveedor(es) con filtros opcionales.
     Clave: proveedor se filtra por LIKE %texto% (no IN exacto).
+    Ahora permite proveedores vacío para traer TODAS las facturas.
     """
 
     print("\n[SQL_COMPRAS] get_facturas_proveedor_detalle() llamado con:")
@@ -569,17 +570,16 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
     params: List[Any] = []
 
     prov_clauses = []
-    for p in (proveedores or []):
-        p = str(p).strip().lower()
-        if not p:
-            continue
-        prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
-        params.append(f"%{p}%")
+    if proveedores:  # Solo agregar filtro si hay proveedores
+        for p in proveedores:
+            p = str(p).strip().lower()
+            if not p:
+                continue
+            prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
+            params.append(f"%{p}%")
 
     if prov_clauses:
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
-    else:
-        return pd.DataFrame()
 
     if articulo and str(articulo).strip():
         where_parts.append('LOWER(TRIM("Articulo")) LIKE %s')
