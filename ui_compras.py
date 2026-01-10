@@ -132,7 +132,8 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     elif tipo == "facturas_proveedor":
-        df = sqlq_facturas.get_facturas_proveedor(
+        # ✅ CAMBIO: Usar sql_compras en lugar de sql_facturas para incluir filtro de Tipo Comprobante
+        df = sqlq_compras.get_facturas_proveedor_detalle(
             proveedores=parametros.get("proveedores", []),
             meses=parametros.get("meses"),
             anios=parametros.get("anios"),
