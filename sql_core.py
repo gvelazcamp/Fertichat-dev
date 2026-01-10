@@ -32,6 +32,9 @@ def get_db_connection():
         user = st.secrets.get("DB_USER", os.getenv("DB_USER"))
         password = st.secrets.get("DB_PASSWORD", os.getenv("DB_PASSWORD"))
 
+        # DEBUG: ver qué credenciales se están usando realmente
+        print("DEBUG DB CREDS:", host, port, dbname, user)
+
         # Verificación previa de las credenciales
         if not host or not user or not password:
             print("❌ Faltan credenciales para la conexión.")
