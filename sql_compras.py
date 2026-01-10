@@ -74,12 +74,31 @@ def get_total_compras_anio(anio: int) -> dict:
 
 
 # =====================================================================
+# COMPRAS PROVEEDOR AÑO (NUEVA FUNCIÓN PARA SIMPLIFICAR CONSULTAS SIMPLES)
+# =====================================================================
+
+def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 5000) -> pd.DataFrame:
+    """Detalle de compras de un proveedor en un año específico."""
+    # Llama a la función existente para consistencia
+    return get_detalle_facturas_proveedor_anio(
+        proveedores=[proveedor_like],
+        anios=[anio],
+        moneda=None,
+        limite=limite
+    )
+
+
+# =====================================================================
 # DETALLE COMPRAS: PROVEEDOR + MES
 # =====================================================================
 
-def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.DataFrame:
+def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: Optional[int] = None) -> pd.DataFrame:
+    """Detalle de compras de un proveedor en un mes específico, opcionalmente filtrado por año."""
     proveedor_like = (proveedor_like or "").strip().lower()
-
+    
+    # Construir la consulta con filtro opcional de año
+    anio_filter = f'AND "Año" = {anio}' if anio else ""
+    
     # Usar Total simple para evitar errores de parseo
     sql = f"""
         SELECT 
@@ -93,20 +112,37 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str) -> pd.D
         FROM chatbot_raw 
         WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
           AND TRIM("Mes") = %s
+          {anio_filter}
           AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY "Fecha" DESC NULLS LAST
     """
-
+    
     df = ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
-
-    # FALLBACK AUTOMÁTICO DE MES
+    
+    # FALLBACK AUTOMÁTICO DE MES (solo si no hay año especificado, o ajusta si es necesario)
     if df is None or df.empty:
         mes_alt = get_ultimo_mes_disponible_hasta(mes_key)
         if mes_alt and mes_alt != mes_key:
-            df = ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_alt))
+            sql_alt = f"""
+                SELECT 
+                    TRIM("Cliente / Proveedor") AS Proveedor,
+                    TRIM("Articulo") AS Articulo,
+                    TRIM("Nro. Comprobante") AS Nro_Factura,
+                    "Fecha",
+                    "Cantidad",
+                    "Moneda",
+                    TRIM("Monto Neto") AS Total
+                FROM chatbot_raw 
+                WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+                  AND TRIM("Mes") = %s
+                  {anio_filter}
+                  AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+                ORDER BY "Fecha" DESC NULLS LAST
+            """
+            df = ejecutar_consulta(sql_alt, (f"%{proveedor_like}%", mes_alt))
             if df is not None and not df.empty:
                 df.attrs["fallback_mes"] = mes_alt
-
+    
     return df if df is not None else pd.DataFrame()
 
 
