@@ -14,8 +14,10 @@ from typing import Tuple, Optional
 # =========================
 try:
     from ia_interpretador import agentic_decidir as _agentic_decidir
+    AGENTIC_SOURCE = "agentic_decidir"
 except Exception:
     from ia_interpretador import interpretar_pregunta as _agentic_decidir
+    AGENTIC_SOURCE = "interpretar_pregunta"
 
 from sql_facturas import get_facturas_proveedor as get_facturas_proveedor_detalle
 from sql_compras import (  # Importar funciones de compras
@@ -85,6 +87,11 @@ def procesar_pregunta_v2(pregunta: str):
     print(f"{'=' * 60}")
 
     # =========================
+    # Confirmación del intérprete usado (agentic vs fallback)
+    # =========================
+    print(f"[ORQUESTADOR] INTÉRPRETE USADO: {AGENTIC_SOURCE}")
+
+    # =========================
     # AGENTIC AI: decisión (tipo + parametros), no ejecuta SQL
     # =========================
     interpretacion = _agentic_decidir(pregunta)
@@ -106,6 +113,7 @@ def procesar_pregunta_v2(pregunta: str):
                 "parametros": params,
                 "debug": debug,
             }
+            st.session_state["DBG_INT_SOURCE"] = AGENTIC_SOURCE
     except Exception:
         pass
 
