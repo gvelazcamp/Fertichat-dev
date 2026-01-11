@@ -632,12 +632,12 @@ def es_tipo_valido(tipo: str) -> bool:
     return tipo in MAPEO_FUNCIONES or tipo in tipos_especiales
 
 # =====================================================================
-# INTERPRETADOR PRINCIPAL
+# INTERPRETADOR PRINCIPAL (AGENTIC AI = DECIDE, NO EJECUTA)
 # =====================================================================
 
 def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     """
-    Interpretador canónico:
+    Interpretador canónico (Agentic AI):
     - Detecta intención y extrae parámetros sin inventar.
     - NO ejecuta SQL, solo devuelve {tipo, parametros}.
     """
@@ -873,7 +873,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if "compras" in parts or "compra" in parts:
             idx = parts.index("compras") if "compras" in parts else parts.index("compra")
             after_compras = parts[idx+1:]
-            
+
             # Encontrar el primer mes o año para detener
             first_stop = None
             for i, p in enumerate(after_compras):
@@ -881,12 +881,12 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 if clean_p in MESES or (clean_p.isdigit() and int(clean_p) in ANIOS_VALIDOS):
                     first_stop = i
                     break
-            
+
             if first_stop is not None:
                 proveedores_texto = " ".join(after_compras[:first_stop])
             else:
                 proveedores_texto = " ".join(after_compras)
-            
+
             if "," in proveedores_texto:
                 proveedores_multiples = [p.strip() for p in proveedores_texto.split(",") if p.strip()]
                 proveedores_multiples = [_alias_proveedor(p) for p in proveedores_multiples if p]
@@ -1135,3 +1135,31 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         "debug": "no match",
     }
 
+
+# =========================
+# AGENTIC AI - API PÚBLICA (NO EJECUTA SQL)
+# =========================
+# Nota: En tu arquitectura, "Agentic AI" = este interpretador.
+# El orquestador sigue siendo el que ejecuta SQL/funciones.
+# Esto es solo un alias/wrapper para que lo uses explícitamente como "agente".
+
+def agentic_decidir(pregunta: str) -> Dict[str, Any]:
+    """
+    API Agentic:
+    - Devuelve una DECISIÓN (tipo + parametros)
+    - Mantiene compatibilidad: retorna exactamente lo mismo que interpretar_pregunta()
+    """
+    return interpretar_pregunta(pregunta)
+
+
+def agentic_es_ejecutable(decision: Dict[str, Any]) -> bool:
+    """
+    True si la decisión tiene tipo válido para el router/orquestador.
+    No ejecuta nada: solo valida formato mínimo.
+    """
+    if not isinstance(decision, dict):
+        return False
+    tipo = decision.get("tipo")
+    if not tipo:
+        return False
+    return es_tipo_valido(str(tipo))
