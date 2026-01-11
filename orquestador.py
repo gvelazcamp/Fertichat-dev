@@ -11,18 +11,13 @@ from typing import Tuple, Optional
 # AGENTIC AI (fallback seguro)
 # - Si existe agentic_decidir, lo usamos.
 # - Si no existe, cae a interpretar_pregunta (compatibilidad).
-# - Agrega marca para saber qué camino se usó.
 # =========================
-_AGENTIC_SOURCE = "interpretar_pregunta_fallback"
-_AGENTIC_IMPORT_ERROR = None
-
 try:
     from ia_interpretador import agentic_decidir as _agentic_decidir
     _AGENTIC_SOURCE = "agentic_decidir"
-except Exception as e:
+except Exception:
     from ia_interpretador import interpretar_pregunta as _agentic_decidir
-    _AGENTIC_SOURCE = "interpretar_pregunta_fallback"
-    _AGENTIC_IMPORT_ERROR = str(e)
+    _AGENTIC_SOURCE = "interpretar_pregunta"
 
 from sql_facturas import get_facturas_proveedor as get_facturas_proveedor_detalle
 from sql_compras import (  # Importar funciones de compras
@@ -45,10 +40,10 @@ def _init_orquestador_state():
     try:
         st.session_state["ORQUESTADOR_CARGADO"] = True
         st.session_state["ORQUESTADOR_ERROR"] = None
-
-        # ===== Marca AGENTIC para ver en Debug =====
+        # =========================
+        # MARCA PARA VER SI ESTÁ USANDO AGENTIC O FALLBACK
+        # =========================
         st.session_state["AGENTIC_SOURCE"] = _AGENTIC_SOURCE
-        st.session_state["AGENTIC_IMPORT_ERROR"] = _AGENTIC_IMPORT_ERROR
     except Exception as e:
         ORQUESTADOR_ERROR = str(e)
 
@@ -96,12 +91,13 @@ def procesar_pregunta_v2(pregunta: str):
     print(f"{'=' * 60}")
 
     # =========================
-    # AGENTIC AI: decisión (tipo + parametros), no ejecuta SQL
+    # MARCA EN LOG: QUÉ “CEREBRO” SE ESTÁ USANDO
     # =========================
     print(f"[ORQUESTADOR] AGENTIC_SOURCE = {_AGENTIC_SOURCE}")
-    if _AGENTIC_IMPORT_ERROR:
-        print(f"[ORQUESTADOR] AGENTIC_IMPORT_ERROR = {_AGENTIC_IMPORT_ERROR}")
 
+    # =========================
+    # AGENTIC AI: decisión (tipo + parametros), no ejecuta SQL
+    # =========================
     interpretacion = _agentic_decidir(pregunta)
 
     tipo = interpretacion.get("tipo", "no_entendido")
@@ -121,7 +117,6 @@ def procesar_pregunta_v2(pregunta: str):
                 "parametros": params,
                 "debug": debug,
                 "agentic_source": _AGENTIC_SOURCE,
-                "agentic_import_error": _AGENTIC_IMPORT_ERROR,
             }
     except Exception:
         pass
@@ -273,7 +268,6 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str):
         elif tipo == "compras_multiples":
             proveedores = params.get("proveedores", [])
             if isinstance(proveedores, str):
-                # Si viene como string con comas, split
                 if "," in proveedores:
                     proveedores = [p.strip() for p in proveedores.split(",") if p.strip()]
                 else:
@@ -331,15 +325,11 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str):
                 None,
             )
 
-        # =========================================================
-        # OTROS TIPOS (si los vas agregando)
-        # =========================================================
         return f"❌ Tipo de consulta '{tipo}' no implementado.", None, None
 
     except Exception as e:
         print(f"❌ Error ejecutando consulta: {e}")
         import traceback
-
         traceback.print_exc()
         return f"❌ Error: {str(e)[:150]}", None, None
 
@@ -368,8 +358,9 @@ if __name__ == "__main__":
         print(
             f"ORQUESTADOR_CARGADO (session): {st.session_state.get('ORQUESTADOR_CARGADO', None)}"
         )
-        print(f"AGENTIC_SOURCE (session): {st.session_state.get('AGENTIC_SOURCE', None)}")
-        print(f"AGENTIC_IMPORT_ERROR (session): {st.session_state.get('AGENTIC_IMPORT_ERROR', None)}")
+        print(
+            f"AGENTIC_SOURCE (session): {st.session_state.get('AGENTIC_SOURCE', None)}"
+        )
     except Exception:
-        print("ORQUESTADOR_CARGADO/AGENTIC_SOURCE (session): n/a")
+        print("ORQUESTADOR_CARGADO (session): n/a")
     print("=" * 60)
