@@ -295,13 +295,18 @@ html, body {
 }
 
 /* Mover FertiChat y campana al toolbar */
+.stAppToolbar {
+  position: relative;
+}
 .stAppToolbar::before {
   content: "FertiChat 🔔";
   font-size: 18px;
   font-weight: 800;
   color: #0f172a;
-  margin-left: 10px;
-  display: block;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
 }
 
 /* Ocultar header de escritorio siempre */
