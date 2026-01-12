@@ -43,7 +43,7 @@ def mostrar_inicio():
     )
 
     # =========================
-    # CSS para botones como tarjetas (ajustado para mejor alineación y espacio)
+    # CSS para botones como tarjetas (ajustado: tiles más grandes, sin superposición en texto)
     # =========================
     st.markdown("""
     <style>
@@ -53,24 +53,24 @@ def mostrar_inicio():
        (Scope con :has() para no romper otros botones del sistema)
        ========================================================= */
 
-    /* Tile (ícono) */
+    /* Tile (ícono) - Más grande */
     .fc-home-tile {
-        width:54px;
-        height:54px;
-        border-radius:16px;
+        width:64px;
+        height:64px;
+        border-radius:18px;
         display:flex;
         align-items:center;
         justify-content:center;
         border:1px solid rgba(15,23,42,0.08);
         background:rgba(255,255,255,0.85);
-        font-size:26px;
+        font-size:28px;
 
-        /* clave: que “se meta” sobre la tarjeta */
+        /* clave: que “se meta” sobre la tarjeta, arriba del texto */
         position: relative;
         top: 20px;
         left: 20px;
         z-index: 5;
-        margin-bottom: -50px;
+        margin-bottom: -60px;
 
         /* clave: no bloquear el click del botón debajo */
         pointer-events: none;
@@ -94,9 +94,9 @@ def mostrar_inicio():
         background:rgba(255,255,255,0.78);
         border-radius:18px;
 
-        /* espacio para el tile “superpuesto” */
-        padding:20px 20px 16px 100px;
-        min-height: 120px;
+        /* espacio para el tile arriba y texto abajo */
+        padding:84px 20px 16px 20px;
+        min-height: 140px;
 
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
         cursor:pointer;
@@ -165,17 +165,17 @@ def mostrar_inicio():
     /* Responsive */
     @media (max-width: 900px) {
         .fc-home-tile {
-            width:48px;
-            height:48px;
-            border-radius:14px;
-            font-size:24px;
-            top: 16px;
-            left: 16px;
-            margin-bottom: -42px;
+            width:56px;
+            height:56px;
+            border-radius:16px;
+            font-size:26px;
+            top: 18px;
+            left: 18px;
+            margin-bottom: -52px;
         }
         div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button {
-            padding:18px 18px 14px 80px;
-            min-height: 100px;
+            padding:78px 18px 14px 18px;
+            min-height: 120px;
         }
         div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button::first-line {
             font-size:15px;
