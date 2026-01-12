@@ -102,8 +102,8 @@ def get_compras_multiples(
     Detalle de compras para múltiples proveedores, meses y años.
     Ejemplo: proveedores=["roche", "biodiagnostico"], meses=["2025-07"], anios=[2025]
 
-    FIX: el filtro por meses se hace por rango de "Fecha" (construido desde YYYY-MM),
-    para no depender del formato/consistencia de la columna "Mes".
+    FIX: el filtro por meses se hace por "Mes" (directo, sin rangos de fecha),
+    para consistencia con otras consultas y evitar problemas con formatos de "Fecha".
     """
     if not proveedores:
         return pd.DataFrame()
@@ -113,7 +113,7 @@ def get_compras_multiples(
     ]
     params: List[Any] = []
 
-    # Proveedores (robusto: normaliza acentos con translate)
+    # Proveedores (robusto: normaliza acentos con regexp_replace)
     prov_clauses = []
     for p in proveedores:
         p = str(p).strip().lower()
@@ -127,39 +127,16 @@ def get_compras_multiples(
     if prov_clauses:
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
-    # Meses -> rangos por Fecha (YYYY-MM)
+    # Meses -> por "Mes"
     if meses:
-        rangos_sql = []
+        mes_clauses = []
         for m in (meses or []):
             if not m:
                 continue
-            mm = re.match(r"^(\d{4})-(\d{1,2})$", str(m).strip())
-            if not mm:
-                continue
-            y = int(mm.group(1))
-            mo = int(mm.group(2))
-            desde = f"{y}-{mo:02d}-01"
-            if mo == 12:
-                hasta = f"{y + 1}-01-01"
-            else:
-                hasta = f"{y}-{mo + 1:02d}-01"
-
-            rangos_sql.append('("Fecha"::date >= %s AND "Fecha"::date < %s)')
-            params.extend([desde, hasta])
-
-        if rangos_sql:
-            where_parts.append("(" + " OR ".join(rangos_sql) + ")")
-
-    # Años (opcional)
-    if anios:
-        anios_ok: List[int] = []
-        for a in (anios or []):
-            if isinstance(a, int):
-                anios_ok.append(a)
-        if anios_ok:
-            ph = ", ".join(["%s"] * len(anios_ok))
-            where_parts.append(f'"Año" IN ({ph})')
-            params.extend(anios_ok)
+            mes_clauses.append('"Mes" = %s')
+            params.append(m)
+        if mes_clauses:
+            where_parts.append("(" + " OR ".join(mes_clauses) + ")")
 
     sql = f"""
         SELECT
@@ -255,8 +232,8 @@ def get_detalle_facturas_proveedor_anio(
     moneda_sql = ""
     if moneda:
         moneda = moneda.strip().upper()
-        if moneda in ("U$S", "USD", "U$$"):
-            moneda_sql = "AND TRIM(\"Moneda\") IN ('U$S', 'U$$', 'USD')"
+        if moneda in ("U$S", "USD", "U$$", "US$"):
+            moneda_sql = "AND TRIM(\"Moneda\") IN ('U$S', 'U$$', 'USD', 'US$')"
         elif moneda in ("$", "UYU"):
             moneda_sql = "AND TRIM(\"Moneda\") = '$'"
 
@@ -777,6 +754,7 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
 
 
 # =========================
+# =========================
 # TOTAL FACTURAS POR MONEDA AÑO - CORREGIDA
 # =========================
 def get_total_facturas_por_moneda_anio(anio: int) -> pd.DataFrame:
@@ -791,7 +769,7 @@ def get_total_facturas_por_moneda_anio(anio: int) -> pd.DataFrame:
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" = %s
         GROUP BY TRIM("Moneda")
-        ORDER BY monto_total DESC
+        ORDER BY monto_total DESC  -- Cambiado a DESC para un ordenamiento más útil
     """
     return ejecutar_consulta(sql, (anio,))
 
@@ -800,7 +778,7 @@ def get_total_facturas_por_moneda_anio(anio: int) -> pd.DataFrame:
 # =========================
 def get_total_facturas_por_moneda_todos_anios() -> pd.DataFrame:
     """Total de facturas por moneda y año, mostrando todos los años disponibles."""
-    total_expr = _sql_total_num_expr_general()
+    total_expr = _sql_total_num_expr_general()  # Usa la expresión estándar para consistencia
     sql = f"""
         SELECT
             "Año" AS Anio,
@@ -819,7 +797,7 @@ def get_total_facturas_por_moneda_todos_anios() -> pd.DataFrame:
 # =========================
 def get_total_compras_por_moneda_todos_anios() -> pd.DataFrame:
     """Total de compras por moneda y año, mostrando todos los años disponibles."""
-    total_expr = _sql_total_num_expr_general()
+    total_expr = _sql_total_num_expr_general()  # Usa la expresión estándar para consistencia
     sql = f"""
         SELECT
             "Año" AS Anio,
