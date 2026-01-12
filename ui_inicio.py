@@ -114,7 +114,7 @@ def mostrar_inicio():
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) -> aún más abajo */
+    /* Tile (ícono) -> aún más abajo (aprox 0.5cm más) */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
         width:54px;
         height:54px;
@@ -129,7 +129,7 @@ def mostrar_inicio():
 
         position:absolute;
         left: 16px;
-        top: calc(50% + 30px);          /* <-- MÁS BAJADO AÚN */
+        top: calc(50% + 36px);          /* <-- BAJADO ~0.5cm MÁS */
         transform: translateY(-50%);
         z-index: 5;
 
@@ -156,7 +156,7 @@ def mostrar_inicio():
             border-radius:14px;
             font-size:24px;
             left: 14px;
-            top: calc(50% + 26px);      /* <-- MÁS BAJADO MOBILE AÚN */
+            top: calc(50% + 32px);      /* <-- BAJADO ~0.5cm MÁS MOBILE */
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
             height: 92px;
