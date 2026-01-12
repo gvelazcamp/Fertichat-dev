@@ -261,7 +261,7 @@ st.markdown(
 
 st.markdown(
     f"""
-<div class="header-desktop-wrapper">
+<div class="header-desktop-wrapper" style="display: none;">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <div>
             <h1 style="margin:0; font-size:38px; font-weight:900; color:#0f172a;">FertiChat</h1>
