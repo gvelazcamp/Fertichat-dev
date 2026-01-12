@@ -513,40 +513,17 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             st.caption("Descarga la vista filtrada (sin columnas internas).")
 
     # ============================================================
-    # TABS (compacto + tabla paginada + gráfico top10)
+    # TABS (SIN GRAFICO/TABLA EN VISTA GENERAL)
     # ============================================================
     tab_all, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
         ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
     )
 
-    def _tabla_detalle(df_tab: pd.DataFrame, etiqueta: str):
+    def _render_resumen_solo_texto(df_tab: pd.DataFrame, etiqueta: str):
         if df_tab is None or df_tab.empty:
             st.info(f"Sin resultados en {etiqueta}.")
             return
 
-        # Orden preferido (mantiene columnas originales)
-        pref = []
-        for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
-            if c and c in df_tab.columns:
-                pref.append(c)
-        resto = [c for c in df_tab.columns if c not in pref and not str(c).startswith("__")]
-        show_cols = pref + resto
-
-        # Display (texto recortado para que sea más "vendible")
-        df_disp = df_tab[show_cols].copy()
-        if col_proveedor and col_proveedor in df_disp.columns:
-            df_disp[col_proveedor] = df_disp[col_proveedor].apply(lambda x: _shorten_text(x, 56))
-        if col_articulo and col_articulo in df_disp.columns:
-            df_disp[col_articulo] = df_disp[col_articulo].apply(lambda x: _shorten_text(x, 56))
-
-        st.dataframe(df_disp, use_container_width=True, height=420)
-
-    def _render_resumen(df_tab: pd.DataFrame, etiqueta: str):
-        if df_tab is None or df_tab.empty:
-            st.info(f"Sin resultados en {etiqueta}.")
-            return
-
-        # Top proveedores
         if col_proveedor:
             top = (
                 df_tab.groupby(col_proveedor)["__total_num__"]
@@ -558,30 +535,24 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 prov_top = str(top.index[0])
                 val_top = float(top.iloc[0])
                 share = val_top / total_val * 100.0
-                st.markdown(f"**Resumen:** principal proveedor **{prov_top}** con **{share:.1f}%** del total en {etiqueta}.")
+                st.markdown(
+                    f"**Resumen:** principal proveedor **{prov_top}** con **{share:.1f}%** del total en {etiqueta}."
+                )
+            else:
+                st.caption("No hay totales suficientes para generar resumen.")
+        else:
+            st.caption("No hay columna de proveedor para resumir.")
 
-            df_top = top.head(12).reset_index()
-            df_top.columns = [col_proveedor, "Total"]
-            st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
-
-            try:
-                chart_df = df_top.set_index(col_proveedor)["Total"]
-                st.bar_chart(chart_df)
-            except Exception:
-                pass
-
-        # Tabla detalle colapsada (reduce scroll)
-        with st.expander("Tabla detalle", expanded=False):
-            _tabla_detalle(df_tab, etiqueta)
+        st.caption("Detalle completo solo en la pestaña **Tabla**.")
 
     with tab_all:
-        _render_resumen(df_f, "todas las monedas")
+        _render_resumen_solo_texto(df_f, "todas las monedas")
 
     with tab_uyu:
-        _render_resumen(df_f[df_f["__moneda_view__"] == "UYU"], "UYU")
+        _render_resumen_solo_texto(df_f[df_f["__moneda_view__"] == "UYU"], "UYU")
 
     with tab_usd:
-        _render_resumen(df_f[df_f["__moneda_view__"] == "USD"], "USD")
+        _render_resumen_solo_texto(df_f[df_f["__moneda_view__"] == "USD"], "USD")
 
     with tab_graf:
         if df_f is None or df_f.empty or not col_articulo:
@@ -609,6 +580,8 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 df_top_art = top_art.reset_index()
                 df_top_art.columns = [col_articulo, "Total"]
                 df_top_art[col_articulo] = df_top_art[col_articulo].apply(lambda x: _shorten_text(x, 60))
+
+                # (opcional) si querés SOLO gráfico y no tabla acá, avisame y lo saco
                 st.dataframe(df_top_art, use_container_width=True, hide_index=True, height=320)
 
                 try:
@@ -661,7 +634,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
             st.dataframe(df_page, use_container_width=True, height=460)
 
-            # Drill-down por factura (sin depender de click en fila)
+            # Drill-down por factura
             if col_nro and col_nro in df_f.columns:
                 st.markdown("#### Detalle por factura")
                 nros = [n for n in df_f[col_nro].dropna().astype(str).unique().tolist() if str(n).strip()]
@@ -698,7 +671,6 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                         f"**Factura:** `{nro_sel}` · **Items:** {len(df_fac)} · **Total:** {_fmt_compact_money(tot_fac, mon_fac)}"
                     )
 
-                    # Tabla de items
                     pref_fac = []
                     for c in [col_articulo, col_cantidad, col_total, col_fecha, col_moneda]:
                         if c and c in df_fac.columns:
@@ -711,7 +683,6 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                         df_fac_disp[col_articulo] = df_fac_disp[col_articulo].apply(lambda x: _shorten_text(x, 70))
 
                     st.dataframe(df_fac_disp, use_container_width=True, height=320)
-
 
 # =========================
 # ROUTER SQL (ahora incluye compras, comparativas y stock)
