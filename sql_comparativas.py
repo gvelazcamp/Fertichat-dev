@@ -205,6 +205,7 @@ def get_comparacion_proveedor_anios(*args, **kwargs) -> pd.DataFrame:
     - get_comparacion_proveedor_anios(proveedor1: str, proveedor2: str, anio1: int, anio2: int)  # Dos proveedores, dos años
     - Y otros formatos similares detectados automáticamente.
     """
+    print(f"🐛 DEBUG SQL_COMPARATIVAS: Llamando get_comparacion_proveedor_anios con args={args}, kwargs={kwargs}")
     
     proveedores = None
     anios = None
@@ -246,8 +247,12 @@ def get_comparacion_proveedor_anios(*args, **kwargs) -> pd.DataFrame:
     if isinstance(proveedores, str):
         proveedores = [proveedores]
     
+    print(f"🐛 DEBUG SQL_COMPARATIVAS: Detectado proveedores={proveedores}, anios={anios}")
+    
     # Llamar a la función multi existente para manejar la lógica
-    return get_comparacion_proveedores_anios_multi(proveedores, anios)
+    df = get_comparacion_proveedores_anios_multi(proveedores, anios)
+    print(f"🐛 DEBUG SQL_COMPARATIVAS: Resultado - filas={len(df) if df is not None else 0}")
+    return df
 
 
 def get_comparacion_proveedor_anios_monedas(anios: List[int], proveedores: List[str] = None) -> pd.DataFrame:
@@ -321,7 +326,7 @@ def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] 
 
     sql = f"""
         SELECT
-            TRIM(COALESCE("Familia", 'SIN FAMILIA')) AS Familia,
+            TRIM("Cliente / Proveedor") AS Familia,
             {cols_sql}
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
@@ -414,6 +419,8 @@ def get_comparacion_proveedores_anios_multi(
       anios = [2024, 2025]
     Devuelve filas por Proveedor y columnas por año (y Diferencia si hay 2 años).
     """
+    print(f"🐛 DEBUG SQL_COMPARATIVAS: Ejecutando comparación multi-proveedores-años")
+    print(f"🐛 DEBUG SQL_COMPARATIVAS: Proveedores={proveedores}, Años={anios}")
 
     if not proveedores or not anios:
         return pd.DataFrame()
@@ -480,7 +487,11 @@ def get_comparacion_proveedores_anios_multi(
         LIMIT 300
     """
 
-    return ejecutar_consulta(sql, tuple(params))
+    print(f"🐛 DEBUG SQL_COMPARATIVAS: SQL construido (primeros 200 chars): {sql[:200]}...")
+    print(f"🐛 DEBUG SQL_COMPARATIVAS: Params={params}")
+    df = ejecutar_consulta(sql, tuple(params))
+    print(f"🐛 DEBUG SQL_COMPARATIVAS: SQL ejecutado, resultado filas={len(df) if not df.empty else 0}")
+    return df
 
 
 # =====================================================================
