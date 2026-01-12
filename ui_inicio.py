@@ -12,6 +12,26 @@ def mostrar_inicio():
     """Pantalla de inicio con accesos rápidos a los módulos (look corporativo)"""
 
     # =========================
+    # Manejo de navegación desde query params
+    # =========================
+    go = st.query_params.get("go")
+    if go:
+        st.query_params.clear()
+        menu_map = {
+            "compras": "🛒 Compras IA",
+            "buscador": "🔎 Buscador IA",
+            "stock": "📦 Stock IA",
+            "dashboard": "📊 Dashboard",
+            "pedidos": "📄 Pedidos internos",
+            "baja": "🧾 Baja de stock",
+            "ordenes": "📦 Órdenes de compra",
+            "indicadores": "📈 Indicadores (Power BI)",
+        }
+        if go in menu_map:
+            st.session_state["menu"] = menu_map[go]
+            st.rerun()
+
+    # =========================
     # Datos usuario / saludo
     # =========================
     user = st.session_state.get("user", {})
@@ -43,7 +63,7 @@ def mostrar_inicio():
     )
 
     # =========================
-    # Cards HTML - MODIFICADO: usar <button> en lugar de <div> para que onclick funcione
+    # Cards HTML - USANDO <button> PARA onclick FUNCIONE Y NAVEGUE
     # =========================
     cards_html = textwrap.dedent("""
         <style>
@@ -184,7 +204,7 @@ def mostrar_inicio():
     tips = [
         "💡 Escribí 'compras roche 2025' para ver todas las compras a Roche este año",
         "💡 Usá 'lotes por vencer' en Stock IA para ver vencimientos próximos",
-        "💡 Prob�� 'comparar roche 2024 2025' para ver la evolución de compras",
+        "💡 Probá 'comparar roche 2024 2025' para ver la evolución de compras",
         "💡 En el Buscador podés filtrar por proveedor, artículo y fechas",
         "💡 Usá 'top 10 proveedores 2025' para ver el ranking de compras",
     ]
