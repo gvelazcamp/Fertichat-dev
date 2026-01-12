@@ -147,31 +147,13 @@ def _sql_total_num_expr_general() -> str:
     Convierte Monto Neto a número (sirve para $ o U$S).
     Se usa en ui_buscador y sql_facturas.
     """
-    limpio = """
-        REPLACE(
-            REPLACE(
-                REPLACE(
-                    REPLACE(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(
-                                    REPLACE(TRIM(COALESCE("Monto Neto", '')), 'U$S', ''),
-                                    'U$$', ''
-                                ),
-                                '$', ''
-                            ),
-                            '.', ''
-                        ),
-                        ',', '.'
-                    ),
-                    '(', '-'
-                ),
-                ')', ''
-            ),
-            ' ', ''
-        )
-    """
-    return _sql_num_from_text(limpio)
+    return '''
+    CASE 
+      WHEN LEFT(TRIM("Monto Neto"), 1) = '(' 
+      THEN -CAST(REPLACE(REPLACE(REPLACE(SUBSTRING(TRIM("Monto Neto"), 2, LENGTH(TRIM("Monto Neto")) - 2), ' ', ''), '.', ''), ',', '.') AS numeric)
+      ELSE CAST(REPLACE(REPLACE(REPLACE(TRIM("Monto Neto"), ' ', ''), '.', ''), ',', '.') AS numeric)
+    END
+    '''
 
 
 # =====================================================================
