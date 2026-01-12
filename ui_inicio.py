@@ -47,128 +47,127 @@ def mostrar_inicio():
     # =========================
     st.markdown('<div id="fc-home-marker" style="display:none;"></div>', unsafe_allow_html=True)
 
-# =========================
-# CSS para botones como tarjetas (SOLO HOME)
-# =========================
-st.markdown("""
-<style>
-/* =========================================================
-   SOLO HOME (scoped): si el marcador existe, aplico estilos
-   ========================================================= */
-div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="column"]{
-    position: relative; /* el tile se posiciona dentro de la columna */
-}
-
-/* Botón como tarjeta (MISMO TAMAÑO SIEMPRE) */
-div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-    border:1px solid rgba(15,23,42,0.10);
-    background:rgba(255,255,255,0.82);
-    border-radius:20px;
-
-    /* tamaño fijo para que todas queden iguales */
-    height: 96px;
-    min-height: 96px;
-
-    /* espacio para el tile */
-    padding:16px 16px 16px 92px;
-
-    box-shadow:0 10px 24px rgba(2,6,23,0.06);
-    cursor:pointer;
-    transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
-
-    width:100%;
-    text-align:left;
-
-    white-space: pre-line; /* respeta \n del texto */
-    font-size:13.5px;      /* “desc” */
-    font-weight:600;
-    color:#334155;
-    line-height:1.22;
-
-    display:block;
-    position: relative;
-    margin:0;
-}
-
-/* Primera línea como título */
-div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
-    font-size:16px;
-    font-weight:900;
-    color:#0f172a;
-    letter-spacing:-0.01em;
-}
-
-/* Hover */
-div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:hover{
-    transform:translateY(-2px);
-    box-shadow:0 14px 34px rgba(2,6,23,0.09);
-    border-color:rgba(37,99,235,0.22);
-    background:rgba(255,255,255,0.90);
-}
-div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:active{
-    transform:translateY(0);
-    box-shadow:0 10px 24px rgba(2,6,23,0.06);
-}
-div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:focus{
-    outline:none;
-    box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
-}
-
-/* Tile (ícono) CENTRADO VERTICALMENTE dentro de la tarjeta */
-div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-    width:54px;
-    height:54px;
-    border-radius:16px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-
-    border:1px solid rgba(15,23,42,0.08);
-    background:rgba(255,255,255,0.86);
-    font-size:26px;
-
-    position:absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 5;
-
-    pointer-events:none; /* no bloquea el click */
-    box-shadow:0 10px 18px rgba(2,6,23,0.07);
-    user-select:none;
-}
-
-/* Colores tiles */
-.tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
-.tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
-.tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
-.tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
-.tile-pedidos { background:rgba(2,132,199,0.10); border-color:rgba(2,132,199,0.18); }
-.tile-baja { background:rgba(244,63,94,0.10); border-color:rgba(244,63,94,0.18); }
-.tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
-.tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
-
-/* Responsive */
-@media (max-width: 900px){
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-        width:48px;
-        height:48px;
-        border-radius:14px;
-        font-size:24px;
-        left: 14px;
+    # =========================
+    # CSS para botones como tarjetas (SOLO HOME)
+    # =========================
+    st.markdown("""
+    <style>
+    /* =========================================================
+       SOLO HOME (scoped): si el marcador existe, aplico estilos
+       ========================================================= */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="column"]{
+        position: relative; /* el tile se posiciona dentro de la columna */
     }
+
+    /* Botón como tarjeta (MISMO TAMAÑO SIEMPRE) */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-        height: 92px;
-        min-height: 92px;
-        padding:14px 14px 14px 78px;
-    }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
-        font-size:15px;
-    }
-}
-</style>
-""", unsafe_allow_html=True)
+        border:1px solid rgba(15,23,42,0.10);
+        background:rgba(255,255,255,0.82);
+        border-radius:20px;
 
+        /* tamaño fijo para que todas queden iguales */
+        height: 96px;
+        min-height: 96px;
+
+        /* espacio para el tile */
+        padding:16px 16px 16px 92px;
+
+        box-shadow:0 10px 24px rgba(2,6,23,0.06);
+        cursor:pointer;
+        transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+
+        width:100%;
+        text-align:left;
+
+        white-space: pre-line; /* respeta \n del texto */
+        font-size:13.5px;      /* “desc” */
+        font-weight:600;
+        color:#334155;
+        line-height:1.22;
+
+        display:block;
+        position: relative;
+        margin:0;
+    }
+
+    /* Primera línea como título */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
+        font-size:16px;
+        font-weight:900;
+        color:#0f172a;
+        letter-spacing:-0.01em;
+    }
+
+    /* Hover */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:hover{
+        transform:translateY(-2px);
+        box-shadow:0 14px 34px rgba(2,6,23,0.09);
+        border-color:rgba(37,99,235,0.22);
+        background:rgba(255,255,255,0.90);
+    }
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:active{
+        transform:translateY(0);
+        box-shadow:0 10px 24px rgba(2,6,23,0.06);
+    }
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:focus{
+        outline:none;
+        box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
+    }
+
+    /* Tile (ícono) CENTRADO VERTICALMENTE dentro de la tarjeta */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
+        width:54px;
+        height:54px;
+        border-radius:16px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+
+        border:1px solid rgba(15,23,42,0.08);
+        background:rgba(255,255,255,0.86);
+        font-size:26px;
+
+        position:absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 5;
+
+        pointer-events:none; /* no bloquea el click */
+        box-shadow:0 10px 18px rgba(2,6,23,0.07);
+        user-select:none;
+    }
+
+    /* Colores tiles */
+    .tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
+    .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
+    .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
+    .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
+    .tile-pedidos { background:rgba(2,132,199,0.10); border-color:rgba(2,132,199,0.18); }
+    .tile-baja { background:rgba(244,63,94,0.10); border-color:rgba(244,63,94,0.18); }
+    .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
+    .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
+
+    /* Responsive */
+    @media (max-width: 900px){
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
+            width:48px;
+            height:48px;
+            border-radius:14px;
+            font-size:24px;
+            left: 14px;
+        }
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
+            height: 92px;
+            min-height: 92px;
+            padding:14px 14px 14px 78px;
+        }
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
+            font-size:15px;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # =========================
     # Secciones con botones
