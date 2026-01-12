@@ -134,9 +134,12 @@ def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
 
 
 # =========================
-# DASHBOARD VENDIBLE (UI) - SIMPLE / COMPACTO
+# DASHBOARD VENDIBLE (UI) - NUEVO
 # (NO TOCA SQL / NO ROMPE LO EXISTENTE)
 # =========================
+import io
+
+
 def _find_col(df: pd.DataFrame, candidates_lower: list) -> Optional[str]:
     for c in df.columns:
         if str(c).lower() in candidates_lower:
@@ -165,6 +168,7 @@ def _safe_to_float(v) -> float:
         if not s:
             return 0.0
         s = s.replace(" ", "")
+        # soporta "1.234,56" (LATAM) y "1,234.56" (EN) de forma básica
         if "," in s and "." in s:
             s = s.replace(".", "").replace(",", ".")
         else:
@@ -191,6 +195,8 @@ def _fmt_compact_money(v: float, moneda: str) -> str:
         prefix = "$ "
         decimals = 0 if a >= 1000 else 2
 
+    if a >= 1_000_000_000:
+        return f"{sign}{prefix}{a/1_000_000_000:,.2f}B".replace(",", ".")
     if a >= 1_000_000:
         return f"{sign}{prefix}{a/1_000_000:,.2f}M".replace(",", ".")
     if a >= 1_000:
@@ -198,17 +204,87 @@ def _fmt_compact_money(v: float, moneda: str) -> str:
     return f"{sign}{prefix}{a:,.{decimals}f}".replace(",", ".")
 
 
-def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Datos", key_prefix: str = ""):
-    """
-    Dashboard compacto:
-    - KPIs arriba
-    - Filtros en expander
-    - Tabs: Vista general | UYU | USD | Gráfico (Top 10 artículos) | Tabla
-    """
+def _shorten_text(x, max_len: int = 52) -> str:
+    s = "" if x is None else str(x)
+    s = s.strip()
+    if len(s) <= max_len:
+        return s
+    return s[: max_len - 1] + "…"
+
+
+def _df_export_clean(df: pd.DataFrame) -> pd.DataFrame:
+    # No exportar columnas internas __*
+    cols = [c for c in df.columns if not str(c).startswith("__")]
+    return df[cols].copy() if cols else df.copy()
+
+
+def _df_to_csv_bytes(df: pd.DataFrame) -> bytes:
+    try:
+        return df.to_csv(index=False).encode("utf-8")
+    except Exception:
+        return b""
+
+
+def _df_to_excel_bytes(df: pd.DataFrame) -> bytes:
+    try:
+        buff = io.BytesIO()
+        with pd.ExcelWriter(buff, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="datos")
+        return buff.getvalue()
+    except Exception:
+        return b""
+
+
+def _init_saved_views():
+    if "FC_SAVED_VIEWS" not in st.session_state:
+        st.session_state["FC_SAVED_VIEWS"] = []
+
+
+def _save_view(view_name: str, data: dict):
+    _init_saved_views()
+    name = (view_name or "").strip()
+    if not name:
+        return
+    # Reemplaza si existe
+    out = []
+    for v in st.session_state["FC_SAVED_VIEWS"]:
+        if str(v.get("name", "")).strip().lower() == name.lower():
+            continue
+        out.append(v)
+    out.append({"name": name, "data": data})
+    st.session_state["FC_SAVED_VIEWS"] = out
+
+
+def _get_saved_view_names() -> list:
+    _init_saved_views()
+    names = [v.get("name") for v in st.session_state.get("FC_SAVED_VIEWS", []) if v.get("name")]
+    return sorted(names, key=lambda s: str(s).lower())
+
+
+def _load_view(name: str) -> Optional[dict]:
+    _init_saved_views()
+    for v in st.session_state.get("FC_SAVED_VIEWS", []):
+        if str(v.get("name", "")).strip().lower() == str(name or "").strip().lower():
+            return v.get("data") or {}
+    return None
+
+
+def _paginate(df_in: pd.DataFrame, page: int, page_size: int) -> pd.DataFrame:
+    if df_in is None or df_in.empty:
+        return df_in
+    page_size = max(1, int(page_size or 25))
+    page = max(1, int(page or 1))
+    start = (page - 1) * page_size
+    end = start + page_size
+    return df_in.iloc[start:end]
+
+
+def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado", key_prefix: str = ""):
     if df is None or df.empty:
         st.warning("⚠️ No hay resultados para mostrar.")
         return
 
+    # CSS liviano (no pisa el resto)
     st.markdown(
         """
         <style>
@@ -244,12 +320,13 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Datos", k
     else:
         df_view["__total_num__"] = 0.0
 
-    # Contexto (compacto)
+    # Contexto
     filas_total = int(len(df_view))
     facturas = int(df_view[col_nro].nunique()) if col_nro else 0
     proveedores = int(df_view[col_proveedor].nunique()) if col_proveedor else 0
     articulos = int(df_view[col_articulo].nunique()) if col_articulo else 0
 
+    # Rango fechas
     rango_txt = ""
     if df_view["__fecha_view__"].notna().any():
         dmin = df_view["__fecha_view__"].min()
@@ -264,8 +341,9 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Datos", k
         f"<div class='fc-subtle'>Filas: <b>{filas_total}</b> · Facturas: <b>{facturas}</b> · Proveedores: <b>{proveedores}</b> · Artículos: <b>{articulos}</b>{rango_txt}</div>",
         unsafe_allow_html=True
     )
+    st.write("")
 
-    # KPIs arriba (siempre)
+    # KPIs (sobre TODO el resultado, antes de filtros)
     tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
     tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
 
@@ -279,8 +357,16 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Datos", k
     with k4:
         st.metric("Proveedores", f"{proveedores}")
 
-    # Filtros (expander) - solo afectan vista
-    with st.expander("🔎 Filtros (vista)", expanded=False):
+    # ============================================================
+    # FILTROS + ACCIONES (solo afectan la vista)
+    # ============================================================
+    # Defaults fecha
+    d_ini_default, d_fin_default = None, None
+    if df_view["__fecha_view__"].notna().any():
+        d_ini_default = df_view["__fecha_view__"].min().date()
+        d_fin_default = df_view["__fecha_view__"].max().date()
+
+    with st.expander("🔎 Filtros (vista) / Exportar / Guardar vista", expanded=False):
         f1, f2, f3, f4 = st.columns([2, 2, 1.2, 1.6])
 
         sel_prov = []
@@ -288,85 +374,157 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Datos", k
             provs = sorted([p for p in df_view[col_proveedor].dropna().astype(str).unique().tolist() if p.strip()])
             provs = provs[:3000]
             with f1:
-                sel_prov = st.multiselect("Proveedor", options=provs, default=[], key=f"{key_prefix}f_prov")
+                sel_prov = st.multiselect("Proveedor", options=provs, default=st.session_state.get(f"{key_prefix}f_prov", []), key=f"{key_prefix}f_prov")
 
         sel_art = []
         if col_articulo:
             arts = sorted([a for a in df_view[col_articulo].dropna().astype(str).unique().tolist() if a.strip()])
             arts = arts[:2000]
             with f2:
-                sel_art = st.multiselect("Artículo", options=arts, default=[], key=f"{key_prefix}f_art")
+                sel_art = st.multiselect("Artículo", options=arts, default=st.session_state.get(f"{key_prefix}f_art", []), key=f"{key_prefix}f_art")
 
         with f3:
             sel_mon = st.selectbox("Moneda", options=["TODAS", "UYU", "USD", "OTRA"], index=0, key=f"{key_prefix}f_mon")
 
         d_ini, d_fin = None, None
-        if df_view["__fecha_view__"].notna().any():
-            min_d = df_view["__fecha_view__"].min().date()
-            max_d = df_view["__fecha_view__"].max().date()
-            with f4:
+        with f4:
+            if d_ini_default and d_fin_default:
                 rango = st.date_input(
                     "Rango fecha",
-                    value=(min_d, max_d),
-                    min_value=min_d,
-                    max_value=max_d,
+                    value=st.session_state.get(f"{key_prefix}f_date", (d_ini_default, d_fin_default)),
+                    min_value=d_ini_default,
+                    max_value=d_fin_default,
                     key=f"{key_prefix}f_date"
                 )
-            if isinstance(rango, tuple) and len(rango) == 2:
-                d_ini, d_fin = rango[0], rango[1]
-            else:
-                d_ini, d_fin = min_d, max_d
-        else:
-            sel_mon = "TODAS"
+                if isinstance(rango, tuple) and len(rango) == 2:
+                    d_ini, d_fin = rango[0], rango[1]
+                else:
+                    d_ini, d_fin = d_ini_default, d_fin_default
 
+        # Búsqueda simple
+        search_txt = st.text_input(
+            "Buscar (proveedor / artículo / nro)",
+            value=st.session_state.get(f"{key_prefix}f_search", ""),
+            key=f"{key_prefix}f_search",
+            placeholder="Ej: roche / VITEK / A00060907"
+        ).strip()
+
+        # Guardar / cargar vista
+        _init_saved_views()
+        vcol1, vcol2, vcol3 = st.columns([1.4, 1.4, 1.2])
+
+        with vcol1:
+            view_name = st.text_input("Nombre de vista", value="", key=f"{key_prefix}view_name", placeholder="Ej: Roche Nov 2025")
+
+        with vcol2:
+            view_pick = st.selectbox(
+                "Vistas guardadas",
+                options=["(ninguna)"] + _get_saved_view_names(),
+                index=0,
+                key=f"{key_prefix}view_pick"
+            )
+
+        with vcol3:
+            b1 = st.button("💾 Guardar", key=f"{key_prefix}btn_save_view")
+            b2 = st.button("↩️ Aplicar", key=f"{key_prefix}btn_load_view")
+
+        if b1:
+            _save_view(
+                view_name,
+                {
+                    "sel_prov": sel_prov,
+                    "sel_art": sel_art,
+                    "sel_mon": sel_mon,
+                    "d_ini": d_ini,
+                    "d_fin": d_fin,
+                    "search_txt": search_txt,
+                }
+            )
+            st.success("Vista guardada.")
+
+        if b2 and view_pick and view_pick != "(ninguna)":
+            vdata = _load_view(view_pick) or {}
+            try:
+                st.session_state[f"{key_prefix}f_prov"] = vdata.get("sel_prov", [])
+                st.session_state[f"{key_prefix}f_art"] = vdata.get("sel_art", [])
+                st.session_state[f"{key_prefix}f_mon"] = vdata.get("sel_mon", "TODAS")
+                if vdata.get("d_ini") and vdata.get("d_fin"):
+                    st.session_state[f"{key_prefix}f_date"] = (vdata.get("d_ini"), vdata.get("d_fin"))
+                st.session_state[f"{key_prefix}f_search"] = vdata.get("search_txt", "")
+                st.rerun()
+            except Exception:
+                pass
+
+    # ============================================================
+    # APLICAR FILTROS
+    # ============================================================
     df_f = df_view.copy()
 
-    if 'sel_prov' in locals() and sel_prov and col_proveedor:
+    if sel_prov and col_proveedor:
         df_f = df_f[df_f[col_proveedor].astype(str).isin(sel_prov)]
 
-    if 'sel_art' in locals() and sel_art and col_articulo:
+    if sel_art and col_articulo:
         df_f = df_f[df_f[col_articulo].astype(str).isin(sel_art)]
 
-    if 'sel_mon' in locals() and sel_mon != "TODAS":
+    if sel_mon != "TODAS":
         df_f = df_f[df_f["__moneda_view__"] == sel_mon]
 
-    if 'd_ini' in locals() and 'd_fin' in locals() and d_ini and d_fin:
+    if d_ini and d_fin:
         df_f = df_f[
             (df_f["__fecha_view__"].dt.date >= d_ini) &
             (df_f["__fecha_view__"].dt.date <= d_fin)
         ]
 
+    if search_txt:
+        mask = pd.Series([False] * len(df_f), index=df_f.index)
+        for c in [col_proveedor, col_articulo, col_nro]:
+            if c and c in df_f.columns:
+                try:
+                    mask = mask | df_f[c].astype(str).str.contains(search_txt, case=False, na=False)
+                except Exception:
+                    pass
+        df_f = df_f[mask]
+
     st.caption(f"Resultados en vista: {len(df_f)}")
 
-    # Helpers de resumen/tabla para tabs (compacto)
-    def _top_por(df_tab: pd.DataFrame, group_col: Optional[str], n: int = 10) -> pd.DataFrame:
-        if df_tab is None or df_tab.empty or not group_col:
-            return pd.DataFrame()
-        s = (
-            df_tab.groupby(group_col)["__total_num__"]
-            .sum()
-            .sort_values(ascending=False)
-            .head(n)
-        )
-        out = s.reset_index()
-        out.columns = [group_col, "Total"]
-        return out
+    # ============================================================
+    # ACCIONES: DESCARGAS (vista filtrada)
+    # ============================================================
+    df_export = _df_export_clean(df_f)
+    if len(df_export) > 0:
+        d1, d2, d3 = st.columns([1, 1, 2])
+        with d1:
+            st.download_button(
+                "⬇️ CSV (vista)",
+                data=_df_to_csv_bytes(df_export),
+                file_name="compras_vista.csv",
+                mime="text/csv",
+                key=f"{key_prefix}dl_csv"
+            )
+        with d2:
+            st.download_button(
+                "⬇️ Excel (vista)",
+                data=_df_to_excel_bytes(df_export),
+                file_name="compras_vista.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key=f"{key_prefix}dl_xlsx"
+            )
+        with d3:
+            st.caption("Descarga la vista filtrada (sin columnas internas).")
 
-    def _render_top_proveedores(df_tab: pd.DataFrame, etiqueta: str):
+    # ============================================================
+    # TABS (compacto + tabla paginada + gráfico top10)
+    # ============================================================
+    tab_all, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
+        ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
+    )
+
+    def _tabla_detalle(df_tab: pd.DataFrame, etiqueta: str):
         if df_tab is None or df_tab.empty:
             st.info(f"Sin resultados en {etiqueta}.")
             return
-        if not col_proveedor:
-            st.info("No hay columna de proveedor para resumir.")
-            return
-        df_top = _top_por(df_tab, col_proveedor, n=10)
-        st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
 
-    def _render_tabla_detalle(df_tab: pd.DataFrame):
-        if df_tab is None or df_tab.empty:
-            st.info("Sin resultados para mostrar.")
-            return
-
+        # Orden preferido (mantiene columnas originales)
         pref = []
         for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
             if c and c in df_tab.columns:
@@ -374,53 +532,185 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Datos", k
         resto = [c for c in df_tab.columns if c not in pref and not str(c).startswith("__")]
         show_cols = pref + resto
 
-        st.dataframe(df_tab[show_cols], use_container_width=True, height=520)
+        # Display (texto recortado para que sea más "vendible")
+        df_disp = df_tab[show_cols].copy()
+        if col_proveedor and col_proveedor in df_disp.columns:
+            df_disp[col_proveedor] = df_disp[col_proveedor].apply(lambda x: _shorten_text(x, 56))
+        if col_articulo and col_articulo in df_disp.columns:
+            df_disp[col_articulo] = df_disp[col_articulo].apply(lambda x: _shorten_text(x, 56))
 
-    def _render_grafico_top10_articulos(df_tab: pd.DataFrame):
+        st.dataframe(df_disp, use_container_width=True, height=420)
+
+    def _render_resumen(df_tab: pd.DataFrame, etiqueta: str):
         if df_tab is None or df_tab.empty:
-            st.info("Sin resultados para graficar.")
-            return
-        if not col_articulo:
-            st.info("No hay columna de artículo para graficar.")
+            st.info(f"Sin resultados en {etiqueta}.")
             return
 
-        s = (
-            df_tab.groupby(col_articulo)["__total_num__"]
-            .sum()
-            .sort_values(ascending=False)
-            .head(10)
-        )
-        df_top = s.reset_index()
-        df_top.columns = [col_articulo, "Total"]
+        # Top proveedores
+        if col_proveedor:
+            top = (
+                df_tab.groupby(col_proveedor)["__total_num__"]
+                .sum()
+                .sort_values(ascending=False)
+            )
+            total_val = float(df_tab["__total_num__"].sum())
+            if len(top) > 0 and total_val:
+                prov_top = str(top.index[0])
+                val_top = float(top.iloc[0])
+                share = val_top / total_val * 100.0
+                st.markdown(f"**Resumen:** principal proveedor **{prov_top}** con **{share:.1f}%** del total en {etiqueta}.")
 
-        # Tabla compacta + gráfico (solo en este tab)
-        st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
-        try:
-            chart_df = df_top.set_index(col_articulo)["Total"]
-            st.bar_chart(chart_df)
-        except Exception:
-            pass
+            df_top = top.head(12).reset_index()
+            df_top.columns = [col_proveedor, "Total"]
+            st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
 
-    # Tabs principales (como pediste)
-    tab_general, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
-        ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
-    )
+            try:
+                chart_df = df_top.set_index(col_proveedor)["Total"]
+                st.bar_chart(chart_df)
+            except Exception:
+                pass
 
-    with tab_general:
-        _render_top_proveedores(df_f, "vista general")
+        # Tabla detalle colapsada (reduce scroll)
+        with st.expander("Tabla detalle", expanded=False):
+            _tabla_detalle(df_tab, etiqueta)
+
+    with tab_all:
+        _render_resumen(df_f, "todas las monedas")
 
     with tab_uyu:
-        _render_top_proveedores(df_f[df_f["__moneda_view__"] == "UYU"], "UYU")
+        _render_resumen(df_f[df_f["__moneda_view__"] == "UYU"], "UYU")
 
     with tab_usd:
-        _render_top_proveedores(df_f[df_f["__moneda_view__"] == "USD"], "USD")
+        _render_resumen(df_f[df_f["__moneda_view__"] == "USD"], "USD")
 
     with tab_graf:
-        st.caption("Tip: si querés graficar solo USD o solo UYU, usá los filtros de moneda.")
-        _render_grafico_top10_articulos(df_f)
+        if df_f is None or df_f.empty or not col_articulo:
+            st.info("Sin datos suficientes para gráfico.")
+        else:
+            g_mon = st.selectbox(
+                "Moneda del gráfico",
+                options=["TODAS", "UYU", "USD"],
+                index=0,
+                key=f"{key_prefix}g_mon"
+            )
+            df_g = df_f.copy()
+            if g_mon != "TODAS":
+                df_g = df_g[df_g["__moneda_view__"] == g_mon]
+
+            top_art = (
+                df_g.groupby(col_articulo)["__total_num__"]
+                .sum()
+                .sort_values(ascending=False)
+            ).head(10)
+
+            if len(top_art) == 0:
+                st.info("Sin resultados para ese filtro.")
+            else:
+                df_top_art = top_art.reset_index()
+                df_top_art.columns = [col_articulo, "Total"]
+                df_top_art[col_articulo] = df_top_art[col_articulo].apply(lambda x: _shorten_text(x, 60))
+                st.dataframe(df_top_art, use_container_width=True, hide_index=True, height=320)
+
+                try:
+                    chart_df = df_top_art.set_index(col_articulo)["Total"]
+                    st.bar_chart(chart_df)
+                except Exception:
+                    pass
 
     with tab_tabla:
-        _render_tabla_detalle(df_f)
+        if df_f is None or df_f.empty:
+            st.info("Sin resultados para mostrar.")
+        else:
+            # Orden preferido (mantiene columnas originales)
+            pref = []
+            for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
+                if c and c in df_f.columns:
+                    pref.append(c)
+            resto = [c for c in df_f.columns if c not in pref and not str(c).startswith("__")]
+            show_cols = pref + resto
+
+            # Paginación
+            t1, t2, t3 = st.columns([1.2, 1.0, 1.8])
+            with t1:
+                page_size = st.selectbox(
+                    "Filas por página",
+                    options=[25, 50, 100, 250],
+                    index=0,
+                    key=f"{key_prefix}page_size"
+                )
+            max_pages = max(1, int((len(df_f) + int(page_size) - 1) / int(page_size)))
+            with t2:
+                page = st.number_input(
+                    "Página",
+                    min_value=1,
+                    max_value=max_pages,
+                    value=min(st.session_state.get(f"{key_prefix}page", 1), max_pages),
+                    step=1,
+                    key=f"{key_prefix}page"
+                )
+            with t3:
+                st.caption(f"Página {int(page)} de {max_pages} · Total filas: {len(df_f)}")
+
+            df_page = _paginate(df_f[show_cols], int(page), int(page_size)).copy()
+
+            # Recortar textos para vista limpia
+            if col_proveedor and col_proveedor in df_page.columns:
+                df_page[col_proveedor] = df_page[col_proveedor].apply(lambda x: _shorten_text(x, 60))
+            if col_articulo and col_articulo in df_page.columns:
+                df_page[col_articulo] = df_page[col_articulo].apply(lambda x: _shorten_text(x, 60))
+
+            st.dataframe(df_page, use_container_width=True, height=460)
+
+            # Drill-down por factura (sin depender de click en fila)
+            if col_nro and col_nro in df_f.columns:
+                st.markdown("#### Detalle por factura")
+                nros = [n for n in df_f[col_nro].dropna().astype(str).unique().tolist() if str(n).strip()]
+                nros = sorted(nros)[:5000]
+
+                det_col1, det_col2 = st.columns([1.2, 2.8])
+                with det_col1:
+                    det_search = st.text_input(
+                        "Buscar nro factura",
+                        value="",
+                        key=f"{key_prefix}det_search",
+                        placeholder="Ej: A00060907"
+                    ).strip()
+
+                nro_opts = nros
+                if det_search:
+                    nro_opts = [n for n in nros if det_search.lower() in str(n).lower()]
+                    nro_opts = nro_opts[:200]
+
+                with det_col2:
+                    nro_sel = st.selectbox(
+                        "Seleccionar factura",
+                        options=["(ninguna)"] + nro_opts,
+                        index=0,
+                        key=f"{key_prefix}det_nro_sel"
+                    )
+
+                if nro_sel and nro_sel != "(ninguna)":
+                    df_fac = df_f[df_f[col_nro].astype(str) == str(nro_sel)].copy()
+
+                    tot_fac = float(df_fac["__total_num__"].sum())
+                    mon_fac = "USD" if (df_fac["__moneda_view__"] == "USD").any() and not (df_fac["__moneda_view__"] == "UYU").any() else "UYU"
+                    st.markdown(
+                        f"**Factura:** `{nro_sel}` · **Items:** {len(df_fac)} · **Total:** {_fmt_compact_money(tot_fac, mon_fac)}"
+                    )
+
+                    # Tabla de items
+                    pref_fac = []
+                    for c in [col_articulo, col_cantidad, col_total, col_fecha, col_moneda]:
+                        if c and c in df_fac.columns:
+                            pref_fac.append(c)
+                    resto_fac = [c for c in df_fac.columns if c not in pref_fac and not str(c).startswith("__")]
+                    show_cols_fac = pref_fac + resto_fac
+
+                    df_fac_disp = df_fac[show_cols_fac].copy()
+                    if col_articulo and col_articulo in df_fac_disp.columns:
+                        df_fac_disp[col_articulo] = df_fac_disp[col_articulo].apply(lambda x: _shorten_text(x, 70))
+
+                    st.dataframe(df_fac_disp, use_container_width=True, height=320)
 
 
 # =========================
