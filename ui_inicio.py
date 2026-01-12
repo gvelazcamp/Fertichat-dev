@@ -59,6 +59,11 @@ def mostrar_inicio():
         position: relative; /* el tile se posiciona dentro de la columna */
     }
 
+    /* Asegurar full width del wrapper del botón */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton{
+        width:100%;
+    }
+
     /* Botón como tarjeta (MISMO TAMAÑO SIEMPRE) */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
         border:1px solid rgba(15,23,42,0.10);
@@ -88,6 +93,8 @@ def mostrar_inicio():
         display:block;
         position: relative;
         margin:0;
+
+        box-sizing:border-box;
     }
 
     /* Primera línea como título */
@@ -148,15 +155,32 @@ def mostrar_inicio():
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
-    /* Responsive - MÁS ALTAS */
+    /* =========================================================
+       RESPONSIVE (CELULAR): TARJETAS A LO ANCHO (FULL WIDTH)
+       - Streamlit a veces mantiene "columnas" estrechas en móvil.
+       - Forzamos cada columna a 100% dentro de los blocks de columnas.
+       ========================================================= */
     @media (max-width: 900px){
+
+        /* Forzar que cada columna ocupe el 100% del ancho */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"]{
+            flex-wrap: wrap !important;
+            width: 100% !important;
+        }
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+            flex: 0 0 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        /* Ajustes de tile + tarjeta en móvil */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
             width:48px;
             height:48px;
             border-radius:14px;
             font-size:24px;
             left: 14px;
-            top: calc(50% + 44px);      /* AJUSTADO PARA MÓVIL */
+            top: calc(50% + 44px);
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
             height: 134px;
