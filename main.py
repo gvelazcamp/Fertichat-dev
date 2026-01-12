@@ -185,10 +185,36 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
         traceback.print_exc()
         return f"❌ Error: {str(e)[:150]}", None, None
 
+
 # =========================
 # ESTILO GLOBAL E INICIO DE SESIÓN
 # =========================
 st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
+
+# =========================
+# FIX UI: BOTONES DEL SIDEBAR (evita texto vertical en "Cerrar sesión")
+# =========================
+CSS_SIDEBAR_BUTTON_FIX = """
+<style>
+/* Si en Home tenés CSS que transforma .stButton en "tarjeta", puede pegarle al sidebar.
+   Esto lo pisa SOLO en el sidebar para evitar quiebres por char (texto vertical). */
+section[data-testid="stSidebar"] .stButton > button,
+div[data-testid="stSidebar"] .stButton > button{
+    height: auto !important;
+    min-height: unset !important;
+    padding: 0.55rem 0.85rem !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+    white-space: nowrap !important;
+}
+section[data-testid="stSidebar"] .stButton > button * ,
+div[data-testid="stSidebar"] .stButton > button *{
+    white-space: nowrap !important;
+}
+</style>
+"""
+st.markdown(CSS_SIDEBAR_BUTTON_FIX, unsafe_allow_html=True)
+
 require_auth()
 st.title("Inicio")
 
@@ -379,8 +405,8 @@ with st.sidebar:
                 </div>
             </div>
         """,
-        unsafe_allow_html=True,
-    )
+            unsafe_allow_html=True,
+        )
 
         st.text_input(
             "Buscar...",
@@ -396,11 +422,10 @@ with st.sidebar:
 
         st.markdown("---")
 
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar"):
-                logout()
-                st.rerun()
+        # ✅ FIX: botón full width (evita que se angoste y se vea vertical)
+        if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar", use_container_width=True):
+            logout()
+            st.rerun()
 
     st.markdown("---")
 
