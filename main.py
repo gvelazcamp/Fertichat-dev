@@ -215,6 +215,53 @@ div[data-testid="stSidebar"] .stButton > button *{
 """
 st.markdown(CSS_SIDEBAR_BUTTON_FIX, unsafe_allow_html=True)
 
+# =========================
+# SIDEBAR LIGHT (FORZADO)
+# =========================
+CSS_SIDEBAR_LIGHT = """
+<style>
+section[data-testid="stSidebar"] {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-right: 1px solid rgba(15,23,42,0.08);
+  color: #0f172a !important;
+}
+
+section[data-testid="stSidebar"] > div,
+div[data-testid="stSidebar"] > div {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  backdrop-filter: none !important;
+}
+
+section[data-testid="stSidebar"] *,
+section[data-testid="stSidebar"] li,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] div,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] label {
+  color: #0f172a !important;
+  background: transparent !important;
+}
+
+section[data-testid="stSidebar"] .stRadio label {
+  color: #0f172a !important;
+}
+
+section[data-testid="stSidebar"] .stButton button {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+section[data-testid="stSidebar"] .stButton button:hover {
+  background: #e2e8f0 !important;
+}
+</style>
+"""
+st.markdown(CSS_SIDEBAR_LIGHT, unsafe_allow_html=True)
+
 require_auth()
 st.title("Inicio")
 
