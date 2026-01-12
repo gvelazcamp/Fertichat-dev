@@ -112,37 +112,41 @@ def procesar_pregunta_v2(pregunta: str):
     print(f"[ORQUESTADOR] AGENTIC_SOURCE = {_AGENTIC_SOURCE}")
 
     # =========================
-    # FORZAR SQL PARA "COMPARAR COMPRAS" (bypass agentic)
+    # NUEVO: BYPASS PARA COMPARACIONES MULTI PROVEEDORES AÑOS/MESES CON MONEDA
     # =========================
-    print(f"🐛 DEBUG ORQUESTADOR: Verificando bypass para 'comparar'")
+    print(f"🐛 DEBUG ORQUESTADOR: Verificando bypass para 'comparar compras'")
     if "comparar" in pregunta.lower() and "compras" in pregunta.lower():
-        print("[ORQUESTADOR] FORZANDO SQL DIRECTA PARA COMPARACIÓN")
-        # Parse simple: asumir "comparar compras roche, tresul 2024 2025"
-        parts = pregunta.lower().replace(",", "").split()
+        from sql_comparativas import get_comparacion_multi_proveedores_tiempo_monedas
+        
+        parts = [p.lower().strip() for p in pregunta.replace(",", "").split() if p.strip()]
+        
         proveedores = []
         anios = []
-        for part in parts:
-            if part.isdigit() and len(part) == 4 and 2000 <= int(part) <= 2030:
-                anios.append(int(part))
-            elif part not in ["comparar", "compras", "y", "en"]:
-                proveedores.append(part)
-        if len(proveedores) >= 2 and len(anios) == 2:
-            try:
-                from sql_comparativas import get_comparacion_proveedor_anios
-                df = get_comparacion_proveedor_anios(proveedores[0], proveedores[1], anios[0], anios[1])
-                if df is not None and not df.empty:
-                    return (
-                        f"📊 Comparación de compras entre **{proveedores[0].upper()}** y **{proveedores[1].upper()}** en {anios[0]}-{anios[1]}:",
-                        formatear_dataframe(df),
-                        None,
-                    )
-                else:
-                    return "⚠️ No se encontraron resultados para la comparación.", None, None
-            except Exception as e:
-                print(f"[ORQUESTADOR] Error en bypass: {e}")
-                return f"❌ Error forzado: {str(e)}", None, None
+        meses = []
+        
+        for p in parts:
+            if p.isdigit() and len(p) == 4:  # Años como 2024
+                anios.append(int(p))
+            elif "-" in p and len(p) == 7:  # Meses como 2025-01
+                meses.append(p)
+            elif p not in ["comparar", "compras"] and not p.isdigit():
+                proveedores.append(p)
+        
+        proveedores = list(set(proveedores))  # Eliminar duplicados
+        anios = sorted(list(set(anios)))
+        meses = sorted(list(set(meses)))
+        
+        if proveedores and (anios or meses):
+            df = get_comparacion_multi_proveedores_tiempo_monedas(proveedores, anios=anios if anios else None, meses=meses if meses else None)
+            if df is not None and not df.empty:
+                tiempo_str = ", ".join(map(str, anios or meses))
+                mensaje = f"📊 Comparación de compras para {', '.join(proveedores).upper()} en {tiempo_str} (agrupado por moneda)."
+                return mensaje, formatear_dataframe(df), None
+            else:
+                return "⚠️ No se encontraron resultados para la comparación.", None, None
         else:
-            return "❌ No pude parsear proveedores y años. Ej: comparar compras roche, tresul 2024 2025", None, None
+            # Si no parsea, seguir con agentic
+            pass
 
     # =========================
     # AGENTIC AI: decisión (tipo + parametros), no ejecuta SQL
