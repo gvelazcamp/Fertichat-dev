@@ -114,6 +114,41 @@ def mostrar_inicio():
     """, unsafe_allow_html=True)
 
     # =========================
+    # Funciones para navegación
+    # =========================
+    def go_compras():
+        st.query_params["go"] = "compras"
+        st.rerun()
+
+    def go_buscador():
+        st.query_params["go"] = "buscador"
+        st.rerun()
+
+    def go_stock():
+        st.query_params["go"] = "stock"
+        st.rerun()
+
+    def go_dashboard():
+        st.query_params["go"] = "dashboard"
+        st.rerun()
+
+    def go_pedidos():
+        st.query_params["go"] = "pedidos"
+        st.rerun()
+
+    def go_baja():
+        st.query_params["go"] = "baja"
+        st.rerun()
+
+    def go_ordenes():
+        st.query_params["go"] = "ordenes"
+        st.rerun()
+
+    def go_indicadores():
+        st.query_params["go"] = "indicadores"
+        st.rerun()
+
+    # =========================
     # Secciones con tarjetas
     # =========================
     st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
@@ -126,7 +161,7 @@ def mostrar_inicio():
           <div class="fc-txt"><div class="fc-h3">Compras IA</div><p>Consultas inteligentes</p></div>
         </div>
         """, unsafe_allow_html=True)
-        st.button("", on_click=lambda: (st.query_params.update({"go": "compras"}), st.rerun()), key="btn_compras")
+        st.button("", on_click=go_compras, key="btn_compras")
     with col2:
         st.markdown("""
         <div class="fc-card">
@@ -134,7 +169,7 @@ def mostrar_inicio():
           <div class="fc-txt"><div class="fc-h3">Buscador IA</div><p>Buscar facturas / lotes</p></div>
         </div>
         """, unsafe_allow_html=True)
-        st.button("", on_click=lambda: (st.query_params.update({"go": "buscador"}), st.rerun()), key="btn_buscador")
+        st.button("", on_click=go_buscador, key="btn_buscador")
     with col3:
         st.markdown("""
         <div class="fc-card">
@@ -142,7 +177,7 @@ def mostrar_inicio():
           <div class="fc-txt"><div class="fc-h3">Stock IA</div><p>Consultar inventario</p></div>
         </div>
         """, unsafe_allow_html=True)
-        st.button("", on_click=lambda: (st.query_params.update({"go": "stock"}), st.rerun()), key="btn_stock")
+        st.button("", on_click=go_stock, key="btn_stock")
     with col4:
         st.markdown("""
         <div class="fc-card">
@@ -150,7 +185,7 @@ def mostrar_inicio():
           <div class="fc-txt"><div class="fc-h3">Dashboard</div><p>Ver estadísticas</p></div>
         </div>
         """, unsafe_allow_html=True)
-        st.button("", on_click=lambda: (st.query_params.update({"go": "dashboard"}), st.rerun()), key="btn_dashboard")
+        st.button("", on_click=go_dashboard, key="btn_dashboard")
 
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
     st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
@@ -163,7 +198,7 @@ def mostrar_inicio():
           <div class="fc-txt"><div class="fc-h3">Pedidos internos</div><p>Gestionar pedidos</p></div>
         </div>
         """, unsafe_allow_html=True)
-        st.button("", on_click=lambda: (st.query_params.update({"go": "pedidos"}), st.rerun()), key="btn_pedidos")
+        st.button("", on_click=go_pedidos, key="btn_pedidos")
     with col6:
         st.markdown("""
         <div class="fc-card">
@@ -171,7 +206,7 @@ def mostrar_inicio():
           <div class="fc-txt"><div class="fc-h3">Baja de stock</div><p>Registrar bajas</p></div>
         </div>
         """, unsafe_allow_html=True)
-        st.button("", on_click=lambda: (st.query_params.update({"go": "baja"}), st.rerun()), key="btn_baja")
+        st.button("", on_click=go_baja, key="btn_baja")
     with col7:
         st.markdown("""
         <div class="fc-card">
@@ -179,7 +214,7 @@ def mostrar_inicio():
           <div class="fc-txt"><div class="fc-h3">Órdenes de compra</div><p>Crear órdenes</p></div>
         </div>
         """, unsafe_allow_html=True)
-        st.button("", on_click=lambda: (st.query_params.update({"go": "ordenes"}), st.rerun()), key="btn_ordenes")
+        st.button("", on_click=go_ordenes, key="btn_ordenes")
     with col8:
         st.markdown("""
         <div class="fc-card">
@@ -187,7 +222,7 @@ def mostrar_inicio():
           <div class="fc-txt"><div class="fc-h3">Indicadores</div><p>Power BI</p></div>
         </div>
         """, unsafe_allow_html=True)
-        st.button("", on_click=lambda: (st.query_params.update({"go": "indicadores"}), st.rerun()), key="btn_indicadores")
+        st.button("", on_click=go_indicadores, key="btn_indicadores")
 
     # =========================
     # TIP DEL DÍA
