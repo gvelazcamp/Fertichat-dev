@@ -185,83 +185,10 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
         traceback.print_exc()
         return f"❌ Error: {str(e)[:150]}", None, None
 
-
 # =========================
 # ESTILO GLOBAL E INICIO DE SESIÓN
 # =========================
 st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
-
-# =========================
-# FIX UI: BOTONES DEL SIDEBAR (evita texto vertical en "Cerrar sesión")
-# =========================
-CSS_SIDEBAR_BUTTON_FIX = """
-<style>
-/* Si en Home tenés CSS que transforma .stButton en "tarjeta", puede pegarle al sidebar.
-   Esto lo pisa SOLO en el sidebar para evitar quiebres por char (texto vertical). */
-section[data-testid="stSidebar"] .stButton > button,
-div[data-testid="stSidebar"] .stButton > button{
-    height: auto !important;
-    min-height: unset !important;
-    padding: 0.55rem 0.85rem !important;
-    border-radius: 12px !important;
-    width: 100% !important;
-    white-space: nowrap !important;
-}
-section[data-testid="stSidebar"] .stButton > button * ,
-div[data-testid="stSidebar"] .stButton > button *{
-    white-space: nowrap !important;
-}
-</style>
-"""
-st.markdown(CSS_SIDEBAR_BUTTON_FIX, unsafe_allow_html=True)
-
-# =========================
-# SIDEBAR LIGHT (FORZADO)
-# =========================
-CSS_SIDEBAR_LIGHT = """
-<style>
-section[data-testid="stSidebar"] {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  background-image: none !important;
-  border-right: 1px solid rgba(15,23,42,0.08);
-  color: #0f172a !important;
-}
-
-section[data-testid="stSidebar"] > div,
-div[data-testid="stSidebar"] > div {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  backdrop-filter: none !important;
-}
-
-section[data-testid="stSidebar"] *,
-section[data-testid="stSidebar"] li,
-section[data-testid="stSidebar"] span,
-section[data-testid="stSidebar"] div,
-section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] label {
-  color: #0f172a !important;
-  background: transparent !important;
-}
-
-section[data-testid="stSidebar"] .stRadio label {
-  color: #0f172a !important;
-}
-
-section[data-testid="stSidebar"] .stButton button {
-  background: #f1f5f9 !important;
-  color: #0f172a !important;
-  border: 1px solid #e2e8f0 !important;
-}
-
-section[data-testid="stSidebar"] .stButton button:hover {
-  background: #e2e8f0 !important;
-}
-</style>
-"""
-st.markdown(CSS_SIDEBAR_LIGHT, unsafe_allow_html=True)
-
 require_auth()
 st.title("Inicio")
 
@@ -309,7 +236,7 @@ st.markdown(
 )
 
 # =========================
-# HEADER ESCRITORIO (FIJADO ARRIBA)
+# HEADER ESCRITORIO
 # =========================
 campana_html = '<span style="font-size:26px;">🔔</span>'
 if cant_pendientes > 0:
@@ -334,16 +261,7 @@ st.markdown(
 
 st.markdown(
     f"""
-<div class="header-desktop-wrapper" style="
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: #ffffff;
-    z-index: 1000;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 10px 20px;
-">
+<div class="header-desktop-wrapper">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <div>
             <h1 style="margin:0; font-size:38px; font-weight:900; color:#0f172a;">FertiChat</h1>
@@ -358,9 +276,6 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
-# Espacio para que el contenido no se solape con el header fijo
-st.markdown("<div style='height: 120px;'></div>", unsafe_allow_html=True)
 
 # =========================
 # NAVEGACIÓN POR QUERY PARAMS (tarjetas / campana)
@@ -447,42 +362,42 @@ except Exception:
 # SIDEBAR
 # =========================
 with st.sidebar:
-    with st.container():
-        st.markdown(
-            """
-            <div style='
-                background: rgba(255,255,255,0.85);
-                padding: 16px;
-                border-radius: 18px;
-                margin-bottom: 14px;
-                border: 1px solid rgba(15, 23, 42, 0.10);
-                box-shadow: 0 10px 26px rgba(2, 6, 23, 0.06);
-            '>
-                <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
-                    <div style='font-size: 26px;'>🦋</div>
-                    <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
-                </div>
+    st.markdown(
+        """
+        <div style='
+            background: rgba(255,255,255,0.85);
+            padding: 16px;
+            border-radius: 18px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(15, 23, 42, 0.10);
+            box-shadow: 0 10px 26px rgba(2, 6, 23, 0.06);
+        '>
+            <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
+                <div style='font-size: 26px;'>🦋</div>
+                <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
             </div>
-        """,
-            unsafe_allow_html=True,
-        )
+        </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-        st.text_input(
-            "Buscar...",
-            key="sidebar_search",
-            label_visibility="collapsed",
-            placeholder="Buscar...",
-        )
+    st.text_input(
+        "Buscar...",
+        key="sidebar_search",
+        label_visibility="collapsed",
+        placeholder="Buscar...",
+    )
 
-        st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
-        if user.get("empresa"):
-            st.markdown(f"🏢 {user.get('empresa')}")
-        st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
+    st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
+    if user.get("empresa"):
+        st.markdown(f"🏢 {user.get('empresa')}")
+    st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
 
-        st.markdown("---")
+    st.markdown("---")
 
-        # ✅ FIX: botón full width (evita que se angoste y se vea vertical)
-        if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar", use_container_width=True):
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar"):
             logout()
             st.rerun()
 
