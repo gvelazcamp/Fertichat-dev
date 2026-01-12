@@ -395,9 +395,12 @@ with st.sidebar:
 
     st.markdown("---")
 
-    if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar", use_container_width=True):
-        logout()
-        st.rerun()
+    # Botón de cerrar sesión más pequeño
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar"):
+            logout()
+            st.rerun()
 
     st.markdown("---")
 
