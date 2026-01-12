@@ -65,9 +65,9 @@ def mostrar_inicio():
         background:rgba(255,255,255,0.82);
         border-radius:20px;
 
-        /* tamaño fijo para que todas queden iguales - AÚN MÁS ALTAS */
-        height: 130px;
-        min-height: 130px;
+        /* tamaño fijo para que todas queden iguales */
+        height: 96px;
+        min-height: 96px;
 
         /* espacio para el tile */
         padding:16px 16px 16px 92px;
@@ -114,7 +114,7 @@ def mostrar_inicio():
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) - MISMO TAMAÑO */
+    /* Tile (ícono) -> aún más abajo (~0.5cm más) */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
         width:54px;
         height:54px;
@@ -129,7 +129,7 @@ def mostrar_inicio():
 
         position:absolute;
         left: 16px;
-        top: calc(50% + 48px);          /* AJUSTADO PARA LA ALTURA */
+        top: calc(50% + 48px);          /* <-- BAJADO ~0.5cm MÁS */
         transform: translateY(-50%);
         z-index: 5;
 
@@ -148,7 +148,7 @@ def mostrar_inicio():
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
-    /* Responsive - AÚN MÁS ALTAS */
+    /* Responsive */
     @media (max-width: 900px){
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
             width:48px;
@@ -156,11 +156,11 @@ def mostrar_inicio():
             border-radius:14px;
             font-size:24px;
             left: 14px;
-            top: calc(50% + 44px);      /* AJUSTADO PARA MÓVIL */
+            top: calc(50% + 44px);      /* <-- BAJADO ~0.5cm MÁS MOBILE */
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-            height: 124px;
-            min-height: 124px;
+            height: 92px;
+            min-height: 92px;
             padding:14px 14px 14px 78px;
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
