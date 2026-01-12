@@ -30,12 +30,12 @@ def mostrar_inicio():
     # =========================
     st.markdown(
         f"""
-        <div style="max-width: 1100px;margin:0 auto;text-align:center;padding:10px 0 18px 0;">
-            <h2 style="margin:0;color:#0f172a;font-size: 34px;font-weight:800;letter-spacing:-0.02em;">
+        <div style="max-width:1100px;margin:0 auto;text-align:center;padding:10px 0 18px 0;">
+            <h2 style="margin:0;color:#0f172a;font-size:34px;font-weight:800;letter-spacing:-0.02em;">
                 {saludo}, {nombre. split()[0]}!  👋
             </h2>
             <p style="margin:8px 0 0 0;color:#64748b;font-size:16px;">
-                ¿Qué querés hacer hoy? 
+                ¿Qué querés hacer hoy?
             </p>
         </div>
         """,
@@ -55,22 +55,22 @@ def mostrar_inicio():
     /* =========================================================
        SOLO HOME (scoped): si el marcador existe, aplico estilos
        ========================================================= */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="column"]{
+    div[data-testid="stAppViewContainer"]: has(#fc-home-marker) div[data-testid="column"]{
         position: relative; /* el tile se posiciona dentro de la columna */
     }
 
     /* Botón como tarjeta (MISMO TAMAÑO SIEMPRE) */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
         border: 1px solid rgba(15,23,42,0.10);
-        background: rgba(255,255,255,0.82);
+        background:rgba(255,255,255,0.82);
         border-radius:20px;
 
         /* tamaño fijo para que todas queden iguales */
-        height: 96px;
+        height:  96px;
         min-height: 96px;
 
         /* espacio para el tile */
-        padding: 16px 16px 16px 92px;
+        padding:16px 16px 16px 92px;
 
         box-shadow: 0 10px 24px rgba(2,6,23,0.06);
         cursor:pointer;
@@ -93,7 +93,7 @@ def mostrar_inicio():
     /* Primera línea como título */
     div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .stButton > button:: first-line{
         font-size:16px;
-        font-weight: 900;
+        font-weight:900;
         color:#0f172a;
         letter-spacing:-0.01em;
     }
@@ -109,7 +109,7 @@ def mostrar_inicio():
         transform:translateY(0);
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
     }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button: focus{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:focus{
         outline:none;
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
@@ -139,7 +139,7 @@ def mostrar_inicio():
     }
 
     /* Colores tiles */
-    . tile-compras { background: rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
+    . tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
     .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
     .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
     .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
@@ -148,27 +148,43 @@ def mostrar_inicio():
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
-    /* Responsive MÓVIL - FULL WIDTH */
+    /* Responsive MÓVIL - FULL WIDTH FORZADO */
     @media (max-width: 768px){
         /* Container principal sin padding lateral */
         div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .block-container {
-            padding-left: 0 !important;
+            padding-left:  0 !important;
             padding-right: 0 !important;
             max-width: 100% !important;
         }
 
-        /* Columnas sin gap */
-        div[data-testid="stAppViewContainer"]: has(#fc-home-marker) div[data-testid="column"] {
+        /* Forzar que el contenedor de columnas sea full width */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] {
+            gap: 0 !important;
+            padding:  0 !important;
+        }
+
+        /* Columnas sin gap y full width */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="column"] {
             padding-left: 0 !important;
             padding-right: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
             width: 100% !important;
+            min-width: 100% !important;
+            flex:  0 0 100% !important;
         }
 
         /* Botones FULL WIDTH en móvil */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton {
+            width: 100% ! important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-            width:  100% !important;
-            margin:  0 0 12px 0 !important;
-            border-radius: 16px !important;
+            width: 100% ! important;
+            margin: 0 0 12px 0 !important;
+            border-radius: 12px !important;
             height: 88px !important;
             min-height: 88px !important;
             padding: 14px 14px 14px 78px !important;
@@ -176,26 +192,27 @@ def mostrar_inicio():
 
         /* Tile más chico en móvil */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-            width: 48px;
-            height:48px;
-            border-radius:14px;
-            font-size:24px;
-            left: 14px;
-            top: calc(50% + 44px);
+            width: 48px ! important;
+            height: 48px !important;
+            border-radius: 14px !important;
+            font-size: 24px !important;
+            left: 14px !important;
+            top:  calc(50% + 44px) !important;
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:: first-line{
-            font-size:15px;
+            font-size: 15px !important;
         }
 
         /* Header saludo más chico */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) h2 {
-            font-size:  26px !important;
+            font-size: 26px !important;
         }
 
-        /* Secciones sin max-width */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .block-container > div {
+        /* Labels de sección full width */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[style*="max-width:1100px"] {
             max-width: 100% !important;
+            padding:  0 12px !important;
         }
     }
     </style>
@@ -204,14 +221,14 @@ def mostrar_inicio():
     # =========================
     # Secciones con botones
     # =========================
-    st. markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing: 1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
         if st.button("Compras IA\nConsultas inteligentes", key="compras"):
             st.query_params["go"] = "compras"
-            st.rerun()
+            st. rerun()
     with col2:
         st.markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
         if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador"):
@@ -238,17 +255,17 @@ def mostrar_inicio():
             st.query_params["go"] = "pedidos"
             st.rerun()
     with col6:
-        st. markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
+        st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
         if st.button("Baja de stock\nRegistrar bajas", key="baja"):
             st.query_params["go"] = "baja"
-            st.rerun()
+            st. rerun()
     with col7:
         st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
         if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
             st.query_params["go"] = "ordenes"
             st.rerun()
     with col8:
-        st. markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
+        st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
         if st.button("Indicadores\nPower BI", key="indicadores"):
             st.query_params["go"] = "indicadores"
             st.rerun()
@@ -267,10 +284,10 @@ def mostrar_inicio():
 
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:16px auto 0 auto;">
+        <div style="max-width:1100px;margin: 16px auto 0 auto;">
             <div style="
                 background:  rgba(255,255,255,0.70);
-                border:  1px solid rgba(15,23,42,0.10);
+                border: 1px solid rgba(15,23,42,0.10);
                 border-left: 4px solid rgba(37,99,235,0.55);
                 border-radius: 16px;
                 padding: 14px 16px;
