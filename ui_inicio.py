@@ -43,7 +43,7 @@ def mostrar_inicio():
     )
 
     # =========================
-    # Cards HTML - MODIFICADO: volver a <div> con onclick para evitar nueva pestaña
+    # Cards HTML - MODIFICADO: usar <button> en lugar de <div> para que onclick funcione
     # =========================
     cards_html = textwrap.dedent("""
         <style>
@@ -63,6 +63,13 @@ def mostrar_inicio():
             transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
             user-select:none;
             height:100%;
+            width:100%;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background: rgba(255,255,255,0.72);
+            font-family: inherit;
+            text-align: left;
           }
           .fc-card:hover{
             transform:translateY(-2px);
@@ -72,6 +79,9 @@ def mostrar_inicio():
           .fc-card:active{
             transform:translateY(0);
             box-shadow:0 10px 26px rgba(2,6,23,0.06);
+          }
+          .fc-card:focus{
+            outline: none;
           }
           .fc-row{display:flex;align-items:center;gap:14px;}
           .fc-tile{
@@ -109,59 +119,59 @@ def mostrar_inicio():
         <div class="fc-home-wrap">
           <div class="fc-section-title">📌 Módulos principales</div>
           <div class="fc-grid">
-            <div class="fc-card" onclick="window.location.href='?go=compras'">
+            <button class="fc-card" onclick="window.location.href='?go=compras'">
               <div class="fc-row">
                 <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
                 <div class="fc-txt"><div class="fc-h3">Compras IA</div><p>Consultas inteligentes</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=buscador'">
+            </button>
+            <button class="fc-card" onclick="window.location.href='?go=buscador'">
               <div class="fc-row">
                 <div class="fc-tile tile-buscador"><div class="fc-ico">🔎</div></div>
                 <div class="fc-txt"><div class="fc-h3">Buscador IA</div><p>Buscar facturas / lotes</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=stock'">
+            </button>
+            <button class="fc-card" onclick="window.location.href='?go=stock'">
               <div class="fc-row">
                 <div class="fc-tile tile-stock"><div class="fc-ico">📦</div></div>
                 <div class="fc-txt"><div class="fc-h3">Stock IA</div><p>Consultar inventario</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=dashboard'">
+            </button>
+            <button class="fc-card" onclick="window.location.href='?go=dashboard'">
               <div class="fc-row">
                 <div class="fc-tile tile-dashboard"><div class="fc-ico">📊</div></div>
                 <div class="fc-txt"><div class="fc-h3">Dashboard</div><p>Ver estadísticas</p></div>
               </div>
-            </div>
+            </button>
           </div>
 
           <div style="height:22px;"></div>
           <div class="fc-section-title">📋 Gestión</div>
           <div class="fc-grid">
-            <div class="fc-card" onclick="window.location.href='?go=pedidos'">
+            <button class="fc-card" onclick="window.location.href='?go=pedidos'">
               <div class="fc-row">
                 <div class="fc-tile tile-pedidos"><div class="fc-ico">📄</div></div>
                 <div class="fc-txt"><div class="fc-h3">Pedidos internos</div><p>Gestionar pedidos</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=baja'">
+            </button>
+            <button class="fc-card" onclick="window.location.href='?go=baja'">
               <div class="fc-row">
                 <div class="fc-tile tile-baja"><div class="fc-ico">🧾</div></div>
                 <div class="fc-txt"><div class="fc-h3">Baja de stock</div><p>Registrar bajas</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=ordenes'">
+            </button>
+            <button class="fc-card" onclick="window.location.href='?go=ordenes'">
               <div class="fc-row">
                 <div class="fc-tile tile-ordenes"><div class="fc-ico">📦</div></div>
                 <div class="fc-txt"><div class="fc-h3">Órdenes de compra</div><p>Crear órdenes</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=indicadores'">
+            </button>
+            <button class="fc-card" onclick="window.location.href='?go=indicadores'">
               <div class="fc-row">
                 <div class="fc-tile tile-indicadores"><div class="fc-ico">📈</div></div>
                 <div class="fc-txt"><div class="fc-h3">Indicadores</div><p>Power BI</p></div>
               </div>
-            </div>
+            </button>
           </div>
         </div>
     """).strip()
@@ -174,7 +184,7 @@ def mostrar_inicio():
     tips = [
         "💡 Escribí 'compras roche 2025' para ver todas las compras a Roche este año",
         "💡 Usá 'lotes por vencer' en Stock IA para ver vencimientos próximos",
-        "💡 Probá 'comparar roche 2024 2025' para ver la evolución de compras",
+        "💡 Prob�� 'comparar roche 2024 2025' para ver la evolución de compras",
         "💡 En el Buscador podés filtrar por proveedor, artículo y fechas",
         "💡 Usá 'top 10 proveedores 2025' para ver el ranking de compras",
     ]
