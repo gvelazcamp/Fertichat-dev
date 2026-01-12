@@ -525,7 +525,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     # TABS (SIN GRAFICO/TABLA EN VISTA GENERAL)
     # ============================================================
     tab_all, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
-        ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
+        ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Comparación / Artículos)", "Tabla"]
     )
 
     def _render_resumen_top_proveedores(df_tab: pd.DataFrame, etiqueta: str):
@@ -576,9 +576,20 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         _render_resumen_top_proveedores(df_f[df_f["__moneda_view__"] == "USD"], "USD")
 
     with tab_graf:
-        if df_f is None or df_f.empty or not col_articulo:
-            st.info("Sin datos suficientes para gráfico (no hay columna de artículos).")
-        else:
+        if df_f is None or df_f.empty:
+            st.info("Sin datos para mostrar.")
+        elif "2024" in df_f.columns and "2025" in df_f.columns and col_proveedor:
+            # Gráfico de comparación por años
+            st.markdown("#### Gráfico de Comparación por Años")
+            df_chart = df_f[[col_proveedor, "2024", "2025"]].copy()
+            df_chart["2024"] = df_chart["2024"].apply(_safe_to_float)
+            df_chart["2025"] = df_chart["2025"].apply(_safe_to_float)
+            df_chart = df_chart.groupby(col_proveedor)[["2024", "2025"]].sum().reset_index()
+            df_chart = df_chart.set_index(col_proveedor)
+            st.bar_chart(df_chart)
+            st.caption("Comparación de 2024 vs 2025 por proveedor.")
+        elif col_articulo:
+            # Gráfico de top artículos (para otros casos)
             g_mon = st.selectbox(
                 "Moneda del gráfico",
                 options=["TODAS", "UYU", "USD"],
@@ -609,6 +620,8 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     st.bar_chart(chart_df)
                 except Exception:
                     pass
+        else:
+            st.info("Sin datos suficientes para gráfico.")
 
     with tab_tabla:
         if df_f is None or df_f.empty:
