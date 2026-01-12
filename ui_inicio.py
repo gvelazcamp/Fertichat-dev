@@ -43,16 +43,10 @@ def mostrar_inicio():
     )
 
     # =========================
-    # CSS para tarjetas visuales y botones invisibles
+    # CSS para tarjetas y botones invisibles
     # =========================
     st.markdown("""
     <style>
-    .fc-home-wrap{max-width:1100px;margin:0 auto;}
-    .fc-section-title{
-      color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;
-      letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;
-    }
-    .fc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;}
     .fc-card{
       position:relative;
       border:1px solid rgba(15,23,42,0.10);
@@ -108,10 +102,9 @@ def mostrar_inicio():
     }
 
     @media (max-width: 980px){
-      .fc-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .fc-card{display:block;}
     }
     @media (max-width: 520px){
-      .fc-grid{grid-template-columns:1fr;}
       .fc-tile{width:50px;height:50px;border-radius:14px;flex:0 0 50px;}
       .fc-ico{font-size:24px;}
       .fc-txt .fc-h3{font-size:15px;}
@@ -121,85 +114,80 @@ def mostrar_inicio():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con tarjetas visuales y botones invisibles
+    # Secciones con tarjetas
     # =========================
-    st.markdown("<div class='fc-home-wrap'><div class='fc-section-title'>📌 Módulos principales</div><div class='fc-grid'>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
 
-    # Compras IA
-    st.markdown("""
-    <div class="fc-card">
-      <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
-      <div class="fc-txt"><div class="fc-h3">Compras IA</div><p>Consultas inteligentes</p></div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.button("", on_click=lambda: (st.query_params.update({"go": "compras"}), st.rerun()), key="btn_compras")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown("""
+        <div class="fc-card">
+          <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
+          <div class="fc-txt"><div class="fc-h3">Compras IA</div><p>Consultas inteligentes</p></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("", on_click=lambda: (st.query_params.update({"go": "compras"}), st.rerun()), key="btn_compras")
+    with col2:
+        st.markdown("""
+        <div class="fc-card">
+          <div class="fc-tile tile-buscador"><div class="fc-ico">🔎</div></div>
+          <div class="fc-txt"><div class="fc-h3">Buscador IA</div><p>Buscar facturas / lotes</p></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("", on_click=lambda: (st.query_params.update({"go": "buscador"}), st.rerun()), key="btn_buscador")
+    with col3:
+        st.markdown("""
+        <div class="fc-card">
+          <div class="fc-tile tile-stock"><div class="fc-ico">📦</div></div>
+          <div class="fc-txt"><div class="fc-h3">Stock IA</div><p>Consultar inventario</p></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("", on_click=lambda: (st.query_params.update({"go": "stock"}), st.rerun()), key="btn_stock")
+    with col4:
+        st.markdown("""
+        <div class="fc-card">
+          <div class="fc-tile tile-dashboard"><div class="fc-ico">📊</div></div>
+          <div class="fc-txt"><div class="fc-h3">Dashboard</div><p>Ver estadísticas</p></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("", on_click=lambda: (st.query_params.update({"go": "dashboard"}), st.rerun()), key="btn_dashboard")
 
-    # Buscador IA
-    st.markdown("""
-    <div class="fc-card">
-      <div class="fc-tile tile-buscador"><div class="fc-ico">🔎</div></div>
-      <div class="fc-txt"><div class="fc-h3">Buscador IA</div><p>Buscar facturas / lotes</p></div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.button("", on_click=lambda: (st.query_params.update({"go": "buscador"}), st.rerun()), key="btn_buscador")
+    st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
 
-    # Stock IA
-    st.markdown("""
-    <div class="fc-card">
-      <div class="fc-tile tile-stock"><div class="fc-ico">📦</div></div>
-      <div class="fc-txt"><div class="fc-h3">Stock IA</div><p>Consultar inventario</p></div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.button("", on_click=lambda: (st.query_params.update({"go": "stock"}), st.rerun()), key="btn_stock")
-
-    # Dashboard
-    st.markdown("""
-    <div class="fc-card">
-      <div class="fc-tile tile-dashboard"><div class="fc-ico">📊</div></div>
-      <div class="fc-txt"><div class="fc-h3">Dashboard</div><p>Ver estadísticas</p></div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.button("", on_click=lambda: (st.query_params.update({"go": "dashboard"}), st.rerun()), key="btn_dashboard")
-
-    st.markdown("</div><div style='height:22px;'></div><div class='fc-section-title'>📋 Gestión</div><div class='fc-grid'>", unsafe_allow_html=True)
-
-    # Pedidos internos
-    st.markdown("""
-    <div class="fc-card">
-      <div class="fc-tile tile-pedidos"><div class="fc-ico">📄</div></div>
-      <div class="fc-txt"><div class="fc-h3">Pedidos internos</div><p>Gestionar pedidos</p></div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.button("", on_click=lambda: (st.query_params.update({"go": "pedidos"}), st.rerun()), key="btn_pedidos")
-
-    # Baja de stock
-    st.markdown("""
-    <div class="fc-card">
-      <div class="fc-tile tile-baja"><div class="fc-ico">🧾</div></div>
-      <div class="fc-txt"><div class="fc-h3">Baja de stock</div><p>Registrar bajas</p></div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.button("", on_click=lambda: (st.query_params.update({"go": "baja"}), st.rerun()), key="btn_baja")
-
-    # Órdenes de compra
-    st.markdown("""
-    <div class="fc-card">
-      <div class="fc-tile tile-ordenes"><div class="fc-ico">📦</div></div>
-      <div class="fc-txt"><div class="fc-h3">Órdenes de compra</div><p>Crear órdenes</p></div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.button("", on_click=lambda: (st.query_params.update({"go": "ordenes"}), st.rerun()), key="btn_ordenes")
-
-    # Indicadores
-    st.markdown("""
-    <div class="fc-card">
-      <div class="fc-tile tile-indicadores"><div class="fc-ico">📈</div></div>
-      <div class="fc-txt"><div class="fc-h3">Indicadores</div><p>Power BI</p></div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.button("", on_click=lambda: (st.query_params.update({"go": "indicadores"}), st.rerun()), key="btn_indicadores")
-
-    st.markdown("</div></div>", unsafe_allow_html=True)
+    col5, col6, col7, col8 = st.columns(4)
+    with col5:
+        st.markdown("""
+        <div class="fc-card">
+          <div class="fc-tile tile-pedidos"><div class="fc-ico">📄</div></div>
+          <div class="fc-txt"><div class="fc-h3">Pedidos internos</div><p>Gestionar pedidos</p></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("", on_click=lambda: (st.query_params.update({"go": "pedidos"}), st.rerun()), key="btn_pedidos")
+    with col6:
+        st.markdown("""
+        <div class="fc-card">
+          <div class="fc-tile tile-baja"><div class="fc-ico">🧾</div></div>
+          <div class="fc-txt"><div class="fc-h3">Baja de stock</div><p>Registrar bajas</p></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("", on_click=lambda: (st.query_params.update({"go": "baja"}), st.rerun()), key="btn_baja")
+    with col7:
+        st.markdown("""
+        <div class="fc-card">
+          <div class="fc-tile tile-ordenes"><div class="fc-ico">📦</div></div>
+          <div class="fc-txt"><div class="fc-h3">Órdenes de compra</div><p>Crear órdenes</p></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("", on_click=lambda: (st.query_params.update({"go": "ordenes"}), st.rerun()), key="btn_ordenes")
+    with col8:
+        st.markdown("""
+        <div class="fc-card">
+          <div class="fc-tile tile-indicadores"><div class="fc-ico">📈</div></div>
+          <div class="fc-txt"><div class="fc-h3">Indicadores</div><p>Power BI</p></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("", on_click=lambda: (st.query_params.update({"go": "indicadores"}), st.rerun()), key="btn_indicadores")
 
     # =========================
     # TIP DEL DÍA
