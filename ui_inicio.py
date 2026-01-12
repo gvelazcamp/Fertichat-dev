@@ -43,7 +43,7 @@ def mostrar_inicio():
     )
 
     # =========================
-    # CSS para botones como tarjetas (ajustado: tiles más grandes, sin superposición en texto)
+    # CSS para botones como tarjetas (tiles más grandes, texto alineado a la derecha)
     # =========================
     st.markdown("""
     <style>
@@ -55,22 +55,22 @@ def mostrar_inicio():
 
     /* Tile (ícono) - Más grande */
     .fc-home-tile {
-        width:64px;
-        height:64px;
-        border-radius:18px;
+        width:70px;
+        height:70px;
+        border-radius:20px;
         display:flex;
         align-items:center;
         justify-content:center;
         border:1px solid rgba(15,23,42,0.08);
         background:rgba(255,255,255,0.85);
-        font-size:28px;
+        font-size:30px;
 
         /* clave: que “se meta” sobre la tarjeta, arriba del texto */
         position: relative;
         top: 20px;
         left: 20px;
         z-index: 5;
-        margin-bottom: -60px;
+        margin-bottom: -70px;
 
         /* clave: no bloquear el click del botón debajo */
         pointer-events: none;
@@ -95,8 +95,8 @@ def mostrar_inicio():
         border-radius:18px;
 
         /* espacio para el tile arriba y texto abajo */
-        padding:84px 20px 16px 20px;
-        min-height: 140px;
+        padding:90px 20px 16px 20px;
+        min-height: 150px;
 
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
         cursor:pointer;
@@ -104,7 +104,7 @@ def mostrar_inicio():
         height: auto;
         width: 100%;
 
-        text-align:left;
+        text-align:right;
         margin: 0;
         white-space: pre-line;
 
@@ -129,27 +129,11 @@ def mostrar_inicio():
         letter-spacing:-0.01em;
     }
 
-    /* Flechita sutil a la derecha */
-    div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button::after {
-        content: "›";
-        position:absolute;
-        right:14px;
-        top:20px;
-        font-size:22px;
-        color: rgba(100,116,139,0.65);
-        transition: transform 140ms ease, color 140ms ease;
-    }
-
     div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button:hover {
         transform:translateY(-2px);
         box-shadow:0 14px 34px rgba(2,6,23,0.09);
         border-color:rgba(37,99,235,0.22);
         background:rgba(255,255,255,0.86);
-    }
-
-    div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button:hover::after {
-        transform: translateX(2px);
-        color: rgba(37,99,235,0.85);
     }
 
     div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button:active {
@@ -165,17 +149,17 @@ def mostrar_inicio():
     /* Responsive */
     @media (max-width: 900px) {
         .fc-home-tile {
-            width:56px;
-            height:56px;
-            border-radius:16px;
-            font-size:26px;
+            width:60px;
+            height:60px;
+            border-radius:18px;
+            font-size:28px;
             top: 18px;
             left: 18px;
-            margin-bottom: -52px;
+            margin-bottom: -60px;
         }
         div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button {
-            padding:78px 18px 14px 18px;
-            min-height: 120px;
+            padding:80px 18px 14px 18px;
+            min-height: 130px;
         }
         div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button::first-line {
             font-size:15px;
