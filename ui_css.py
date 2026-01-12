@@ -304,11 +304,9 @@ html, body {
   display: block;
 }
 
-/* Ocultar header de escritorio en pantallas grandes */
-@media (min-width: 769px) {
-  .header-desktop-wrapper {
-    display: none !important;
-  }
+/* Ocultar header de escritorio siempre */
+.header-desktop-wrapper {
+  display: none !important;
 }
 
 </style>
