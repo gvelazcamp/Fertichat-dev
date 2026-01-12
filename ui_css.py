@@ -107,45 +107,17 @@ h1#inicio { display: none !important; }
 /* =========================
    SIDEBAR: blanco + texto negro
    ========================= */
-section[data-testid="stSidebar"] {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  background-image: none !important;
-  border-right: 1px solid rgba(15,23,42,0.08);
-  color: #0f172a !important;
-}
+section[data-testid="stSidebar"] { border-right: 1px solid rgba(15,23,42,0.08); }
 
 section[data-testid="stSidebar"] > div,
 div[data-testid="stSidebar"] > div {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  backdrop-filter: none !important;
+  background: rgba(255,255,255,0.92) !important;
+  backdrop-filter: blur(8px);
 }
 
 section[data-testid="stSidebar"] *,
-section[data-testid="stSidebar"] li,
-section[data-testid="stSidebar"] span,
-section[data-testid="stSidebar"] div,
-section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] label {
+div[data-testid="stSidebar"] * {
   color: #0f172a !important;
-  background: transparent !important;
-}
-
-/* Específico para radio buttons */
-section[data-testid="stSidebar"] .stRadio label {
-  color: #0f172a !important;
-}
-
-/* Específico para botones */
-section[data-testid="stSidebar"] .stButton button {
-  background: #f1f5f9 !important;
-  color: #0f172a !important;
-  border: 1px solid #e2e8f0 !important;
-}
-
-section[data-testid="stSidebar"] .stButton button:hover {
-  background: #e2e8f0 !important;
 }
 
 /* =========================
@@ -319,6 +291,23 @@ html, body {
 @media (max-width: 480px) {
   div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
     padding: 22px 18px !important;
+  }
+}
+
+/* Mover FertiChat y campana al toolbar */
+.stAppToolbar::before {
+  content: "FertiChat 🔔";
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-left: 10px;
+  display: block;
+}
+
+/* Ocultar header de escritorio en pantallas grandes */
+@media (min-width: 769px) {
+  .header-desktop-wrapper {
+    display: none !important;
   }
 }
 
