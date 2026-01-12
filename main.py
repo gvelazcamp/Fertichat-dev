@@ -189,6 +189,31 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
 # ESTILO GLOBAL E INICIO DE SESIÓN
 # =========================
 st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
+
+# =========================
+# FIX UI: BOTONES DEL SIDEBAR (evita texto vertical en "Cerrar sesión")
+# =========================
+CSS_SIDEBAR_BUTTON_FIX = """
+<style>
+/* Si en Home tenés CSS que transforma .stButton en "tarjeta", puede pegarle al sidebar.
+   Esto lo pisa SOLO en el sidebar para evitar quiebres por char (texto vertical). */
+section[data-testid="stSidebar"] .stButton > button,
+div[data-testid="stSidebar"] .stButton > button{
+    height: auto !important;
+    min-height: unset !important;
+    padding: 0.55rem 0.85rem !important;
+    border-radius: 12px !important;
+    width: auto !important;
+    white-space: nowrap !important;
+}
+section[data-testid="stSidebar"] .stButton > button * ,
+div[data-testid="stSidebar"] .stButton > button *{
+    white-space: nowrap !important;
+}
+</style>
+"""
+st.markdown(CSS_SIDEBAR_BUTTON_FIX, unsafe_allow_html=True)
+
 require_auth()
 st.title("Inicio")
 
