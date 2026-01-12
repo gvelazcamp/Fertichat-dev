@@ -352,16 +352,17 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     st.write("")
 
     # KPIs (sobre TODO el resultado, antes de filtros)
+    tot_general = float(df_view["__total_num__"].sum())
     tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
     tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
 
     k1, k2, k3, k4 = st.columns(4)
     with k1:
-        st.metric("Total UYU", _fmt_compact_money(tot_uyu, "UYU"), help=f"Valor exacto: $ {tot_uyu:,.2f}".replace(",", "."))
+        st.metric("Total General", _fmt_compact_money(tot_general, "UYU"), help=f"Valor exacto: $ {tot_general:,.2f}".replace(",", "."))
     with k2:
-        st.metric("Total USD", _fmt_compact_money(tot_usd, "USD"), help=f"Valor exacto: U$S {tot_usd:,.2f}".replace(",", "."))
+        st.metric("Total UYU", _fmt_compact_money(tot_uyu, "UYU"), help=f"Valor exacto: $ {tot_uyu:,.2f}".replace(",", "."))
     with k3:
-        st.metric("Facturas", f"{facturas}")
+        st.metric("Total USD", _fmt_compact_money(tot_usd, "USD"), help=f"Valor exacto: U$S {tot_usd:,.2f}".replace(",", "."))
     with k4:
         st.metric("Proveedores", f"{proveedores}")
 
@@ -576,7 +577,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
     with tab_graf:
         if df_f is None or df_f.empty or not col_articulo:
-            st.info("Sin datos suficientes para gráfico.")
+            st.info("Sin datos suficientes para gráfico (no hay columna de artículos).")
         else:
             g_mon = st.selectbox(
                 "Moneda del gráfico",
