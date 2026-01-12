@@ -305,7 +305,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     col_articulo = _find_col(df_view, ["articulo", "artículo"])
     col_fecha = _find_col(df_view, ["fecha"])
     col_moneda = _find_col(df_view, ["moneda", "currency"])
-    col_total = _find_col(df_view, ["total", "monto", "importe", "valor", "monto_neto"])
+    col_total = _find_col(df_view, ["total", "monto", "importe", "valor", "monto_neto", "2024", "2025"])
     col_nro = _find_col(df_view, ["nro_factura", "nro. comprobante", "nro comprobante", "nro_comprobante"])
     col_cantidad = _find_col(df_view, ["cantidad"])
 
@@ -323,6 +323,10 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         df_view["__total_num__"] = df_view[col_total].apply(_safe_to_float)
     else:
         df_view["__total_num__"] = 0.0
+
+    # Para comparaciones, sumar 2024 + 2025 como total general
+    if "2024" in df_view.columns and "2025" in df_view.columns:
+        df_view["__total_num__"] = df_view["2024"].apply(_safe_to_float) + df_view["2025"].apply(_safe_to_float)
 
     # Contexto
     filas_total = int(len(df_view))
