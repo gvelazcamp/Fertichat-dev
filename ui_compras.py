@@ -4,6 +4,7 @@
 
 import streamlit as st
 import pandas as pd
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -324,9 +325,10 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     else:
         df_view["__total_num__"] = 0.0
 
-    # Para comparaciones, sumar 2024 + 2025 como total general
-    if "2024" in df_view.columns and "2025" in df_view.columns:
-        df_view["__total_num__"] = df_view["2024"].apply(_safe_to_float) + df_view["2025"].apply(_safe_to_float)
+    # Para comparaciones, sumar todas las columnas de tiempo (años o meses)
+    time_cols = [c for c in df_view.columns if re.match(r'\d{4}(-\d{2})?$', str(c))]
+    if time_cols:
+        df_view["__total_num__"] = df_view[time_cols].apply(lambda row: sum(_safe_to_float(row[c]) for c in time_cols), axis=1)
 
     # Contexto
     filas_total = int(len(df_view))
@@ -578,16 +580,16 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     with tab_graf:
         if df_f is None or df_f.empty:
             st.info("Sin datos para mostrar.")
-        elif "2024" in df_f.columns and "2025" in df_f.columns and col_proveedor:
-            # Gráfico de comparación por años
-            st.markdown("#### Gráfico de Comparación por Años")
-            df_chart = df_f[[col_proveedor, "2024", "2025"]].copy()
-            df_chart["2024"] = df_chart["2024"].apply(_safe_to_float)
-            df_chart["2025"] = df_chart["2025"].apply(_safe_to_float)
-            df_chart = df_chart.groupby(col_proveedor)[["2024", "2025"]].sum().reset_index()
+        elif time_cols and col_proveedor:
+            # Gráfico de comparación por tiempo
+            st.markdown("#### Gráfico de Comparación por Tiempo")
+            df_chart = df_f[[col_proveedor] + time_cols].copy()
+            for c in time_cols:
+                df_chart[c] = df_chart[c].apply(_safe_to_float)
+            df_chart = df_chart.groupby(col_proveedor)[time_cols].sum().reset_index()
             df_chart = df_chart.set_index(col_proveedor)
             st.bar_chart(df_chart)
-            st.caption("Comparación de 2024 vs 2025 por proveedor.")
+            st.caption(f"Comparación de {', '.join(time_cols)} por proveedor.")
         elif col_articulo:
             # Gráfico de top artículos (para otros casos)
             g_mon = st.selectbox(
@@ -868,7 +870,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     # ===== TOTAL FACTURAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
     elif tipo == "total_facturas_por_moneda_generico":
-        df = sqlq_compras.get_total_facturas_por_moneda_todos_anios()
+        df = sqlq_facturas.get_total_facturas_por_moneda_todos_anios()
         _dbg_set_result(df)
         return df
 
