@@ -235,7 +235,7 @@ def _df_to_excel_bytes(df: pd.DataFrame) -> bytes:
     try:
         buff = io.BytesIO()
         with pd.ExcelWriter(buff, engine="openpyxl") as writer:
-            df_to_excel(writer, index=False, sheet_name="datos")
+            df.to_excel(writer, index=False, sheet_name="datos")
         return buff.getvalue()
     except Exception:
         return b""
@@ -582,18 +582,29 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         if df_f is None or df_f.empty:
             st.info("Sin datos para mostrar.")
         elif time_cols and col_proveedor and len(time_cols) == 2:
-            # Gráfico de variación (Δ) horizontal
+            # Tabla resumen comparativa
             t1, t2 = time_cols
-            st.markdown("#### Gráfico de Variación (Δ)")
+            st.markdown("#### Resumen Comparativo")
             df_chart = df_f[[col_proveedor] + time_cols].copy()
             for c in time_cols:
                 df_chart[c] = df_chart[c].apply(_safe_to_float)
             df_chart = df_chart.groupby(col_proveedor)[time_cols].sum().reset_index()
             df_chart['Δ'] = df_chart[t2] - df_chart[t1]
-            df_chart['%'] = df_chart.apply(lambda row: (row['Δ'] / row[t1] * 100) if row[t1] > 0 else 0, axis=1)
-            df_chart = df_chart.sort_values(by='Δ', key=abs, ascending=False).head(10)
+            df_chart['Δ %'] = df_chart.apply(lambda row: (row['Δ'] / row[t1] * 100) if row[t1] > 0 else 0, axis=1)
+            df_chart = df_chart.sort_values(by='Δ', key=abs, ascending=False)
+            # Formatear para tabla
+            df_table = df_chart.copy()
+            df_table[t1] = df_table[t1].apply(lambda x: _fmt_compact_money(x, "UYU"))
+            df_table[t2] = df_table[t2].apply(lambda x: _fmt_compact_money(x, "UYU"))
+            df_table['Δ'] = df_table['Δ'].apply(lambda x: _fmt_compact_money(x, "UYU"))
+            df_table['Δ %'] = df_table['Δ %'].apply(lambda x: f"{x:.1f}%")
+            st.dataframe(df_table[[col_proveedor, t1, t2, 'Δ', 'Δ %']], use_container_width=True, hide_index=True)
+
+            # Gráfico de variación (Δ) horizontal
+            st.markdown("#### Gráfico de Variación (Δ)")
+            df_chart_graf = df_chart.sort_values(by='Δ', key=abs, ascending=False).head(10)
             # Altair barras horizontales
-            chart = alt.Chart(df_chart).mark_bar().encode(
+            chart = alt.Chart(df_chart_graf).mark_bar().encode(
                 y=alt.Y(f'{col_proveedor}:N', sort=alt.SortField('Δ', order='descending')),
                 x='Δ:Q',
                 color=alt.condition(
@@ -601,7 +612,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     alt.value('green'),  # Creció
                     alt.value('red')     # Cayó
                 ),
-                tooltip=[col_proveedor, 'Δ', '%']
+                tooltip=[col_proveedor, 'Δ', 'Δ %']
             ).properties(
                 title=f'Variación {t2} vs {t1}'
             )
