@@ -84,6 +84,7 @@ def _extraer_nro_factura_fallback(texto: str) -> Optional[str]:
 
 
 def procesar_pregunta_v2(pregunta: str):
+    print(f"🐛 DEBUG ORQUESTADOR: Procesando pregunta: '{pregunta}'")
     _init_orquestador_state()
 
     print(f"\n{'=' * 60}")
@@ -98,6 +99,7 @@ def procesar_pregunta_v2(pregunta: str):
     # =========================
     # FORZAR SQL PARA "COMPARAR COMPRAS" (bypass agentic)
     # =========================
+    print(f"🐛 DEBUG ORQUESTADOR: Verificando bypass para 'comparar'")
     if "comparar" in pregunta.lower() and "compras" in pregunta.lower():
         print("[ORQUESTADOR] FORZANDO SQL DIRECTA PARA COMPARACIÓN")
         # Parse simple: asumir "comparar compras roche, tresul 2024 2025"
@@ -189,6 +191,7 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str):
         # COMPARACIÓN PROVEEDORES AÑOS (AGREGADO PARA FORZAR)
         # =========================================================
         if tipo == "comparar_proveedor_anios":
+            print(f"🐛 DEBUG ORQUESTADOR: Ejecutando tipo comparar_proveedor_anios")
             proveedores = params.get("proveedores", [])
             if isinstance(proveedores, str):
                 proveedores = [p.strip() for p in proveedores.split(",") if p.strip()]
@@ -207,7 +210,7 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str):
             print(f"  anios       = {anios}")
 
             from sql_comparativas import get_comparacion_proveedor_anios
-            df = get_comparacion_proveedor_anios(*proveedores, *anios) if len(proveedores) > 1 else get_comparacion_proveedor_anios(proveedores[0], anios)
+            df = get_comparacion_proveedor_anios(proveedores, anios)
 
             if df is None or df.empty:
                 return "⚠️ No se encontraron resultados para la comparación.", None, None
