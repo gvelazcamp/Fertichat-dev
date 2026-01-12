@@ -107,7 +107,10 @@ h1#inicio { display: none !important; }
 /* =========================
    SIDEBAR: blanco + texto negro
    ========================= */
-section[data-testid="stSidebar"] { border-right: 1px solid rgba(15,23,42,0.08); }
+section[data-testid="stSidebar"] {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(15,23,42,0.08);
+}
 
 section[data-testid="stSidebar"] > div,
 div[data-testid="stSidebar"] > div {
@@ -296,6 +299,3 @@ html, body {
 
 </style>
 """
-
-
-
