@@ -44,7 +44,7 @@ def _init_orquestador_state():
         # MARCA PARA VER SI ESTÁ USANDO AGENTIC O FALLBACK
         # =========================
         st.session_state["AGENTIC_SOURCE"] = _AGENTIC_SOURCE
-    except Exception as e:
+    except Exception:
         ORQUESTADOR_ERROR = str(e)
 
 
@@ -94,6 +94,34 @@ def procesar_pregunta_v2(pregunta: str):
     # MARCA EN LOG: QUÉ “CEREBRO” SE ESTÁ USANDO
     # =========================
     print(f"[ORQUESTADOR] AGENTIC_SOURCE = {_AGENTIC_SOURCE}")
+
+    # =========================
+    # FORZAR SQL PARA "COMPARAR COMPRAS" (bypass agentic)
+    # =========================
+    if "comparar" in pregunta.lower() and "compras" in pregunta.lower():
+        print("[ORQUESTADOR] FORZANDO SQL DIRECTA PARA COMPARACIÓN")
+        # Parse simple: asumir "comparar compras roche, tresul 2024 2025"
+        parts = pregunta.lower().replace(",", "").split()
+        proveedores = []
+        anios = []
+        for part in parts:
+            if part.isdigit() and len(part) == 4 and 2000 <= int(part) <= 2030:
+                anios.append(int(part))
+            elif part not in ["comparar", "compras", "y", "en"]:
+                proveedores.append(part)
+        if len(proveedores) >= 2 and len(anios) == 2:
+            from sql_comparativas import get_comparacion_proveedor_anios
+            df = get_comparacion_proveedor_anios(proveedores[0], proveedores[1], anios[0], anios[1])
+            if df is not None and not df.empty:
+                return (
+                    f"📊 Comparación de compras entre **{proveedores[0].upper()}** y **{proveedores[1].upper()}** en {anios[0]}-{anios[1]}:",
+                    formatear_dataframe(df),
+                    None,
+                )
+            else:
+                return "⚠️ No se encontraron resultados para la comparación.", None, None
+        else:
+            return "❌ No pude parsear proveedores y años. Ej: comparar compras roche, tresul 2024 2025", None, None
 
     # =========================
     # AGENTIC AI: decisión (tipo + parametros), no ejecuta SQL
