@@ -196,6 +196,66 @@ def get_comparacion_proveedor_anios_like(proveedor_like: str, anios: list[int]) 
     return df
 
 
+def get_comparacion_proveedor_anios(proveedor: str, anios: List[int]) -> pd.DataFrame:
+    """
+    Compara un proveedor específico entre años (coincidencia exacta, no LIKE).
+    Ej:
+      get_comparacion_proveedor_anios("roche", [2024, 2025])
+    Devuelve filas con el proveedor y columnas por año (y Diferencia si hay 2 años).
+    """
+    if not proveedor or not anios:
+        return pd.DataFrame()
+    
+    # Normalizar años a int
+    anios_ok: List[int] = []
+    for y in anios:
+        try:
+            anios_ok.append(int(y))
+        except Exception:
+            pass
+    
+    anios_ok = sorted(list(set(anios_ok)))
+    if len(anios_ok) < 2:
+        return pd.DataFrame()
+    
+    total_expr = _sql_total_num_expr_general()
+    
+    # Columnas por año
+    cols = []
+    for y in anios_ok:
+        cols.append(
+            f"""SUM(CASE WHEN "Año"::int = {y} THEN {total_expr} ELSE 0 END) AS "{y}" """
+        )
+    cols_sql = ",\n            ".join(cols)
+    
+    # Diferencia solo si hay exactamente 2 años
+    diff_sql = ""
+    if len(anios_ok) == 2:
+        y1, y2 = anios_ok[0], anios_ok[1]
+        diff_sql = f""",
+            (SUM(CASE WHEN "Año"::int = {y2} THEN {total_expr} ELSE 0 END) -
+             SUM(CASE WHEN "Año"::int = {y1} THEN {total_expr} ELSE 0 END)) AS Diferencia
+        """
+    
+    anios_sql = ", ".join(str(y) for y in anios_ok)
+    
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            {cols_sql}
+            {diff_sql}
+        FROM chatbot_raw
+        WHERE LOWER(TRIM("Cliente / Proveedor")) = %s
+          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año"::int IN ({anios_sql})
+        GROUP BY TRIM("Cliente / Proveedor")
+        ORDER BY Proveedor
+        LIMIT 300
+    """
+    
+    return ejecutar_consulta(sql, (proveedor.strip().lower(),))
+
+
 def get_comparacion_proveedor_anios_monedas(anios: List[int], proveedores: List[str] = None) -> pd.DataFrame:
     """Compara proveedores por años con separación de monedas."""
     total_pesos = _sql_total_num_expr()
