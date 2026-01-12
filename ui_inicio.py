@@ -206,6 +206,7 @@ def mostrar_inicio():
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
+            pointer-events: auto;
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:active{
@@ -264,11 +265,11 @@ def mostrar_inicio():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Helpers HTML (móvil) - VOLVER A DIV CON ONCLICK PARA EVITAR NUEVA PESTAÑA
+    # Helpers HTML (móvil) - USAR ONTOUCHSTART PARA MÓVIL
     # =========================
     def _mcard(go:  str, icon: str, title: str, sub: str, tile_class: str) -> str:
         return f'''
-        <div class="fc-mcard" onclick="window.location.search = '?go={go}';">
+        <div class="fc-mcard" ontouchstart="window.location.search = '?go={go}';">
             <div class="fc-micon {tile_class}">{icon}</div>
             <div class="fc-mtxt">
                 <p class="fc-mtitle">{title}</p>
