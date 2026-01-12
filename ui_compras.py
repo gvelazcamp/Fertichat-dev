@@ -134,7 +134,7 @@ def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
 
 
 # =========================
-# DASHBOARD VENDIBLE (UI) - NUEVO
+# DASHBOARD VENDIBLE (UI) - SIMPLE / COMPACTO
 # (NO TOCA SQL / NO ROMPE LO EXISTENTE)
 # =========================
 def _find_col(df: pd.DataFrame, candidates_lower: list) -> Optional[str]:
@@ -165,7 +165,6 @@ def _safe_to_float(v) -> float:
         if not s:
             return 0.0
         s = s.replace(" ", "")
-        # soporta "1.234,56" (LATAM) y "1,234.56" (EN) de forma básica
         if "," in s and "." in s:
             s = s.replace(".", "").replace(",", ".")
         else:
@@ -192,8 +191,6 @@ def _fmt_compact_money(v: float, moneda: str) -> str:
         prefix = "$ "
         decimals = 0 if a >= 1000 else 2
 
-    if a >= 1_000_000_000:
-        return f"{sign}{prefix}{a/1_000_000_000:,.2f}B".replace(",", ".")
     if a >= 1_000_000:
         return f"{sign}{prefix}{a/1_000_000:,.2f}M".replace(",", ".")
     if a >= 1_000:
@@ -201,12 +198,17 @@ def _fmt_compact_money(v: float, moneda: str) -> str:
     return f"{sign}{prefix}{a:,.{decimals}f}".replace(",", ".")
 
 
-def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado", key_prefix: str = ""):
+def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Datos", key_prefix: str = ""):
+    """
+    Dashboard compacto:
+    - KPIs arriba
+    - Filtros en expander
+    - Tabs: Vista general | UYU | USD | Gráfico (Top 10 artículos) | Tabla
+    """
     if df is None or df.empty:
         st.warning("⚠️ No hay resultados para mostrar.")
         return
 
-    # CSS liviano (no pisa el resto)
     st.markdown(
         """
         <style>
@@ -242,13 +244,12 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     else:
         df_view["__total_num__"] = 0.0
 
-    # Contexto
+    # Contexto (compacto)
     filas_total = int(len(df_view))
     facturas = int(df_view[col_nro].nunique()) if col_nro else 0
     proveedores = int(df_view[col_proveedor].nunique()) if col_proveedor else 0
     articulos = int(df_view[col_articulo].nunique()) if col_articulo else 0
 
-    # Rango fechas
     rango_txt = ""
     if df_view["__fecha_view__"].notna().any():
         dmin = df_view["__fecha_view__"].min()
@@ -263,9 +264,8 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         f"<div class='fc-subtle'>Filas: <b>{filas_total}</b> · Facturas: <b>{facturas}</b> · Proveedores: <b>{proveedores}</b> · Artículos: <b>{articulos}</b>{rango_txt}</div>",
         unsafe_allow_html=True
     )
-    st.write("")
 
-    # KPIs (sobre TODO el resultado, antes de filtros)
+    # KPIs arriba (siempre)
     tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
     tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
 
@@ -279,7 +279,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     with k4:
         st.metric("Proveedores", f"{proveedores}")
 
-    # Filtros (solo afectan la vista)
+    # Filtros (expander) - solo afectan vista
     with st.expander("🔎 Filtros (vista)", expanded=False):
         f1, f2, f3, f4 = st.columns([2, 2, 1.2, 1.6])
 
@@ -316,19 +316,21 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 d_ini, d_fin = rango[0], rango[1]
             else:
                 d_ini, d_fin = min_d, max_d
+        else:
+            sel_mon = "TODAS"
 
     df_f = df_view.copy()
 
-    if sel_prov and col_proveedor:
+    if 'sel_prov' in locals() and sel_prov and col_proveedor:
         df_f = df_f[df_f[col_proveedor].astype(str).isin(sel_prov)]
 
-    if sel_art and col_articulo:
+    if 'sel_art' in locals() and sel_art and col_articulo:
         df_f = df_f[df_f[col_articulo].astype(str).isin(sel_art)]
 
-    if sel_mon != "TODAS":
+    if 'sel_mon' in locals() and sel_mon != "TODAS":
         df_f = df_f[df_f["__moneda_view__"] == sel_mon]
 
-    if d_ini and d_fin:
+    if 'd_ini' in locals() and 'd_fin' in locals() and d_ini and d_fin:
         df_f = df_f[
             (df_f["__fecha_view__"].dt.date >= d_ini) &
             (df_f["__fecha_view__"].dt.date <= d_fin)
@@ -336,41 +338,35 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
     st.caption(f"Resultados en vista: {len(df_f)}")
 
-    # Tabs por moneda
-    tab_all, tab_uyu, tab_usd = st.tabs(["Vista general", "Pesos (UYU)", "Dólares (USD)"])
+    # Helpers de resumen/tabla para tabs (compacto)
+    def _top_por(df_tab: pd.DataFrame, group_col: Optional[str], n: int = 10) -> pd.DataFrame:
+        if df_tab is None or df_tab.empty or not group_col:
+            return pd.DataFrame()
+        s = (
+            df_tab.groupby(group_col)["__total_num__"]
+            .sum()
+            .sort_values(ascending=False)
+            .head(n)
+        )
+        out = s.reset_index()
+        out.columns = [group_col, "Total"]
+        return out
 
-    def _render_tab(df_tab: pd.DataFrame, etiqueta: str):
+    def _render_top_proveedores(df_tab: pd.DataFrame, etiqueta: str):
         if df_tab is None or df_tab.empty:
             st.info(f"Sin resultados en {etiqueta}.")
             return
+        if not col_proveedor:
+            st.info("No hay columna de proveedor para resumir.")
+            return
+        df_top = _top_por(df_tab, col_proveedor, n=10)
+        st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
 
-        # Resumen simple (sin OpenAI)
-        if col_proveedor:
-            top = (
-                df_tab.groupby(col_proveedor)["__total_num__"]
-                .sum()
-                .sort_values(ascending=False)
-            )
-            total_val = float(df_tab["__total_num__"].sum())
-            if len(top) > 0 and total_val:
-                prov_top = str(top.index[0])
-                val_top = float(top.iloc[0])
-                share = val_top / total_val * 100.0
-                st.markdown(f"**Resumen:** principal proveedor **{prov_top}** con **{share:.1f}%** del total en {etiqueta}.")
+    def _render_tabla_detalle(df_tab: pd.DataFrame):
+        if df_tab is None or df_tab.empty:
+            st.info("Sin resultados para mostrar.")
+            return
 
-            # Top proveedores (tabla + gráfico)
-            df_top = top.head(12).reset_index()
-            df_top.columns = [col_proveedor, "Total"]
-            st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
-
-            try:
-                chart_df = df_top.set_index(col_proveedor)["Total"]
-                st.bar_chart(chart_df)
-            except Exception:
-                pass
-
-        st.write("")
-        # Tabla detalle (orden preferido)
         pref = []
         for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
             if c and c in df_tab.columns:
@@ -378,16 +374,53 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         resto = [c for c in df_tab.columns if c not in pref and not str(c).startswith("__")]
         show_cols = pref + resto
 
-        st.dataframe(df_tab[show_cols], use_container_width=True, height=420)
+        st.dataframe(df_tab[show_cols], use_container_width=True, height=520)
 
-    with tab_all:
-        _render_tab(df_f, "todas las monedas")
+    def _render_grafico_top10_articulos(df_tab: pd.DataFrame):
+        if df_tab is None or df_tab.empty:
+            st.info("Sin resultados para graficar.")
+            return
+        if not col_articulo:
+            st.info("No hay columna de artículo para graficar.")
+            return
+
+        s = (
+            df_tab.groupby(col_articulo)["__total_num__"]
+            .sum()
+            .sort_values(ascending=False)
+            .head(10)
+        )
+        df_top = s.reset_index()
+        df_top.columns = [col_articulo, "Total"]
+
+        # Tabla compacta + gráfico (solo en este tab)
+        st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
+        try:
+            chart_df = df_top.set_index(col_articulo)["Total"]
+            st.bar_chart(chart_df)
+        except Exception:
+            pass
+
+    # Tabs principales (como pediste)
+    tab_general, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
+        ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
+    )
+
+    with tab_general:
+        _render_top_proveedores(df_f, "vista general")
 
     with tab_uyu:
-        _render_tab(df_f[df_f["__moneda_view__"] == "UYU"], "UYU")
+        _render_top_proveedores(df_f[df_f["__moneda_view__"] == "UYU"], "UYU")
 
     with tab_usd:
-        _render_tab(df_f[df_f["__moneda_view__"] == "USD"], "USD")
+        _render_top_proveedores(df_f[df_f["__moneda_view__"] == "USD"], "USD")
+
+    with tab_graf:
+        st.caption("Tip: si querés graficar solo USD o solo UYU, usá los filtros de moneda.")
+        _render_grafico_top10_articulos(df_f)
+
+    with tab_tabla:
+        _render_tabla_detalle(df_f)
 
 
 # =========================
@@ -409,7 +442,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     elif tipo == "facturas_proveedor":
-        # ✅ CAMBIO: Usar sql_compras en lugar de sql_facturas para incluir filtro de Tipo Comprobante
+        # ✅ Usa sql_compras para incluir filtro de Tipo Comprobante
         df = sqlq_compras.get_facturas_proveedor_detalle(
             proveedores=parametros.get("proveedores", []),
             meses=parametros.get("meses"),
@@ -517,7 +550,6 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     # ===== STOCK =====
     elif tipo == "stock_total":
-        # Asumiendo que tienes una función en sql_compras o crea una; si no, ajusta
         df = sqlq_compras.get_stock_total()  # Ajusta si es otro módulo
         _dbg_set_result(df)
         return df
@@ -551,7 +583,6 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         _dbg_set_result(df)
         return df
 
-    # ===== NO IMPLEMENTADO =====
     raise ValueError(f"Tipo '{tipo}' no implementado en ejecutar_consulta_por_tipo")
 
 
@@ -580,7 +611,7 @@ def Compras_IA():
             if "df" in msg and msg["df"] is not None:
                 df = msg["df"]
 
-                # Dashboard vendible (si falla, cae al render viejo sin romper)
+                # Dashboard vendible compacto
                 try:
                     st.markdown("---")
                     render_dashboard_compras_vendible(
@@ -589,7 +620,7 @@ def Compras_IA():
                         key_prefix=f"hist_{idx}_"
                     )
                 except Exception as e:
-                    # Fallback viejo
+                    # Fallback viejo (no romper nada)
                     totales = calcular_totales_por_moneda(df)
                     if totales:
                         col1, col2, col3 = st.columns([2, 2, 3])
@@ -661,7 +692,7 @@ def Compras_IA():
             try:
                 resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
 
-                # ✅ AGREGADO: Convertir "Mes" a nombres de meses antes de mostrar
+                # Convertir "Mes" a nombres antes de mostrar
                 if isinstance(resultado_sql, pd.DataFrame) and 'Mes' in resultado_sql.columns:
                     resultado_sql['Mes'] = resultado_sql['Mes'].apply(convertir_mes_a_nombre)
 
@@ -671,47 +702,27 @@ def Compras_IA():
                     else:
                         if tipo == "detalle_factura":
                             nro = parametros.get("nro_factura", "")
-                            respuesta_content = (
-                                f"✅ **Factura {nro}** - {len(resultado_sql)} artículos"
-                            )
+                            respuesta_content = f"✅ **Factura {nro}** - {len(resultado_sql)} artículos"
                         elif tipo.startswith("facturas_"):
-                            respuesta_content = (
-                                f"✅ Encontré **{len(resultado_sql)}** facturas"
-                            )
+                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** facturas"
                         elif tipo.startswith("compras_"):
-                            respuesta_content = (
-                                f"✅ Encontré **{len(resultado_sql)}** compras"
-                            )
+                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** compras"
                         elif tipo.startswith("comparar_"):
-                            respuesta_content = (
-                                f"✅ Comparación lista - {len(resultado_sql)} filas"
-                            )
+                            respuesta_content = f"✅ Comparación lista - {len(resultado_sql)} filas"
                         elif tipo.startswith("stock_"):
-                            respuesta_content = (
-                                f"✅ Stock encontrado - {len(resultado_sql)} filas"
-                            )
+                            respuesta_content = f"✅ Stock encontrado - {len(resultado_sql)} filas"
                         elif tipo == "listado_facturas_anio":
                             anio = parametros.get("anio", "")
-                            respuesta_content = (
-                                f"✅ **Listado de Facturas {anio}** - {len(resultado_sql)} proveedores"
-                            )
+                            respuesta_content = f"✅ **Listado de Facturas {anio}** - {len(resultado_sql)} proveedores"
                         elif tipo == "total_facturas_por_moneda_anio":
                             anio = parametros.get("anio", "")
-                            respuesta_content = (
-                                f"✅ **Totales de Facturas {anio} por Moneda** - {len(resultado_sql)} monedas"
-                            )
+                            respuesta_content = f"✅ **Totales de Facturas {anio} por Moneda** - {len(resultado_sql)} monedas"
                         elif tipo == "total_facturas_por_moneda_generico":
-                            respuesta_content = (
-                                f"✅ **Totales de Facturas por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
-                            )
+                            respuesta_content = f"✅ **Totales de Facturas por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
                         elif tipo == "total_compras_por_moneda_generico":
-                            respuesta_content = (
-                                f"✅ **Totales de Compras por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
-                            )
+                            respuesta_content = f"✅ **Totales de Compras por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
                         else:
-                            respuesta_content = (
-                                f"✅ Encontré **{len(resultado_sql)}** resultados"
-                            )
+                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** resultados"
 
                         respuesta_df = resultado_sql
                 else:
