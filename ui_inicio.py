@@ -43,128 +43,163 @@ def mostrar_inicio():
     )
 
     # =========================
-    # CSS para botones como tarjetas
+    # CSS para tarjetas visuales y botones invisibles
     # =========================
     st.markdown("""
     <style>
+    .fc-home-wrap{max-width:1100px;margin:0 auto;}
+    .fc-section-title{
+      color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;
+      letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;
+    }
+    .fc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;}
+    .fc-card{
+      position:relative;
+      border:1px solid rgba(15,23,42,0.10);
+      background:rgba(255,255,255,0.72);
+      border-radius:18px;
+      padding:16px 16px;
+      box-shadow:0 10px 26px rgba(2,6,23,0.06);
+      cursor:pointer;
+      transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+      user-select:none;
+      height:100%;
+      width:100%;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .fc-card:hover{
+      transform:translateY(-2px);
+      box-shadow:0 14px 34px rgba(2,6,23,0.09);
+      border-color:rgba(37,99,235,0.20);
+    }
+    .fc-tile{
+      width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+      border:1px solid rgba(15,23,42,0.08);background:rgba(255,255,255,0.70);
+      flex:0 0 54px;
+    }
+    .fc-ico{font-size:26px;line-height:1;}
+    .fc-txt .fc-h3{
+      margin:0;color:#0f172a;font-size:16px;font-weight:800;letter-spacing:-0.01em;
+    }
+    .fc-txt p{margin:3px 0 0 0;color:#64748b;font-size:13px;}
+
+    .tile-compras{background:rgba(16,185,129,0.10);border-color:rgba(16,185,129,0.18);}
+    .tile-buscador{background:rgba(59,130,246,0.10);border-color:rgba(59,130,246,0.18);}
+    .tile-stock{background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.22);}
+    .tile-dashboard{background:rgba(139,92,246,0.10);border-color:rgba(139,92,246,0.18);}
+    .tile-pedidos{background:rgba(2,132,199,0.10);border-color:rgba(2,132,199,0.18);}
+    .tile-baja{background:rgba(244,63,94,0.10);border-color:rgba(244,63,94,0.18);}
+    .tile-ordenes{background:rgba(100,116,139,0.10);border-color:rgba(100,116,139,0.18);}
+    .tile-indicadores{background:rgba(34,197,94,0.10);border-color:rgba(34,197,94,0.18);}
+
     .stButton > button {
-        border:1px solid rgba(15,23,42,0.10);
-        background:rgba(255,255,255,0.72);
-        border-radius:18px;
-        padding:16px;
-        box-shadow:0 10px 26px rgba(2,6,23,0.06);
-        cursor:pointer;
-        transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
-        height: auto;
-        width: 100%;
-        font-size:16px;
-        font-weight:800;
-        color:#0f172a;
-        text-align:left;
-        margin: 0;
-        white-space: pre-line;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+      position:absolute;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      opacity:0;
+      cursor:pointer;
+      border:none;
+      background:none;
+      z-index:1;
     }
-    .stButton > button:hover {
-        transform:translateY(-2px);
-        box-shadow:0 14px 34px rgba(2,6,23,0.09);
-        border-color:rgba(37,99,235,0.20);
+
+    @media (max-width: 980px){
+      .fc-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
     }
-    .stButton > button:active {
-        transform:translateY(0);
-        box-shadow:0 10px 26px rgba(2,6,23,0.06);
-    }
-    .stButton > button:focus {
-        outline: none;
-    }
-    .tile {
-        width:54px;
-        height:54px;
-        border-radius:16px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        border:1px solid rgba(15,23,42,0.08);
-        background:rgba(255,255,255,0.70);
-        font-size:26px;
-    }
-    .tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
-    .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
-    .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
-    .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
-    .tile-pedidos { background:rgba(2,132,199,0.10); border-color:rgba(2,132,199,0.18); }
-    .tile-baja { background:rgba(244,63,94,0.10); border-color:rgba(244,63,94,0.18); }
-    .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
-    .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
-    .btn-title {
-        margin: 0;
-        font-size:16px;
-        font-weight:800;
-        letter-spacing:-0.01em;
-    }
-    .btn-desc {
-        margin: 0;
-        font-size:13px;
-        color:#64748b;
-        font-weight: normal;
+    @media (max-width: 520px){
+      .fc-grid{grid-template-columns:1fr;}
+      .fc-tile{width:50px;height:50px;border-radius:14px;flex:0 0 50px;}
+      .fc-ico{font-size:24px;}
+      .fc-txt .fc-h3{font-size:15px;}
+      .fc-txt p{font-size:12px;}
     }
     </style>
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones
+    # Secciones con tarjetas visuales y botones invisibles
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='fc-home-wrap'><div class='fc-section-title'>📌 Módulos principales</div><div class='fc-grid'>", unsafe_allow_html=True)
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown('<div class="tile tile-compras">🛒</div>', unsafe_allow_html=True)
-        if st.button("Compras IA\nConsultas inteligentes", key="compras"):
-            st.query_params["go"] = "compras"
-            st.rerun()
-    with col2:
-        st.markdown('<div class="tile tile-buscador">🔎</div>', unsafe_allow_html=True)
-        if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador"):
-            st.query_params["go"] = "buscador"
-            st.rerun()
-    with col3:
-        st.markdown('<div class="tile tile-stock">📦</div>', unsafe_allow_html=True)
-        if st.button("Stock IA\nConsultar inventario", key="stock"):
-            st.query_params["go"] = "stock"
-            st.rerun()
-    with col4:
-        st.markdown('<div class="tile tile-dashboard">📊</div>', unsafe_allow_html=True)
-        if st.button("Dashboard\nVer estadísticas", key="dashboard"):
-            st.query_params["go"] = "dashboard"
-            st.rerun()
+    # Compras IA
+    st.markdown("""
+    <div class="fc-card">
+      <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
+      <div class="fc-txt"><div class="fc-h3">Compras IA</div><p>Consultas inteligentes</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.button("", on_click=lambda: (st.query_params.update({"go": "compras"}), st.rerun()), key="btn_compras")
 
-    st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
+    # Buscador IA
+    st.markdown("""
+    <div class="fc-card">
+      <div class="fc-tile tile-buscador"><div class="fc-ico">🔎</div></div>
+      <div class="fc-txt"><div class="fc-h3">Buscador IA</div><p>Buscar facturas / lotes</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.button("", on_click=lambda: (st.query_params.update({"go": "buscador"}), st.rerun()), key="btn_buscador")
 
-    col5, col6, col7, col8 = st.columns(4)
-    with col5:
-        st.markdown('<div class="tile tile-pedidos">📄</div>', unsafe_allow_html=True)
-        if st.button("Pedidos internos\nGestionar pedidos", key="pedidos"):
-            st.query_params["go"] = "pedidos"
-            st.rerun()
-    with col6:
-        st.markdown('<div class="tile tile-baja">🧾</div>', unsafe_allow_html=True)
-        if st.button("Baja de stock\nRegistrar bajas", key="baja"):
-            st.query_params["go"] = "baja"
-            st.rerun()
-    with col7:
-        st.markdown('<div class="tile tile-ordenes">📦</div>', unsafe_allow_html=True)
-        if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
-            st.query_params["go"] = "ordenes"
-            st.rerun()
-    with col8:
-        st.markdown('<div class="tile tile-indicadores">📈</div>', unsafe_allow_html=True)
-        if st.button("Indicadores\nPower BI", key="indicadores"):
-            st.query_params["go"] = "indicadores"
-            st.rerun()
+    # Stock IA
+    st.markdown("""
+    <div class="fc-card">
+      <div class="fc-tile tile-stock"><div class="fc-ico">📦</div></div>
+      <div class="fc-txt"><div class="fc-h3">Stock IA</div><p>Consultar inventario</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.button("", on_click=lambda: (st.query_params.update({"go": "stock"}), st.rerun()), key="btn_stock")
+
+    # Dashboard
+    st.markdown("""
+    <div class="fc-card">
+      <div class="fc-tile tile-dashboard"><div class="fc-ico">📊</div></div>
+      <div class="fc-txt"><div class="fc-h3">Dashboard</div><p>Ver estadísticas</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.button("", on_click=lambda: (st.query_params.update({"go": "dashboard"}), st.rerun()), key="btn_dashboard")
+
+    st.markdown("</div><div style='height:22px;'></div><div class='fc-section-title'>📋 Gestión</div><div class='fc-grid'>", unsafe_allow_html=True)
+
+    # Pedidos internos
+    st.markdown("""
+    <div class="fc-card">
+      <div class="fc-tile tile-pedidos"><div class="fc-ico">📄</div></div>
+      <div class="fc-txt"><div class="fc-h3">Pedidos internos</div><p>Gestionar pedidos</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.button("", on_click=lambda: (st.query_params.update({"go": "pedidos"}), st.rerun()), key="btn_pedidos")
+
+    # Baja de stock
+    st.markdown("""
+    <div class="fc-card">
+      <div class="fc-tile tile-baja"><div class="fc-ico">🧾</div></div>
+      <div class="fc-txt"><div class="fc-h3">Baja de stock</div><p>Registrar bajas</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.button("", on_click=lambda: (st.query_params.update({"go": "baja"}), st.rerun()), key="btn_baja")
+
+    # Órdenes de compra
+    st.markdown("""
+    <div class="fc-card">
+      <div class="fc-tile tile-ordenes"><div class="fc-ico">📦</div></div>
+      <div class="fc-txt"><div class="fc-h3">Órdenes de compra</div><p>Crear órdenes</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.button("", on_click=lambda: (st.query_params.update({"go": "ordenes"}), st.rerun()), key="btn_ordenes")
+
+    # Indicadores
+    st.markdown("""
+    <div class="fc-card">
+      <div class="fc-tile tile-indicadores"><div class="fc-ico">📈</div></div>
+      <div class="fc-txt"><div class="fc-h3">Indicadores</div><p>Power BI</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.button("", on_click=lambda: (st.query_params.update({"go": "indicadores"}), st.rerun()), key="btn_indicadores")
+
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
     # =========================
     # TIP DEL DÍA
