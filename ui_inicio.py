@@ -29,7 +29,7 @@ def mostrar_inicio():
     # =========================
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin: 0 auto;text-align:center;padding:10px 0 18px 0;">
+        <div style="max-width:1100px;margin:0 auto;text-align:center;padding:10px 0 18px 0;">
             <h2 style="margin:0;color:#0f172a;font-size:34px;font-weight:800;letter-spacing:-0.02em;">
                 {saludo}, {nombre. split()[0]}! 👋
             </h2>
@@ -61,7 +61,7 @@ def mostrar_inicio():
     /* Botón como tarjeta - FORZAR MISMO TAMAÑO SIEMPRE */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
         border:  1px solid rgba(15,23,42,0.10);
-        background:  rgba(255,255,255,0.82);
+        background: rgba(255,255,255,0.82);
         border-radius: 20px;
         
         /* FORZAR altura exacta */
@@ -83,8 +83,8 @@ def mostrar_inicio():
         
         /* Centrar contenido verticalmente */
         display:flex ! important;
-        align-items: center !important;
-        justify-content:flex-start !important;
+        align-items: center ! important;
+        justify-content: flex-start !important;
         
         position:relative;
         margin: 0;
@@ -93,7 +93,7 @@ def mostrar_inicio():
 
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
         font-size:16px;
-        font-weight: 900;
+        font-weight:900;
         color:#0f172a;
         letter-spacing:-0.01em;
     }
@@ -110,7 +110,7 @@ def mostrar_inicio():
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
     }
 
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button: focus{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:focus{
         outline:none;
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
@@ -137,7 +137,7 @@ def mostrar_inicio():
     }
 
     /* Colores tiles */
-    . tile-compras { background: rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
+    . tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
     .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
     .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
     .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
@@ -149,16 +149,11 @@ def mostrar_inicio():
     /* ============================================
        MÓVIL - Tarjetas MISMO TAMAÑO FORZADO
        ============================================ */
-    @media (max-width: 768px){
-        /* OCULTAR los tiles en móvil (evita duplicados) */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-            display:none ! important;
-        }
-        
+    @media (max-width:  768px){
         /* Container con padding balanceado */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .block-container {
-            padding-left:0. 5rem !important;
-            padding-right:0.5rem ! important;
+            padding-left:0.5rem ! important;
+            padding-right: 0.5rem !important;
         }
 
         /* Gap equilibrado entre columnas */
@@ -172,26 +167,36 @@ def mostrar_inicio():
             min-width:0 !important;
         }
 
-        /* Botones:  FORZAR altura exacta igual para todas - SIN tile, texto centrado */
+        /* Botones:  FORZAR altura exacta igual para todas */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
             height:80px !important;
             min-height:80px !important;
             max-height:80px ! important;
             
-            padding:0 8px ! important;
+            padding:0 5px 0 50px !important;
             border-radius:14px !important;
             font-size:10px !important;
             line-height:1.2 !important;
             
             display:flex !important;
             align-items:center !important;
-            justify-content:center !important;
-            text-align:center !important;
+            justify-content:flex-start !important;
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
             font-size:11. 5px !important;
             font-weight:800 !important;
+        }
+
+        /* Tile: tamaño equilibrado */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
+            width:38px !important;
+            height: 38px !important;
+            border-radius:11px !important;
+            font-size:19px !important;
+            left:6px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
         }
 
         /* Saludo compacto */
@@ -204,7 +209,7 @@ def mostrar_inicio():
         }
 
         /* Labels de sección */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[style*="max-width: 1100px"] div {
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[style*="max-width:1100px"] div {
             font-size:11px !important;
             margin:14px 0 8px 4px !important;
         }
@@ -213,9 +218,9 @@ def mostrar_inicio():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones - TEXTOS MÁS CORTOS
+    # Secciones con botones
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing: 1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -224,7 +229,7 @@ def mostrar_inicio():
             st.query_params["go"] = "compras"
             st.rerun()
     with col2:
-        st.markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
+        st. markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
         if st.button("Buscador IA\nFacturas", key="buscador"):
             st.query_params["go"] = "buscador"
             st.rerun()
@@ -242,7 +247,7 @@ def mostrar_inicio():
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
     st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
 
-    col5, col6, col7, col8 = st. columns(4)
+    col5, col6, col7, col8 = st.columns(4)
     with col5:
         st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
         if st.button("Pedidos\nGestión", key="pedidos"):
