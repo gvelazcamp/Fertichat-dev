@@ -179,81 +179,105 @@ def mostrar_inicio():
             padding-right: 0.65rem !important;
         }
 
-        /* Botón como tarjeta móvil (IGUAL A fc-mcard) */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button{
-            display: flex;
-            align-items: center;
-            gap: 14px;
+        /* Tarjeta móvil (BUTTON clickeable - IGUAL QUE DIV PERO FUNCIONA MEJOR) */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard{
+            display:flex;
+            align-items:center;
+            gap:14px;
 
-            width: 100%;
-            box-sizing: border-box;
+            width:100%;
+            box-sizing:border-box;
 
-            height: 104px;
-            min-height: 104px;
+            height:   104px;
+            min-height:     104px;
+            max-height:   104px;
 
-            border-radius: 20px;
-            border: 1px solid rgba(15,23,42,0.10);
-            background: rgba(255,255,255,0.88);
-            box-shadow: 0 10px 24px rgba(2,6,23,0.06);
+            border-radius:24px;  /* Más redondeado para look lindo */
+            border:  1px solid rgba(15,23,42,0.10);
+            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));  /* Gradiente sutil */
+            box-shadow: 0 12px 28px rgba(2,6,23,0.08);
 
-            padding: 14px 14px;
-            cursor: pointer;
-            transition: transform 140ms ease, box-shadow 140ms ease;
+            padding:14px 14px;
+            cursor:pointer;
+            transition: transform 160ms ease, box-shadow 160ms ease;
 
-            /* Mejoras para toque */
+            /* Estilos de button */
+            outline: none;
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
-
-            text-align: left;
-            white-space: pre-line;
-            font-size: 13.5px;
-            font-weight: 600;
-            color: #334155;
-            line-height: 1.22;
-
-            position: relative;
-            margin: 0 0 14px 0;  /* gap entre tarjetas */
         }
 
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button::first-line{
-            font-size: 16px;
-            font-weight: 900;
-            color: #0f172a;
-            letter-spacing: -0.01em;
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:active{
+            transform: scale(0.96);  /* Un poco más suave */
+            box-shadow: 0 8px 20px rgba(2,6,23,0.06);
         }
 
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button:active{
-            transform: scale(0.98);
+        /* icon */
+        div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .fc-micon{
+            width:54px;
+            height:54px;
+            border-radius:18px;  /* Más redondeado */
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:26px;
+
+            border:  1px solid rgba(15,23,42,0.08);
+            background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.80));  /* Gradiente en icono */
+            box-shadow:0 8px 16px rgba(2,6,23,0.06);
+
+            flex:     0 0 54px;
         }
 
-        /* Tile (ícono) - MÓVIL */
-        div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .fc-home-mobile .fc-home-tile{
-            width: 54px;
-            height: 54px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 26px;
+        /* text block */
+        div[data-testid="stAppViewContainer"]:    has(#fc-home-marker) .fc-mtxt{
+            display:flex;
+            flex-direction:column;
+            gap:4px;
+            min-width:0;
+        }
 
-            border: 1px solid rgba(15,23,42,0.08);
-            background: rgba(255,255,255,0.90);
-            box-shadow: 0 10px 18px rgba(2,6,23,0.07);
+        div[data-testid="stAppViewContainer"]:  has(#fc-home-marker) .fc-mtitle{
+            margin:    0;
+            font-size:  16px;
+            font-weight:900;
+            color:#0f172a;
+            line-height:1.05;
+        }
 
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 5;
+        div[data-testid="stAppViewContainer"]:  has(#fc-home-marker) .fc-msub{
+            margin:  0;
+            font-size:   13px;
+            font-weight:  600;
+            color:#64748b;
+            line-height:1.2;
+        }
 
-            pointer-events: none;
-            user-select: none;
+        /* separación entre tarjetas */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mstack{
+            display:flex;
+            flex-direction:column;
+            gap:16px;  /* Un poco más espacio */
         }
     }
     </style>
     """, unsafe_allow_html=True)
+
+    # =========================
+    # Helpers HTML (móvil) - BUTTON PARA MEJOR FUNCIONAMIENTO
+    # =========================
+    def _mcard(go:  str, icon: str, title: str, sub: str, tile_class: str) -> str:
+        return f'''
+        <button class="fc-mcard" onclick="const url = new URL(window.location); url.searchParams.set('go', '{go}'); window.location.href = url.toString();">
+            <div class="fc-micon {tile_class}">{icon}</div>
+            <div class="fc-mtxt">
+                <p class="fc-mtitle">{title}</p>
+                <p class="fc-msub">{sub}</p>
+            </div>
+        </button>
+        '''
 
     # =========================
     # LAYOUT DESKTOP (COMENTADO - NO USAR POR AHORA)
@@ -320,7 +344,7 @@ def mostrar_inicio():
     """
 
     # =========================
-    # LAYOUT MÓVIL (CON st.button PARA QUE FUNCIONE FÁCIL)
+    # LAYOUT MÓVIL (ÚNICO - PERFECTAS + FUNCIONAN)
     # =========================
     st.markdown('<div class="fc-home-mobile">', unsafe_allow_html=True)
 
@@ -328,30 +352,17 @@ def mostrar_inicio():
         "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight: 800;text-transform:uppercase;letter-spacing: 1px;margin: 18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
         unsafe_allow_html=True
     )
-
-    # Compras
-    st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
-    if st.button("Compras IA\nConsultas inteligentes", key="compras_mobile"):
-        st.query_params["go"] = "compras"
-        st.rerun()
-
-    # Buscador
-    st.markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
-    if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador_mobile"):
-        st.query_params["go"] = "buscador"
-        st.rerun()
-
-    # Stock
-    st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
-    if st.button("Stock IA\nConsultar inventario", key="stock_mobile"):
-        st.query_params["go"] = "stock"
-        st.rerun()
-
-    # Dashboard
-    st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
-    if st.button("Dashboard\nVer estadísticas", key="dashboard_mobile"):
-        st.query_params["go"] = "dashboard"
-        st.rerun()
+    st.markdown(
+        f"""
+        <div class="fc-mstack">
+            {_mcard("compras", "🛒", "Compras IA", "Consultas inteligentes", "tile-compras")}
+            {_mcard("buscador", "🔎", "Buscador IA", "Buscar facturas / lotes", "tile-buscador")}
+            {_mcard("stock", "📦", "Stock IA", "Consultar inventario", "tile-stock")}
+            {_mcard("dashboard", "📊", "Dashboard", "Ver estadísticas", "tile-dashboard")}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
 
@@ -359,30 +370,17 @@ def mostrar_inicio():
         "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing: 1px;margin:   18px 0 10px 6px;display:flex;align-items:center;gap:  8px;'>📋 Gestión</div></div>",
         unsafe_allow_html=True
     )
-
-    # Pedidos
-    st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
-    if st.button("Pedidos internos\nGestionar pedidos", key="pedidos_mobile"):
-        st.query_params["go"] = "pedidos"
-        st.rerun()
-
-    # Baja
-    st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
-    if st.button("Baja de stock\nRegistrar bajas", key="baja_mobile"):
-        st.query_params["go"] = "baja"
-        st.rerun()
-
-    # Ordenes
-    st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
-    if st.button("Órdenes de compra\nCrear órdenes", key="ordenes_mobile"):
-        st.query_params["go"] = "ordenes"
-        st.rerun()
-
-    # Indicadores
-    st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
-    if st.button("Indicadores\nPower BI", key="indicadores_mobile"):
-        st.query_params["go"] = "indicadores"
-        st.rerun()
+    st.markdown(
+        f"""
+        <div class="fc-mstack">
+            {_mcard("pedidos", "📄", "Pedidos internos", "Gestionar pedidos", "tile-pedidos")}
+            {_mcard("baja", "🧾", "Baja de stock", "Registrar bajas", "tile-baja")}
+            {_mcard("ordenes", "📦", "Órdenes de compra", "Crear órdenes", "tile-ordenes")}
+            {_mcard("indicadores", "📈", "Indicadores", "Power BI", "tile-indicadores")}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     st.markdown("</div>", unsafe_allow_html=True)  # cierre fc-home-mobile
 
@@ -402,10 +400,10 @@ def mostrar_inicio():
         f"""
         <div style="max-width:1100px;margin:  16px auto 0 auto;">
             <div style="
-                background: rgba(255,255,255,0.70);
+                background: linear-gradient(135deg, rgba(255,255,255,0.75), rgba(255,255,255,0.65));  /* Gradiente en tip */
                 border: 1px solid rgba(15,23,42,0.10);
                 border-left: 4px solid rgba(37,99,235,0.55);
-                border-radius: 16px;
+                border-radius: 18px;  /* Más redondeado */
                 padding: 14px 16px;
                 box-shadow: 0 10px 26px rgba(2,6,23,0.06);
             ">
