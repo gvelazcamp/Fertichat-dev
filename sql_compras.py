@@ -109,18 +109,18 @@ def get_compras_multiples(
         return pd.DataFrame()
 
     where_parts = [
-        # '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'  # TEMPORAL: Quitado para probar
+        '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'
     ]
     params: List[Any] = []
 
-    # Proveedores (normalización simple, igual que función única)
+    # Proveedores (normalización robusta con regexp_replace para consistencia)
     prov_clauses = []
     for p in proveedores:
         p = str(p).strip().lower()
         if not p:
             continue
         prov_clauses.append(
-            "LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s"
+            "LOWER(TRIM(regexp_replace(\"Cliente / Proveedor\", '[áéíóúÁÉÍÓÚñÑ]', '[aeiouAEIOUñN]', 'g'))) LIKE %s"
         )
         params.append(f"%{p}%")
 
