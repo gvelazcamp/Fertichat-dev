@@ -110,16 +110,20 @@ def procesar_pregunta_v2(pregunta: str):
             elif part not in ["comparar", "compras", "y", "en"]:
                 proveedores.append(part)
         if len(proveedores) >= 2 and len(anios) == 2:
-            from sql_comparativas import get_comparacion_proveedor_anios
-            df = get_comparacion_proveedor_anios(proveedores[0], proveedores[1], anios[0], anios[1])
-            if df is not None and not df.empty:
-                return (
-                    f"📊 Comparación de compras entre **{proveedores[0].upper()}** y **{proveedores[1].upper()}** en {anios[0]}-{anios[1]}:",
-                    formatear_dataframe(df),
-                    None,
-                )
-            else:
-                return "⚠️ No se encontraron resultados para la comparación.", None, None
+            try:
+                from sql_comparativas import get_comparacion_proveedor_anios
+                df = get_comparacion_proveedor_anios(proveedores[0], proveedores[1], anios[0], anios[1])
+                if df is not None and not df.empty:
+                    return (
+                        f"📊 Comparación de compras entre **{proveedores[0].upper()}** y **{proveedores[1].upper()}** en {anios[0]}-{anios[1]}:",
+                        formatear_dataframe(df),
+                        None,
+                    )
+                else:
+                    return "⚠️ No se encontraron resultados para la comparación.", None, None
+            except Exception as e:
+                print(f"[ORQUESTADOR] Error en bypass: {e}")
+                return f"❌ Error forzado: {str(e)}", None, None
         else:
             return "❌ No pude parsear proveedores y años. Ej: comparar compras roche, tresul 2024 2025", None, None
 
@@ -181,6 +185,40 @@ def procesar_pregunta_v2(pregunta: str):
 
 def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str):
     try:
+        # =========================================================
+        # COMPARACIÓN PROVEEDORES AÑOS (AGREGADO PARA FORZAR)
+        # =========================================================
+        if tipo == "comparar_proveedor_anios":
+            proveedores = params.get("proveedores", [])
+            if isinstance(proveedores, str):
+                proveedores = [p.strip() for p in proveedores.split(",") if p.strip()]
+            if not proveedores:
+                proveedor = params.get("proveedor", "").strip()
+                if proveedor:
+                    proveedores = [proveedor]
+            anios = params.get("anios", [])
+            if len(proveedores) < 1 or len(anios) < 2:
+                return "❌ Indicá proveedores y años. Ej: comparar compras roche, tresul 2024 2025", None, None
+
+            st.session_state["DBG_SQL_LAST_TAG"] = "comparar_proveedor_anios (sql_comparativas)"
+
+            print("\n[ORQUESTADOR] Llamando get_comparacion_proveedor_anios()")
+            print(f"  proveedores = {proveedores}")
+            print(f"  anios       = {anios}")
+
+            from sql_comparativas import get_comparacion_proveedor_anios
+            df = get_comparacion_proveedor_anios(*proveedores, *anios) if len(proveedores) > 1 else get_comparacion_proveedor_anios(proveedores[0], anios)
+
+            if df is None or df.empty:
+                return "⚠️ No se encontraron resultados para la comparación.", None, None
+
+            prov_lbl = ", ".join([p.upper() for p in proveedores[:3]])
+            return (
+                f"📊 Comparación de compras de **{prov_lbl}** en {anios[0]}-{anios[1]} ({len(df)} registros):",
+                formatear_dataframe(df),
+                None,
+            )
+
         # =========================================================
         # FACTURAS (LISTADO) - usa SIEMPRE sql_facturas.get_facturas_proveedor
         # =========================================================
