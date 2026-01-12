@@ -5,6 +5,7 @@
 import streamlit as st
 import pandas as pd
 import re
+import altair as alt
 from datetime import datetime
 from typing import Optional
 
@@ -581,17 +582,28 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         if df_f is None or df_f.empty:
             st.info("Sin datos para mostrar.")
         elif time_cols and col_proveedor:
-            # Gráfico de comparación por tiempo
+            # Gráfico de comparación horizontal con Altair
             st.markdown("#### Gráfico de Comparación por Tiempo")
             df_chart = df_f[[col_proveedor] + time_cols].copy()
             for c in time_cols:
                 df_chart[c] = df_chart[c].apply(_safe_to_float)
             df_chart = df_chart.groupby(col_proveedor)[time_cols].sum().reset_index()
-            df_chart = df_chart.set_index(col_proveedor)
-            st.bar_chart(df_chart)
+            # Melt para Altair
+            df_melt = df_chart.melt(id_vars=[col_proveedor], value_vars=time_cols, var_name='Tiempo', value_name='Total')
+            # Ordenar por total descendente para barras horizontales
+            df_melt = df_melt.sort_values(by='Total', ascending=True)
+            chart = alt.Chart(df_melt).mark_bar().encode(
+                y=alt.Y(f'{col_proveedor}:N', sort='-x'),
+                x='Total:Q',
+                color='Tiempo:N',
+                tooltip=[col_proveedor, 'Tiempo', 'Total']
+            ).properties(
+                title='Comparación por Proveedor y Tiempo'
+            )
+            st.altair_chart(chart, use_container_width=True)
             st.caption(f"Comparación de {', '.join(time_cols)} por proveedor.")
         elif col_articulo:
-            # Gráfico de top artículos (para otros casos)
+            # Gráfico de top artículos (vertical)
             g_mon = st.selectbox(
                 "Moneda del gráfico",
                 options=["TODAS", "UYU", "USD"],
