@@ -266,12 +266,12 @@ def mostrar_inicio():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Helpers HTML (móvil) - CAMBIADO A <a> PARA MEJOR COMPATIBILIDAD EN MÓVIL
+    # Helpers HTML (móvil) - CAMBIADO A <a> PARA MEJOR COMPATIBILIDAD EN MÓVIL, FORZADO MISMA PESTAÑA
     # =========================
     def _mcard(go:  str, icon: str, title: str, sub: str, tile_class: str) -> str:
         url = f"?go={go}"  # URL con query param para navegación
         return f'''
-        <a class="fc-mcard" href="{url}" style="text-decoration: none; color: inherit;">
+        <a class="fc-mcard" href="{url}" target="_self" style="text-decoration: none; color: inherit;">
             <div class="fc-micon {tile_class}">{icon}</div>
             <div class="fc-mtxt">
                 <p class="fc-mtitle">{title}</p>
