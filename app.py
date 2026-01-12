@@ -4,6 +4,7 @@
 
 import streamlit as st
 import os
+from ui_inicio import mostrar_inicio  # Importa la función de inicio
 
 
 def main():
@@ -120,25 +121,71 @@ def main():
     st.divider()
 
     # =========================
-    # CONTENIDO PRINCIPAL
+    # NAVEGACIÓN POR MÓDULOS
     # =========================
-    st.subheader("🛒 Consultas")
+    go = st.query_params.get("go")
+    if go == "compras":
+        # Módulo Compras IA
+        st.subheader("🛒 Compras IA")
+        st.write("Consultas inteligentes sobre compras.")
+        consulta = st.text_input(
+            "Escribí tu consulta de compras",
+            placeholder="Ej: total compras noviembre 2025"
+        )
+        if st.button("Consultar Compras"):
+            if consulta:
+                st.success(f"Consulta de compras: {consulta}")
+                st.write("👉 Acá va tu lógica real (SQL / DB / IA para compras)")
+                if st.session_state.modo_avanzado:
+                    st.code("DEBUG: consulta de compras parseada")
+            else:
+                st.warning("Escribí una consulta")
 
-    consulta = st.text_input(
-        "Escribí tu consulta",
-        placeholder="Ej: total compras noviembre 2025"
-    )
+    elif go == "buscador":
+        # Módulo Buscador IA
+        st.subheader("🔎 Buscador IA")
+        st.write("Buscar facturas / lotes.")
+        # Agrega lógica específica
 
-    if st.button("Consultar"):
-        if consulta:
-            st.success(f"Consulta recibida: {consulta}")
+    elif go == "stock":
+        # Módulo Stock IA
+        st.subheader("📦 Stock IA")
+        st.write("Consultar inventario.")
+        # Agrega lógica específica
 
-            st.write("👉 Acá va tu lógica real (SQL / DB / IA)")
+    elif go == "dashboard":
+        # Módulo Dashboard
+        st.subheader("📊 Dashboard")
+        st.write("Ver estadísticas.")
+        # Agrega lógica específica
 
-            if st.session_state.modo_avanzado:
-                st.code("DEBUG: consulta parseada correctamente")
-        else:
-            st.warning("Escribí una consulta")
+    elif go == "pedidos":
+        # Módulo Pedidos internos
+        st.subheader("📄 Pedidos internos")
+        st.write("Gestionar pedidos.")
+        # Agrega lógica específica
+
+    elif go == "baja":
+        # Módulo Baja de stock
+        st.subheader("🧾 Baja de stock")
+        st.write("Registrar bajas.")
+        # Agrega lógica específica
+
+    elif go == "ordenes":
+        # Módulo Órdenes de compra
+        st.subheader("📦 Órdenes de compra")
+        st.write("Crear órdenes.")
+        # Agrega lógica específica
+
+    elif go == "indicadores":
+        # Módulo Indicadores
+        st.subheader("📈 Indicadores")
+        st.write("Power BI.")
+        # Agrega lógica específica
+
+    else:
+        # Pantalla de inicio con tarjetas
+        mostrar_inicio()
 
     # =========================
     # SECCIÓN AVANZADA (ADMIN)
@@ -153,7 +200,8 @@ def main():
             st.json({
                 "entorno": ENTORNO,
                 "rol": st.session_state.rol,
-                "modo_avanzado": st.session_state.modo_avanzado
+                "modo_avanzado": st.session_state.modo_avanzado,
+                "go": go
             })
 
     # =========================
@@ -165,11 +213,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
