@@ -179,7 +179,7 @@ def mostrar_inicio():
             padding-right: 0.65rem !important;
         }
 
-        /* Tarjeta móvil (BUTTON clickeable - IGUAL QUE DIV PERO FUNCIONA MEJOR) */
+        /* Tarjeta móvil (BUTTON clickeable - SIN EFECTOS VISUALES AL CLICKEAR) */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard{
             display:flex;
             align-items:center;
@@ -192,40 +192,47 @@ def mostrar_inicio():
             min-height:     104px;
             max-height:   104px;
 
-            border-radius:24px;  /* Más redondeado para look lindo */
+            border-radius:24px;
             border:  1px solid rgba(15,23,42,0.10);
-            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));  /* Gradiente sutil */
+            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
             box-shadow: 0 12px 28px rgba(2,6,23,0.08);
 
             padding:14px 14px;
             cursor:pointer;
-            transition: transform 160ms ease, box-shadow 160ms ease;
+            transition: all 0ms ease;  /* Sin transición para que sea instantáneo */
 
-            /* Estilos de button */
+            /* Estilos de button - SIN RESALTADOS */
             outline: none;
-            -webkit-tap-highlight-color: transparent;
+            -webkit-tap-highlight-color: rgba(0,0,0,0);
             -webkit-touch-callout: none;
             -webkit-user-select: none;
+            -webkit-focus-ring-color: transparent;
             user-select: none;
         }
 
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:active{
-            transform: scale(0.96);  /* Un poco más suave */
-            box-shadow: 0 8px 20px rgba(2,6,23,0.06);
+        /* SIN EFECTOS AL PRESIONAR */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:active,
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:focus,
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:hover{
+            transform: none;
+            box-shadow: 0 12px 28px rgba(2,6,23,0.08);
+            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
+            outline: none;
+            -webkit-tap-highlight-color: rgba(0,0,0,0);
         }
 
         /* icon */
         div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .fc-micon{
             width:54px;
             height:54px;
-            border-radius:18px;  /* Más redondeado */
+            border-radius:18px;
             display:flex;
             align-items:center;
             justify-content:center;
             font-size:26px;
 
             border:  1px solid rgba(15,23,42,0.08);
-            background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.80));  /* Gradiente en icono */
+            background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.80));
             box-shadow:0 8px 16px rgba(2,6,23,0.06);
 
             flex:     0 0 54px;
@@ -259,14 +266,14 @@ def mostrar_inicio():
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mstack{
             display:flex;
             flex-direction:column;
-            gap:16px;  /* Un poco más espacio */
+            gap:16px;
         }
     }
     </style>
     """, unsafe_allow_html=True)
 
     # =========================
-    # Helpers HTML (móvil) - BUTTON PARA MEJOR FUNCIONAMIENTO
+    # Helpers HTML (móvil) - BUTTON SIN EFECTOS VISUALES
     # =========================
     def _mcard(go:  str, icon: str, title: str, sub: str, tile_class: str) -> str:
         return f'''
@@ -400,10 +407,10 @@ def mostrar_inicio():
         f"""
         <div style="max-width:1100px;margin:  16px auto 0 auto;">
             <div style="
-                background: linear-gradient(135deg, rgba(255,255,255,0.75), rgba(255,255,255,0.65));  /* Gradiente en tip */
+                background: linear-gradient(135deg, rgba(255,255,255,0.75), rgba(255,255,255,0.65));
                 border: 1px solid rgba(15,23,42,0.10);
                 border-left: 4px solid rgba(37,99,235,0.55);
-                border-radius: 18px;  /* Más redondeado */
+                border-radius: 18px;
                 padding: 14px 16px;
                 box-shadow: 0 10px 26px rgba(2,6,23,0.06);
             ">
