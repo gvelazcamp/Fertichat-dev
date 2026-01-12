@@ -43,7 +43,7 @@ def mostrar_inicio():
     )
 
     # =========================
-    # Cards HTML - MODIFICADO: onclick en div padre, usar div en lugar de h3 para evitar anclas automáticas
+    # Cards HTML - MODIFICADO: usar <a> en lugar de <div> con onclick para navegación sin JS
     # =========================
     cards_html = textwrap.dedent("""
         <style>
@@ -63,6 +63,9 @@ def mostrar_inicio():
             transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
             user-select:none;
             height:100%;
+            text-decoration:none;
+            color:inherit;
+            display:block;
           }
           .fc-card:hover{
             transform:translateY(-2px);
@@ -109,59 +112,59 @@ def mostrar_inicio():
         <div class="fc-home-wrap">
           <div class="fc-section-title">📌 Módulos principales</div>
           <div class="fc-grid">
-            <div class="fc-card" onclick="window.location.href='?go=compras'">
+            <a class="fc-card" href="?go=compras">
               <div class="fc-row">
                 <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
                 <div class="fc-txt"><div class="fc-h3">Compras IA</div><p>Consultas inteligentes</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=buscador'">
+            </a>
+            <a class="fc-card" href="?go=buscador">
               <div class="fc-row">
                 <div class="fc-tile tile-buscador"><div class="fc-ico">🔎</div></div>
                 <div class="fc-txt"><div class="fc-h3">Buscador IA</div><p>Buscar facturas / lotes</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=stock'">
+            </a>
+            <a class="fc-card" href="?go=stock">
               <div class="fc-row">
                 <div class="fc-tile tile-stock"><div class="fc-ico">📦</div></div>
                 <div class="fc-txt"><div class="fc-h3">Stock IA</div><p>Consultar inventario</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=dashboard'">
+            </a>
+            <a class="fc-card" href="?go=dashboard">
               <div class="fc-row">
                 <div class="fc-tile tile-dashboard"><div class="fc-ico">📊</div></div>
                 <div class="fc-txt"><div class="fc-h3">Dashboard</div><p>Ver estadísticas</p></div>
               </div>
-            </div>
+            </a>
           </div>
 
           <div style="height:22px;"></div>
           <div class="fc-section-title">📋 Gestión</div>
           <div class="fc-grid">
-            <div class="fc-card" onclick="window.location.href='?go=pedidos'">
+            <a class="fc-card" href="?go=pedidos">
               <div class="fc-row">
                 <div class="fc-tile tile-pedidos"><div class="fc-ico">📄</div></div>
                 <div class="fc-txt"><div class="fc-h3">Pedidos internos</div><p>Gestionar pedidos</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=baja'">
+            </a>
+            <a class="fc-card" href="?go=baja">
               <div class="fc-row">
                 <div class="fc-tile tile-baja"><div class="fc-ico">🧾</div></div>
                 <div class="fc-txt"><div class="fc-h3">Baja de stock</div><p>Registrar bajas</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=ordenes'">
+            </a>
+            <a class="fc-card" href="?go=ordenes">
               <div class="fc-row">
                 <div class="fc-tile tile-ordenes"><div class="fc-ico">📦</div></div>
                 <div class="fc-txt"><div class="fc-h3">Órdenes de compra</div><p>Crear órdenes</p></div>
               </div>
-            </div>
-            <div class="fc-card" onclick="window.location.href='?go=indicadores'">
+            </a>
+            <a class="fc-card" href="?go=indicadores">
               <div class="fc-row">
                 <div class="fc-tile tile-indicadores"><div class="fc-ico">📈</div></div>
                 <div class="fc-txt"><div class="fc-h3">Indicadores</div><p>Power BI</p></div>
               </div>
-            </div>
+            </a>
           </div>
         </div>
     """).strip()
