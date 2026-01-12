@@ -43,7 +43,7 @@ def mostrar_inicio():
     )
 
     # =========================
-    # CSS para botones como tarjetas
+    # CSS para botones como tarjetas (ajustado para mejor alineación y espacio)
     # =========================
     st.markdown("""
     <style>
@@ -67,10 +67,10 @@ def mostrar_inicio():
 
         /* clave: que “se meta” sobre la tarjeta */
         position: relative;
-        top: 14px;
-        left: 14px;
+        top: 20px;
+        left: 20px;
         z-index: 5;
-        margin-bottom: -44px;
+        margin-bottom: -50px;
 
         /* clave: no bloquear el click del botón debajo */
         pointer-events: none;
@@ -95,8 +95,8 @@ def mostrar_inicio():
         border-radius:18px;
 
         /* espacio para el tile “superpuesto” */
-        padding:18px 18px 16px 84px;
-        min-height: 98px;
+        padding:20px 20px 16px 100px;
+        min-height: 120px;
 
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
         cursor:pointer;
@@ -134,7 +134,7 @@ def mostrar_inicio():
         content: "›";
         position:absolute;
         right:14px;
-        top:16px;
+        top:20px;
         font-size:22px;
         color: rgba(100,116,139,0.65);
         transition: transform 140ms ease, color 140ms ease;
@@ -169,13 +169,13 @@ def mostrar_inicio():
             height:48px;
             border-radius:14px;
             font-size:24px;
-            top: 12px;
-            left: 12px;
-            margin-bottom: -38px;
+            top: 16px;
+            left: 16px;
+            margin-bottom: -42px;
         }
         div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button {
-            padding:16px 16px 14px 74px;
-            min-height: 90px;
+            padding:18px 18px 14px 80px;
+            min-height: 100px;
         }
         div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button::first-line {
             font-size:15px;
