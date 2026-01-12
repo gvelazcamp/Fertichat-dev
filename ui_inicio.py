@@ -156,21 +156,17 @@ def mostrar_inicio():
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
     /* =========================================================
-       RESPONSIVE (CELULAR): TARJETAS A LO ANCHO (FULL WIDTH)
-       - Streamlit a veces mantiene "columnas" estrechas en móvil.
-       - Forzamos cada columna a 100% dentro de los blocks de columnas.
+       RESPONSIVE (CELULAR): NO “hasta el borde”
+       - 0 a 600px: 1 por fila, centrada con max-width (estético)
+       - 601 a 900px: 2 por fila (si entra), queda prolijo en fold/tablet
        ========================================================= */
-    @media (max-width: 900px){
 
-        /* Forzar que cada columna ocupe el 100% del ancho */
+    /* 0..900: permitir wrap */
+    @media (max-width: 900px){
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"]{
             flex-wrap: wrap !important;
             width: 100% !important;
-        }
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
-            flex: 0 0 100% !important;
-            width: 100% !important;
-            max-width: 100% !important;
+            justify-content: center !important; /* centra el contenido */
         }
 
         /* Ajustes de tile + tarjeta en móvil */
@@ -189,6 +185,27 @@ def mostrar_inicio():
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
             font-size:15px;
+        }
+    }
+
+    /* 0..600: 1 por fila, centrada, NO borde a borde */
+    @media (max-width: 600px){
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+            flex: 0 0 100% !important;
+            width: 100% !important;
+            max-width: 560px !important;  /* ancho máximo “bonito” */
+            margin-left: auto !important;
+            margin-right: auto !important;
+        }
+    }
+
+    /* 601..900: 2 por fila (si entra) */
+    @media (min-width: 601px) and (max-width: 900px){
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+            flex: 0 0 calc(50% - 0.75rem) !important;
+            width: calc(50% - 0.75rem) !important;
+            max-width: calc(50% - 0.75rem) !important;
+            margin: 0 !important;
         }
     }
     </style>
