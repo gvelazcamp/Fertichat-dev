@@ -65,12 +65,12 @@ def mostrar_inicio():
         background:rgba(255,255,255,0.82);
         border-radius:20px;
 
-        /* tamaño fijo para que todas queden iguales */
-        height: 96px;
-        min-height: 96px;
+        /* tamaño fijo para que todas queden iguales - AGRANDADO */
+        height: 110px;
+        min-height: 110px;
 
         /* espacio para el tile */
-        padding:16px 16px 16px 92px;
+        padding:16px 16px 16px 102px;
 
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
         cursor:pointer;
@@ -114,22 +114,22 @@ def mostrar_inicio():
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) -> aún más abajo (~0.5cm más) */
+    /* Tile (ícono) - AGRANDADO */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-        width:54px;
-        height:54px;
-        border-radius:16px;
+        width:60px;
+        height:60px;
+        border-radius:18px;
         display:flex;
         align-items:center;
         justify-content:center;
 
         border:1px solid rgba(15,23,42,0.08);
         background:rgba(255,255,255,0.86);
-        font-size:26px;
+        font-size:28px;
 
         position:absolute;
         left: 16px;
-        top: calc(50% + 48px);          /* <-- BAJADO ~0.5cm MÁS */
+        top: calc(50% + 48px);          /* AJUSTADO PARA EL NUEVO TAMAÑO */
         transform: translateY(-50%);
         z-index: 5;
 
@@ -148,20 +148,20 @@ def mostrar_inicio():
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
-    /* Responsive */
+    /* Responsive - AGRANDADO */
     @media (max-width: 900px){
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-            width:48px;
-            height:48px;
-            border-radius:14px;
-            font-size:24px;
+            width:54px;
+            height:54px;
+            border-radius:16px;
+            font-size:26px;
             left: 14px;
-            top: calc(50% + 44px);      /* <-- BAJADO ~0.5cm MÁS MOBILE */
+            top: calc(50% + 44px);      /* AJUSTADO PARA MÓVIL */
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-            height: 92px;
-            min-height: 92px;
-            padding:14px 14px 14px 78px;
+            height: 104px;
+            min-height: 104px;
+            padding:14px 14px 14px 82px;
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
             font-size:15px;
