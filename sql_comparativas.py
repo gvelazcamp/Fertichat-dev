@@ -399,7 +399,7 @@ def get_comparacion_proveedores_meses_multi(
 
 
 # =====================================================================
-# COMPARACIÓN MULTI PROVEEDORES - MULTI AÑOS (NUEVO)
+# COMPARACIÓN MULTI PROVEEDORES - MULTI AÑOS (NUEVO) - CON MONEDA
 # =====================================================================
 
 def get_comparacion_proveedores_anios_multi(
@@ -407,13 +407,13 @@ def get_comparacion_proveedores_anios_multi(
     anios: List[int]
 ) -> pd.DataFrame:
     """
-    Compara múltiples proveedores en múltiples años.
+    Compara múltiples proveedores en múltiples años, separado por moneda.
     Ej:
       proveedores = ["roche", "tresul"]
       anios = [2024, 2025]
-    Devuelve filas por Proveedor y columnas por año (y Diferencia si hay 2 años).
+    Devuelve filas por Proveedor y Moneda, columnas por año (y Diferencia si hay 2 años).
     """
-    print(f"🐛 DEBUG SQL_COMPARATIVAS: Ejecutando comparación multi-proveedores-años")
+    print(f"🐛 DEBUG SQL_COMPARATIVAS: Ejecutando comparación multi-proveedores-años con moneda")
     print(f"🐛 DEBUG SQL_COMPARATIVAS: Proveedores={proveedores}, Años={anios}")
 
     if not proveedores or not anios:
@@ -470,13 +470,14 @@ def get_comparacion_proveedores_anios_multi(
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Moneda") AS Moneda,
             {cols_sql}
             {diff_sql}
         FROM chatbot_raw
         WHERE ({prov_where})
           AND "Año"::int IN ({anios_sql})
-        GROUP BY TRIM("Cliente / Proveedor")
-        ORDER BY Proveedor
+        GROUP BY TRIM("Cliente / Proveedor"), TRIM("Moneda")
+        ORDER BY Proveedor, Moneda
         LIMIT 300
     """
 
