@@ -84,6 +84,21 @@ def _extraer_nro_factura_fallback(texto: str) -> Optional[str]:
 
 
 def procesar_pregunta_v2(pregunta: str):
+    # FORZAR PARA "comparar compras roche, tresul 2024 2025"
+    if pregunta.lower().strip() == "comparar compras roche, tresul 2024 2025":
+        print("🐛 FORZANDO SQL DIRECTO PARA LA CONSULTA")
+        from sql_comparativas import get_comparacion_proveedores_anios_multi
+        df = get_comparacion_proveedores_anios_multi(['roche', 'tresul'], [2024, 2025])
+        print(f"🐛 FORZANDO: df filas={len(df) if df is not None and not df.empty else 0}")
+        if df is not None and not df.empty:
+            return (
+                f"📊 Comparación forzada de compras entre ROCHE y TRESUL en 2024-2025:",
+                formatear_dataframe(df),
+                None,
+            )
+        else:
+            return "⚠️ Forzado: No se encontraron resultados.", None, None
+
     print(f"🐛 DEBUG ORQUESTADOR: Procesando pregunta: '{pregunta}'")
     _init_orquestador_state()
 
