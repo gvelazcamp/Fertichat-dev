@@ -314,6 +314,41 @@ if _go == "compras":
     _clear_qp()
     st.rerun()
 
+elif _go == "buscador":
+    st.session_state["radio_menu"] = "🔎 Buscador IA"
+    _clear_qp()
+    st.rerun()
+
+elif _go == "stock":
+    st.session_state["radio_menu"] = "📦 Stock IA"
+    _clear_qp()
+    st.rerun()
+
+elif _go == "dashboard":
+    st.session_state["radio_menu"] = "📊 Dashboard"
+    _clear_qp()
+    st.rerun()
+
+elif _go == "pedidos":
+    st.session_state["radio_menu"] = "📄 Pedidos internos"
+    _clear_qp()
+    st.rerun()
+
+elif _go == "baja":
+    st.session_state["radio_menu"] = "🧾 Baja de stock"
+    _clear_qp()
+    st.rerun()
+
+elif _go == "ordenes":
+    st.session_state["radio_menu"] = "📦 Órdenes de compra"
+    _clear_qp()
+    st.rerun()
+
+elif _go == "indicadores":
+    st.session_state["radio_menu"] = "📈 Indicadores (Power BI)"
+    _clear_qp()
+    st.rerun()
+
 # Desde campana (ir_notif=1)
 try:
     if st.query_params.get("ir_notif") == "1":
