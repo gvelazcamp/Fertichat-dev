@@ -65,9 +65,9 @@ def mostrar_inicio():
         background:rgba(255,255,255,0.82);
         border-radius:20px;
 
-        /* tamaño fijo para que todas queden iguales */
-        height: 96px;
-        min-height: 96px;
+        /* tamaño fijo para que todas queden iguales - MÁS ALTAS */
+        height: 140px;
+        min-height: 140px;
 
         /* espacio para el tile */
         padding:16px 16px 16px 92px;
@@ -114,7 +114,7 @@ def mostrar_inicio():
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) -> aún más abajo (~0.5cm más) */
+    /* Tile (ícono) - MISMO TAMAÑO */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
         width:54px;
         height:54px;
@@ -129,7 +129,7 @@ def mostrar_inicio():
 
         position:absolute;
         left: 16px;
-        top: calc(50% + 48px);          /* <-- BAJADO ~0.5cm MÁS */
+        top: calc(50% + 48px);          /* AJUSTADO PARA LA ALTURA */
         transform: translateY(-50%);
         z-index: 5;
 
@@ -148,7 +148,7 @@ def mostrar_inicio():
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
-    /* Responsive */
+    /* Responsive - MÁS ALTAS */
     @media (max-width: 900px){
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
             width:48px;
@@ -156,58 +156,16 @@ def mostrar_inicio():
             border-radius:14px;
             font-size:24px;
             left: 14px;
-            top: calc(50% + 44px);      /* <-- BAJADO ~0.5cm MÁS MOBILE */
+            top: calc(50% + 44px);      /* AJUSTADO PARA MÓVIL */
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-            height: 92px;
-            min-height: 92px;
+            height: 134px;
+            min-height: 134px;
             padding:14px 14px 14px 78px;
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
             font-size:15px;
         }
-    }
-
-    /* SIDEBAR LIGHT SOLO EN HOME */
-    section[data-testid="stSidebar"] {
-      background: #ffffff !important;
-      background-color: #ffffff !important;
-      background-image: none !important;
-      border-right: 1px solid rgba(15,23,42,0.08);
-      color: #0f172a !important;
-    }
-
-    section[data-testid="stSidebar"] > div,
-    div[data-testid="stSidebar"] > div {
-      background: #ffffff !important;
-      background-color: #ffffff !important;
-      backdrop-filter: none !important;
-    }
-
-    section[data-testid="stSidebar"] *,
-    section[data-testid="stSidebar"] li,
-    section[data-testid="stSidebar"] span,
-    section[data-testid="stSidebar"] div,
-    section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] label {
-      color: #0f172a !important;
-      background: transparent !important;
-    }
-
-    /* Específico para radio buttons */
-    section[data-testid="stSidebar"] .stRadio label {
-      color: #0f172a !important;
-    }
-
-    /* Específico para botones */
-    section[data-testid="stSidebar"] .stButton button {
-      background: #f1f5f9 !important;
-      color: #0f172a !important;
-      border: 1px solid #e2e8f0 !important;
-    }
-
-    section[data-testid="stSidebar"] .stButton button:hover {
-      background: #e2e8f0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
