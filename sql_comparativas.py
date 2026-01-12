@@ -105,7 +105,6 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
         FROM chatbot_raw
         WHERE TRIM("Mes") IN (%s, %s)
           {prov_where}
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         GROUP BY TRIM("Cliente / Proveedor")
         ORDER BY Diferencia DESC
     """
@@ -141,8 +140,7 @@ def get_comparacion_articulo_anios(anios: List[int], articulo_like: str) -> pd.D
             TRIM("Articulo") AS Articulo,
             {cols_sql}
         FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año"::int IN ({anios_sql})
+        WHERE "Año"::int IN ({anios_sql})
           AND LOWER(TRIM("Articulo")) LIKE %s
         GROUP BY TRIM("Articulo")
         ORDER BY TRIM("Articulo")
@@ -173,7 +171,6 @@ def get_comparacion_proveedor_anios_like(proveedor_like: str, anios: list[int]) 
             SUM({total_expr}) AS total_general
         FROM chatbot_raw
         WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año"::int IN (%s, %s)
         GROUP BY TRIM("Cliente / Proveedor")
         ORDER BY total_general DESC
@@ -287,8 +284,7 @@ def get_comparacion_proveedor_anios_monedas(anios: List[int], proveedores: List[
             TRIM("Cliente / Proveedor") AS Proveedor,
             {cols_sql}
         FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año"::int IN ({anios_sql})
+        WHERE "Año"::int IN ({anios_sql})
           {prov_where}
         GROUP BY TRIM("Cliente / Proveedor")
         ORDER BY {order_sql}
@@ -329,8 +325,7 @@ def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] 
             TRIM("Cliente / Proveedor") AS Familia,
             {cols_sql}
         FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año"::int IN ({anios_sql})
+        WHERE "Año"::int IN ({anios_sql})
           {fam_where}
         GROUP BY TRIM(COALESCE("Familia", 'SIN FAMILIA'))
         ORDER BY {order_sql}
@@ -395,7 +390,6 @@ def get_comparacion_proveedores_meses_multi(
         FROM chatbot_raw
         WHERE ({prov_where})
           AND TRIM("Mes") IN ({meses_placeholders})
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         GROUP BY TRIM("Cliente / Proveedor")
         ORDER BY Proveedor
         LIMIT 300
@@ -480,7 +474,6 @@ def get_comparacion_proveedores_anios_multi(
             {diff_sql}
         FROM chatbot_raw
         WHERE ({prov_where})
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año"::int IN ({anios_sql})
         GROUP BY TRIM("Cliente / Proveedor")
         ORDER BY Proveedor
@@ -509,7 +502,6 @@ def get_gastos_todas_familias_mes(mes_key: str) -> pd.DataFrame:
             SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'U$$') THEN {total_usd} ELSE 0 END) AS Total_USD
         FROM chatbot_raw
         WHERE TRIM("Mes") = %s
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         GROUP BY TRIM(COALESCE("Familia", 'SIN FAMILIA'))
         ORDER BY Total_Pesos DESC, Total_USD DESC
     """
@@ -527,7 +519,6 @@ def get_gastos_todas_familias_anio(anio: int) -> pd.DataFrame:
             SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'U$$') THEN {total_usd} ELSE 0 END) AS Total_USD
         FROM chatbot_raw
         WHERE "Año"::int = %s
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         GROUP BY TRIM(COALESCE("Familia", 'SIN FAMILIA'))
         ORDER BY Total_Pesos DESC, Total_USD DESC
     """
@@ -548,7 +539,6 @@ def get_gastos_secciones_detalle_completo(familias: List[str], mes_key: str) -> 
         FROM chatbot_raw
         WHERE TRIM("Mes") = %s
           AND UPPER(TRIM(COALESCE("Familia", ''))) IN ({fam_placeholders})
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY TRIM("Familia"), Total DESC
     """
     params = [mes_key] + [f.upper() for f in familias]
