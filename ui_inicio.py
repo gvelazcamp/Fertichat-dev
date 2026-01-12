@@ -65,9 +65,9 @@ def mostrar_inicio():
         background:rgba(255,255,255,0.82);
         border-radius:20px;
 
-        /* tamaño fijo para que todas queden iguales - MÁS ALTAS */
-        height: 120px;
-        min-height: 120px;
+        /* tamaño fijo para que todas queden iguales - AÚN MÁS ALTAS */
+        height: 130px;
+        min-height: 130px;
 
         /* espacio para el tile */
         padding:16px 16px 16px 92px;
@@ -148,7 +148,7 @@ def mostrar_inicio():
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
-    /* Responsive - MÁS ALTAS */
+    /* Responsive - AÚN MÁS ALTAS */
     @media (max-width: 900px){
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
             width:48px;
@@ -159,8 +159,8 @@ def mostrar_inicio():
             top: calc(50% + 44px);      /* AJUSTADO PARA MÓVIL */
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-            height: 114px;
-            min-height: 114px;
+            height: 124px;
+            min-height: 124px;
             padding:14px 14px 14px 78px;
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
