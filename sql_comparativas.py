@@ -489,6 +489,108 @@ def get_comparacion_proveedores_anios_multi(
 
 
 # =====================================================================
+# NUEVO: COMPARACIÓN MULTI PROVEEDORES - MULTI TIEMPO (AÑOS O MESES) - AGRUPADO POR MONEDA
+# =====================================================================
+
+def get_comparacion_multi_proveedores_tiempo_monedas(proveedores: List[str], anios: List[int] = None, meses: List[str] = None) -> pd.DataFrame:
+    """
+    Compara múltiples proveedores en múltiples años O meses, separado por moneda.
+    Si se pasan meses, usa meses; sino, años.
+    
+    Ej:
+      proveedores = ["roche", "tresul"]
+      anios = [2024, 2025]  # Usa años
+      # o
+      meses = ["2025-01", "2025-02"]  # Usa meses
+    Devuelve filas por Proveedor y Moneda, columnas por tiempo (año/mes) y Diferencia si hay 2 tiempos.
+    """
+    if not proveedores:
+        return pd.DataFrame()
+
+    # Determinar si usar años o meses
+    usar_meses = bool(meses)
+    tiempos = meses if usar_meses else anios
+
+    if not tiempos:
+        return pd.DataFrame()
+
+    tiempos_ok = sorted(list(set(tiempos)))
+    if len(tiempos_ok) < 2:
+        return pd.DataFrame()
+
+    total_expr = _sql_total_num_expr_general()
+
+    # Columnas por tiempo (meses usan %s, años embebidos)
+    cols = []
+    params: List = []
+    for t in tiempos_ok:
+        if usar_meses:
+            cols.append(
+                f"""SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) AS "{t}" """
+            )
+            params.append(t)
+        else:
+            cols.append(
+                f"""SUM(CASE WHEN "Año"::int = {int(t)} THEN {total_expr} ELSE 0 END) AS "{t}" """
+            )
+    cols_sql = ",\n            ".join(cols)
+
+    # Diferencia solo si hay exactamente 2 tiempos
+    diff_sql = ""
+    if len(tiempos_ok) == 2:
+        t1, t2 = tiempos_ok[0], tiempos_ok[1]
+        if usar_meses:
+            diff_sql = f""",
+                (SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) -
+                 SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END)) AS Diferencia
+            """
+            params.extend([t2, t1])
+        else:
+            diff_sql = f""",
+                (SUM(CASE WHEN "Año"::int = {int(t2)} THEN {total_expr} ELSE 0 END) -
+                 SUM(CASE WHEN "Año"::int = {int(t1)} THEN {total_expr} ELSE 0 END)) AS Diferencia
+            """
+
+    # WHERE proveedores
+    prov_clauses = []
+    for p in proveedores:
+        p_norm = p.strip().lower()
+        if not p_norm:
+            continue
+        prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
+        params.append(f"%{p_norm}%")
+
+    if not prov_clauses:
+        return pd.DataFrame()
+
+    prov_where = " OR ".join(prov_clauses)
+
+    # IN tiempo
+    tiempo_col = "Mes" if usar_meses else "Año"
+    if usar_meses:
+        tiempo_placeholders = ", ".join(["%s"] * len(tiempos_ok))
+        params.extend(tiempos_ok)
+    else:
+        tiempo_placeholders = ", ".join(str(int(y)) for y in tiempos_ok)
+
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Moneda") AS Moneda,
+            {cols_sql}
+            {diff_sql}
+        FROM chatbot_raw
+        WHERE ({prov_where})
+          AND {"TRIM(\"" + tiempo_col + "\")" if usar_meses else "\"" + tiempo_col + "\"::int"} IN ({tiempo_placeholders})
+        GROUP BY TRIM("Cliente / Proveedor"), TRIM("Moneda")
+        ORDER BY Proveedor, Moneda
+        LIMIT 300
+    """
+
+    return ejecutar_consulta(sql, tuple(params))
+
+
+# =====================================================================
 # GASTOS POR FAMILIAS
 # =====================================================================
 
