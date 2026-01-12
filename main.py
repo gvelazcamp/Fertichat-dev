@@ -46,6 +46,11 @@ from utils_format import formatear_dataframe
 from utils_openai import responder_con_openai
 
 # =========================
+# IMPORT ORQUESTADOR PARA INTEGRACIÓN
+# =========================
+from orquestador import procesar_pregunta_v2
+
+# =========================
 # FUNCIÓN PARA EJECUTAR CONSULTAS POR TIPO (AGREGADA)
 # =========================
 def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
