@@ -1,5 +1,5 @@
 # =========================
-# UI_INICIO. PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
+# UI_INICIO.  PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
 # =========================
 
 import streamlit as st
@@ -29,12 +29,12 @@ def mostrar_inicio():
     # =========================
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin: 0 auto;text-align: center;padding:10px 0 18px 0;">
+        <div style="max-width:1100px;margin:0 auto;text-align:center;padding:10px 0 18px 0;">
             <h2 style="margin:0;color:#0f172a;font-size:34px;font-weight:800;letter-spacing:-0.02em;">
-                {saludo}, {nombre. split()[0]}!  👋
+                {saludo}, {nombre. split()[0]}! 👋
             </h2>
             <p style="margin:8px 0 0 0;color:#64748b;font-size:16px;">
-                ¿Qué querés hacer hoy? 
+                ¿Qué querés hacer hoy?
             </p>
         </div>
         """,
@@ -54,7 +54,7 @@ def mostrar_inicio():
     /* =========================================================
        SOLO HOME (scoped)
        ========================================================= */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="column"]{
+    div[data-testid="stAppViewContainer"]: has(#fc-home-marker) div[data-testid="column"]{
         position: relative;
     }
 
@@ -65,7 +65,7 @@ def mostrar_inicio():
         display: block;
     }
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile{
-        display: none;
+        display:  none;
     }
 
     /* Asegurar full width del wrapper del botón */
@@ -77,19 +77,19 @@ def mostrar_inicio():
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button{
         border: 1px solid rgba(15,23,42,0.10);
         background: rgba(255,255,255,0.82);
-        border-radius:20px;
+        border-radius: 20px;
 
-        height:  96px;
+        height: 96px;
         min-height: 96px;
 
-        padding:16px 16px 16px 92px;
+        padding: 16px 16px 16px 92px;
 
         box-shadow: 0 10px 24px rgba(2,6,23,0.06);
-        cursor:pointer;
-        transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+        cursor: pointer;
+        transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
 
-        width:100%;
-        text-align:left;
+        width: 100%;
+        text-align: left;
 
         white-space:  pre-line;
         font-size:13. 5px;
@@ -99,13 +99,13 @@ def mostrar_inicio():
 
         display:block;
         position:  relative;
-        margin: 0;
-        box-sizing:border-box;
+        margin:  0;
+        box-sizing: border-box;
     }
 
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:: first-line{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button::first-line{
         font-size:16px;
-        font-weight: 900;
+        font-weight:  900;
         color:#0f172a;
         letter-spacing:-0.01em;
     }
@@ -134,7 +134,7 @@ def mostrar_inicio():
         align-items:center;
         justify-content:center;
 
-        border:1px solid rgba(15,23,42,0.08);
+        border: 1px solid rgba(15,23,42,0.08);
         background:rgba(255,255,255,0.86);
         font-size:26px;
 
@@ -170,16 +170,16 @@ def mostrar_inicio():
         
         /* MOSTRAR layout móvil */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile{
-            display:block ! important;
+            display:block !important;
         }
 
         /* más ancho útil */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .block-container{
-            padding-left:0.65rem !important;
-            padding-right:0.65rem !important;
+            padding-left:0.65rem ! important;
+            padding-right: 0.65rem !important;
         }
 
-        /* Tarjeta móvil (link) - MISMO TAMAÑO FORZADO */
+        /* Tarjeta móvil (DIV clickeable, no link) - MISMO TAMAÑO FORZADO */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard{
             display:flex;
             align-items:center;
@@ -189,8 +189,8 @@ def mostrar_inicio():
             box-sizing:border-box;
 
             height:  104px;
-            min-height: 104px;
-            max-height:104px;
+            min-height:  104px;
+            max-height: 104px;
 
             border-radius:20px;
             border:1px solid rgba(15,23,42,0.10);
@@ -198,7 +198,12 @@ def mostrar_inicio():
             box-shadow:0 10px 24px rgba(2,6,23,0.06);
 
             padding:14px 14px;
-            text-decoration:none;
+            cursor:pointer;
+            transition:transform 140ms ease, box-shadow 140ms ease;
+        }
+
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:active{
+            transform:scale(0.98);
         }
 
         /* icon */
@@ -227,7 +232,7 @@ def mostrar_inicio():
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mtitle{
-            margin: 0;
+            margin:  0;
             font-size:16px;
             font-weight:900;
             color:#0f172a;
@@ -235,8 +240,8 @@ def mostrar_inicio():
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-msub{
-            margin:0;
-            font-size:13px;
+            margin: 0;
+            font-size: 13px;
             font-weight:600;
             color:#64748b;
             line-height:1.2;
@@ -253,26 +258,25 @@ def mostrar_inicio():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Helpers HTML (móvil)
+    # Helpers HTML (móvil) - AHORA CON ONCLICK EN LUGAR DE HREF
     # =========================
     def _mcard(go:  str, icon: str, title: str, sub: str, tile_class: str) -> str:
         return f"""
-        <a class="fc-mcard" href="? go={go}">
+        <div class="fc-mcard" onclick="window.location.search='?go={go}'">
             <div class="fc-micon {tile_class}">{icon}</div>
             <div class="fc-mtxt">
                 <p class="fc-mtitle">{title}</p>
                 <p class="fc-msub">{sub}</p>
             </div>
-        </a>
+        </div>
         """
 
     # =========================
-    # LAYOUT DESKTOP (COMENTADO PARA PRUEBA)
+    # LAYOUT DESKTOP
     # =========================
-    """
     st.markdown('<div class="fc-home-desktop">', unsafe_allow_html=True)
     st.markdown(
-        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing: 1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
         unsafe_allow_html=True
     )
 
@@ -291,7 +295,7 @@ def mostrar_inicio():
         st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
         if st.button("Stock IA\nConsultar inventario", key="stock"):
             st.query_params["go"] = "stock"
-            st.rerun()
+            st. rerun()
     with col4:
         st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
         if st.button("Dashboard\nVer estadísticas", key="dashboard"):
@@ -301,7 +305,7 @@ def mostrar_inicio():
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
 
     st.markdown(
-        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size: 12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin: 18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>",
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>",
         unsafe_allow_html=True
     )
 
@@ -315,7 +319,7 @@ def mostrar_inicio():
         st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
         if st.button("Baja de stock\nRegistrar bajas", key="baja"):
             st.query_params["go"] = "baja"
-            st. rerun()
+            st.rerun()
     with col7:
         st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
         if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
@@ -328,10 +332,9 @@ def mostrar_inicio():
             st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)  # cierre fc-home-desktop
-    """
 
     # =========================
-    # LAYOUT MÓVIL (EL CORRECTO)
+    # LAYOUT MÓVIL
     # =========================
     st.markdown('<div class="fc-home-mobile">', unsafe_allow_html=True)
 
@@ -394,7 +397,7 @@ def mostrar_inicio():
                 padding: 14px 16px;
                 box-shadow: 0 10px 26px rgba(2,6,23,0.06);
             ">
-                <p style="margin:0;color:#0b3b60;font-size:14px;font-weight:600;">
+                <p style="margin:0;color:#0b3b60;font-size: 14px;font-weight:600;">
                     {tip}
                 </p>
             </div>
