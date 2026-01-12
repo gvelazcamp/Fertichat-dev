@@ -235,7 +235,7 @@ def _df_to_excel_bytes(df: pd.DataFrame) -> bytes:
     try:
         buff = io.BytesIO()
         with pd.ExcelWriter(buff, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="datos")
+            df_to_excel(writer, index=False, sheet_name="datos")
         return buff.getvalue()
     except Exception:
         return b""
@@ -581,16 +581,40 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     with tab_graf:
         if df_f is None or df_f.empty:
             st.info("Sin datos para mostrar.")
+        elif time_cols and col_proveedor and len(time_cols) == 2:
+            # Gráfico de variación (Δ) horizontal
+            t1, t2 = time_cols
+            st.markdown("#### Gráfico de Variación (Δ)")
+            df_chart = df_f[[col_proveedor] + time_cols].copy()
+            for c in time_cols:
+                df_chart[c] = df_chart[c].apply(_safe_to_float)
+            df_chart = df_chart.groupby(col_proveedor)[time_cols].sum().reset_index()
+            df_chart['Δ'] = df_chart[t2] - df_chart[t1]
+            df_chart['%'] = df_chart.apply(lambda row: (row['Δ'] / row[t1] * 100) if row[t1] > 0 else 0, axis=1)
+            df_chart = df_chart.sort_values(by='Δ', key=abs, ascending=False).head(10)
+            # Altair barras horizontales
+            chart = alt.Chart(df_chart).mark_bar().encode(
+                y=alt.Y(f'{col_proveedor}:N', sort=alt.SortField('Δ', order='descending')),
+                x='Δ:Q',
+                color=alt.condition(
+                    alt.datum.Δ > 0,
+                    alt.value('green'),  # Creció
+                    alt.value('red')     # Cayó
+                ),
+                tooltip=[col_proveedor, 'Δ', '%']
+            ).properties(
+                title=f'Variación {t2} vs {t1}'
+            )
+            st.altair_chart(chart, use_container_width=True)
+            st.caption(f"Δ = {t2} - {t1}, ordenado por impacto (top 10). Verde = creció, Rojo = cayó.")
         elif time_cols and col_proveedor:
-            # Gráfico de comparación horizontal con Altair
+            # Para más de 2 tiempos, mostrar totales horizontales
             st.markdown("#### Gráfico de Comparación por Tiempo")
             df_chart = df_f[[col_proveedor] + time_cols].copy()
             for c in time_cols:
                 df_chart[c] = df_chart[c].apply(_safe_to_float)
             df_chart = df_chart.groupby(col_proveedor)[time_cols].sum().reset_index()
-            # Melt para Altair
             df_melt = df_chart.melt(id_vars=[col_proveedor], value_vars=time_cols, var_name='Tiempo', value_name='Total')
-            # Ordenar por total descendente para barras horizontales
             df_melt = df_melt.sort_values(by='Total', ascending=True)
             chart = alt.Chart(df_melt).mark_bar().encode(
                 y=alt.Y(f'{col_proveedor}:N', sort='-x'),
