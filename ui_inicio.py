@@ -70,7 +70,7 @@ def mostrar_inicio():
         background:rgba(255,255,255,0.82);
         border-radius:20px;
 
-        /* tamaño fijo para que todas queden iguales - MÁS ALTAS */
+        /* tamaño fijo para que todas queden iguales */
         height: 140px;
         min-height: 140px;
 
@@ -84,7 +84,7 @@ def mostrar_inicio():
         width:100%;
         text-align:left;
 
-        white-space: pre-line; /* respeta \n del texto */
+        white-space: pre-line; /* respeta \\n del texto */
         font-size:13.5px;      /* “desc” */
         font-weight:600;
         color:#334155;
@@ -136,11 +136,11 @@ def mostrar_inicio():
 
         position:absolute;
         left: 16px;
-        top: calc(50% + 48px);          /* AJUSTADO PARA LA ALTURA */
+        top: calc(50% + 48px);
         transform: translateY(-50%);
         z-index: 5;
 
-        pointer-events:none; /* no bloquea el click */
+        pointer-events:none;
         box-shadow:0 10px 18px rgba(2,6,23,0.07);
         user-select:none;
     }
@@ -156,20 +156,36 @@ def mostrar_inicio():
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
     /* =========================================================
-       RESPONSIVE (CELULAR): NO “hasta el borde”
-       - 0 a 600px: 1 por fila, centrada con max-width (estético)
-       - 601 a 900px: 2 por fila (si entra), queda prolijo en fold/tablet
+       RESPONSIVE (CELULAR): BORDE A BORDE (FULL WIDTH REAL)
        ========================================================= */
-
-    /* 0..900: permitir wrap */
     @media (max-width: 900px){
+
+        /* Quitar padding lateral del contenedor SOLO en HOME */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .block-container{
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        /* Forzar que el bloque de columnas ocupe todo el ancho */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"]{
             flex-wrap: wrap !important;
             width: 100% !important;
-            justify-content: center !important; /* centra el contenido */
+            gap: 0 !important;
+            justify-content: stretch !important;
         }
 
-        /* Ajustes de tile + tarjeta en móvil */
+        /* Cada columna: 100% ancho, sin max-width, sin márgenes */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker)
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
+            flex: 0 0 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        /* Ajustes de tile + tarjeta en móvil (mismo tamaño para todas) */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
             width:48px;
             height:48px;
@@ -178,34 +194,28 @@ def mostrar_inicio():
             left: 14px;
             top: calc(50% + 44px);
         }
+
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton{
+            width: 100% !important;
+        }
+
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
+            width: 100% !important;
             height: 134px;
             min-height: 134px;
             padding:14px 14px 14px 78px;
+            border-radius: 18px;
+            box-sizing: border-box;
+            margin: 0 !important;
         }
+
+        /* Separación vertical entre tarjetas (no lateral) */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="column"] .stButton{
+            margin-bottom: 14px !important;
+        }
+
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
             font-size:15px;
-        }
-    }
-
-    /* 0..600: 1 por fila, centrada, NO borde a borde */
-    @media (max-width: 600px){
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
-            flex: 0 0 100% !important;
-            width: 100% !important;
-            max-width: 560px !important;  /* ancho máximo “bonito” */
-            margin-left: auto !important;
-            margin-right: auto !important;
-        }
-    }
-
-    /* 601..900: 2 por fila (si entra) */
-    @media (min-width: 601px) and (max-width: 900px){
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
-            flex: 0 0 calc(50% - 0.75rem) !important;
-            width: calc(50% - 0.75rem) !important;
-            max-width: calc(50% - 0.75rem) !important;
-            margin: 0 !important;
         }
     }
     </style>
@@ -214,7 +224,10 @@ def mostrar_inicio():
     # =========================
     # Secciones con botones
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
+        unsafe_allow_html=True
+    )
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -222,16 +235,19 @@ def mostrar_inicio():
         if st.button("Compras IA\nConsultas inteligentes", key="compras"):
             st.query_params["go"] = "compras"
             st.rerun()
+
     with col2:
         st.markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
         if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador"):
             st.query_params["go"] = "buscador"
             st.rerun()
+
     with col3:
         st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
         if st.button("Stock IA\nConsultar inventario", key="stock"):
             st.query_params["go"] = "stock"
             st.rerun()
+
     with col4:
         st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
         if st.button("Dashboard\nVer estadísticas", key="dashboard"):
@@ -239,7 +255,10 @@ def mostrar_inicio():
             st.rerun()
 
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>",
+        unsafe_allow_html=True
+    )
 
     col5, col6, col7, col8 = st.columns(4)
     with col5:
@@ -247,16 +266,19 @@ def mostrar_inicio():
         if st.button("Pedidos internos\nGestionar pedidos", key="pedidos"):
             st.query_params["go"] = "pedidos"
             st.rerun()
+
     with col6:
         st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
         if st.button("Baja de stock\nRegistrar bajas", key="baja"):
             st.query_params["go"] = "baja"
             st.rerun()
+
     with col7:
         st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
         if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
             st.query_params["go"] = "ordenes"
             st.rerun()
+
     with col8:
         st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
         if st.button("Indicadores\nPower BI", key="indicadores"):
