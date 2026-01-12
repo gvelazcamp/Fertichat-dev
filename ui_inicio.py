@@ -43,140 +43,123 @@ def mostrar_inicio():
     )
 
     # =========================
-    # CSS para botones como tarjetas
+    # Cards HTML - USANDO <div> CON onclick PARA NAVEGACIÓN
     # =========================
-    st.markdown("""
-    <style>
-    .stButton > button {
-        border:1px solid rgba(15,23,42,0.10);
-        background:rgba(255,255,255,0.72);
-        border-radius:18px;
-        padding:16px;
-        box-shadow:0 10px 26px rgba(2,6,23,0.06);
-        cursor:pointer;
-        transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
-        height: auto;
-        width: 100%;
-        font-size:16px;
-        font-weight:800;
-        color:#0f172a;
-        text-align:left;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-    .stButton > button:hover {
-        transform:translateY(-2px);
-        box-shadow:0 14px 34px rgba(2,6,23,0.09);
-        border-color:rgba(37,99,235,0.20);
-    }
-    .stButton > button:active {
-        transform:translateY(0);
-        box-shadow:0 10px 26px rgba(2,6,23,0.06);
-    }
-    .stButton > button:focus {
-        outline: none;
-    }
-    .tile {
-        width:54px;
-        height:54px;
-        border-radius:16px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        border:1px solid rgba(15,23,42,0.08);
-        background:rgba(255,255,255,0.70);
-        flex:0 0 54px;
-        font-size:26px;
-    }
-    .tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
-    .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
-    .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
-    .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
-    .tile-pedidos { background:rgba(2,132,199,0.10); border-color:rgba(2,132,199,0.18); }
-    .tile-baja { background:rgba(244,63,94,0.10); border-color:rgba(244,63,94,0.18); }
-    .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
-    .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
-    .btn-content {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-    }
-    .btn-title {
-        margin: 0;
-        font-size:16px;
-        font-weight:800;
-        letter-spacing:-0.01em;
-    }
-    .btn-desc {
-        margin: 0;
-        font-size:13px;
-        color:#64748b;
-        font-weight: normal;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    cards_html = textwrap.dedent("""
+        <style>
+          .fc-home-wrap{max-width:1100px;margin:0 auto;}
+          .fc-section-title{
+            color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;
+            letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;
+          }
+          .fc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;}
+          .fc-card{
+            border:1px solid rgba(15,23,42,0.10);
+            background:rgba(255,255,255,0.72);
+            border-radius:18px;
+            padding:16px 16px;
+            box-shadow:0 10px 26px rgba(2,6,23,0.06);
+            cursor:pointer;
+            transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+            user-select:none;
+            height:100%;
+            width:100%;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            font-family: inherit;
+            text-align: left;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+          }
+          .fc-card:hover{
+            transform:translateY(-2px);
+            box-shadow:0 14px 34px rgba(2,6,23,0.09);
+            border-color:rgba(37,99,235,0.20);
+          }
+          .fc-card:active{
+            transform:translateY(0);
+            box-shadow:0 10px 26px rgba(2,6,23,0.06);
+          }
+          .fc-row{display:flex;align-items:flex-start;gap:14px;}
+          .fc-tile{
+            width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+            border:1px solid rgba(15,23,42,0.08);background:rgba(255,255,255,0.70);
+            flex:0 0 54px;
+          }
+          .fc-ico{font-size:26px;line-height:1;}
+          .fc-txt .fc-h3{
+            margin:0;color:#0f172a;font-size:16px;font-weight:800;letter-spacing:-0.01em;
+          }
+          .fc-txt p{margin:3px 0 0 0;color:#64748b;font-size:13px;}
 
-    # =========================
-    # Secciones con botones
-    # =========================
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+          .tile-compras{background:rgba(16,185,129,0.10);border-color:rgba(16,185,129,0.18);}
+          .tile-buscador{background:rgba(59,130,246,0.10);border-color:rgba(59,130,246,0.18);}
+          .tile-stock{background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.22);}
+          .tile-dashboard{background:rgba(139,92,246,0.10);border-color:rgba(139,92,246,0.18);}
+          .tile-pedidos{background:rgba(2,132,199,0.10);border-color:rgba(2,132,199,0.18);}
+          .tile-baja{background:rgba(244,63,94,0.10);border-color:rgba(244,63,94,0.18);}
+          .tile-ordenes{background:rgba(100,116,139,0.10);border-color:rgba(100,116,139,0.18);}
+          .tile-indicadores{background:rgba(34,197,94,0.10);border-color:rgba(34,197,94,0.18);}
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown('<div class="tile tile-compras">🛒</div>', unsafe_allow_html=True)
-        if st.button("", key="compras"):
-            st.query_params["go"] = "compras"
-            st.rerun()
-        st.markdown('<div class="btn-content"><div class="btn-title">Compras IA</div><div class="btn-desc">Consultas inteligentes</div></div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown('<div class="tile tile-buscador">🔎</div>', unsafe_allow_html=True)
-        if st.button("", key="buscador"):
-            st.query_params["go"] = "buscador"
-            st.rerun()
-        st.markdown('<div class="btn-content"><div class="btn-title">Buscador IA</div><div class="btn-desc">Buscar facturas / lotes</div></div>', unsafe_allow_html=True)
-    with col3:
-        st.markdown('<div class="tile tile-stock">📦</div>', unsafe_allow_html=True)
-        if st.button("", key="stock"):
-            st.query_params["go"] = "stock"
-            st.rerun()
-        st.markdown('<div class="btn-content"><div class="btn-title">Stock IA</div><div class="btn-desc">Consultar inventario</div></div>', unsafe_allow_html=True)
-    with col4:
-        st.markdown('<div class="tile tile-dashboard">📊</div>', unsafe_allow_html=True)
-        if st.button("", key="dashboard"):
-            st.query_params["go"] = "dashboard"
-            st.rerun()
-        st.markdown('<div class="btn-content"><div class="btn-title">Dashboard</div><div class="btn-desc">Ver estadísticas</div></div>', unsafe_allow_html=True)
+          @media (max-width: 980px){
+            .fc-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+          }
+          @media (max-width: 520px){
+            .fc-grid{grid-template-columns:1fr;}
+            .fc-tile{width:50px;height:50px;border-radius:14px;flex:0 0 50px;}
+            .fc-ico{font-size:24px;}
+            .fc-txt .fc-h3{font-size:15px;}
+            .fc-txt p{font-size:12px;}
+          }
+        </style>
 
-    st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
+        <div class="fc-home-wrap">
+          <div class="fc-section-title">📌 Módulos principales</div>
+          <div class="fc-grid">
+            <div class="fc-card" onclick="window.location.href='?go=compras'">
+              <div class="fc-tile tile-compras"><div class="fc-ico">🛒</div></div>
+              <div class="fc-txt"><div class="fc-h3">Compras IA</div><p>Consultas inteligentes</p></div>
+            </div>
+            <div class="fc-card" onclick="window.location.href='?go=buscador'">
+              <div class="fc-tile tile-buscador"><div class="fc-ico">🔎</div></div>
+              <div class="fc-txt"><div class="fc-h3">Buscador IA</div><p>Buscar facturas / lotes</p></div>
+            </div>
+            <div class="fc-card" onclick="window.location.href='?go=stock'">
+              <div class="fc-tile tile-stock"><div class="fc-ico">📦</div></div>
+              <div class="fc-txt"><div class="fc-h3">Stock IA</div><p>Consultar inventario</p></div>
+            </div>
+            <div class="fc-card" onclick="window.location.href='?go=dashboard'">
+              <div class="fc-tile tile-dashboard"><div class="fc-ico">📊</div></div>
+              <div class="fc-txt"><div class="fc-h3">Dashboard</div><p>Ver estadísticas</p></div>
+            </div>
+          </div>
 
-    col5, col6, col7, col8 = st.columns(4)
-    with col5:
-        st.markdown('<div class="tile tile-pedidos">📄</div>', unsafe_allow_html=True)
-        if st.button("", key="pedidos"):
-            st.query_params["go"] = "pedidos"
-            st.rerun()
-        st.markdown('<div class="btn-content"><div class="btn-title">Pedidos internos</div><div class="btn-desc">Gestionar pedidos</div></div>', unsafe_allow_html=True)
-    with col6:
-        st.markdown('<div class="tile tile-baja">🧾</div>', unsafe_allow_html=True)
-        if st.button("", key="baja"):
-            st.query_params["go"] = "baja"
-            st.rerun()
-        st.markdown('<div class="btn-content"><div class="btn-title">Baja de stock</div><div class="btn-desc">Registrar bajas</div></div>', unsafe_allow_html=True)
-    with col7:
-        st.markdown('<div class="tile tile-ordenes">📦</div>', unsafe_allow_html=True)
-        if st.button("", key="ordenes"):
-            st.query_params["go"] = "ordenes"
-            st.rerun()
-        st.markdown('<div class="btn-content"><div class="btn-title">Órdenes de compra</div><div class="btn-desc">Crear órdenes</div></div>', unsafe_allow_html=True)
-    with col8:
-        st.markdown('<div class="tile tile-indicadores">📈</div>', unsafe_allow_html=True)
-        if st.button("", key="indicadores"):
-            st.query_params["go"] = "indicadores"
-            st.rerun()
-        st.markdown('<div class="btn-content"><div class="btn-title">Indicadores</div><div class="btn-desc">Power BI</div></div>', unsafe_allow_html=True)
+          <div style="height:22px;"></div>
+          <div class="fc-section-title">📋 Gestión</div>
+          <div class="fc-grid">
+            <div class="fc-card" onclick="window.location.href='?go=pedidos'">
+              <div class="fc-tile tile-pedidos"><div class="fc-ico">📄</div></div>
+              <div class="fc-txt"><div class="fc-h3">Pedidos internos</div><p>Gestionar pedidos</p></div>
+            </div>
+            <div class="fc-card" onclick="window.location.href='?go=baja'">
+              <div class="fc-tile tile-baja"><div class="fc-ico">🧾</div></div>
+              <div class="fc-txt"><div class="fc-h3">Baja de stock</div><p>Registrar bajas</p></div>
+            </div>
+            <div class="fc-card" onclick="window.location.href='?go=ordenes'">
+              <div class="fc-tile tile-ordenes"><div class="fc-ico">📦</div></div>
+              <div class="fc-txt"><div class="fc-h3">Órdenes de compra</div><p>Crear órdenes</p></div>
+            </div>
+            <div class="fc-card" onclick="window.location.href='?go=indicadores'">
+              <div class="fc-tile tile-indicadores"><div class="fc-ico">📈</div></div>
+              <div class="fc-txt"><div class="fc-h3">Indicadores</div><p>Power BI</p></div>
+            </div>
+          </div>
+        </div>
+    """).strip()
+
+    st.markdown(cards_html, unsafe_allow_html=True)
 
     # =========================
     # TIP DEL DÍA
