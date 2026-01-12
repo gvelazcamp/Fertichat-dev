@@ -1,5 +1,5 @@
 # =========================
-# UI_INICIO.  PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
+# UI_INICIO.    PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
 # =========================
 
 import streamlit as st
@@ -31,10 +31,10 @@ def mostrar_inicio():
         f"""
         <div style="max-width:1100px;margin:  0 auto;text-align:  center;padding:  10px 0 18px 0;">
             <h2 style="margin:0;color:#0f172a;font-size:34px;font-weight:800;letter-spacing:-0.02em;">
-                {saludo}, {nombre.     split()[0]}!      👋
+                {saludo}, {nombre.    split()[0]}!     👋
             </h2>
             <p style="margin:8px 0 0 0;color:#64748b;font-size:16px;">
-                ¿Qué querés hacer hoy?    
+                ¿Qué querés hacer hoy?   
             </p>
         </div>
         """,
@@ -61,26 +61,26 @@ def mostrar_inicio():
     /* =========================
        DESKTOP (tu grilla actual)
        ========================= */
-    div[data-testid="stAppViewContainer"]:  has(#fc-home-marker) . fc-home-desktop{
+    div[data-testid="stAppViewContainer"]: has(#fc-home-marker) . fc-home-desktop{
         display: block;
     }
-    div[data-testid="stAppViewContainer"]: has(#fc-home-marker) . fc-home-mobile{
-        display:     none;
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile{
+        display:    none;
     }
 
     /* Asegurar full width del wrapper del botón */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) . stButton{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton{
         width: 100%;
     }
 
     /* Botón como tarjeta (DESKTOP) */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button{
-        border:     1px solid rgba(15,23,42,0.10);
+        border:    1px solid rgba(15,23,42,0.10);
         background: rgba(255,255,255,0.82);
         border-radius: 20px;
 
         height:     96px;
-        min-height:     96px;
+        min-height:    96px;
 
         padding:16px 16px 16px 92px;
 
@@ -91,19 +91,19 @@ def mostrar_inicio():
         width:100%;
         text-align: left;
 
-        white-space:     pre-line;
-        font-size:13.     5px;
-        font-weight:    600;
+        white-space:    pre-line;
+        font-size:13.    5px;
+        font-weight:   600;
         color:#334155;
         line-height:1.22;
 
         display:block;
         position:    relative;
-        margin:     0;
-        box-sizing:   border-box;
+        margin:    0;
+        box-sizing:  border-box;
     }
 
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button::     first-line{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button::    first-line{
         font-size:16px;
         font-weight:   900;
         color:#0f172a;
@@ -113,14 +113,14 @@ def mostrar_inicio():
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:  hover{
         transform:  translateY(-2px);
         box-shadow: 0 14px 34px rgba(2,6,23,0.09);
-        border-color:  rgba(37,99,235,0.22);
-        background:  rgba(255,255,255,0.90);
+        border-color: rgba(37,99,235,0.22);
+        background: rgba(255,255,255,0.90);
     }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:  active{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button: active{
         transform:  translateY(0);
         box-shadow: 0 10px 24px rgba(2,6,23,0.06);
     }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:  focus{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button: focus{
         outline:  none;
         box-shadow: 0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
@@ -150,33 +150,33 @@ def mostrar_inicio():
     }
 
     /* Colores tiles */
-    .     tile-compras { background: rgba(16,185,129,0.10); border-color: rgba(16,185,129,0.18); }
+    .    tile-compras { background: rgba(16,185,129,0.10); border-color: rgba(16,185,129,0.18); }
     .tile-buscador { background: rgba(59,130,246,0.10); border-color: rgba(59,130,246,0.18); }
     .tile-stock { background: rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
-    .tile-dashboard { background: rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
-    .tile-pedidos { background: rgba(2,132,199,0.10); border-color:rgba(2,132,199,0.18); }
-    .tile-baja { background: rgba(244,63,94,0.10); border-color:rgba(244,63,94,0.18); }
+    .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
+    .tile-pedidos { background:rgba(2,132,199,0.10); border-color:rgba(2,132,199,0.18); }
+    .tile-baja { background:rgba(244,63,94,0.10); border-color:rgba(244,63,94,0.18); }
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
     /* =========================
-       MÓVIL:      OCULTAR DESKTOP, MOSTRAR MOBILE
+       MÓVIL:     OCULTAR DESKTOP, MOSTRAR MOBILE
        ========================= */
     @media (max-width: 768px){
         /* OCULTAR layout desktop */
-        div[data-testid="stAppViewContainer"]:  has(#fc-home-marker) .fc-home-desktop{
-            display:none !     important;
+        div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .fc-home-desktop{
+            display:none !    important;
         }
         
         /* MOSTRAR layout móvil */
-        div[data-testid="stAppViewContainer"]:   has(#fc-home-marker) .fc-home-mobile{
+        div[data-testid="stAppViewContainer"]:  has(#fc-home-marker) .fc-home-mobile{
             display:  block !   important;
         }
 
         /* más ancho útil */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .block-container{
-            padding-left:0.    65rem !  important;
-            padding-right:  0.65rem ! important;
+            padding-left:0.   65rem ! important;
+            padding-right: 0.65rem !important;
         }
 
         /* Tarjeta móvil (DIV clickeable) - MISMO TAMAÑO FORZADO */
@@ -189,7 +189,7 @@ def mostrar_inicio():
             box-sizing:border-box;
 
             height:   104px;
-            min-height:      104px;
+            min-height:     104px;
             max-height:   104px;
 
             border-radius:20px;
@@ -200,14 +200,22 @@ def mostrar_inicio():
             padding:14px 14px;
             cursor:pointer;
             transition: transform 140ms ease, box-shadow 140ms ease;
+
+            /* Mejoras para toque en móvil */
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            text-decoration: none;  /* Para links */
+            color: inherit;  /* Para links */
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:active{
-            transform:  scale(0.98);
+            transform: scale(0.98);
         }
 
         /* icon */
-        div[data-testid="stAppViewContainer"]:  has(#fc-home-marker) .fc-micon{
+        div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .fc-micon{
             width:54px;
             height:54px;
             border-radius:16px;
@@ -217,14 +225,14 @@ def mostrar_inicio():
             font-size:26px;
 
             border:  1px solid rgba(15,23,42,0.08);
-            background: rgba(255,255,255,0.90);
-            box-shadow: 0 10px 18px rgba(2,6,23,0.07);
+            background:rgba(255,255,255,0.90);
+            box-shadow:0 10px 18px rgba(2,6,23,0.07);
 
-            flex:      0 0 54px;
+            flex:     0 0 54px;
         }
 
         /* text block */
-        div[data-testid="stAppViewContainer"]:     has(#fc-home-marker) .fc-mtxt{
+        div[data-testid="stAppViewContainer"]:    has(#fc-home-marker) .fc-mtxt{
             display:flex;
             flex-direction:column;
             gap:4px;
@@ -232,8 +240,8 @@ def mostrar_inicio():
         }
 
         div[data-testid="stAppViewContainer"]:  has(#fc-home-marker) .fc-mtitle{
-            margin:     0;
-            font-size:   16px;
+            margin:    0;
+            font-size:  16px;
             font-weight:900;
             color:#0f172a;
             line-height:1.05;
@@ -241,7 +249,7 @@ def mostrar_inicio():
 
         div[data-testid="stAppViewContainer"]:  has(#fc-home-marker) .fc-msub{
             margin:  0;
-            font-size:    13px;
+            font-size:   13px;
             font-weight:  600;
             color:#64748b;
             line-height:1.2;
@@ -258,26 +266,91 @@ def mostrar_inicio():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Helpers HTML (móvil) - SIN onclick, solo data-go
+    # Helpers HTML (móvil) - CAMBIADO A <a> PARA MEJOR COMPATIBILIDAD EN MÓVIL
     # =========================
-    def _mcard(go:   str, icon:  str, title: str, sub: str, tile_class: str) -> str:
+    def _mcard(go:  str, icon: str, title: str, sub: str, tile_class: str) -> str:
+        url = f"?go={go}"  # URL con query param para navegación
         return f'''
-        <div class="fc-mcard" data-go="{go}">
+        <a class="fc-mcard" href="{url}" style="text-decoration: none; color: inherit;">
             <div class="fc-micon {tile_class}">{icon}</div>
             <div class="fc-mtxt">
                 <p class="fc-mtitle">{title}</p>
                 <p class="fc-msub">{sub}</p>
             </div>
-        </div>
+        </a>
         '''
 
     # =========================
-    # LAYOUT MÓVIL (ÚNICO - PERFECTAS)
+    # LAYOUT DESKTOP (COMENTADO - NO USAR POR AHORA)
+    # =========================
+    """
+    st.markdown('<div class="fc-home-desktop">', unsafe_allow_html=True)
+    st.markdown(
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:  800;text-transform:uppercase;letter-spacing:   1px;margin:  18px 0 10px 6px;display:flex;align-items:center;gap: 8px;'>📌 Módulos principales</div></div>",
+        unsafe_allow_html=True
+    )
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
+        if st.button("Compras IA\nConsultas inteligentes", key="compras"):
+            st.query_params["go"] = "compras"
+            st.rerun()
+    with col2:
+        st.markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
+        if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador"):
+            st.query_params["go"] = "buscador"
+            st.rerun()
+    with col3:
+        st. markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
+        if st.button("Stock IA\nConsultar inventario", key="stock"):
+            st.query_params["go"] = "stock"
+            st. rerun()
+    with col4:
+        st.  markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
+        if st.button("Dashboard\nVer estadísticas", key="dashboard"):
+            st.query_params["go"] = "dashboard"
+            st.rerun()
+
+    st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
+
+    st.markdown(
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:   12px;font-weight:800;text-transform:uppercase;letter-spacing:  1px;margin:  18px 0 10px 6px;display:flex;align-items: center;gap:  8px;'>📋 Gestión</div></div>",
+        unsafe_allow_html=True
+    )
+
+    col5, col6, col7, col8 = st.columns(4)
+    with col5:
+        st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
+        if st.button("Pedidos internos\nGestionar pedidos", key="pedidos"):
+            st.query_params["go"] = "pedidos"
+            st.rerun()
+    with col6:
+        st.  markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
+        if st.button("Baja de stock\nRegistrar bajas", key="baja"):
+            st.query_params["go"] = "baja"
+            st.rerun()
+    with col7:
+        st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
+        if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
+            st.query_params["go"] = "ordenes"
+            st.rerun()
+    with col8:
+        st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
+        if st.button("Indicadores\nPower BI", key="indicadores"):
+            st.query_params["go"] = "indicadores"
+            st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)  # cierre fc-home-desktop
+    """
+
+    # =========================
+    # LAYOUT MÓVIL (ÚNICO - PERFECTAS + FUNCIONAN)
     # =========================
     st.markdown('<div class="fc-home-mobile">', unsafe_allow_html=True)
 
     st.markdown(
-        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:  800;text-transform:uppercase;letter-spacing: 1px;margin:  18px 0 10px 6px;display:flex;align-items:center;gap: 8px;'>📌 Módulos principales</div></div>",
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight: 800;text-transform:uppercase;letter-spacing: 1px;margin: 18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
         unsafe_allow_html=True
     )
     st.markdown(
@@ -295,7 +368,7 @@ def mostrar_inicio():
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
 
     st.markdown(
-        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight: 800;text-transform:uppercase;letter-spacing: 1px;margin:   18px 0 10px 6px;display:flex;align-items:center;gap:  8px;'>📋 Gestión</div></div>",
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing: 1px;margin:   18px 0 10px 6px;display:flex;align-items:center;gap:  8px;'>📋 Gestión</div></div>",
         unsafe_allow_html=True
     )
     st.markdown(
@@ -311,31 +384,6 @@ def mostrar_inicio():
     )
 
     st.markdown("</div>", unsafe_allow_html=True)  # cierre fc-home-mobile
-
-    # =========================
-    # SCRIPT para hacer click funcionar (AL FINAL)
-    # =========================
-    st.markdown("""
-    <script>
-    (function() {
-        // Esperar un poco para que el DOM esté listo
-        setTimeout(function() {
-            document.querySelectorAll('.fc-mcard[data-go]').forEach(function(card) {
-                card. addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    var goValue = this.getAttribute('data-go');
-                    if (goValue) {
-                        var url = new URL(window.location.href);
-                        url.searchParams.set('go', goValue);
-                        window.location.href = url.toString();
-                    }
-                });
-            });
-        }, 100);
-    })();
-    </script>
-    """, unsafe_allow_html=True)
 
     # =========================
     # TIP DEL DÍA
