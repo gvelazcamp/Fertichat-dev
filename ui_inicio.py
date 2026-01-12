@@ -179,7 +179,7 @@ def mostrar_inicio():
             padding-right: 0.65rem !important;
         }
 
-        /* Botón como tarjeta móvil (IGUAL A fc-mcard - SIN EFECTOS VISUALES) */
+        /* Botón como tarjeta móvil (EXACTO AL ORIGINAL fc-mcard) */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button{
             display: flex;
             align-items: center;
@@ -190,10 +190,10 @@ def mostrar_inicio():
             height: 104px;
             min-height: 104px;
 
-            border-radius: 24px;
+            border-radius: 20px;
             border: 1px solid rgba(15,23,42,0.10);
-            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
-            box-shadow: 0 12px 28px rgba(2,6,23,0.08);
+            background: rgba(255,255,255,0.88);
+            box-shadow: 0 10px 24px rgba(2,6,23,0.06);
 
             padding: 14px 14px 14px 80px;
 
@@ -207,9 +207,12 @@ def mostrar_inicio():
             line-height: 1.22;
 
             position: relative;
-            margin: 0 0 16px 0;  /* gap entre tarjetas */
+            margin: 0 0 14px 0;  /* gap 14px */
 
-            /* Sin efectos */
+            /* Sin estilos default de botón */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
             outline: none;
             -webkit-tap-highlight-color: rgba(0,0,0,0);
             -webkit-touch-callout: none;
@@ -230,24 +233,24 @@ def mostrar_inicio():
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button:focus,
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button:hover{
             transform: none;
-            box-shadow: 0 12px 28px rgba(2,6,23,0.08);
-            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
+            box-shadow: 0 10px 24px rgba(2,6,23,0.06);
+            background: rgba(255,255,255,0.88);
             outline: none;
         }
 
-        /* Tile (ícono) - MÓVIL */
+        /* Tile (ícono) - MÓVIL (EXACTO AL ORIGINAL) */
         div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .fc-home-mobile .fc-home-tile{
             width: 54px;
             height: 54px;
-            border-radius: 18px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 26px;
 
             border: 1px solid rgba(15,23,42,0.08);
-            background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.80));
-            box-shadow: 0 8px 16px rgba(2,6,23,0.06);
+            background: rgba(255,255,255,0.90);
+            box-shadow: 0 10px 18px rgba(2,6,23,0.07);
 
             position: absolute;
             left: 14px;
