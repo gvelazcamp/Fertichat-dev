@@ -1,3 +1,4 @@
+```python
 # =========================
 # SQL COMPRAS - CONSULTAS TRANSACCIONALES
 # =========================
@@ -129,14 +130,14 @@ def get_compras_multiples(
     if prov_clauses:
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
-    # Meses -> por "Mes"
+    # Meses -> por "Mes" (con LOWER para case-insensitive)
     if meses:
         mes_clauses = []
         for m in (meses or []):
             if not m:
                 continue
-            mes_clauses.append('"Mes" = %s')
-            params.append(m)
+            mes_clauses.append('LOWER(TRIM("Mes")) = %s')
+            params.append(m.lower())
         if mes_clauses:
             where_parts.append("(" + " OR ".join(mes_clauses) + ")")
 
@@ -933,3 +934,4 @@ def get_dashboard_ultimas_compras(limite: int = 5) -> pd.DataFrame:
         LIMIT %s
     """
     return ejecutar_consulta(sql, (limite,))
+```
