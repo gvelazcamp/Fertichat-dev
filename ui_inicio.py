@@ -54,27 +54,26 @@ def mostrar_inicio():
     <style>
     /* =========================================================
        SOLO HOME (scoped): si el marcador existe, aplico estilos
+       (Usamos body:has para que funcione bien en móvil)
        ========================================================= */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="column"]{
-        position: relative; /* el tile se posiciona dentro de la columna */
+
+    body:has(#fc-home-marker) div[data-testid="column"]{
+        position: relative;
     }
 
-    /* Asegurar full width del wrapper del botón */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton{
+    body:has(#fc-home-marker) .stButton{
         width:100%;
     }
 
-    /* Botón como tarjeta (MISMO TAMAÑO SIEMPRE) */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
+    /* Botón como tarjeta */
+    body:has(#fc-home-marker) .stButton > button{
         border:1px solid rgba(15,23,42,0.10);
         background:rgba(255,255,255,0.82);
         border-radius:20px;
 
-        /* tamaño fijo para que todas queden iguales */
         height: 140px;
         min-height: 140px;
 
-        /* espacio para el tile */
         padding:16px 16px 16px 92px;
 
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
@@ -84,8 +83,8 @@ def mostrar_inicio():
         width:100%;
         text-align:left;
 
-        white-space: pre-line; /* respeta \\n del texto */
-        font-size:13.5px;      /* “desc” */
+        white-space: pre-line;
+        font-size:13.5px;
         font-weight:600;
         color:#334155;
         line-height:1.22;
@@ -97,32 +96,30 @@ def mostrar_inicio():
         box-sizing:border-box;
     }
 
-    /* Primera línea como título */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
+    body:has(#fc-home-marker) .stButton > button::first-line{
         font-size:16px;
         font-weight:900;
         color:#0f172a;
         letter-spacing:-0.01em;
     }
 
-    /* Hover */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:hover{
+    body:has(#fc-home-marker) .stButton > button:hover{
         transform:translateY(-2px);
         box-shadow:0 14px 34px rgba(2,6,23,0.09);
         border-color:rgba(37,99,235,0.22);
         background:rgba(255,255,255,0.90);
     }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:active{
+    body:has(#fc-home-marker) .stButton > button:active{
         transform:translateY(0);
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
     }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:focus{
+    body:has(#fc-home-marker) .stButton > button:focus{
         outline:none;
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) - MISMO TAMAÑO */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
+    /* Tile (ícono) */
+    body:has(#fc-home-marker) .fc-home-tile{
         width:54px;
         height:54px;
         border-radius:16px;
@@ -136,8 +133,7 @@ def mostrar_inicio():
 
         position:absolute;
         left: 16px;
-        top: calc(50% + 48px);
-        transform: translateY(-50%);
+        top: 26px;              /* alineado consistente */
         z-index: 5;
 
         pointer-events:none;
@@ -156,65 +152,68 @@ def mostrar_inicio():
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
     /* =========================================================
-       RESPONSIVE (CELULAR): BORDE A BORDE (FULL WIDTH REAL)
+       RESPONSIVE (CELULAR): FULL WIDTH REAL + 1 tarjeta por fila
+       Soluciona el "vacío a la derecha" del st.columns en móvil
        ========================================================= */
     @media (max-width: 900px){
 
-        /* Quitar padding lateral del contenedor SOLO en HOME */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .block-container{
+        /* FULL WIDTH del contenedor principal SOLO en HOME */
+        body:has(#fc-home-marker) section.main > div{
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+        body:has(#fc-home-marker) .block-container{
+            max-width: 100% !important;
             padding-left: 0 !important;
             padding-right: 0 !important;
         }
 
-        /* Forzar que el bloque de columnas ocupe todo el ancho */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"]{
-            flex-wrap: wrap !important;
+        /* CLAVE: convertir el layout de columnas a bloque (stack real) */
+        body:has(#fc-home-marker) div[data-testid="stHorizontalBlock"]{
+            display: block !important;
             width: 100% !important;
-            gap: 0 !important;
-            justify-content: stretch !important;
         }
 
-        /* Cada columna: 100% ancho, sin max-width, sin márgenes */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker)
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{
-            flex: 0 0 100% !important;
+        /* Forzar columnas y wrappers a 100% */
+        body:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] div[data-testid="column"]{
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
+            padding: 0 !important;
+        }
+        body:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] div[data-testid="column"] > div{
+            width: 100% !important;
             padding-left: 0 !important;
             padding-right: 0 !important;
         }
 
-        /* Ajustes de tile + tarjeta en móvil (mismo tamaño para todas) */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-            width:48px;
-            height:48px;
-            border-radius:14px;
-            font-size:24px;
-            left: 14px;
-            top: calc(50% + 44px);
+        /* Separación vertical entre tarjetas */
+        body:has(#fc-home-marker) div[data-testid="column"] .stButton{
+            margin: 0 0 14px 0 !important;
         }
 
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton{
-            width: 100% !important;
-        }
-
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
+        /* Tarjeta borde a borde */
+        body:has(#fc-home-marker) .stButton > button{
             width: 100% !important;
             height: 134px;
             min-height: 134px;
             padding:14px 14px 14px 78px;
             border-radius: 18px;
-            box-sizing: border-box;
             margin: 0 !important;
+            box-sizing: border-box;
         }
 
-        /* Separación vertical entre tarjetas (no lateral) */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="column"] .stButton{
-            margin-bottom: 14px !important;
+        /* Tile móvil (mismo lugar para todas) */
+        body:has(#fc-home-marker) .fc-home-tile{
+            width:48px;
+            height:48px;
+            border-radius:14px;
+            font-size:24px;
+            left: 14px;
+            top: 22px;
         }
 
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
+        body:has(#fc-home-marker) .stButton > button::first-line{
             font-size:15px;
         }
     }
