@@ -5,6 +5,7 @@ st.set_page_config(
     page_icon="🦋",
     layout="wide",
     initial_sidebar_state="auto",
+    theme="light"
 )
 
 from ui_css import CSS_GLOBAL
@@ -309,7 +310,7 @@ st.markdown(
 )
 
 # =========================
-# HEADER ESCRITORIO
+# HEADER ESCRITORIO (FIJADO ARRIBA)
 # =========================
 campana_html = '<span style="font-size:26px;">🔔</span>'
 if cant_pendientes > 0:
@@ -334,7 +335,16 @@ st.markdown(
 
 st.markdown(
     f"""
-<div class="header-desktop-wrapper">
+<div class="header-desktop-wrapper" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 10px 20px;
+">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <div>
             <h1 style="margin:0; font-size:38px; font-weight:900; color:#0f172a;">FertiChat</h1>
@@ -349,6 +359,9 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
+# Espacio para que el contenido no se solape con el header fijo
+st.markdown("<div style='height: 120px;'></div>", unsafe_allow_html=True)
 
 # =========================
 # NAVEGACIÓN POR QUERY PARAMS (tarjetas / campana)
@@ -425,7 +438,7 @@ elif _go == "indicadores":
 # Desde campana (ir_notif=1)
 try:
     if st.query_params.get("ir_notif") == "1":
-        st.session_state["radio_menu"] = "📄 Pedidos internos"
+        st.session_state["radio_menu"] = "�� Pedidos internos"
         _clear_qp()
         st.rerun()
 except Exception:
