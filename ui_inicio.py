@@ -43,42 +43,95 @@ def mostrar_inicio():
     )
 
     # =========================
-    # CSS para botones como tarjetas (tiles más grandes, texto alineado a la derecha)
+    # MARCADOR (para aplicar CSS SOLO en esta pantalla)
+    # =========================
+    st.markdown('<div id="fc-home-marker" style="display:none;"></div>', unsafe_allow_html=True)
+
+    # =========================
+    # CSS para botones como tarjetas (SOLO HOME)
     # =========================
     st.markdown("""
     <style>
     /* =========================================================
-       SOLO HOME: Estilos aplicados únicamente a los botones
-       que están justo después de un "tile" (icono).
-       (Scope con :has() para no romper otros botones del sistema)
+       SOLO HOME (scoped): si el marcador existe, aplico estilos
        ========================================================= */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="column"]{
+        position: relative; /* clave: el tile se posiciona dentro de la columna */
+    }
 
-    /* Tile (ícono) - Más grande */
-    .fc-home-tile {
-        width:70px;
-        height:70px;
-        border-radius:20px;
+    /* Botón como tarjeta */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
+        border:1px solid rgba(15,23,42,0.10);
+        background:rgba(255,255,255,0.80);
+        border-radius:18px;
+        padding:18px 16px 16px 86px; /* deja lugar al tile */
+        min-height: 86px;
+
+        box-shadow:0 10px 26px rgba(2,6,23,0.06);
+        cursor:pointer;
+        transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+
+        width:100%;
+        text-align:left;
+
+        white-space: pre-line; /* respeta \n del texto */
+        font-size:13.5px;      /* “desc” */
+        font-weight:600;
+        color:#334155;
+        line-height:1.25;
+
+        display:block;
+        position: relative;
+        margin:0;
+    }
+
+    /* Primera línea como título (sin cambiar tu texto) */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
+        font-size:16px;
+        font-weight:900;
+        color:#0f172a;
+        letter-spacing:-0.01em;
+    }
+
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:hover{
+        transform:translateY(-2px);
+        box-shadow:0 14px 34px rgba(2,6,23,0.09);
+        border-color:rgba(37,99,235,0.22);
+        background:rgba(255,255,255,0.88);
+    }
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:active{
+        transform:translateY(0);
+        box-shadow:0 10px 26px rgba(2,6,23,0.06);
+    }
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:focus{
+        outline:none;
+        box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 26px rgba(2,6,23,0.06);
+    }
+
+    /* Tile (ícono) dentro de la tarjeta: ABSOLUTO dentro de la columna */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
+        width:54px;
+        height:54px;
+        border-radius:16px;
         display:flex;
         align-items:center;
         justify-content:center;
+
         border:1px solid rgba(15,23,42,0.08);
-        background:rgba(255,255,255,0.85);
-        font-size:30px;
+        background:rgba(255,255,255,0.86);
+        font-size:26px;
 
-        /* clave: que “se meta” sobre la tarjeta, arriba del texto */
-        position: relative;
-        top: 20px;
-        left: 20px;
+        position:absolute;
+        top: 14px;
+        left: 14px;
         z-index: 5;
-        margin-bottom: -70px;
 
-        /* clave: no bloquear el click del botón debajo */
-        pointer-events: none;
-
-        box-shadow: 0 10px 20px rgba(2,6,23,0.07);
-        user-select: none;
+        pointer-events:none; /* no bloquea el click */
+        box-shadow:0 10px 20px rgba(2,6,23,0.07);
+        user-select:none;
     }
 
+    /* Colores tiles (igual que tenías) */
     .tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
     .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
     .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
@@ -88,96 +141,23 @@ def mostrar_inicio():
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
-    /* Botón tarjeta SOLO si está inmediatamente después de un tile */
-    div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button {
-        border:1px solid rgba(15,23,42,0.10);
-        background:rgba(255,255,255,0.78);
-        border-radius:18px;
-
-        /* espacio para el tile arriba y texto abajo */
-        padding:90px 20px 16px 20px;
-        min-height: 150px;
-
-        box-shadow:0 10px 24px rgba(2,6,23,0.06);
-        cursor:pointer;
-        transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
-        height: auto;
-        width: 100%;
-
-        text-align:right;
-        margin: 0;
-        white-space: pre-line;
-
-        /* tipografía base (segunda línea) */
-        font-size:13.5px;
-        font-weight:600;
-        color:#334155;
-        line-height:1.25;
-
-        display:block;
-        position:relative;
-
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-    }
-
-    /* Primera línea como “título” (sin tocar tu texto) */
-    div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button::first-line {
-        font-size:16px;
-        font-weight:800;
-        color:#0f172a;
-        letter-spacing:-0.01em;
-    }
-
-    div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button:hover {
-        transform:translateY(-2px);
-        box-shadow:0 14px 34px rgba(2,6,23,0.09);
-        border-color:rgba(37,99,235,0.22);
-        background:rgba(255,255,255,0.86);
-    }
-
-    div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button:active {
-        transform:translateY(0);
-        box-shadow:0 10px 24px rgba(2,6,23,0.06);
-    }
-
-    div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button:focus {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
-    }
-
     /* Responsive */
-    @media (max-width: 900px) {
-        .fc-home-tile {
-            width:60px;
-            height:60px;
-            border-radius:18px;
-            font-size:28px;
-            top: 18px;
-            left: 18px;
-            margin-bottom: -60px;
+    @media (max-width: 900px){
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
+            width:48px;
+            height:48px;
+            border-radius:14px;
+            font-size:24px;
+            top: 12px;
+            left: 12px;
         }
-        div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button {
-            padding:80px 18px 14px 18px;
-            min-height: 130px;
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
+            padding:16px 14px 14px 76px;
+            min-height: 82px;
         }
-        div[data-testid="element-container"]:has(.fc-home-tile) + div[data-testid="element-container"] .stButton > button::first-line {
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
             font-size:15px;
         }
-    }
-
-    /* (Dejo tus clases por si las usás después) */
-    .btn-title {
-        margin: 0;
-        font-size:16px;
-        font-weight:800;
-        letter-spacing:-0.01em;
-    }
-    .btn-desc {
-        margin: 0;
-        font-size:13px;
-        color:#64748b;
-        font-weight: normal;
     }
     </style>
     """, unsafe_allow_html=True)
