@@ -74,6 +74,15 @@ COL_MONTO = '"Monto Neto"'
 # HELPERS SQL (POSTGRES)
 # =====================================================================
 
+# NOTA SOBRE FORMATOS DE DATOS:
+# - Columnas numéricas como "Monto Neto" y "Cantidad" vienen como TEXT con formato especial:
+#   - Separador de miles: punto (.) ej. "1.234.567"
+#   - Separador decimal: coma (,) ej. "1234,56"
+#   - Negativos: entre paréntesis ej. "(123,45)" en lugar de "-123.45"
+#   - Espacios: pueden tener espacios iniciales/finales ej. "  123.456,78  "
+# - Las funciones _sql_total_num_expr* limpian estos formatos para convertir a NUMERIC.
+# - Usa TRIM, REPLACE y CASE para manejar casos especiales.
+
 def _safe_ident(col_name: str) -> str:
     clean = str(col_name).strip().strip('"')
     return f'"{clean}"'
@@ -145,7 +154,8 @@ def _sql_total_num_expr_usd() -> str:
 def _sql_total_num_expr_general() -> str:
     """
     Convierte Monto Neto a número (sirve para $ o U$S).
-    Se usa en ui_buscador y sql_facturas.
+    Formato de entrada: texto con puntos (miles), coma (decimal), paréntesis (negativos).
+    Ej: "  124.300,00 " -> 124300.00; "(0.01)" -> -0.01
     """
     return '''
     CASE 
