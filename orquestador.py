@@ -118,28 +118,46 @@ def procesar_pregunta_v2(pregunta: str):
     if "comparar" in pregunta.lower() and "compras" in pregunta.lower():
         from sql_comparativas import get_comparacion_multi_proveedores_tiempo_monedas
         
-        parts = [p.lower().strip() for p in pregunta.replace(",", "").split() if p.strip()]
+        parts = [p.lower().strip().replace(',', '') for p in pregunta.split() if p.strip()]
         
         proveedores = []
-        anios = []
-        meses = []
+        months_list = []
+        years_list = []
+        
+        month_names = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
         
         for p in parts:
-            if p.isdigit() and len(p) == 4:  # Años como 2024
-                anios.append(int(p))
-            elif "-" in p and len(p) == 7:  # Meses como 2025-01
-                meses.append(p)
-            elif p not in ["comparar", "compras"] and not p.isdigit():
+            if p in month_names:
+                months_list.append(p)
+            elif p.isdigit() and len(p) == 4:
+                years_list.append(int(p))
+            elif p not in ["comparar", "compras"]:
                 proveedores.append(p)
         
         proveedores = list(set(proveedores))  # Eliminar duplicados
+        anios = []
+        meses = []
+        
+        if months_list:
+            if len(months_list) == len(years_list):
+                for m, y in zip(months_list, years_list):
+                    mes_num = month_names.index(m) + 1
+                    mes_str = f"{y:04d}-{mes_num:02d}"
+                    meses.append(mes_str)
+                    anios.append(y)
+            else:
+                # Si no coinciden, usar solo años
+                anios = years_list
+        else:
+            anios = years_list
+        
         anios = sorted(list(set(anios)))
         meses = sorted(list(set(meses)))
         
         if proveedores and (anios or meses):
-            df = get_comparacion_multi_proveedores_tiempo_monedas(proveedores, anios=anios if anios else None, meses=meses if meses else None)
+            df = get_comparacion_multi_proveedores_tiempo_monedas(proveedores, anios=anios if not meses else None, meses=meses if meses else None)
             if df is not None and not df.empty:
-                tiempo_str = ", ".join(map(str, anios or meses))
+                tiempo_str = ", ".join(meses) if meses else ", ".join(map(str, anios))
                 mensaje = f"📊 Comparación de compras para {', '.join(proveedores).upper()} en {tiempo_str} (agrupado por moneda)."
                 return mensaje, formatear_dataframe(df), None
             else:
