@@ -297,19 +297,21 @@ html, body {
 /* Mover FertiChat y campana al toolbar */
 .stAppToolbar {
   position: relative;
+  min-height: 40px;
 }
 .stAppToolbar::before {
   content: "FertiChat 🔔";
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   color: #0f172a;
   position: absolute;
   left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 10;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 5px 10px;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 4px 8px;
+  border-radius: 6px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
