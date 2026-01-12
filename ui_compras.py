@@ -13,6 +13,10 @@ import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
 import sql_facturas as sqlq_facturas
 
+# =========================
+# IMPORT ORQUESTADOR PARA INTEGRACIÓN
+# =========================
+from orquestador import procesar_pregunta_v2
 
 # =========================
 # CONVERSIÓN DE MESES A NOMBRES
@@ -257,7 +261,7 @@ def _save_view(view_name: str, data: dict):
 
 def _get_saved_view_names() -> list:
     _init_saved_views()
-    names = [v.get("name") for v in st.session_state.get("FC_SAVED_VIEWS", []) if v.get("name")]
+    names = [v.get("name") for v in st.session_state["FC_SAVED_VIEWS"] if v.get("name")]
     return sorted(names, key=lambda s: str(s).lower())
 
 
@@ -940,82 +944,29 @@ def Compras_IA():
             }
         )
 
-        resultado = interpretar_pregunta(pregunta)
-        _dbg_set_interpretacion(resultado)
+        # =========================
+        # USAR ORQUESTADOR EN LUGAR DE interpretar_pregunta
+        # =========================
+        mensaje, df, sugerencia = procesar_pregunta_v2(pregunta)
 
-        tipo = resultado.get("tipo", "")
-        parametros = resultado.get("parametros", {})
+        respuesta_content = mensaje
+        respuesta_df = df
 
-        respuesta_content = ""
-        respuesta_df = None
-
-        if tipo == "conversacion":
-            respuesta_content = responder_con_openai(pregunta, tipo="conversacion")
-
-        elif tipo == "conocimiento":
-            respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
-
-        elif tipo == "no_entendido":
-            respuesta_content = "🤔 No entendí bien tu pregunta."
-            sugerencia = resultado.get("sugerencia", "")
-            if sugerencia:
-                respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
-
-        else:
-            try:
-                resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
-
-                # Convertir "Mes" a nombres antes de mostrar
-                if isinstance(resultado_sql, pd.DataFrame) and 'Mes' in resultado_sql.columns:
-                    resultado_sql['Mes'] = resultado_sql['Mes'].apply(convertir_mes_a_nombre)
-
-                if isinstance(resultado_sql, pd.DataFrame):
-                    if len(resultado_sql) == 0:
-                        respuesta_content = "⚠️ No se encontraron resultados"
-                    else:
-                        if tipo == "detalle_factura":
-                            nro = parametros.get("nro_factura", "")
-                            respuesta_content = f"✅ **Factura {nro}** - {len(resultado_sql)} artículos"
-                        elif tipo.startswith("facturas_"):
-                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** facturas"
-                        elif tipo.startswith("compras_"):
-                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** compras"
-                        elif tipo.startswith("comparar_"):
-                            respuesta_content = f"✅ Comparación lista - {len(resultado_sql)} filas"
-                        elif tipo.startswith("stock_"):
-                            respuesta_content = f"✅ Stock encontrado - {len(resultado_sql)} filas"
-                        elif tipo == "listado_facturas_anio":
-                            anio = parametros.get("anio", "")
-                            respuesta_content = f"✅ **Listado de Facturas {anio}** - {len(resultado_sql)} proveedores"
-                        elif tipo == "total_facturas_por_moneda_anio":
-                            anio = parametros.get("anio", "")
-                            respuesta_content = f"✅ **Totales de Facturas {anio} por Moneda** - {len(resultado_sql)} monedas"
-                        elif tipo == "total_facturas_por_moneda_generico":
-                            respuesta_content = f"✅ **Totales de Facturas por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
-                        elif tipo == "total_compras_por_moneda_generico":
-                            respuesta_content = f"✅ **Totales de Compras por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
-                        else:
-                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** resultados"
-
-                        respuesta_df = resultado_sql
-                else:
-                    respuesta_content = str(resultado_sql)
-
-            except Exception as e:
-                _dbg_set_sql(
-                    tipo,
-                    f"-- Error ejecutando consulta_por_tipo: {str(e)}",
-                    parametros,
-                    None,
-                )
-                respuesta_content = f"❌ Error: {str(e)}"
+        # Si hay sugerencia, agregarla
+        if sugerencia:
+            if isinstance(sugerencia, dict) and "alternativas" in sugerencia:
+                alternativas = sugerencia.get("alternativas", [])
+                if alternativas:
+                    respuesta_content += "\n\n**Alternativas:**\n" + "\n".join(
+                        f"• {a}" for a in alternativas[:3]
+                    )
 
         st.session_state["historial_compras"].append(
             {
                 "role": "assistant",
                 "content": respuesta_content,
                 "df": respuesta_df,
-                "tipo": tipo,
+                "tipo": "orquestador",  # Marcamos que vino del orquestador
                 "pregunta": pregunta,
                 "timestamp": datetime.now().timestamp(),
             }
