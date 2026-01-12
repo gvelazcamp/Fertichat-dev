@@ -1,5 +1,5 @@
 # =========================
-# UI_INICIO. PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
+# UI_INICIO.  PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
 # =========================
 
 import streamlit as st
@@ -29,7 +29,7 @@ def mostrar_inicio():
     # =========================
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:0 auto;text-align:center;padding:10px 0 18px 0;">
+        <div style="max-width:1100px;margin: 0 auto;text-align:center;padding:10px 0 18px 0;">
             <h2 style="margin:0;color:#0f172a;font-size:34px;font-weight:800;letter-spacing:-0.02em;">
                 {saludo}, {nombre. split()[0]}! 👋
             </h2>
@@ -60,8 +60,8 @@ def mostrar_inicio():
 
     /* Botón como tarjeta */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-        border: 1px solid rgba(15,23,42,0.10);
-        background:rgba(255,255,255,0.82);
+        border:  1px solid rgba(15,23,42,0.10);
+        background: rgba(255,255,255,0.82);
         border-radius:20px;
         height:96px;
         min-height:96px;
@@ -95,12 +95,12 @@ def mostrar_inicio():
         background:rgba(255,255,255,0.90);
     }
 
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button: active{
-        transform:translateY(0);
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:active{
+        transform: translateY(0);
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
     }
 
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:focus{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button: focus{
         outline:none;
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
@@ -118,7 +118,7 @@ def mostrar_inicio():
         font-size:26px;
         position:absolute;
         left:16px;
-        top:calc(50% + 48px);
+        top:50%;
         transform:translateY(-50%);
         z-index:5;
         pointer-events:none;
@@ -127,7 +127,7 @@ def mostrar_inicio():
     }
 
     /* Colores tiles */
-    . tile-compras { background: rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
+    . tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
     .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
     .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
     .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
@@ -137,18 +137,18 @@ def mostrar_inicio():
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
     /* ============================================
-       MÓVIL Z Flip 5 - Tarjetas compactas
+       MÓVIL - Tarjetas bien proporcionadas
        ============================================ */
     @media (max-width: 768px){
-        /* Container con padding mínimo */
+        /* Container con padding balanceado */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .block-container {
-            padding-left:0.25rem ! important;
-            padding-right: 0.25rem !important;
+            padding-left:0.5rem ! important;
+            padding-right: 0.5rem !important;
         }
 
-        /* Gap mínimo entre columnas */
+        /* Gap equilibrado entre columnas */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] {
-            gap:0.2rem !important;
+            gap:0.4rem !important;
         }
 
         /* Columnas sin padding extra */
@@ -157,75 +157,54 @@ def mostrar_inicio():
             min-width:0 !important;
         }
 
-        /* Botones MUCHO más compactos */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-            height:64px !important;
-            min-height:64px !important;
-            padding:8px 4px 8px 46px !important;
-            border-radius:12px !important;
-            font-size:9px !important;
-            line-height:1.1 !important;
+        /* Botones:  tamaño intermedio, bien legible */
+        div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .stButton > button{
+            height:78px ! important;
+            min-height: 78px !important;
+            padding:10px 6px 10px 52px !important;
+            border-radius:14px !important;
+            font-size:10. 5px !important;
+            line-height:1.25 !important;
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
-            font-size:10. 5px !important;
+            font-size:12px !important;
             font-weight:800 !important;
         }
 
-        /* Tile MUCHO más chico */
+        /* Tile: tamaño intermedio */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-            width:32px !important;
-            height: 32px !important;
-            border-radius:8px !important;
-            font-size:16px !important;
-            left:7px !important;
-            top: calc(50% + 32px) !important;
+            width:40px ! important;
+            height:40px !important;
+            border-radius:12px !important;
+            font-size:20px !important;
+            left:6px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
         }
 
         /* Saludo compacto */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) h2 {
-            font-size:20px !important;
+            font-size:22px !important;
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) p {
-            font-size:13px !important;
+            font-size:14px ! important;
         }
 
-        /* Labels de sección más chicos */
+        /* Labels de sección */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[style*="max-width:1100px"] div {
-            font-size:10px !important;
-            margin:12px 0 8px 4px !important;
+            font-size:11px !important;
+            margin:14px 0 8px 4px !important;
         }
 
-        /* Tip del día más compacto */
-        div[data-testid="stAppViewContainer"]: has(#fc-home-marker) div[style*="max-width: 1100px"]:last-of-type {
-            margin:12px 0.25rem 0 0.25rem !important;
+        /* Tip del día */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[style*="max-width:1100px"]:last-of-type {
+            margin:14px 0.5rem 0 0.5rem !important;
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[style*="max-width: 1100px"]:last-of-type p {
             font-size:12px !important;
-        }
-    }
-
-    /* Para pantallas MUY pequeñas (< 400px) */
-    @media (max-width: 400px){
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-            height:58px !important;
-            min-height:58px !important;
-            padding:6px 3px 6px 40px !important;
-            font-size:8px !important;
-        }
-
-        div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .stButton > button::first-line{
-            font-size:9.5px !important;
-        }
-
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-            width:28px !important;
-            height: 28px !important;
-            font-size:14px !important;
-            left: 6px !important;
-            top:calc(50% + 29px) !important;
         }
     }
     </style>
@@ -234,7 +213,7 @@ def mostrar_inicio():
     # =========================
     # Secciones con botones
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing: 1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap: 8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing: 1px;margin: 18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -297,7 +276,7 @@ def mostrar_inicio():
 
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin: 16px auto 0 auto;">
+        <div style="max-width:1100px;margin:16px auto 0 auto;">
             <div style="
                 background:rgba(255,255,255,0.70);
                 border: 1px solid rgba(15,23,42,0.10);
@@ -306,7 +285,7 @@ def mostrar_inicio():
                 padding:14px 16px;
                 box-shadow:0 10px 26px rgba(2,6,23,0.06);
             ">
-                <p style="margin:0;color:#0b3b60;font-size: 14px;font-weight:600;">
+                <p style="margin:0;color:#0b3b60;font-size:14px;font-weight:600;">
                     {tip}
                 </p>
             </div>
