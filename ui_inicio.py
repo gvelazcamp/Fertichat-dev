@@ -1,5 +1,5 @@
 # =========================
-# UI_INICIO.  PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
+# UI_INICIO. PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
 # =========================
 
 import streamlit as st
@@ -29,12 +29,12 @@ def mostrar_inicio():
     # =========================
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin: 0 auto;text-align:center;padding:10px 0 18px 0;">
+        <div style="max-width:1100px;margin:0 auto;text-align:center;padding:10px 0 18px 0;">
             <h2 style="margin:0;color:#0f172a;font-size:34px;font-weight:800;letter-spacing:-0.02em;">
                 {saludo}, {nombre. split()[0]}! 👋
             </h2>
             <p style="margin:8px 0 0 0;color:#64748b;font-size:16px;">
-                ¿Qué querés hacer hoy? 
+                ¿Qué querés hacer hoy?
             </p>
         </div>
         """,
@@ -58,14 +58,18 @@ def mostrar_inicio():
         position: relative;
     }
 
-    /* Botón como tarjeta */
+    /* Botón como tarjeta - FORZAR MISMO TAMAÑO SIEMPRE */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
         border:  1px solid rgba(15,23,42,0.10);
         background: rgba(255,255,255,0.82);
-        border-radius:20px;
-        height:96px;
-        min-height:96px;
-        padding: 16px 16px 16px 92px;
+        border-radius: 20px;
+        
+        /* FORZAR altura exacta */
+        height: 96px ! important;
+        min-height:96px !important;
+        max-height:96px !important;
+        
+        padding:0 16px 0 92px;
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
         cursor:pointer;
         transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
@@ -75,10 +79,16 @@ def mostrar_inicio():
         font-size:13. 5px;
         font-weight:600;
         color:#334155;
-        line-height:1.22;
-        display:block;
+        line-height:1.3;
+        
+        /* Centrar contenido verticalmente */
+        display:flex ! important;
+        align-items: center !important;
+        justify-content:flex-start !important;
+        
         position:relative;
-        margin:0;
+        margin: 0;
+        overflow:hidden;
     }
 
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:: first-line{
@@ -96,16 +106,16 @@ def mostrar_inicio():
     }
 
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:active{
-        transform: translateY(0);
+        transform:translateY(0);
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
     }
 
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button: focus{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:focus{
         outline:none;
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) */
+    /* Tile (ícono) - centrado verticalmente */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
         width:54px;
         height:54px;
@@ -127,7 +137,7 @@ def mostrar_inicio():
     }
 
     /* Colores tiles */
-    . tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
+    . tile-compras { background: rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
     .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
     .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
     .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
@@ -137,47 +147,53 @@ def mostrar_inicio():
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
     /* ============================================
-       MÓVIL - Tarjetas bien proporcionadas
+       MÓVIL - Tarjetas MISMO TAMAÑO FORZADO
        ============================================ */
-    @media (max-width: 768px){
+    @media (max-width:  768px){
         /* Container con padding balanceado */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .block-container {
-            padding-left:0.5rem ! important;
-            padding-right: 0.5rem !important;
+            padding-left:0.5rem !important;
+            padding-right:0.5rem ! important;
         }
 
         /* Gap equilibrado entre columnas */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="stHorizontalBlock"] {
-            gap:0.4rem !important;
+            gap:0.35rem !important;
         }
 
         /* Columnas sin padding extra */
         div[data-testid="stAppViewContainer"]: has(#fc-home-marker) div[data-testid="column"] {
-            padding:0 !important;
+            padding: 0 !important;
             min-width:0 !important;
         }
 
-        /* Botones:  tamaño intermedio, bien legible */
+        /* Botones:  FORZAR altura exacta igual para todas */
         div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .stButton > button{
-            height:78px ! important;
-            min-height: 78px !important;
-            padding:10px 6px 10px 52px !important;
+            height:80px !important;
+            min-height:80px !important;
+            max-height:80px ! important;
+            
+            padding:0 5px 0 50px !important;
             border-radius:14px !important;
-            font-size:10. 5px !important;
-            line-height:1.25 !important;
+            font-size:10px !important;
+            line-height:1.2 !important;
+            
+            display:flex !important;
+            align-items:center !important;
+            justify-content:flex-start !important;
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
-            font-size:12px !important;
+            font-size:11. 5px !important;
             font-weight:800 !important;
         }
 
-        /* Tile: tamaño intermedio */
+        /* Tile: tamaño equilibrado */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-            width:40px ! important;
-            height:40px !important;
-            border-radius:12px !important;
-            font-size:20px !important;
+            width:38px ! important;
+            height:38px !important;
+            border-radius:11px !important;
+            font-size:19px !important;
             left:6px !important;
             top: 50% !important;
             transform: translateY(-50%) !important;
@@ -197,43 +213,34 @@ def mostrar_inicio():
             font-size:11px !important;
             margin:14px 0 8px 4px !important;
         }
-
-        /* Tip del día */
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[style*="max-width:1100px"]:last-of-type {
-            margin:14px 0.5rem 0 0.5rem !important;
-        }
-
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[style*="max-width: 1100px"]:last-of-type p {
-            font-size:12px !important;
-        }
     }
     </style>
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones
+    # Secciones con botones - TEXTOS MÁS CORTOS
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing: 1px;margin: 18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing: 1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
-        if st.button("Compras IA\nConsultas inteligentes", key="compras"):
+        if st.button("Compras IA\nConsultas", key="compras"):
             st.query_params["go"] = "compras"
             st.rerun()
     with col2:
         st. markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
-        if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador"):
+        if st.button("Buscador IA\nFacturas", key="buscador"):
             st.query_params["go"] = "buscador"
             st.rerun()
     with col3:
-        st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
-        if st.button("Stock IA\nConsultar inventario", key="stock"):
+        st. markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
+        if st.button("Stock IA\nInventario", key="stock"):
             st.query_params["go"] = "stock"
             st. rerun()
     with col4:
         st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
-        if st.button("Dashboard\nVer estadísticas", key="dashboard"):
+        if st.button("Dashboard\nEstadísticas", key="dashboard"):
             st.query_params["go"] = "dashboard"
             st.rerun()
 
@@ -243,24 +250,24 @@ def mostrar_inicio():
     col5, col6, col7, col8 = st.columns(4)
     with col5:
         st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
-        if st.button("Pedidos internos\nGestionar pedidos", key="pedidos"):
+        if st.button("Pedidos\nGestión", key="pedidos"):
             st.query_params["go"] = "pedidos"
             st.rerun()
     with col6:
         st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
-        if st.button("Baja de stock\nRegistrar bajas", key="baja"):
+        if st.button("Baja Stock\nRegistrar", key="baja"):
             st.query_params["go"] = "baja"
             st. rerun()
     with col7:
         st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
-        if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
+        if st.button("Órdenes\nCompra", key="ordenes"):
             st.query_params["go"] = "ordenes"
             st.rerun()
     with col8:
         st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
         if st.button("Indicadores\nPower BI", key="indicadores"):
             st.query_params["go"] = "indicadores"
-            st.rerun()
+            st. rerun()
 
     # =========================
     # TIP DEL DÍA
@@ -276,16 +283,16 @@ def mostrar_inicio():
 
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:16px auto 0 auto;">
+        <div style="max-width:1100px;margin: 16px auto 0 auto;">
             <div style="
                 background:rgba(255,255,255,0.70);
-                border: 1px solid rgba(15,23,42,0.10);
+                border:1px solid rgba(15,23,42,0.10);
                 border-left:4px solid rgba(37,99,235,0.55);
                 border-radius:16px;
                 padding:14px 16px;
                 box-shadow:0 10px 26px rgba(2,6,23,0.06);
             ">
-                <p style="margin:0;color:#0b3b60;font-size:14px;font-weight:600;">
+                <p style="margin: 0;color:#0b3b60;font-size:14px;font-weight:600;">
                     {tip}
                 </p>
             </div>
