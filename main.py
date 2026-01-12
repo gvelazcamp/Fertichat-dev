@@ -5,7 +5,6 @@ st.set_page_config(
     page_icon="🦋",
     layout="wide",
     initial_sidebar_state="auto",
-    theme="light"
 )
 
 from ui_css import CSS_GLOBAL
@@ -438,7 +437,7 @@ elif _go == "indicadores":
 # Desde campana (ir_notif=1)
 try:
     if st.query_params.get("ir_notif") == "1":
-        st.session_state["radio_menu"] = "�� Pedidos internos"
+        st.session_state["radio_menu"] = "📄 Pedidos internos"
         _clear_qp()
         st.rerun()
 except Exception:
