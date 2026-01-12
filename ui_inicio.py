@@ -129,7 +129,7 @@ def mostrar_inicio():
 
         position:absolute;
         left: 16px;
-        top: calc(50% + 18px);          /* <-- AÚN MÁS BAJADO */
+        top: calc(50% + 24px);          /* <-- MÁS BAJADO */
         transform: translateY(-50%);
         z-index: 5;
 
@@ -156,7 +156,7 @@ def mostrar_inicio():
             border-radius:14px;
             font-size:24px;
             left: 14px;
-            top: calc(50% + 15px);      /* <-- AÚN MÁS BAJADO MOBILE */
+            top: calc(50% + 20px);      /* <-- MÁS BAJADO MOBILE */
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
             height: 92px;
