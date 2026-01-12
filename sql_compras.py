@@ -105,6 +105,8 @@ def get_compras_multiples(
     FIX: el filtro por meses se hace por "Mes" (directo, sin rangos de fecha),
     para consistencia con otras consultas y evitar problemas con formatos de "Fecha".
     """
+    print(f"[DEBUG] get_compras_multiples called: proveedores={proveedores}, meses={meses}, anios={anios}")  # TEMP
+    
     if not proveedores:
         return pd.DataFrame()
 
@@ -113,14 +115,14 @@ def get_compras_multiples(
     ]
     params: List[Any] = []
 
-    # Proveedores (robusto: normaliza acentos con regexp_replace)
+    # Proveedores (robusto: normaliza acentos con regexp_replace para consistencia)
     prov_clauses = []
     for p in proveedores:
         p = str(p).strip().lower()
         if not p:
             continue
         prov_clauses.append(
-            "translate(LOWER(TRIM(\"Cliente / Proveedor\")), 'áéíóúñ', 'aeioun') LIKE %s"
+            "LOWER(TRIM(regexp_replace(\"Cliente / Proveedor\", '[áéíóúÁÉÍÓÚñÑ]', '[aeiouAEIOUñN]', 'g'))) LIKE %s"
         )
         params.append(f"%{p}%")
 
@@ -152,7 +154,13 @@ def get_compras_multiples(
         ORDER BY "Fecha" DESC NULLS LAST
         LIMIT {limite}
     """
-    return ejecutar_consulta(sql, tuple(params))
+    print(f"[DEBUG] SQL: {sql}")  # TEMP
+    print(f"[DEBUG] Params: {params}")  # TEMP
+    
+    df = ejecutar_consulta(sql, tuple(params))
+    print(f"[DEBUG] df shape: {df.shape if df is not None and hasattr(df, 'shape') else 'None or no shape'}")  # TEMP
+    
+    return df
 
 
 # =====================================================================
