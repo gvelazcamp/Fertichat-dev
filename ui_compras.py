@@ -286,6 +286,12 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         _dbg_set_result(df)
         return df
 
+    # ===== TOTAL COMPRAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
+    elif tipo == "total_compras_por_moneda_generico":
+        df = sqlq_compras.get_total_compras_por_moneda_todos_anios()
+        _dbg_set_result(df)
+        return df
+
     # ===== NO IMPLEMENTADO =====
     raise ValueError(f"Tipo '{tipo}' no implementado en ejecutar_consulta_por_tipo")
 
@@ -427,6 +433,10 @@ def Compras_IA():
                         elif tipo == "total_facturas_por_moneda_generico":
                             respuesta_content = (
                                 f"✅ **Totales de Facturas por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
+                            )
+                        elif tipo == "total_compras_por_moneda_generico":
+                            respuesta_content = (
+                                f"✅ **Totales de Compras por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
                             )
                         else:
                             respuesta_content = (
