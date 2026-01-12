@@ -113,28 +113,28 @@ def get_compras_multiples(
     ]
     params: List[Any] = []
 
-    # Proveedores (robusto: normaliza acentos con regexp_replace para consistencia)
+    # Proveedores (robusto: normaliza acentos con translate)
     prov_clauses = []
     for p in proveedores:
         p = str(p).strip().lower()
         if not p:
             continue
         prov_clauses.append(
-            "LOWER(TRIM(regexp_replace(\"Cliente / Proveedor\", '[áéíóúÁÉÍÓÚñÑ]', '[aeiouAEIOUñN]', 'g'))) LIKE %s"
+            "translate(LOWER(TRIM(\"Cliente / Proveedor\")), 'áéíóúñ', 'aeioun') LIKE %s"
         )
         params.append(f"%{p}%")
 
     if prov_clauses:
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
-    # Meses -> por "Mes" (con LOWER para case-insensitive)
+    # Meses -> por "Mes"
     if meses:
         mes_clauses = []
         for m in (meses or []):
             if not m:
                 continue
-            mes_clauses.append('LOWER(TRIM("Mes")) = %s')
-            params.append(m.lower())
+            mes_clauses.append('"Mes" = %s')
+            params.append(m)
         if mes_clauses:
             where_parts.append("(" + " OR ".join(mes_clauses) + ")")
 
