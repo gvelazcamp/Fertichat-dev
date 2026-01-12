@@ -362,45 +362,45 @@ except Exception:
 # SIDEBAR
 # =========================
 with st.sidebar:
-    st.markdown(
-        """
-        <div style='
-            background: rgba(255,255,255,0.85);
-            padding: 16px;
-            border-radius: 18px;
-            margin-bottom: 14px;
-            border: 1px solid rgba(15, 23, 42, 0.10);
-            box-shadow: 0 10px 26px rgba(2, 6, 23, 0.06);
-        '>
-            <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
-                <div style='font-size: 26px;'>🦋</div>
-                <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
+    with st.container():
+        st.markdown(
+            """
+            <div style='
+                background: rgba(255,255,255,0.85);
+                padding: 16px;
+                border-radius: 18px;
+                margin-bottom: 14px;
+                border: 1px solid rgba(15, 23, 42, 0.10);
+                box-shadow: 0 10px 26px rgba(2, 6, 23, 0.06);
+            '>
+                <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
+                    <div style='font-size: 26px;'>🦋</div>
+                    <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
+                </div>
             </div>
-        </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-    st.text_input(
-        "Buscar...",
-        key="sidebar_search",
-        label_visibility="collapsed",
-        placeholder="Buscar...",
+        """,
+        unsafe_allow_html=True,
     )
 
-    st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
-    if user.get("empresa"):
-        st.markdown(f"🏢 {user.get('empresa')}")
-    st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
+        st.text_input(
+            "Buscar...",
+            key="sidebar_search",
+            label_visibility="collapsed",
+            placeholder="Buscar...",
+        )
 
-    st.markdown("---")
+        st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
+        if user.get("empresa"):
+            st.markdown(f"🏢 {user.get('empresa')}")
+        st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
 
-    # Botón de cerrar sesión más pequeño
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar"):
-            logout()
-            st.rerun()
+        st.markdown("---")
+
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar"):
+                logout()
+                st.rerun()
 
     st.markdown("---")
 
