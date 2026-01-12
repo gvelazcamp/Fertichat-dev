@@ -307,6 +307,10 @@ html, body {
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 5px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Ocultar header de escritorio siempre */
