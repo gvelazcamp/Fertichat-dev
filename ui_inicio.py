@@ -1,5 +1,5 @@
 # =========================
-# UI_INICIO.  PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
+# UI_INICIO. PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
 # =========================
 
 import streamlit as st
@@ -29,12 +29,12 @@ def mostrar_inicio():
     # =========================
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:0 auto;text-align:center;padding:10px 0 18px 0;">
+        <div style="max-width:1100px;margin: 0 auto;text-align: center;padding:10px 0 18px 0;">
             <h2 style="margin:0;color:#0f172a;font-size:34px;font-weight:800;letter-spacing:-0.02em;">
-                {saludo}, {nombre.  split()[0]}!  👋
+                {saludo}, {nombre. split()[0]}!  👋
             </h2>
             <p style="margin:8px 0 0 0;color:#64748b;font-size:16px;">
-                ¿Qué querés hacer hoy?  
+                ¿Qué querés hacer hoy? 
             </p>
         </div>
         """,
@@ -80,43 +80,43 @@ def mostrar_inicio():
         border-radius:20px;
 
         height:  96px;
-        min-height:  96px;
+        min-height: 96px;
 
         padding:16px 16px 16px 92px;
 
         box-shadow: 0 10px 24px rgba(2,6,23,0.06);
         cursor:pointer;
-        transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+        transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
 
         width:100%;
         text-align:left;
 
         white-space:  pre-line;
-        font-size:13.  5px;
-        font-weight: 600;
+        font-size:13. 5px;
+        font-weight:600;
         color:#334155;
         line-height:1.22;
 
         display:block;
         position:  relative;
-        margin:  0;
-        box-sizing: border-box;
+        margin: 0;
+        box-sizing:border-box;
     }
 
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button::  first-line{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:: first-line{
         font-size:16px;
-        font-weight:  900;
+        font-weight: 900;
         color:#0f172a;
         letter-spacing:-0.01em;
     }
 
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:  hover{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:hover{
         transform:translateY(-2px);
         box-shadow:0 14px 34px rgba(2,6,23,0.09);
         border-color:rgba(37,99,235,0.22);
         background:rgba(255,255,255,0.90);
     }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button: active{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:active{
         transform:translateY(0);
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
     }
@@ -140,7 +140,7 @@ def mostrar_inicio():
 
         position:absolute;
         left:  16px;
-        top:  50%;
+        top: 50%;
         transform:  translateY(-50%);
         z-index:  5;
 
@@ -150,8 +150,8 @@ def mostrar_inicio():
     }
 
     /* Colores tiles */
-    .  tile-compras { background:  rgba(16,185,129,0.10); border-color: rgba(16,185,129,0.18); }
-    .tile-buscador { background: rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
+    . tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
+    .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
     .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
     .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
     .tile-pedidos { background:rgba(2,132,199,0.10); border-color:rgba(2,132,199,0.18); }
@@ -160,12 +160,12 @@ def mostrar_inicio():
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
     /* =========================
-       MÓVIL:   OCULTAR DESKTOP, MOSTRAR MOBILE
+       MÓVIL:  OCULTAR DESKTOP, MOSTRAR MOBILE
        ========================= */
     @media (max-width: 768px){
         /* OCULTAR layout desktop */
-        div[data-testid="stAppViewContainer"]:  has(#fc-home-marker) .fc-home-desktop{
-            display:none !  important;
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop{
+            display:none ! important;
         }
         
         /* MOSTRAR layout móvil */
@@ -175,7 +175,7 @@ def mostrar_inicio():
 
         /* más ancho útil */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .block-container{
-            padding-left:0.  65rem !important;
+            padding-left:0.65rem !important;
             padding-right:0.65rem !important;
         }
 
@@ -189,8 +189,8 @@ def mostrar_inicio():
             box-sizing:border-box;
 
             height:  104px;
-            min-height:  104px;
-            max-height: 104px;
+            min-height: 104px;
+            max-height:104px;
 
             border-radius:20px;
             border:1px solid rgba(15,23,42,0.10);
@@ -215,11 +215,11 @@ def mostrar_inicio():
             background:rgba(255,255,255,0.90);
             box-shadow:0 10px 18px rgba(2,6,23,0.07);
 
-            flex:   0 0 54px;
+            flex:  0 0 54px;
         }
 
         /* text block */
-        div[data-testid="stAppViewContainer"]:  has(#fc-home-marker) .fc-mtxt{
+        div[data-testid="stAppViewContainer"]: has(#fc-home-marker) .fc-mtxt{
             display:flex;
             flex-direction:column;
             gap:4px;
@@ -227,16 +227,16 @@ def mostrar_inicio():
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mtitle{
-            margin:  0;
-            font-size:  16px;
-            font-weight: 900;
+            margin: 0;
+            font-size:16px;
+            font-weight:900;
             color:#0f172a;
             line-height:1.05;
         }
 
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-msub{
-            margin: 0;
-            font-size: 13px;
+            margin:0;
+            font-size:13px;
             font-weight:600;
             color:#64748b;
             line-height:1.2;
@@ -257,7 +257,7 @@ def mostrar_inicio():
     # =========================
     def _mcard(go:  str, icon: str, title: str, sub: str, tile_class: str) -> str:
         return f"""
-        <a class="fc-mcard" href="?  go={go}">
+        <a class="fc-mcard" href="? go={go}">
             <div class="fc-micon {tile_class}">{icon}</div>
             <div class="fc-mtxt">
                 <p class="fc-mtitle">{title}</p>
@@ -267,11 +267,12 @@ def mostrar_inicio():
         """
 
     # =========================
-    # LAYOUT DESKTOP (tu grilla)
+    # LAYOUT DESKTOP (COMENTADO PARA PRUEBA)
     # =========================
+    """
     st.markdown('<div class="fc-home-desktop">', unsafe_allow_html=True)
     st.markdown(
-        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight: 800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
         unsafe_allow_html=True
     )
 
@@ -287,20 +288,20 @@ def mostrar_inicio():
             st.query_params["go"] = "buscador"
             st.rerun()
     with col3:
-        st. markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
+        st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
         if st.button("Stock IA\nConsultar inventario", key="stock"):
             st.query_params["go"] = "stock"
-            st.  rerun()
+            st.rerun()
     with col4:
         st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
         if st.button("Dashboard\nVer estadísticas", key="dashboard"):
             st.query_params["go"] = "dashboard"
-            st. rerun()
+            st.rerun()
 
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
 
     st.markdown(
-        "<div style='max-width:1100px;margin: 0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>",
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size: 12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin: 18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>",
         unsafe_allow_html=True
     )
 
@@ -314,7 +315,7 @@ def mostrar_inicio():
         st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
         if st.button("Baja de stock\nRegistrar bajas", key="baja"):
             st.query_params["go"] = "baja"
-            st.rerun()
+            st. rerun()
     with col7:
         st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
         if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
@@ -327,26 +328,26 @@ def mostrar_inicio():
             st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)  # cierre fc-home-desktop
+    """
 
     # =========================
-    # LAYOUT MÓVIL (COMENTADO PARA PRUEBA)
+    # LAYOUT MÓVIL (EL CORRECTO)
     # =========================
-    """
     st.markdown('<div class="fc-home-mobile">', unsafe_allow_html=True)
 
     st.markdown(
-        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size: 12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin: 18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
         unsafe_allow_html=True
     )
     st.markdown(
-        f
+        f"""
         <div class="fc-mstack">
             {_mcard("compras", "🛒", "Compras IA", "Consultas inteligentes", "tile-compras")}
             {_mcard("buscador", "🔎", "Buscador IA", "Buscar facturas / lotes", "tile-buscador")}
             {_mcard("stock", "📦", "Stock IA", "Consultar inventario", "tile-stock")}
             {_mcard("dashboard", "📊", "Dashboard", "Ver estadísticas", "tile-dashboard")}
         </div>
-        
+        """,
         unsafe_allow_html=True
     )
 
@@ -357,19 +358,18 @@ def mostrar_inicio():
         unsafe_allow_html=True
     )
     st.markdown(
-        f
+        f"""
         <div class="fc-mstack">
             {_mcard("pedidos", "📄", "Pedidos internos", "Gestionar pedidos", "tile-pedidos")}
             {_mcard("baja", "🧾", "Baja de stock", "Registrar bajas", "tile-baja")}
             {_mcard("ordenes", "📦", "Órdenes de compra", "Crear órdenes", "tile-ordenes")}
             {_mcard("indicadores", "📈", "Indicadores", "Power BI", "tile-indicadores")}
         </div>
-        
+        """,
         unsafe_allow_html=True
     )
 
     st.markdown("</div>", unsafe_allow_html=True)  # cierre fc-home-mobile
-    """
 
     # =========================
     # TIP DEL DÍA
