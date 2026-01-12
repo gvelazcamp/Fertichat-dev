@@ -1,1042 +1,301 @@
 # =========================
-# UI_COMPRAS.PY - COMPRAS Y FACTURAS INTEGRADAS
+# UI_CSS.PY - CSS GLOBAL (APP + LOGIN)
 # =========================
 
-import streamlit as st
-import pandas as pd
-import re
-import altair as alt
-from datetime import datetime
-from typing import Optional
-
-from ia_interpretador import interpretar_pregunta, obtener_info_tipo
-from utils_openai import responder_con_openai
-import sql_compras as sqlq_compras
-import sql_comparativas as sqlq_comparativas
-import sql_facturas as sqlq_facturas
-
-# =========================
-# IMPORT ORQUESTADOR PARA INTEGRACIÓN
-# =========================
-from orquestador import procesar_pregunta_v2
-
-# =========================
-# CONVERSIÓN DE MESES A NOMBRES
-# =========================
-def convertir_mes_a_nombre(mes_str):
-    if not mes_str or '-' not in mes_str:
-        return mes_str
-    try:
-        year, month = mes_str.split('-')
-        month_num = int(month)
-        meses = {
-            1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril', 5: 'mayo', 6: 'junio',
-            7: 'julio', 8: 'agosto', 9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
-        }
-        return f"{meses.get(month_num, 'desconocido')} {year}"
-    except:
-        return mes_str
-
-
-# =========================
-# DEBUG HELPERS
-# =========================
-def _dbg_set_interpretacion(obj: dict):
-    try:
-        st.session_state["DBG_INT_LAST"] = obj or {}
-    except Exception:
-        pass
-
-
-def _dbg_set_sql(tag: Optional[str], query: str, params, df: Optional[pd.DataFrame] = None):
-    try:
-        st.session_state["DBG_SQL_LAST_TAG"] = tag
-        st.session_state["DBG_SQL_LAST_QUERY"] = query or ""
-        st.session_state["DBG_SQL_LAST_PARAMS"] = params if params is not None else []
-        if isinstance(df, pd.DataFrame):
-            st.session_state["DBG_SQL_ROWS"] = int(len(df))
-            st.session_state["DBG_SQL_COLS"] = list(df.columns)
-        else:
-            st.session_state["DBG_SQL_ROWS"] = None
-            st.session_state["DBG_SQL_COLS"] = []
-    except Exception:
-        pass
-
-
-def _dbg_set_result(df: Optional[pd.DataFrame]):
-    try:
-        if isinstance(df, pd.DataFrame):
-            st.session_state["DBG_SQL_ROWS"] = int(len(df))
-            st.session_state["DBG_SQL_COLS"] = list(df.columns)
-    except Exception:
-        pass
-
-
-# =========================
-# HISTORIAL
-# =========================
-def inicializar_historial():
-    if "historial_compras" not in st.session_state:
-        st.session_state["historial_compras"] = []
-
-
-# =========================
-# TOTALES
-# =========================
-def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
-    """
-    Devuelve totales por moneda (para las cards):
-    - Pesos: UYU / $ / pesos / ARS (pero excluye USD/U$S)
-    - USD: USD / U$S / US$
-    """
-    if df is None or len(df) == 0:
-        return {"Pesos": 0, "USD": 0}
-
-    col_moneda = None
-    for col in df.columns:
-        if col.lower() in ["moneda", "currency"]:
-            col_moneda = col
-            break
-
-    col_total = None
-    for col in df.columns:
-        if col.lower() in ["total", "monto", "importe", "valor", "monto_neto"]:
-            col_total = col
-            break
-
-    if not col_moneda or not col_total:
-        return None
-
-    try:
-        df_calc = df.copy()
-
-        df_calc[col_total] = (
-            df_calc[col_total]
-            .astype(str)
-            .str.replace(".", "", regex=False)
-            .str.replace(",", ".", regex=False)
-            .str.replace("$", "", regex=False)
-            .str.strip()
-        )
-        df_calc[col_total] = pd.to_numeric(df_calc[col_total], errors="coerce").fillna(0)
-
-        mon = df_calc[col_moneda].astype(str)
-
-        # USD (incluye U$S)
-        usd_mask = mon.str.contains(r"USD|U\$S|US\$|U\$|dolar|dólar", case=False, na=False)
-
-        # Pesos (UYU/$/pesos) pero excluyendo USD (porque U$S contiene $)
-        pesos_mask = mon.str.contains(r"UYU|\$|peso|ARS", case=False, na=False) & (~usd_mask)
-
-        totales = {}
-        totales["Pesos"] = df_calc.loc[pesos_mask, col_total].sum()
-        totales["USD"] = df_calc.loc[usd_mask, col_total].sum()
-
-        return totales
-
-    except Exception as e:
-        print(f"Error calculando totales: {e}")
-        return None
-
-
-# =========================
-# DASHBOARD VENDIBLE (UI) - NUEVO
-# (NO TOCA SQL / NO ROMPE LO EXISTENTE)
-# =========================
-import io
-
-
-def _find_col(df: pd.DataFrame, candidates_lower: list) -> Optional[str]:
-    for c in df.columns:
-        if str(c).lower() in candidates_lower:
-            return c
-    return None
-
-
-def _norm_moneda_view(x: str) -> str:
-    s = ("" if x is None else str(x)).strip().upper()
-    if not s:
-        return "OTRA"
-    if "U$S" in s or "USD" in s or "US$" in s or s == "U$" or "DOLAR" in s or "DÓLAR" in s:
-        return "USD"
-    if s == "$" or "UYU" in s or "PESO" in s:
-        return "UYU"
-    return s
-
-
-def _safe_to_float(v) -> float:
-    try:
-        if v is None:
-            return 0.0
-        if isinstance(v, (int, float)):
-            return float(v)
-        s = str(v).strip()
-        if not s:
-            return 0.0
-        s = s.replace(" ", "")
-        # soporta "1.234,56" (LATAM) y "1,234.56" (EN) de forma básica
-        if "," in s and "." in s:
-            s = s.replace(".", "").replace(",", ".")
-        else:
-            if "," in s and "." not in s:
-                s = s.replace(",", ".")
-        return float(s)
-    except Exception:
-        return 0.0
-
-
-def _fmt_compact_money(v: float, moneda: str) -> str:
-    try:
-        v = float(v or 0.0)
-    except Exception:
-        v = 0.0
-
-    sign = "-" if v < 0 else ""
-    a = abs(v)
-
-    if moneda == "USD":
-        prefix = "U$S "
-        decimals = 2
-    else:
-        prefix = "$ "
-        decimals = 0 if a >= 1000 else 2
-
-    if a >= 1_000_000_000:
-        return f"{sign}{prefix}{a/1_000_000_000:,.2f}B".replace(",", ".")
-    if a >= 1_000_000:
-        return f"{sign}{prefix}{a/1_000_000:,.2f}M".replace(",", ".")
-    if a >= 1_000:
-        return f"{sign}{prefix}{a/1_000:,.2f}K".replace(",", ".")
-    return f"{sign}{prefix}{a:,.{decimals}f}".replace(",", ".")
-
-
-def _shorten_text(x, max_len: int = 52) -> str:
-    s = "" if x is None else str(x)
-    s = s.strip()
-    if len(s) <= max_len:
-        return s
-    return s[: max_len - 1] + "…"
-
-
-def _df_export_clean(df: pd.DataFrame) -> pd.DataFrame:
-    # No exportar columnas internas __*
-    cols = [c for c in df.columns if not str(c).startswith("__")]
-    return df[cols].copy() if cols else df.copy()
-
-
-def _df_to_csv_bytes(df: pd.DataFrame) -> bytes:
-    try:
-        return df.to_csv(index=False).encode("utf-8")
-    except Exception:
-        return b""
-
-
-def _df_to_excel_bytes(df: pd.DataFrame) -> bytes:
-    try:
-        buff = io.BytesIO()
-        with pd.ExcelWriter(buff, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="datos")
-        return buff.getvalue()
-    except Exception:
-        return b""
-
-
-def _init_saved_views():
-    if "FC_SAVED_VIEWS" not in st.session_state:
-        st.session_state["FC_SAVED_VIEWS"] = []
-
-
-def _save_view(view_name: str, data: dict):
-    _init_saved_views()
-    name = (view_name or "").strip()
-    if not name:
-        return
-    # Reemplaza si existe
-    out = []
-    for v in st.session_state["FC_SAVED_VIEWS"]:
-        if str(v.get("name", "")).strip().lower() == name.lower():
-            continue
-        out.append(v)
-    out.append({"name": name, "data": data})
-    st.session_state["FC_SAVED_VIEWS"] = out
-
-
-def _get_saved_view_names() -> list:
-    _init_saved_views()
-    names = [v.get("name") for v in st.session_state["FC_SAVED_VIEWS"] if v.get("name")]
-    return sorted(names, key=lambda s: str(s).lower())
-
-
-def _load_view(name: str) -> Optional[dict]:
-    _init_saved_views()
-    for v in st.session_state.get("FC_SAVED_VIEWS", []):
-        if str(v.get("name", "")).strip().lower() == str(name or "").strip().lower():
-            return v.get("data") or {}
-    return None
-
-
-def _paginate(df_in: pd.DataFrame, page: int, page_size: int) -> pd.DataFrame:
-    if df_in is None or df_in.empty:
-        return df_in
-    page_size = max(1, int(page_size or 25))
-    page = max(1, int(page or 1))
-    start = (page - 1) * page_size
-    end = start + page_size
-    return df_in.iloc[start:end]
-
-
-def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado", key_prefix: str = ""):
-    if df is None or df.empty:
-        st.warning("⚠️ No hay resultados para mostrar.")
-        return
-
-    # CSS liviano (no pisa el resto)
-    st.markdown(
-        """
-        <style>
-        .fc-subtle { color: rgba(49,51,63,0.65); font-size: 0.9rem; }
-        .fc-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px 0; }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-    df_view = df.copy()
-
-    col_proveedor = _find_col(df_view, ["proveedor", "cliente / proveedor"])
-    col_articulo = _find_col(df_view, ["articulo", "artículo"])
-    col_fecha = _find_col(df_view, ["fecha"])
-    col_moneda = _find_col(df_view, ["moneda", "currency"])
-    col_total = _find_col(df_view, ["total", "monto", "importe", "valor", "monto_neto", "2024", "2025"])
-    col_nro = _find_col(df_view, ["nro_factura", "nro. comprobante", "nro comprobante", "nro_comprobante"])
-    col_cantidad = _find_col(df_view, ["cantidad"])
-
-    if col_moneda:
-        df_view["__moneda_view__"] = df_view[col_moneda].apply(_norm_moneda_view)
-    else:
-        df_view["__moneda_view__"] = "OTRA"
-
-    if col_fecha:
-        df_view["__fecha_view__"] = pd.to_datetime(df_view[col_fecha], errors="coerce")
-    else:
-        df_view["__fecha_view__"] = pd.NaT
-
-    if col_total:
-        df_view["__total_num__"] = df_view[col_total].apply(_safe_to_float)
-    else:
-        df_view["__total_num__"] = 0.0
-
-    # Para comparaciones, sumar todas las columnas de tiempo (años o meses)
-    time_cols = [c for c in df_view.columns if re.match(r'\d{4}(-\d{2})?$', str(c))]
-    if time_cols:
-        df_view["__total_num__"] = df_view[time_cols].apply(lambda row: sum(_safe_to_float(row[c]) for c in time_cols), axis=1)
-
-    # Contexto
-    filas_total = int(len(df_view))
-    facturas = int(df_view[col_nro].nunique()) if col_nro else 0
-    proveedores = int(df_view[col_proveedor].nunique()) if col_proveedor else 0
-    articulos = int(df_view[col_articulo].nunique()) if col_articulo else 0
-
-    # Rango fechas
-    rango_txt = ""
-    if df_view["__fecha_view__"].notna().any():
-        dmin = df_view["__fecha_view__"].min()
-        dmax = df_view["__fecha_view__"].max()
-        try:
-            rango_txt = f" · {dmin.date()} → {dmax.date()}"
-        except Exception:
-            rango_txt = ""
-
-    st.markdown(f"<div class='fc-title'>{titulo}</div>", unsafe_allow_html=True)
-    st.markdown(
-        f"<div class='fc-subtle'>Filas: <b>{filas_total}</b> · Facturas: <b>{facturas}</b> · Proveedores: <b>{proveedores}</b> · Artículos: <b>{articulos}</b>{rango_txt}</div>",
-        unsafe_allow_html=True
-    )
-    st.write("")
-
-    # KPIs (sobre TODO el resultado, antes de filtros)
-    tot_general = float(df_view["__total_num__"].sum())
-    tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
-    tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
-
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        st.metric("Total General", _fmt_compact_money(tot_general, "UYU"), help=f"Valor exacto: $ {tot_general:,.2f}".replace(",", "."))
-    with k2:
-        st.metric("Total UYU", _fmt_compact_money(tot_uyu, "UYU"), help=f"Valor exacto: $ {tot_uyu:,.2f}".replace(",", "."))
-    with k3:
-        st.metric("Total USD", _fmt_compact_money(tot_usd, "USD"), help=f"Valor exacto: U$S {tot_usd:,.2f}".replace(",", "."))
-    with k4:
-        st.metric("Proveedores", f"{proveedores}")
-
-    # ============================================================
-    # FILTROS + ACCIONES (solo afectan la vista)
-    # ============================================================
-    # Defaults fecha
-    d_ini_default, d_fin_default = None, None
-    if df_view["__fecha_view__"].notna().any():
-        d_ini_default = df_view["__fecha_view__"].min().date()
-        d_fin_default = df_view["__fecha_view__"].max().date()
-
-    with st.expander("🔎 Filtros (vista) / Exportar / Guardar vista", expanded=False):
-        f1, f2, f3, f4 = st.columns([2, 2, 1.2, 1.6])
-
-        sel_prov = []
-        if col_proveedor:
-            provs = sorted([p for p in df_view[col_proveedor].dropna().astype(str).unique().tolist() if p.strip()])
-            provs = provs[:3000]
-            with f1:
-                sel_prov = st.multiselect("Proveedor", options=provs, default=st.session_state.get(f"{key_prefix}f_prov", []), key=f"{key_prefix}f_prov")
-
-        sel_art = []
-        if col_articulo:
-            arts = sorted([a for a in df_view[col_articulo].dropna().astype(str).unique().tolist() if a.strip()])
-            arts = arts[:2000]
-            with f2:
-                sel_art = st.multiselect("Artículo", options=arts, default=st.session_state.get(f"{key_prefix}f_art", []), key=f"{key_prefix}f_art")
-
-        with f3:
-            sel_mon = st.selectbox("Moneda", options=["TODAS", "UYU", "USD", "OTRA"], index=0, key=f"{key_prefix}f_mon")
-
-        d_ini, d_fin = None, None
-        with f4:
-            if d_ini_default and d_fin_default:
-                rango = st.date_input(
-                    "Rango fecha",
-                    value=st.session_state.get(f"{key_prefix}f_date", (d_ini_default, d_fin_default)),
-                    min_value=d_ini_default,
-                    max_value=d_fin_default,
-                    key=f"{key_prefix}f_date"
-                )
-                if isinstance(rango, tuple) and len(rango) == 2:
-                    d_ini, d_fin = rango[0], rango[1]
-                else:
-                    d_ini, d_fin = d_ini_default, d_fin_default
-
-        # Búsqueda simple
-        search_txt = st.text_input(
-            "Buscar (proveedor / artículo / nro)",
-            value=st.session_state.get(f"{key_prefix}f_search", ""),
-            key=f"{key_prefix}f_search",
-            placeholder="Ej: roche / VITEK / A00060907"
-        ).strip()
-
-        # Guardar / cargar vista
-        _init_saved_views()
-        vcol1, vcol2, vcol3 = st.columns([1.4, 1.4, 1.2])
-
-        with vcol1:
-            view_name = st.text_input("Nombre de vista", value="", key=f"{key_prefix}view_name", placeholder="Ej: Roche Nov 2025")
-
-        with vcol2:
-            view_pick = st.selectbox(
-                "Vistas guardadas",
-                options=["(ninguna)"] + _get_saved_view_names(),
-                index=0,
-                key=f"{key_prefix}view_pick"
-            )
-
-        with vcol3:
-            b1 = st.button("💾 Guardar", key=f"{key_prefix}btn_save_view")
-            b2 = st.button("↩️ Aplicar", key=f"{key_prefix}btn_load_view")
-
-        if b1:
-            _save_view(
-                view_name,
-                {
-                    "sel_prov": sel_prov,
-                    "sel_art": sel_art,
-                    "sel_mon": sel_mon,
-                    "d_ini": d_ini,
-                    "d_fin": d_fin,
-                    "search_txt": search_txt,
-                }
-            )
-            st.success("Vista guardada.")
-
-        if b2 and view_pick and view_pick != "(ninguna)":
-            vdata = _load_view(view_pick) or {}
-            try:
-                st.session_state[f"{key_prefix}f_prov"] = vdata.get("sel_prov", [])
-                st.session_state[f"{key_prefix}f_art"] = vdata.get("sel_art", [])
-                st.session_state[f"{key_prefix}f_mon"] = vdata.get("sel_mon", "TODAS")
-                if vdata.get("d_ini") and vdata.get("d_fin"):
-                    st.session_state[f"{key_prefix}f_date"] = (vdata.get("d_ini"), vdata.get("d_fin"))
-                st.session_state[f"{key_prefix}f_search"] = vdata.get("search_txt", "")
-                st.rerun()
-            except Exception:
-                pass
-
-    # ============================================================
-    # APLICAR FILTROS
-    # ============================================================
-    df_f = df_view.copy()
-
-    if sel_prov and col_proveedor:
-        df_f = df_f[df_f[col_proveedor].astype(str).isin(sel_prov)]
-
-    if sel_art and col_articulo:
-        df_f = df_f[df_f[col_articulo].astype(str).isin(sel_art)]
-
-    if sel_mon != "TODAS":
-        df_f = df_f[df_f["__moneda_view__"] == sel_mon]
-
-    if d_ini and d_fin:
-        df_f = df_f[
-            (df_f["__fecha_view__"].dt.date >= d_ini) &
-            (df_f["__fecha_view__"].dt.date <= d_fin)
-        ]
-
-    if search_txt:
-        mask = pd.Series([False] * len(df_f), index=df_f.index)
-        for c in [col_proveedor, col_articulo, col_nro]:
-            if c and c in df_f.columns:
-                try:
-                    mask = mask | df_f[c].astype(str).str.contains(search_txt, case=False, na=False)
-                except Exception:
-                    pass
-        df_f = df_f[mask]
-
-    st.caption(f"Resultados en vista: {len(df_f)}")
-
-    # ============================================================
-    # ACCIONES: DESCARGAS (vista filtrada)
-    # ============================================================
-    df_export = _df_export_clean(df_f)
-    if len(df_export) > 0:
-        d1, d2, d3 = st.columns([1, 1, 2])
-        with d1:
-            st.download_button(
-                "⬇️ CSV (vista)",
-                data=_df_to_csv_bytes(df_export),
-                file_name="compras_vista.csv",
-                mime="text/csv",
-                key=f"{key_prefix}dl_csv"
-            )
-        with d2:
-            st.download_button(
-                "⬇️ Excel (vista)",
-                data=_df_to_excel_bytes(df_export),
-                file_name="compras_vista.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"{key_prefix}dl_xlsx"
-            )
-        with d3:
-            st.caption("Descarga la vista filtrada (sin columnas internas).")
-
-    # ============================================================
-    # TABS (SIN GRAFICO/TABLA EN VISTA GENERAL)
-    # ============================================================
-    tab_all, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
-        ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Comparación / Artículos)", "Tabla"]
-    )
-
-    def _render_resumen_top_proveedores(df_tab: pd.DataFrame, etiqueta: str):
-        if df_tab is None or df_tab.empty:
-            st.info(f"Sin resultados en {etiqueta}.")
-            return
-
-        if not col_proveedor:
-            st.caption("No hay columna de proveedor para resumir.")
-            return
-
-        # Top proveedores con total (tabla chica)
-        top = (
-            df_tab.groupby(col_proveedor)["__total_num__"]
-            .sum()
-            .sort_values(ascending=False)
-        )
-
-        total_val = float(df_tab["__total_num__"].sum()) if "__total_num__" in df_tab.columns else 0.0
-
-        if len(top) > 0 and total_val:
-            prov_top = str(top.index[0])
-            share = float(top.iloc[0]) / total_val * 100.0
-            st.markdown(
-                f"**Resumen:** principal proveedor **{prov_top}** con **{share:.1f}%** del total en {etiqueta}."
-            )
-        else:
-            st.caption("No hay totales suficientes para generar resumen.")
-
-        df_top = top.head(10).reset_index()
-        df_top.columns = [col_proveedor, "Total"]
-
-        # Formato de Total para que se vea prolijo (LATAM)
-        df_top["Total"] = df_top["Total"].apply(
-            lambda x: f"{float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
-
-        st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
-        st.caption("Detalle completo solo en la pestaña **Tabla**.")
-
-    with tab_all:
-        _render_resumen_top_proveedores(df_f, "todas las monedas")
-
-    with tab_uyu:
-        _render_resumen_top_proveedores(df_f[df_f["__moneda_view__"] == "UYU"], "UYU")
-
-    with tab_usd:
-        _render_resumen_top_proveedores(df_f[df_f["__moneda_view__"] == "USD"], "USD")
-
-    with tab_graf:
-        if df_f is None or df_f.empty:
-            st.info("Sin datos para mostrar.")
-        elif time_cols and col_proveedor and len(time_cols) == 2:
-            # Tabla resumen comparativa
-            t1, t2 = time_cols
-            st.markdown("#### Resumen Comparativo")
-            df_chart = df_f[[col_proveedor] + time_cols].copy()
-            for c in time_cols:
-                df_chart[c] = df_chart[c].apply(_safe_to_float)
-            df_chart = df_chart.groupby(col_proveedor)[time_cols].sum().reset_index()
-            df_chart['Δ'] = df_chart[t2] - df_chart[t1]
-            df_chart['Δ %'] = df_chart.apply(lambda row: (row['Δ'] / row[t1] * 100) if row[t1] > 0 else 0, axis=1)
-            df_chart = df_chart.sort_values(by='Δ', key=abs, ascending=False)
-            # Formatear para tabla
-            df_table = df_chart.copy()
-            df_table[t1] = df_table[t1].apply(lambda x: _fmt_compact_money(x, "UYU"))
-            df_table[t2] = df_table[t2].apply(lambda x: _fmt_compact_money(x, "UYU"))
-            df_table['Δ'] = df_table['Δ'].apply(lambda x: _fmt_compact_money(x, "UYU"))
-            df_table['Δ %'] = df_table['Δ %'].apply(lambda x: f"{x:.1f}%")
-            st.dataframe(df_table[[col_proveedor, t1, t2, 'Δ', 'Δ %']], use_container_width=True, hide_index=True)
-
-            # Gráfico de variación (Δ) horizontal
-            st.markdown("#### Gráfico de Variación (Δ)")
-            df_chart_graf = df_chart.sort_values(by='Δ', key=abs, ascending=False).head(10)
-            # Altair barras horizontales
-            chart = alt.Chart(df_chart_graf).mark_bar().encode(
-                y=alt.Y(f'{col_proveedor}:N', sort=alt.SortField('Δ', order='descending')),
-                x='Δ:Q',
-                color=alt.condition(
-                    alt.datum.Δ > 0,
-                    alt.value('green'),  # Creció
-                    alt.value('red')     # Cayó
-                ),
-                tooltip=[col_proveedor, 'Δ', 'Δ %']
-            ).properties(
-                title=f'Variación {t2} vs {t1}'
-            )
-            st.altair_chart(chart, use_container_width=True)
-            st.caption(f"Δ = {t2} - {t1}, ordenado por impacto (top 10). Verde = creció, Rojo = cayó.")
-        elif time_cols and col_proveedor:
-            # Para más de 2 tiempos, mostrar totales horizontales
-            st.markdown("#### Gráfico de Comparación por Tiempo")
-            df_chart = df_f[[col_proveedor] + time_cols].copy()
-            for c in time_cols:
-                df_chart[c] = df_chart[c].apply(_safe_to_float)
-            df_chart = df_chart.groupby(col_proveedor)[time_cols].sum().reset_index()
-            df_melt = df_chart.melt(id_vars=[col_proveedor], value_vars=time_cols, var_name='Tiempo', value_name='Total')
-            df_melt = df_melt.sort_values(by='Total', ascending=True)
-            chart = alt.Chart(df_melt).mark_bar().encode(
-                y=alt.Y(f'{col_proveedor}:N', sort='-x'),
-                x='Total:Q',
-                color='Tiempo:N',
-                tooltip=[col_proveedor, 'Tiempo', 'Total']
-            ).properties(
-                title='Comparación por Proveedor y Tiempo'
-            )
-            st.altair_chart(chart, use_container_width=True)
-            st.caption(f"Comparación de {', '.join(time_cols)} por proveedor.")
-        elif col_articulo:
-            # Gráfico de top artículos (vertical)
-            g_mon = st.selectbox(
-                "Moneda del gráfico",
-                options=["TODAS", "UYU", "USD"],
-                index=0,
-                key=f"{key_prefix}g_mon"
-            )
-            df_g = df_f.copy()
-            if g_mon != "TODAS":
-                df_g = df_g[df_g["__moneda_view__"] == g_mon]
-
-            top_art = (
-                df_g.groupby(col_articulo)["__total_num__"]
-                .sum()
-                .sort_values(ascending=False)
-            ).head(10)
-
-            if len(top_art) == 0:
-                st.info("Sin resultados para ese filtro.")
-            else:
-                df_top_art = top_art.reset_index()
-                df_top_art.columns = [col_articulo, "Total"]
-                df_top_art[col_articulo] = df_top_art[col_articulo].apply(lambda x: _shorten_text(x, 60))
-
-                st.dataframe(df_top_art, use_container_width=True, hide_index=True, height=320)
-
-                try:
-                    chart_df = df_top_art.set_index(col_articulo)["Total"]
-                    st.bar_chart(chart_df)
-                except Exception:
-                    pass
-        else:
-            st.info("Sin datos suficientes para gráfico.")
-
-    with tab_tabla:
-        if df_f is None or df_f.empty:
-            st.info("Sin resultados para mostrar.")
-        else:
-            # Orden preferido (mantiene columnas originales)
-            pref = []
-            for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
-                if c and c in df_f.columns:
-                    pref.append(c)
-            resto = [c for c in df_f.columns if c not in pref and not str(c).startswith("__")]
-            show_cols = pref + resto
-
-            # Paginación
-            t1, t2, t3 = st.columns([1.2, 1.0, 1.8])
-            with t1:
-                page_size = st.selectbox(
-                    "Filas por página",
-                    options=[25, 50, 100, 250],
-                    index=0,
-                    key=f"{key_prefix}page_size"
-                )
-            max_pages = max(1, int((len(df_f) + int(page_size) - 1) / int(page_size)))
-            with t2:
-                page = st.number_input(
-                    "Página",
-                    min_value=1,
-                    max_value=max_pages,
-                    value=min(st.session_state.get(f"{key_prefix}page", 1), max_pages),
-                    step=1,
-                    key=f"{key_prefix}page"
-                )
-            with t3:
-                st.caption(f"Página {int(page)} de {max_pages} · Total filas: {len(df_f)}")
-
-            df_page = _paginate(df_f[show_cols], int(page), int(page_size)).copy()
-
-            # Recortar textos para vista limpia
-            if col_proveedor and col_proveedor in df_page.columns:
-                df_page[col_proveedor] = df_page[col_proveedor].apply(lambda x: _shorten_text(x, 60))
-            if col_articulo and col_articulo in df_page.columns:
-                df_page[col_articulo] = df_page[col_articulo].apply(lambda x: _shorten_text(x, 60))
-
-            st.dataframe(df_page, use_container_width=True, height=460)
-
-            # Drill-down por factura
-            if col_nro and col_nro in df_f.columns:
-                st.markdown("#### Detalle por factura")
-                nros = [n for n in df_f[col_nro].dropna().astype(str).unique().tolist() if str(n).strip()]
-                nros = sorted(nros)[:5000]
-
-                det_col1, det_col2 = st.columns([1.2, 2.8])
-                with det_col1:
-                    det_search = st.text_input(
-                        "Buscar nro factura",
-                        value="",
-                        key=f"{key_prefix}det_search",
-                        placeholder="Ej: A00060907"
-                    ).strip()
-
-                nro_opts = nros
-                if det_search:
-                    nro_opts = [n for n in nros if det_search.lower() in str(n).lower()]
-                    nro_opts = nro_opts[:200]
-
-                with det_col2:
-                    nro_sel = st.selectbox(
-                        "Seleccionar factura",
-                        options=["(ninguna)"] + nro_opts,
-                        index=0,
-                        key=f"{key_prefix}det_nro_sel"
-                    )
-
-                if nro_sel and nro_sel != "(ninguna)":
-                    df_fac = df_f[df_f[col_nro].astype(str) == str(nro_sel)].copy()
-
-                    tot_fac = float(df_fac["__total_num__"].sum())
-                    mon_fac = "USD" if (df_fac["__moneda_view__"] == "USD").any() and not (df_fac["__moneda_view__"] == "UYU").any() else "UYU"
-                    st.markdown(
-                        f"**Factura:** `{nro_sel}` · **Items:** {len(df_fac)} · **Total:** {_fmt_compact_money(tot_fac, mon_fac)}"
-                    )
-
-                    pref_fac = []
-                    for c in [col_articulo, col_cantidad, col_total, col_fecha, col_moneda]:
-                        if c and c in df_fac.columns:
-                            pref_fac.append(c)
-                    resto_fac = [c for c in df_fac.columns if c not in pref_fac and not str(c).startswith("__")]
-                    show_cols_fac = pref_fac + resto_fac
-
-                    df_fac_disp = df_fac[show_cols_fac].copy()
-                    if col_articulo and col_articulo in df_fac_disp.columns:
-                        df_fac_disp[col_articulo] = df_fac_disp[col_articulo].apply(lambda x: _shorten_text(x, 70))
-
-                    st.dataframe(df_fac_disp, use_container_width=True, height=320)
-
-
-# =========================
-# ROUTER SQL (ahora incluye compras, comparativas y stock)
-# =========================
-def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
-
-    _dbg_set_sql(
-        tag=tipo,
-        query=f"-- Ejecutando tipo: {tipo}\n-- (SQL real en sql_compras/sql_comparativas/sql_facturas)\n",
-        params=parametros,
-        df=None,
-    )
-
-    # ===== FACTURAS =====
-    if tipo == "detalle_factura":
-        df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "facturas_proveedor":
-        # ✅ Usa sql_compras para incluir filtro de Tipo Comprobante
-        df = sqlq_compras.get_facturas_proveedor_detalle(
-            proveedores=parametros.get("proveedores", []),
-            meses=parametros.get("meses"),
-            anios=parametros.get("anios"),
-            desde=parametros.get("desde"),
-            hasta=parametros.get("hasta"),
-            articulo=parametros.get("articulo"),
-            moneda=parametros.get("moneda"),
-            limite=parametros.get("limite", 5000),
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "ultima_factura":
-        df = sqlq_facturas.get_ultima_factura_inteligente(parametros["patron"])
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "facturas_articulo":
-        df = sqlq_facturas.get_facturas_articulo(
-            parametros["articulo"],
-            solo_ultima=parametros.get("solo_ultima", False),
-            limite=parametros.get("limite", 50),
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "resumen_facturas":
-        df = sqlq_facturas.get_resumen_facturas_por_proveedor(
-            meses=parametros.get("meses"),
-            anios=parametros.get("anios"),
-            moneda=parametros.get("moneda"),
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "facturas_rango_monto":
-        df = sqlq_facturas.get_facturas_por_rango_monto(
-            monto_min=parametros.get("monto_min", 0),
-            monto_max=parametros.get("monto_max", 999999999),
-            proveedores=parametros.get("proveedores"),
-            meses=parametros.get("meses"),
-            anios=parametros.get("anios"),
-            moneda=parametros.get("moneda"),
-            limite=parametros.get("limite", 100),
-        )
-        _dbg_set_result(df)
-        return df
-
-    # ===== COMPRAS =====
-    elif tipo == "compras_anio":
-        df = sqlq_compras.get_compras_anio(parametros["anio"])
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "compras_mes":
-        df = sqlq_compras.get_compras_por_mes_excel(parametros["mes"])
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "compras_proveedor_mes":
-        df = sqlq_compras.get_detalle_compras_proveedor_mes(parametros["proveedor"], parametros["mes"])
-        _dbg_set_result(df)
-        return df
-
-    # AGREGADO: COMPRAS MÚLTIPLES
-    elif tipo == "compras_multiples":
-        df = sqlq_compras.get_compras_multiples(
-            proveedores=parametros.get("proveedores", []),
-            meses=parametros.get("meses", []),
-            anios=parametros.get("anios", []),
-            limite=parametros.get("limite", 5000)
-        )
-        _dbg_set_result(df)
-        return df
-
-    # ===== COMPARATIVAS =====
-    elif tipo == "comparar_proveedor_meses":
-        df = sqlq_comparativas.get_comparacion_proveedor_meses(
-            parametros["proveedor"], parametros["mes1"], parametros["mes2"], parametros["label1"], parametros["label2"]
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "comparar_proveedor_anios":
-        df = sqlq_comparativas.get_comparacion_proveedor_anios(
-            parametros["proveedor"], parametros["anios"], parametros["label1"], parametros["label2"]
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "comparar_proveedores_meses":
-        df = sqlq_comparativas.get_comparacion_proveedores_meses(
-            parametros["proveedores"], parametros["mes1"], parametros["mes2"], parametros["label1"], parametros["label2"]
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "comparar_proveedores_anios":
-        df = sqlq_comparativas.get_comparacion_proveedores_anios(
-            parametros["proveedores"], parametros["anios"], parametros["label1"], parametros["label2"]
-        )
-        _dbg_set_result(df)
-        return df
-
-    # ===== STOCK =====
-    elif tipo == "stock_total":
-        df = sqlq_compras.get_stock_total()  # Ajusta si es otro módulo
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "stock_articulo":
-        df = sqlq_compras.get_stock_articulo(parametros["articulo"])  # Ajusta si es otro módulo
-        _dbg_set_result(df)
-        return df
-
-    # ===== LISTADO FACTURAS AÑO =====
-    elif tipo == "listado_facturas_anio":
-        df = sqlq_compras.get_listado_facturas_por_anio(parametros["anio"])
-        _dbg_set_result(df)
-        return df
-
-    # ===== TOTAL FACTURAS POR MONEDA AÑO =====
-    elif tipo == "total_facturas_por_moneda_anio":
-        df = sqlq_compras.get_total_facturas_por_moneda_anio(parametros["anio"])
-        _dbg_set_result(df)
-        return df
-
-    # ===== TOTAL FACTURAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
-    elif tipo == "total_facturas_por_moneda_generico":
-        df = sqlq_facturas.get_total_facturas_por_moneda_todos_anios()
-        _dbg_set_result(df)
-        return df
-
-    # ===== TOTAL COMPRAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
-    elif tipo == "total_compras_por_moneda_generico":
-        df = sqlq_compras.get_total_compras_por_moneda_todos_anios()
-        _dbg_set_result(df)
-        return df
-
-    raise ValueError(f"Tipo '{tipo}' no implementado en ejecutar_consulta_por_tipo")
-
-
-# =========================
-# UI PRINCIPAL
-# =========================
-def Compras_IA():
-
-    inicializar_historial()
-
-    st.markdown("### 🤖 Asistente de Compras y Facturas")
-
-    if st.button("🗑️ Limpiar chat"):
-        st.session_state["historial_compras"] = []
-        _dbg_set_interpretacion({})
-        _dbg_set_sql(None, "", [], None)
-        st.rerun()
-
-    st.markdown("---")
-
-    # Mostrar historial
-    for idx, msg in enumerate(st.session_state["historial_compras"]):
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-            if "df" in msg and msg["df"] is not None:
-                df = msg["df"]
-
-                # Dashboard vendible compacto
-                try:
-                    st.markdown("---")
-                    render_dashboard_compras_vendible(
-                        df,
-                        titulo="Datos",
-                        key_prefix=f"hist_{idx}_"
-                    )
-                except Exception as e:
-                    # Fallback viejo (no romper nada)
-                    totales = calcular_totales_por_moneda(df)
-                    if totales:
-                        col1, col2, col3 = st.columns([2, 2, 3])
-
-                        with col1:
-                            pesos = totales.get("Pesos", 0)
-                            pesos_str = (
-                                f"${pesos/1_000_000:,.2f}M"
-                                if pesos >= 1_000_000
-                                else f"${pesos:,.2f}"
-                            )
-                            st.metric(
-                                "💵 Total Pesos",
-                                pesos_str,
-                                help=f"Valor exacto: ${pesos:,.2f}",
-                            )
-
-                        with col2:
-                            usd = totales.get("USD", 0)
-                            usd_str = (
-                                f"${usd/1_000_000:,.2f}M"
-                                if usd >= 1_000_000
-                                else f"${usd:,.2f}"
-                            )
-                            st.metric(
-                                "💵 Total USD",
-                                usd_str,
-                                help=f"Valor exacto: ${usd:,.2f}",
-                            )
-
-                    st.markdown("---")
-                    st.dataframe(df, use_container_width=True, height=400)
-                    st.caption(f"⚠️ Dashboard vendible falló: {e}")
-
-    # Input
-    pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
-
-    if pregunta:
-        st.session_state["historial_compras"].append(
-            {
-                "role": "user",
-                "content": pregunta,
-                "timestamp": datetime.now().timestamp(),
-            }
-        )
-
-        # =========================
-        # USAR ORQUESTADOR EN LUGAR DE interpretar_pregunta
-        # =========================
-        mensaje, df, sugerencia = procesar_pregunta_v2(pregunta)
-
-        respuesta_content = mensaje
-        respuesta_df = df
-
-        # Si hay sugerencia, agregarla
-        if sugerencia:
-            if isinstance(sugerencia, dict) and "alternativas" in sugerencia:
-                alternativas = sugerencia.get("alternativas", [])
-                if alternativas:
-                    respuesta_content += "\n\n**Alternativas:**\n" + "\n".join(
-                        f"• {a}" for a in alternativas[:3]
-                    )
-
-        st.session_state["historial_compras"].append(
-            {
-                "role": "assistant",
-                "content": respuesta_content,
-                "df": respuesta_df,
-                "tipo": "orquestador",  # Marcamos que vino del orquestador
-                "pregunta": pregunta,
-                "timestamp": datetime.now().timestamp(),
-            }
-        )
-
-        st.rerun()
+CSS_GLOBAL = r"""
+<style>
+
+/* =========================
+   Ocultar basura (no rompe menú/sidebar)
+   ========================= */
+footer { visibility: hidden; }
+div[data-testid="stDecoration"] { display: none !important; }
+
+/* =========================
+   FORZAR MODO CLARO (GLOBAL)
+   ========================= */
+:root, html, body, .stApp {
+  color-scheme: light !important;
+}
+/* ================================
+   FORZAR LIGHT MODE (ANTI DARK)
+   ================================ */
+
+/* Decirle al navegador que SOLO usamos light */
+:root {
+  color-scheme: light !important;
+}
+
+/* Evitar dark automático de Chrome */
+html {
+  background-color: #f6f4ef !important;
+}
+
+/* Inputs, cards, contenedores */
+* {
+  background-color: inherit;
+}
+
+/* Anti "forced dark" de Chrome */
+@media (prefers-color-scheme: dark) {
+  html, body {
+    background: #f6f4ef !important;
+    color: #0f172a !important;
+  }
+
+  * {
+    filter: none !important;
+  }
+}
+html, body {
+  background: #f6f4ef !important;
+  color: #0f172a !important;
+}
+
+/* Si el sistema está dark, igual lo dejamos claro */
+@media (prefers-color-scheme: dark) {
+  :root, html, body, .stApp {
+    color-scheme: light !important;
+  }
+  html, body {
+    background: #f6f4ef !important;
+    color: #0f172a !important;
+  }
+}
+
+
+/* =========================
+   Fondo principal APP
+   ========================= */
+:root {
+  --fc-bg-1: #f6f4ef;
+  --fc-bg-2: #f3f6fb;
+  --fc-text: #0f172a;
+}
+
+html, body,
+.stApp,
+div[data-testid="stApp"],
+div[data-testid="stAppViewContainer"],
+div[data-testid="stAppViewContainer"] > .main,
+div[data-testid="stAppViewContainer"] > .main > div {
+  background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2)) !important;
+  color: var(--fc-text) !important;
+}
+
+html, body {
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* =========================
+   OCULTAR SOLO el linkcito del H1 (ícono ancla)
+   ========================= */
+[data-testid="stHeaderActionElements"] { display: none !important; }
+h1 > span.eqpbrs03, h2 > span.eqpbrs03, h3 > span.eqpbrs03 { display: none !important; }
+
+/* =========================
+   OCULTAR EL H1 "Inicio" gigante
+   ========================= */
+h1#inicio { display: none !important; }
+
+/* =========================
+   (Opcional) ocultar tus cosas custom si quedaron
+   ========================= */
+#campana-mobile { display: none !important; }
+#mobile-header .logo { display: none !important; }
+
+/* =========================
+   SIDEBAR: blanco + texto negro
+   ========================= */
+section[data-testid="stSidebar"] {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(15,23,42,0.08);
+}
+
+section[data-testid="stSidebar"] > div,
+div[data-testid="stSidebar"] > div {
+  background: rgba(255,255,255,0.92) !important;
+  backdrop-filter: blur(8px);
+}
+
+section[data-testid="stSidebar"] *,
+div[data-testid="stSidebar"] * {
+  color: #0f172a !important;
+}
+
+/* =========================
+   INPUTS / SELECT / DATE: blanco + texto negro (GLOBAL)
+   ========================= */
+div[data-baseweb="base-input"],
+div[data-baseweb="input"],
+div[data-baseweb="select"],
+div[data-baseweb="datepicker"],
+textarea {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+div[data-baseweb="base-input"] input,
+div[data-baseweb="input"] input,
+div[data-baseweb="select"] input,
+div[data-baseweb="datepicker"] input,
+textarea {
+  background: transparent !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+/* Dropdowns (popover/menu) */
+div[data-baseweb="popover"],
+div[data-baseweb="popover"] *,
+div[data-baseweb="menu"],
+div[data-baseweb="menu"] * {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* =========================
+   LOGIN: fondo violeta + card (se activa SOLO si existe #fc-login-marker)
+   (con :has + fallback por overlay)
+   ========================= */
+
+/* Fallback: overlay violeta detrás (funciona aunque :has falle) */
+#fc-login-marker {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+div[data-testid="stAppViewContainer"] > .main {
+  position: relative;
+  z-index: 1;
+}
+
+/* Si el navegador soporta :has, afinamos TODO el login */
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) header[data-testid="stHeader"] {
+  visibility: hidden !important;
+}
+
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .block-container {
+  padding-top: 2rem !important;
+  padding-bottom: 1rem !important;
+}
+
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-radius: 24px !important;
+  padding: 32px 36px !important;
+  border: none !important;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Tabs login */
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-baseweb="tab-list"] {
+  background: #f1f5f9 !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+  gap: 4px !important;
+}
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) button[data-baseweb="tab"] {
+  color: #64748b !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  padding: 10px 20px !important;
+  background: transparent !important;
+}
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) button[data-baseweb="tab"][aria-selected="true"] {
+  color: #667eea !important;
+  background: white !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Inputs login (incluye botón ojo) */
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="base-input"],
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="input"] {
+  background: #f8fafc !important;
+  border: 2px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="base-input"] input,
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="input"] input {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  color: #1e293b !important;
+  -webkit-text-fill-color: #1e293b !important;
+  padding: 12px 16px !important;
+  font-size: 16px !important;
+}
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="base-input"] button,
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="input"] button {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #475569 !important;
+  padding-right: 10px !important;
+}
+
+/* Botón login */
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[kind="secondaryFormSubmit"],
+div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[type="submit"] {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  padding: 14px 28px !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+  text-transform: none !important;
+}
+
+/* Responsive login */
+@media (max-width: 768px) {
+  div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
+    padding: 24px 20px !important;
+    border-radius: 20px !important;
+  }
+  div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .block-container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-bottom: 4rem !important;
+  }
+/* ========================================================= */
+/* 🔒 FORZAR LIGHT MODE – ignorar dark mode del sistema */
+/* ========================================================= */
+
+:root {
+  color-scheme: light !important;
+}
+
+html, body {
+  background-color: #f6f4ef !important;
+  color: #0f172a !important;
+}
+
+/* Anula prefers-color-scheme: dark del navegador */
+@media (prefers-color-scheme: dark) {
+  html, body,
+  [data-testid="stAppViewContainer"],
+  [data-testid="stSidebar"],
+  section[data-testid="stSidebar"] > div,
+  .block-container,
+  input, textarea, select, button {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+}
+@media (max-width: 480px) {
+  div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
+    padding: 22px 18px !important;
+  }
+}
+
+</style>
+"""
