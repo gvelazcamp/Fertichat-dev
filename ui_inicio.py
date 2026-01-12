@@ -179,7 +179,7 @@ def mostrar_inicio():
             padding-right: 0.65rem !important;
         }
 
-        /* Tarjeta móvil (BUTTON clickeable - SIN EFECTOS VISUALES AL CLICKEAR) */
+        /* Tarjeta móvil (BUTTON clickeable - COMPLETAMENTE INVISIBLE AL CLICK) */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard{
             display:flex;
             align-items:center;
@@ -199,18 +199,18 @@ def mostrar_inicio():
 
             padding:14px 14px;
             cursor:pointer;
-            transition: all 0ms ease;  /* Sin transición para que sea instantáneo */
 
-            /* Estilos de button - SIN RESALTADOS */
+            /* Estilos de button - SIN NINGÚN EFECTO VISUAL */
             outline: none;
             -webkit-tap-highlight-color: rgba(0,0,0,0);
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             -webkit-focus-ring-color: transparent;
             user-select: none;
+            transition: none;
         }
 
-        /* SIN EFECTOS AL PRESIONAR */
+        /* NINGÚN CAMBIO AL PRESIONAR, FOCUS O HOVER */
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:active,
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:focus,
         div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:hover{
@@ -273,11 +273,11 @@ def mostrar_inicio():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Helpers HTML (móvil) - BUTTON SIN EFECTOS VISUALES
+    # Helpers HTML (móvil) - ONCLICK CON ASSIGN PARA MISMA PESTAÑA
     # =========================
     def _mcard(go:  str, icon: str, title: str, sub: str, tile_class: str) -> str:
         return f'''
-        <button class="fc-mcard" onclick="const url = new URL(window.location); url.searchParams.set('go', '{go}'); window.location.href = url.toString();">
+        <button class="fc-mcard" onclick="window.location.assign('?go={go}');">
             <div class="fc-micon {tile_class}">{icon}</div>
             <div class="fc-mtxt">
                 <p class="fc-mtitle">{title}</p>
