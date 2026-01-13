@@ -1,5 +1,5 @@
 # =========================
-# UI_INICIO.PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (CORPORATIVO)
+# UI_INICIO.PY - PANTALLA DE INICIO CON ACCESOS RÁPIDOS (PC SOLO, SIN RESPONSIVE)
 # =========================
 
 import streamlit as st
@@ -9,7 +9,7 @@ import textwrap
 
 
 def mostrar_inicio():
-    """Pantalla de inicio con accesos rápidos a los módulos (look corporativo)"""
+    """Pantalla de inicio con accesos rápidos a los módulos (PC solo)"""
 
     # =========================
     # Datos usuario / saludo
@@ -48,7 +48,7 @@ def mostrar_inicio():
     st.markdown('<div id="fc-home-marker" style="display:none;"></div>', unsafe_allow_html=True)
 
     # =========================
-    # CSS para botones como tarjetas (SOLO HOME)
+    # CSS para botones como tarjetas (PC SOLO)
     # =========================
     st.markdown("""
     <style>
@@ -80,7 +80,7 @@ def mostrar_inicio():
         text-align:left;
 
         white-space: pre-line; /* respeta \n del texto */
-        font-size:13.5px;      /* “desc” */
+        font-size:13.5px;      /* "desc" */
         font-weight:600;
         color:#334155;
         line-height:1.22;
@@ -147,26 +147,6 @@ def mostrar_inicio():
     .tile-baja { background:rgba(244,63,94,0.10); border-color:rgba(244,63,94,0.18); }
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
-
-    /* Responsive */
-    @media (max-width: 900px){
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-            width:48px;
-            height:48px;
-            border-radius:14px;
-            font-size:24px;
-            left: 14px;
-            top: calc(50% + 44px);      /* <-- BAJADO ~0.5cm MÁS MOBILE */
-        }
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-            height: 92px;
-            min-height: 92px;
-            padding:14px 14px 14px 78px;
-        }
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
-            font-size:15px;
-        }
-    }
 
     /* SIDEBAR LIGHT SOLO EN HOME */
     section[data-testid="stSidebar"] {
