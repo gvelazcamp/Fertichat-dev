@@ -123,6 +123,8 @@ def get_compras_multiples(
         'diciembre': '12'
     }
 
+    total_expr = "CAST(NULLIF(REPLACE(REPLACE(TRIM(\"Monto Neto\"), '.', ''), ',', '.'), '') AS NUMERIC)"  # ✅ FIXED for thousand separator and comma decimal
+
     where_parts = []  # ✅ REMOVED type filter to include all records
     params: List[Any] = []
 
@@ -180,7 +182,7 @@ def get_compras_multiples(
             "Fecha",
             "Cantidad",
             "Moneda",
-            CAST(NULLIF(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED for thousand separator and comma decimal
+            {total_expr} AS Total  # ✅ CHANGED to numeric with full fix
         FROM chatbot_raw
         WHERE {" AND ".join(where_parts)}
         ORDER BY "Fecha" DESC NULLS LAST
@@ -242,6 +244,8 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     # Construir la consulta con filtro opcional de año
     anio_filter = f'AND "Año" = {anio_clean}' if anio_clean else ""
     
+    total_expr = "CAST(NULLIF(REPLACE(REPLACE(TRIM(\"Monto Neto\"), '.', ''), ',', '.'), '') AS NUMERIC)"  # ✅ FIXED for thousand separator and comma decimal
+    
     # Usar Total simple para evitar errores de parseo
     sql = f"""
         SELECT 
@@ -251,7 +255,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
             "Fecha",
             "Cantidad",
             "Moneda",
-            CAST(NULLIF(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED for thousand separator and comma decimal
+            {total_expr} AS Total  # ✅ CHANGED to numeric with full fix
         FROM chatbot_raw 
         WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", ' ', '', 'g'))) LIKE LOWER(TRIM(regexp_replace(%s, ' ', '', 'g')))
           AND LOWER(TRIM("Mes")) = LOWER(%s)
@@ -273,7 +277,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                     "Fecha",
                     "Cantidad",
                     "Moneda",
-                    CAST(NULLIF(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED for thousand separator and comma decimal
+                    {total_expr} AS Total  # ✅ CHANGED to numeric with full fix
                 FROM chatbot_raw 
                 WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", ' ', '', 'g'))) LIKE LOWER(TRIM(regexp_replace(%s, ' ', '', 'g')))
                   AND LOWER(TRIM("Mes")) = LOWER(%s)
@@ -302,6 +306,8 @@ def get_detalle_facturas_proveedor_anio(
     anios = sorted(anios)
     anios_sql = ", ".join(map(str, anios))  # "2024, 2025"
     
+    total_expr = "CAST(NULLIF(REPLACE(REPLACE(TRIM(\"Monto Neto\"), '.', ''), ',', '.'), '') AS NUMERIC)"  # ✅ FIXED for thousand separator and comma decimal
+    
     # Usar Total simple
     moneda_sql = ""
     if moneda:
@@ -326,7 +332,7 @@ def get_detalle_facturas_proveedor_anio(
             "Fecha",
             "Año",
             "Moneda",
-            CAST(NULLIF(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED for thousand separator and comma decimal
+            {total_expr} AS Total  # ✅ CHANGED to numeric with full fix
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" IN ({anios_sql})
