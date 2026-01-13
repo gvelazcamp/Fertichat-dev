@@ -920,7 +920,7 @@ def get_dashboard_ultimas_compras(anio: int, limite: int = 5) -> pd.DataFrame:
                 "Cliente / Proveedor" AS proveedor,
                 "Monto Neto" AS total
             FROM chatbot_raw
-            WHERE "Tipo Comprobante" LIKE 'Compra%'
+            WHERE "Tipo Comprobante" LIKE '%Compra%'
               AND "Fecha" IS NOT NULL
               AND "Año"::int = %s
             ORDER BY "Fecha" DESC
