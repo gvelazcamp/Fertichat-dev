@@ -175,10 +175,13 @@ def _stock_to_float(x) -> float:
         return 0.0
 
 
-@st.cache_data(ttl=300)
+# Removido @st.cache_data para debug
 def _get_stock_cantidad_1(top_n: int = 200) -> pd.DataFrame:
     # Cambiar a stock bajo (<=10) en lugar de exactamente =1
     df = get_stock_bajo(10)
+    st.write(f"DEBUG: df from get_stock_bajo(10): shape={df.shape if df is not None else 'None'}")
+    if df is not None and not df.empty:
+        st.write(f"DEBUG: first row: {df.iloc[0].to_dict() if len(df) > 0 else 'No rows'}")
     if df is None or df.empty:
         return pd.DataFrame(columns=["FAMILIA", "CODIGO", "ARTICULO", "DEPOSITO", "LOTE", "VENCIMIENTO", "STOCK"])
 
@@ -187,9 +190,12 @@ def _get_stock_cantidad_1(top_n: int = 200) -> pd.DataFrame:
     return dfx.head(int(top_n))
 
 
-@st.cache_data(ttl=300)
+# Removido @st.cache_data para debug
 def _get_lotes_proximos_a_vencer(dias: int = 30) -> pd.DataFrame:
     df = get_lotes_por_vencer(dias)
+    st.write(f"DEBUG: df from get_lotes_por_vencer({dias}): shape={df.shape if df is not None else 'None'}")
+    if df is not None and not df.empty:
+        st.write(f"DEBUG: first row: {df.iloc[0].to_dict() if len(df) > 0 else 'No rows'}")
     if df is None or df.empty:
         return pd.DataFrame(columns=["FAMILIA", "CODIGO", "ARTICULO", "DEPOSITO", "LOTE", "VENCIMIENTO", "STOCK", "Dias_Para_Vencer"])
     return df
@@ -423,7 +429,7 @@ def mostrar_stock_ia():
                 st.markdown(f"""
                 <div style="background-color: #fefce8; border-left: 5px solid #ca8a04; padding: 15px; border-radius: 5px; margin: 10px 0;">
                     <span style="color: #ca8a04; font-weight: bold; font-size: 1.1em;">📋 Próximo vencimiento</span><br>
-                    <span style="color: #9a3412;"><b>{articulo}</b> - Lote: <b>{lote}</b></span><br>
+                    <span style="color: #854d0e;"><b>{articulo}</b> - Lote: <b>{lote}</b></span><br>
                     <span style="color: #854d0e;">Vence: <b>{venc}</b> ({dias} días) | Stock: {stock}</span>
                 </div>
                 {contador}
