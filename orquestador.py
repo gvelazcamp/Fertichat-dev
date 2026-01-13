@@ -26,6 +26,22 @@ from sql_compras import (  # Importar funciones de compras
     get_compras_multiples,
     get_compras_anio,
 )
+from sql_stock import (  # Importar funciones de stock
+    get_lista_articulos_stock,
+    get_lista_familias_stock,
+    get_lista_depositos_stock,
+    buscar_stock_por_lote,
+    get_stock_articulo,
+    get_stock_lote_especifico,
+    get_stock_familia,
+    get_stock_total,
+    get_stock_por_familia,
+    get_stock_por_deposito,
+    get_lotes_por_vencer,
+    get_lotes_vencidos,
+    get_stock_bajo,
+    get_alertas_vencimiento_multiple,
+)
 from utils_format import formatear_dataframe
 from utils_openai import responder_con_openai
 
@@ -44,7 +60,7 @@ def _init_orquestador_state():
         # MARCA PARA VER SI ESTÁ USANDO AGENTIC O FALLBACK
         # =========================
         st.session_state["AGENTIC_SOURCE"] = _AGENTIC_SOURCE
-    except Exception:
+    except Exception as e:  # Corregido: agregado 'as e'
         ORQUESTADOR_ERROR = str(e)
 
 
@@ -218,6 +234,92 @@ def procesar_pregunta_v2(pregunta: str):
                 "pregunta_original": pregunta,
             },
         )
+
+    # =========================
+    # NUEVO: CONSULTAS DE STOCK
+    # =========================
+    if tipo == "stock_busqueda":
+        texto = params.get("texto", "")
+        articulo = params.get("articulo", "")
+        lote = params.get("lote", "")
+        familia = params.get("familia", "")
+        deposito = params.get("deposito", "")
+        
+        df = buscar_stock_por_lote(
+            articulo=articulo or None,
+            lote=lote or None,
+            familia=familia or None,
+            deposito=deposito or None,
+            texto_busqueda=texto or None
+        )
+        if df is None or df.empty:
+            return "⚠️ No se encontraron registros de stock.", None, None
+        return f"📦 Stock encontrado ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_articulo":
+        articulo = params.get("articulo", "").strip()
+        if not articulo:
+            return "❌ Indicá el artículo. Ej: stock de balsamo canada", None, None
+        df = get_stock_articulo(articulo)
+        if df is None or df.empty:
+            return f"⚠️ No se encontró stock para '{articulo}'.", None, None
+        return f"📦 Stock de {articulo.upper()} ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_lote":
+        lote = params.get("lote", "").strip()
+        if not lote:
+            return "❌ Indicá el lote. Ej: stock lote HX29015161", None, None
+        df = get_stock_lote_especifico(lote)
+        if df is None or df.empty:
+            return f"⚠️ No se encontró stock para lote '{lote}'.", None, None
+        return f"📦 Stock del lote {lote.upper()} ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_familia":
+        familia = params.get("familia", "").strip()
+        if not familia:
+            return "❌ Indicá la familia. Ej: stock familia AF", None, None
+        df = get_stock_familia(familia)
+        if df is None or df.empty:
+            return f"⚠️ No se encontró stock para familia '{familia}'.", None, None
+        return f"📦 Stock de familia {familia.upper()} ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_total":
+        df = get_stock_total()
+        if df is None or df.empty:
+            return "⚠️ No se pudo obtener el resumen de stock.", None, None
+        return "📊 Resumen total de stock:", formatear_dataframe(df), None
+
+    if tipo == "stock_por_familia":
+        df = get_stock_por_familia()
+        if df is None or df.empty:
+            return "⚠️ No se pudo obtener el stock por familia.", None, None
+        return "📊 Stock por familia:", formatear_dataframe(df), None
+
+    if tipo == "stock_por_deposito":
+        df = get_stock_por_deposito()
+        if df is None or df.empty:
+            return "⚠️ No se pudo obtener el stock por depósito.", None, None
+        return "📊 Stock por depósito:", formatear_dataframe(df), None
+
+    if tipo == "stock_vencidos":
+        df = get_lotes_vencidos()
+        if df is None or df.empty:
+            return "✅ No hay lotes vencidos.", None, None
+        return f"⚠️ Lotes vencidos ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_por_vencer":
+        dias = params.get("dias", 30)
+        df = get_lotes_por_vencer(dias)
+        if df is None or df.empty:
+            return f"✅ No hay lotes por vencer en {dias} días.", None, None
+        return f"⏰ Lotes por vencer en {dias} días ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_bajo":
+        minimo = params.get("minimo", 10)
+        df = get_stock_bajo(minimo)
+        if df is None or df.empty:
+            return f"✅ No hay stock bajo (menos de {minimo} unidades).", None, None
+        return f"📉 Stock bajo (< {minimo} unidades, {len(df)} registros):", formatear_dataframe(df), None
 
     return _ejecutar_consulta(tipo, params, pregunta)
 
