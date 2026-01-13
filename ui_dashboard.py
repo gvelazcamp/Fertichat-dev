@@ -77,11 +77,11 @@ def mostrar_dashboard():
             if df_meses is not None and not df_meses.empty:
                 fig_meses = px.bar(
                     df_meses,
-                    x='Mes',
-                    y='Total',
-                    color='Total',
+                    x='mes',
+                    y='total',
+                    color='total',
                     color_continuous_scale='Blues',
-                    labels={'Total': 'Monto ($)', 'Mes': ''}
+                    labels={'total': 'Monto ($)', 'mes': ''}
                 )
                 fig_meses.update_layout(
                     showlegend=False,
@@ -111,12 +111,12 @@ def mostrar_dashboard():
                 if df_provs is not None and not df_provs.empty:
                     fig_provs = px.bar(
                         df_provs,
-                        x='Total',
-                        y='Proveedor',
+                        x='total',
+                        y='proveedor',
                         orientation='h',
-                        color='Total',
+                        color='total',
                         color_continuous_scale='Oranges',
-                        labels={'Total': 'Monto ($)', 'Proveedor': ''}
+                        labels={'total': 'Monto ($)', 'proveedor': ''}
                     )
                     fig_provs.update_layout(
                         showlegend=False,
@@ -133,12 +133,12 @@ def mostrar_dashboard():
                 if df_provs_usd is not None and not df_provs_usd.empty:
                     fig_provs_usd = px.bar(
                         df_provs_usd,
-                        x='Total',
-                        y='Proveedor',
+                        x='total',
+                        y='proveedor',
                         orientation='h',
-                        color='Total',
+                        color='total',
                         color_continuous_scale='Oranges',
-                        labels={'Total': 'Monto (U$S)', 'Proveedor': ''}
+                        labels={'total': 'Monto (U$S)', 'proveedor': ''}
                     )
                     fig_provs_usd.update_layout(
                         showlegend=False,
@@ -164,8 +164,8 @@ def mostrar_dashboard():
             if df_familias is not None and not df_familias.empty:
                 fig_torta = px.pie(
                     df_familias,
-                    values='Total',
-                    names='Familia',
+                    values='total',
+                    names='familia',
                     color_discrete_sequence=px.colors.qualitative.Set3,
                     hole=0.4  # Donut chart
                 )
@@ -240,10 +240,10 @@ def mostrar_dashboard():
             df_ultimas = get_dashboard_ultimas_compras(5)
             if df_ultimas is not None and not df_ultimas.empty:
                 for _, row in df_ultimas.iterrows():
-                    total_fmt = f"${row['Total']:,.0f}".replace(',', '.') if pd.notna(row['Total']) else "$0"
-                    articulo = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
-                    proveedor = str(row['Proveedor'])[:15] if pd.notna(row['Proveedor']) else ""
-                    st.markdown(f"• {row['Fecha']} - **{articulo}** - {proveedor} - {total_fmt}")
+                    total_fmt = f"${row['total']:,.0f}".replace(',', '.') if pd.notna(row['total']) else "$0"
+                    articulo = str(row['articulo'])[:25] + "..." if len(str(row['articulo'])) > 25 else str(row['articulo'])
+                    proveedor = str(row['proveedor'])[:15] if pd.notna(row['proveedor']) else ""
+                    st.markdown(f"• {row['fecha']} - **{articulo}** - {proveedor} - {total_fmt}")
             else:
                 st.info("No hay compras recientes")
         except Exception as e:
