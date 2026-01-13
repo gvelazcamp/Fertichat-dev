@@ -1,7 +1,3 @@
-# =========================
-# UI_STOCK.PY - MÓDULO STOCK IA
-# =========================
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -181,18 +177,13 @@ def _stock_to_float(x) -> float:
 
 @st.cache_data(ttl=300)
 def _get_stock_cantidad_1(top_n: int = 200) -> pd.DataFrame:
-    # Trae <= 1 y > 0 y filtramos a "≈ 1" exacto
-    df = get_stock_bajo(1)
+    # Cambiar a stock bajo (<=10) en lugar de exactamente =1
+    df = get_stock_bajo(10)
     if df is None or df.empty:
         return pd.DataFrame(columns=["FAMILIA", "CODIGO", "ARTICULO", "DEPOSITO", "LOTE", "VENCIMIENTO", "STOCK"])
 
+    # No filtrar a ≈1, mostrar todos con stock <=10
     dfx = df.copy()
-    dfx["__stock_num__"] = dfx["STOCK"].apply(_stock_to_float)
-
-    eps = 0.0001
-    dfx = dfx[(dfx["__stock_num__"] >= (1.0 - eps)) & (dfx["__stock_num__"] <= (1.0 + eps))]
-
-    dfx = dfx.drop(columns=["__stock_num__"], errors="ignore")
     return dfx.head(int(top_n))
 
 
@@ -224,7 +215,7 @@ def mostrar_resumen_stock_rotativo(dias_vencer: int = 30):
     df_vencer = _get_lotes_proximos_a_vencer(dias=int(dias_vencer))
 
     stock1_txt = "—"
-    stock1_sub = "Sin registros con stock = 1"
+    stock1_sub = "Sin registros con stock bajo"
     stock1_count = 0
 
     if df_stock_1 is not None and not df_stock_1.empty:
@@ -315,7 +306,7 @@ def mostrar_resumen_stock_rotativo(dias_vencer: int = 30):
       <div class="mini-stock-wrap">
         <div class="mini-stock-card">
           <div class="mini-stock-top">
-            <p class="mini-stock-t">📉 Artículos con STOCK = 1</p>
+            <p class="mini-stock-t">📉 Artículos con STOCK bajo (≤10)</p>
             <span class="mini-stock-badge">{stock1_count} regs</span>
           </div>
           <p class="mini-stock-v">{stock1_txt}</p>
@@ -432,7 +423,7 @@ def mostrar_stock_ia():
                 st.markdown(f"""
                 <div style="background-color: #fefce8; border-left: 5px solid #ca8a04; padding: 15px; border-radius: 5px; margin: 10px 0;">
                     <span style="color: #ca8a04; font-weight: bold; font-size: 1.1em;">📋 Próximo vencimiento</span><br>
-                    <span style="color: #854d0e;"><b>{articulo}</b> - Lote: <b>{lote}</b></span><br>
+                    <span style="color: #9a3412;"><b>{articulo}</b> - Lote: <b>{lote}</b></span><br>
                     <span style="color: #854d0e;">Vence: <b>{venc}</b> ({dias} días) | Stock: {stock}</span>
                 </div>
                 {contador}
@@ -489,5 +480,4 @@ def mostrar_stock_ia():
         for i, item in enumerate(reversed(st.session_state.historial_stock[-5:])):
             with st.expander(f"🕐 {item['timestamp']} - {item['pregunta'][:40]}."):
                 st.markdown(f"**Pregunta:** {item['pregunta']}")
-                st.markdown(f"**Respuesta:** {item['respuesta']}")
-
+                st.markdown(f"**Respuesta:** {item['respuesta']}")v
