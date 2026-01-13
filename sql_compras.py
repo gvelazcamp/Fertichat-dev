@@ -163,13 +163,31 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     """Detalle de compras de un proveedor en un mes específico, opcionalmente filtrado por año."""
     proveedor_like = (proveedor_like or "").strip().lower()
     
-    # Parse mes_key si contiene año (ej: "noviembre 2025" -> mes="noviembre", anio=2025)
+    # Mapeo de nombres de meses a números
+    meses = {
+        'enero': '01',
+        'febrero': '02',
+        'marzo': '03',
+        'abril': '04',
+        'mayo': '05',
+        'junio': '06',
+        'julio': '07',
+        'agosto': '08',
+        'septiembre': '09',
+        'octubre': '10',
+        'noviembre': '11',
+        'diciembre': '12'
+    }
+    
+    # Parse mes_key si contiene nombre de mes y año (ej: "noviembre 2025" -> mes="2025-11", anio=2025)
     mes_clean = mes_key
     anio_clean = anio
     if ' ' in mes_key:
-        parts = mes_key.rsplit(' ', 1)
+        parts = mes_key.split(' ')
         if len(parts) == 2:
-            mes_clean, anio_str = parts
+            mes_name, anio_str = parts
+            mes_num = meses.get(mes_name.lower(), mes_name)
+            mes_clean = f"{anio_str}-{mes_num.zfill(2)}"
             try:
                 anio_clean = int(anio_str)
             except:
@@ -192,7 +210,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
         WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
           AND LOWER(TRIM("Mes")) = LOWER(%s)
           {anio_filter}
-          AND "Tipo Comprobante" LIKE '%Compra%'
+          AND ("Tipo Comprobante" LIKE '%Compra%' OR "Tipo Comprobante" LIKE '%Factura%')
         ORDER BY "Fecha" DESC NULLS LAST
     """
     
@@ -215,7 +233,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                 WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
                   AND LOWER(TRIM("Mes")) = LOWER(%s)
                   {anio_filter}
-                  AND "Tipo Comprobante" LIKE '%Compra%'
+                  AND ("Tipo Comprobante" LIKE '%Compra%' OR "Tipo Comprobante" LIKE '%Factura%')
                 ORDER BY "Fecha" DESC NULLS LAST
             """
             df = ejecutar_consulta(sql_alt, (f"%{proveedor_like}%", mes_alt))
