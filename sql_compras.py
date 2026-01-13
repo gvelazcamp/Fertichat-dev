@@ -88,6 +88,10 @@ def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 500
     )
 
 
+# =====================================================================
+# COMPRAS MÚLTIPLES: PROVEEDORES, MESES Y AÑOS (NUEVA FUNCIÓN)
+# =====================================================================
+
 def get_compras_multiples(
     proveedores: List[str], 
     meses: Optional[List[str]] = None, 
@@ -103,6 +107,21 @@ def get_compras_multiples(
     """
     if not proveedores:
         return pd.DataFrame()
+
+    meses_dict = {
+        'enero': '01',
+        'febrero': '02',
+        'marzo': '03',
+        'abril': '04',
+        'mayo': '05',
+        'junio': '06',
+        'julio': '07',
+        'agosto': '08',
+        'septiembre': '09',
+        'octubre': '10',
+        'noviembre': '11',
+        'diciembre': '12'
+    }
 
     where_parts = [
         '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\' OR "Tipo Comprobante" LIKE \'%Factura%\')'  # ✅ BROADENED: Include Factura
@@ -123,16 +142,37 @@ def get_compras_multiples(
     if prov_clauses:
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
-    # Meses -> por "Mes" (con TRIM para manejar espacios)
+    # Meses -> parse si es nombre de mes, combinar con años si necesario
     if meses:
         mes_clauses = []
-        for m in (meses or []):
+        for m in meses:
+            m = str(m).strip()
             if not m:
                 continue
-            mes_clauses.append('TRIM("Mes") = %s')
-            params.append(m)
+            if ' ' not in m and '-' not in m:  # Asume es nombre de mes como 'noviembre'
+                mes_num = meses_dict.get(m.lower(), m)
+                if anios:
+                    for a in anios:
+                        mes_clauses.append('TRIM("Mes") = %s')
+                        params.append(f"{a}-{mes_num.zfill(2)}")
+                else:
+                    # Si no hay años, busca en cualquier año (no ideal, pero para compatibilidad)
+                    mes_clauses.append('TRIM("Mes") LIKE %s')
+                    params.append(f"%-{mes_num.zfill(2)}")
+            else:
+                # Ya es formato '2025-11'
+                mes_clauses.append('TRIM("Mes") = %s')
+                params.append(m)
         if mes_clauses:
             where_parts.append("(" + " OR ".join(mes_clauses) + ")")
+
+    # Años -> si no hay meses específicos, filtra por años
+    if anios and not meses:
+        anios_ok = [a for a in anios if isinstance(a, int)]
+        if anios_ok:
+            ph = ", ".join(["%s"] * len(anios_ok))
+            where_parts.append(f'"Año" IN ({ph})')
+            params.extend(anios_ok)
 
     sql = f"""
         SELECT
@@ -149,6 +189,7 @@ def get_compras_multiples(
         LIMIT {limite}
     """
     return ejecutar_consulta(sql, tuple(params))
+
 
 # =====================================================================
 # DETALLE COMPRAS: PROVEEDOR + MES
