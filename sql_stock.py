@@ -562,3 +562,24 @@ def get_alertas_stock_1(limite: int = 5) -> list:
     except Exception as e:
         print(f"Error en get_alertas_stock_1: {e}")
         return []
+
+
+def get_alertas_combinadas(limite: int = 10, dias_filtro: int = 30) -> list:
+    """✅ NUEVA FUNCIÓN: Combina alertas de stock = 1 y vencimientos en <30 días con stock > 0."""
+    try:
+        # Obtener alertas de stock = 1
+        df_stock_1 = pd.DataFrame(get_alertas_stock_1(limite=limite))
+        
+        # Obtener alertas de vencimiento
+        alertas_vto = get_alertas_vencimiento_multiple(limite=limite, dias_filtro=dias_filtro)
+        df_vto = pd.DataFrame(alertas_vto)
+        
+        # Combinar sin duplicados (basado en ARTICULO + LOTE)
+        df_combinado = pd.concat([df_stock_1, df_vto], ignore_index=True).drop_duplicates(subset=['ARTICULO', 'LOTE'])
+        
+        # Limitar y convertir a lista
+        df_combinado = df_combinado.head(limite)
+        return df_combinado.to_dict('records')
+    except Exception as e:
+        print(f"Error en get_alertas_combinadas: {e}")
+        return []
