@@ -13,6 +13,7 @@ from sql_core import ejecutar_consulta, _safe_ident
 # =====================================================================
 
 _STOCK_TABLE_CANDIDATES = [
+    "stock_rows",  # ✅ PRIORIDAD 1: según tu CSV importado
     "stock_raw",
     "stock",
     "stocks",
@@ -21,7 +22,6 @@ _STOCK_TABLE_CANDIDATES = [
     "estado_stock",
     "estado_mercaderia_stock",
     "estado_mercaderia",
-    "stock_rows",  # Agregado para coincidir con el nombre del archivo CSV importado
 ]
 
 
@@ -30,7 +30,7 @@ _STOCK_TABLE_CANDIDATES = [
 # =====================================================================
 
 def _get_stock_schema_table() -> tuple:
-    """Obtiene schema y tabla de stock."""
+    """Obtiene schema y tabla de stock con DEBUG mejorado."""
     schema = st.secrets.get("STOCK_SCHEMA", os.getenv("STOCK_SCHEMA", "public"))
     schema = _safe_ident(schema) or "public"
 
@@ -38,6 +38,7 @@ def _get_stock_schema_table() -> tuple:
     table = _safe_ident(table)
 
     if table:
+        print(f"✅ DEBUG: Usando tabla configurada: {schema}.{table}")
         return schema, table
 
     try:
@@ -52,16 +53,22 @@ def _get_stock_schema_table() -> tuple:
         if df is not None and not df.empty and "table_name" in df.columns:
             existing = set([str(x) for x in df["table_name"].tolist()])
 
+        print(f"🔍 DEBUG: Tablas encontradas en schema '{schema}': {existing}")
+
         for t in _STOCK_TABLE_CANDIDATES:
             if t in existing:
+                print(f"✅ DEBUG: Tabla de stock detectada: {schema}.{t}")
                 return schema, t
 
+        print(f"⚠️ DEBUG: No se encontró tabla de stock. Usando default: {schema}.stock_raw")
         return schema, "stock_raw"
-    except Exception:
+    except Exception as e:
+        print(f"❌ DEBUG: Error detectando tabla: {e}")
         return schema, "stock_raw"
 
 
 def _get_stock_columns(schema: str, table: str) -> list:
+    """Obtiene columnas de la tabla con manejo de errores."""
     try:
         sql = """
             SELECT column_name
@@ -70,9 +77,14 @@ def _get_stock_columns(schema: str, table: str) -> list:
         """
         df = ejecutar_consulta(sql, (schema, table))
         if df is None or df.empty or "column_name" not in df.columns:
+            print(f"⚠️ DEBUG: No se encontraron columnas para {schema}.{table}")
             return []
-        return [str(x) for x in df["column_name"].tolist()]
-    except Exception:
+        
+        cols = [str(x) for x in df["column_name"].tolist()]
+        print(f"🔍 DEBUG: Columnas encontradas en {schema}.{table}: {cols}")
+        return cols
+    except Exception as e:
+        print(f"❌ DEBUG: Error obteniendo columnas: {e}")
         return []
 
 
@@ -86,7 +98,7 @@ def _pick_col(cols: list, candidates: list) -> str:
         key = str(cand).lower()
         if key in col_map:
             real = col_map[key]
-            return f"\"{real}\""
+            return f'"{real}"'
     return ""
 
 
@@ -109,7 +121,7 @@ def _sql_date_expr_stock(col_expr: str) -> str:
 
 
 def _sql_num_expr_stock(col_expr: str) -> str:
-    """Convierte una columna (texto/num) a numeric. Corrige el parsing para formatos con '.' como decimal."""
+    """Convierte una columna (texto/num) a numeric."""
     if not col_expr:
         return "NULL::numeric"
 
@@ -136,28 +148,66 @@ def _stock_base_subquery() -> tuple:
     table_s = _safe_ident(table) or "stock_raw"
 
     cols = _get_stock_columns(schema_s, table_s)
-    # Removido debug print para producción
 
-    c_art = _pick_col(cols, ["articulo", "Artículo", "ARTICULO", "insumo", "descripcion", "descripcion_articulo", "item"])
-    c_fam = _pick_col(cols, ["familia", "FAMILIA", "sector", "seccion", "sección", "rubro"])
-    c_dep = _pick_col(cols, ["deposito", "Depósito", "DEPOSITO", "ubicacion", "ubicación", "boca", "almacen", "almacén"])
-    c_lot = _pick_col(cols, ["lote", "LOTE", "batch", "nro_lote", "numero_lote", "número_lote"])
-    c_vto = _pick_col(cols, ["vencimiento", "VENCIMIENTO", "vto", "vence", "fecha_vencimiento", "fecha_vto", "fec_vto"])
-    c_stk = _pick_col(cols, ["stock", "STOCK", "cantidad", "existencia", "saldo", "unidades"])
-    c_cod = _pick_col(cols, ["codigo", "CODIGO", "id", "ID", "cod_articulo", "cod", "codigo_articulo"])
+    # ✅ DETECTAR COLUMNAS CON MÁS VARIANTES
+    c_art = _pick_col(cols, [
+        "articulo", "Articulo", "Artículo", "ARTICULO",
+        "insumo", "descripcion", "descripcion_articulo", "item",
+        "producto", "material", "nombre"  # ✅ AGREGADAS
+    ])
+    
+    c_fam = _pick_col(cols, [
+        "familia", "Familia", "FAMILIA",
+        "sector", "seccion", "sección", "rubro", "categoria", "categoría"
+    ])
+    
+    c_dep = _pick_col(cols, [
+        "deposito", "Deposito", "Depósito", "DEPOSITO",
+        "ubicacion", "ubicación", "boca", "almacen", "almacén", "bodega"
+    ])
+    
+    c_lot = _pick_col(cols, [
+        "lote", "Lote", "LOTE",
+        "batch", "nro_lote", "numero_lote", "número_lote", "num_lote"
+    ])
+    
+    c_vto = _pick_col(cols, [
+        "vencimiento", "Vencimiento", "VENCIMIENTO",
+        "vto", "vence", "fecha_vencimiento", "fecha_vto", "fec_vto",
+        "Fecha Vencimiento", "FechaVencimiento"  # ✅ AGREGADAS
+    ])
+    
+    c_stk = _pick_col(cols, [
+        "stock", "Stock", "STOCK",
+        "cantidad", "Cantidad", "existencia", "saldo", "unidades", "cant"
+    ])
+    
+    c_cod = _pick_col(cols, [
+        "codigo", "Codigo", "Código", "CODIGO",
+        "id", "ID", "cod_articulo", "cod", "codigo_articulo", "code"
+    ])
 
-    # Removido debug print para producción
+    # ✅ DEBUG: Mostrar qué columnas se detectaron
+    print("🔍 DEBUG: Columnas mapeadas:")
+    print(f"  - Artículo: {c_art or 'NO ENCONTRADA'}")
+    print(f"  - Familia: {c_fam or 'NO ENCONTRADA'}")
+    print(f"  - Depósito: {c_dep or 'NO ENCONTRADA'}")
+    print(f"  - Lote: {c_lot or 'NO ENCONTRADA'}")
+    print(f"  - Vencimiento: {c_vto or 'NO ENCONTRADA'}")
+    print(f"  - Stock: {c_stk or 'NO ENCONTRADA'}")
+    print(f"  - Código: {c_cod or 'NO ENCONTRADA'}")
 
-    art_expr = f"TRIM(COALESCE({c_art}::text,''))" if c_art else "''"
-    fam_expr = f"TRIM(COALESCE({c_fam}::text,''))" if c_fam else "''"
-    dep_expr = f"TRIM(COALESCE({c_dep}::text,''))" if c_dep else "''"
-    lot_expr = f"TRIM(COALESCE({c_lot}::text,''))" if c_lot else "''"
+    # ✅ CONSTRUCCIÓN DE EXPRESIONES CON FALLBACK
+    art_expr = f"TRIM(COALESCE({c_art}::text,''))" if c_art else "'SIN ARTICULO'"
+    fam_expr = f"TRIM(COALESCE({c_fam}::text,''))" if c_fam else "'SIN FAMILIA'"
+    dep_expr = f"TRIM(COALESCE({c_dep}::text,''))" if c_dep else "'SIN DEPOSITO'"
+    lot_expr = f"TRIM(COALESCE({c_lot}::text,''))" if c_lot else "'SIN LOTE'"
     cod_expr = f"TRIM(COALESCE({c_cod}::text,''))" if c_cod else "''"
 
-    vto_expr = _sql_date_expr_stock(c_vto)
-    stk_expr = _sql_num_expr_stock(c_stk)
+    vto_expr = _sql_date_expr_stock(c_vto) if c_vto else "NULL::date"
+    stk_expr = _sql_num_expr_stock(c_stk) if c_stk else "0::numeric"
 
-    full_table = f"\"{schema_s}\".\"{table_s}\""
+    full_table = f'"{schema_s}"."{table_s}"'
 
     sub = f"""
         SELECT
@@ -174,6 +224,9 @@ def _stock_base_subquery() -> tuple:
             END AS "Dias_Para_Vencer"
         FROM {full_table}
     """
+    
+    print(f"📝 DEBUG: Subquery generado para {full_table}")
+    
     return sub, schema_s, table_s
 
 
@@ -189,6 +242,7 @@ def get_lista_articulos_stock() -> list:
             FROM ({base}) s
             WHERE "ARTICULO" IS NOT NULL
               AND TRIM("ARTICULO") <> ''
+              AND TRIM("ARTICULO") <> 'SIN ARTICULO'
             ORDER BY "ARTICULO"
             LIMIT 5000
         """
@@ -196,8 +250,10 @@ def get_lista_articulos_stock() -> list:
         items = ["Todos"]
         if df is not None and not df.empty and "ARTICULO" in df.columns:
             items += [str(x) for x in df["ARTICULO"].tolist()]
+        print(f"✅ DEBUG: get_lista_articulos_stock() devolvió {len(items)} items")
         return items
-    except Exception:
+    except Exception as e:
+        print(f"❌ DEBUG: Error en get_lista_articulos_stock(): {e}")
         return ["Todos"]
 
 
@@ -209,6 +265,7 @@ def get_lista_familias_stock() -> list:
             FROM ({base}) s
             WHERE "FAMILIA" IS NOT NULL
               AND TRIM("FAMILIA") <> ''
+              AND TRIM("FAMILIA") <> 'SIN FAMILIA'
             ORDER BY "FAMILIA"
             LIMIT 5000
         """
@@ -217,7 +274,8 @@ def get_lista_familias_stock() -> list:
         if df is not None and not df.empty and "FAMILIA" in df.columns:
             items += [str(x) for x in df["FAMILIA"].tolist()]
         return items
-    except Exception:
+    except Exception as e:
+        print(f"❌ DEBUG: Error en get_lista_familias_stock(): {e}")
         return ["Todos"]
 
 
@@ -229,6 +287,7 @@ def get_lista_depositos_stock() -> list:
             FROM ({base}) s
             WHERE "DEPOSITO" IS NOT NULL
               AND TRIM("DEPOSITO") <> ''
+              AND TRIM("DEPOSITO") <> 'SIN DEPOSITO'
             ORDER BY "DEPOSITO"
             LIMIT 5000
         """
@@ -237,7 +296,8 @@ def get_lista_depositos_stock() -> list:
         if df is not None and not df.empty and "DEPOSITO" in df.columns:
             items += [str(x) for x in df["DEPOSITO"].tolist()]
         return items
-    except Exception:
+    except Exception as e:
+        print(f"❌ DEBUG: Error en get_lista_depositos_stock(): {e}")
         return ["Todos"]
 
 
@@ -304,8 +364,11 @@ def buscar_stock_por_lote(
             ORDER BY "VENCIMIENTO" ASC NULLS LAST, "ARTICULO" ASC
             LIMIT 5000
         """
-        return ejecutar_consulta(sql, tuple(params))
-    except Exception:
+        df = ejecutar_consulta(sql, tuple(params))
+        print(f"✅ DEBUG: buscar_stock_por_lote() devolvió {len(df) if df is not None else 0} registros")
+        return df if df is not None else pd.DataFrame()
+    except Exception as e:
+        print(f"❌ DEBUG: Error en buscar_stock_por_lote(): {e}")
         return pd.DataFrame()
 
 
@@ -369,8 +432,11 @@ def get_stock_total() -> pd.DataFrame:
                 COALESCE(SUM("STOCK"), 0) AS stock_total
             FROM ({base}) s
         """
-        return ejecutar_consulta(sql, ())
-    except Exception:
+        df = ejecutar_consulta(sql, ())
+        print(f"✅ DEBUG: get_stock_total() devolvió: {df.to_dict('records') if df is not None and not df.empty else 'vacío'}")
+        return df if df is not None else pd.DataFrame()
+    except Exception as e:
+        print(f"❌ DEBUG: Error en get_stock_total(): {e}")
         return pd.DataFrame()
 
 
@@ -427,8 +493,13 @@ def get_lotes_por_vencer(dias: int = 90) -> pd.DataFrame:
               AND COALESCE("STOCK", 0) > 0
             ORDER BY "VENCIMIENTO" ASC
         """
-        return ejecutar_consulta(sql, (int(dias),))
-    except Exception:
+        df = ejecutar_consulta(sql, (int(dias),))
+        print(f"✅ DEBUG: get_lotes_por_vencer({dias}) devolvió {len(df) if df is not None else 0} registros")
+        if df is not None and not df.empty:
+            print(f"  Primeros vencimientos: {df.head(3).to_dict('records')}")
+        return df if df is not None else pd.DataFrame()
+    except Exception as e:
+        print(f"❌ DEBUG: Error en get_lotes_por_vencer(): {e}")
         return pd.DataFrame()
 
 
@@ -459,18 +530,26 @@ def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
             FROM ({base}) s
             WHERE "STOCK" IS NOT NULL
               AND "STOCK" <= %s
+              AND "STOCK" > 0
             ORDER BY "STOCK" ASC NULLS LAST, "ARTICULO" ASC
         """
-        return ejecutar_consulta(sql, (int(minimo),))
-    except Exception:
+        df = ejecutar_consulta(sql, (int(minimo),))
+        print(f"✅ DEBUG: get_stock_bajo({minimo}) devolvió {len(df) if df is not None else 0} registros")
+        return df if df is not None else pd.DataFrame()
+    except Exception as e:
+        print(f"❌ DEBUG: Error en get_stock_bajo(): {e}")
         return pd.DataFrame()
 
 
 def get_alertas_vencimiento_multiple(limite: int = 10) -> list:
     """Alertas rotativas de vencimiento para el módulo Stock IA."""
     try:
+        print(f"🔍 DEBUG: Ejecutando get_alertas_vencimiento_multiple(limite={limite})")
+        
         df = get_lotes_por_vencer(dias=90)
+        
         if df is None or df.empty:
+            print("⚠️ DEBUG: get_lotes_por_vencer() devolvió DataFrame vacío")
             return []
 
         if "VENCIMIENTO" in df.columns:
@@ -480,14 +559,23 @@ def get_alertas_vencimiento_multiple(limite: int = 10) -> list:
 
         alertas = []
         for _, r in df.iterrows():
-            alertas.append({
+            alerta = {
                 "articulo": str(r.get("ARTICULO", "") or ""),
                 "lote": str(r.get("LOTE", "") or ""),
                 "deposito": str(r.get("DEPOSITO", "") or ""),
                 "vencimiento": str(r.get("VENCIMIENTO", "") or ""),
                 "dias_restantes": int(r.get("Dias_Para_Vencer", 0) or 0),
                 "stock": str(r.get("STOCK", "") or "")
-            })
+            }
+            alertas.append(alerta)
+            
+        print(f"✅ DEBUG: get_alertas_vencimiento_multiple() devolvió {len(alertas)} alertas")
+        if alertas:
+            print(f"  Primera alerta: {alertas[0]}")
+            
         return alertas
-    except Exception:
+    except Exception as e:
+        print(f"❌ DEBUG: Error en get_alertas_vencimiento_multiple(): {e}")
+        import traceback
+        traceback.print_exc()
         return []
