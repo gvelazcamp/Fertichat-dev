@@ -480,4 +480,4 @@ def mostrar_stock_ia():
         for i, item in enumerate(reversed(st.session_state.historial_stock[-5:])):
             with st.expander(f"🕐 {item['timestamp']} - {item['pregunta'][:40]}."):
                 st.markdown(f"**Pregunta:** {item['pregunta']}")
-                st.markdown(f"**Respuesta:** {item['respuesta']}")v
+                st.markdown(f"**Respuesta:** {item['respuesta']}")
