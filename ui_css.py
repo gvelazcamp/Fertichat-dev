@@ -1,5 +1,5 @@
 # =========================
-# UI_CSS.PY - CSS GLOBAL CORPORATIVO (BLANCO + CELESTE - VENDIBLE)
+# UI_CSS.PY - CSS GLOBAL (APP + LOGIN)
 # =========================
 
 CSS_GLOBAL = r"""
@@ -17,7 +17,6 @@ div[data-testid="stDecoration"] { display: none !important; }
 :root, html, body, .stApp {
   color-scheme: light !important;
 }
-
 /* ================================
    FORZAR LIGHT MODE (ANTI DARK)
    ================================ */
@@ -29,7 +28,7 @@ div[data-testid="stDecoration"] { display: none !important; }
 
 /* Evitar dark automático de Chrome */
 html {
-  background-color: #ffffff !important;
+  background-color: #f6f4ef !important;
 }
 
 /* Inputs, cards, contenedores */
@@ -40,7 +39,7 @@ html {
 /* Anti "forced dark" de Chrome */
 @media (prefers-color-scheme: dark) {
   html, body {
-    background: #ffffff !important;
+    background: #f6f4ef !important;
     color: #0f172a !important;
   }
 
@@ -49,7 +48,7 @@ html {
   }
 }
 html, body {
-  background: #ffffff !important;
+  background: #f6f4ef !important;
   color: #0f172a !important;
 }
 
@@ -59,19 +58,19 @@ html, body {
     color-scheme: light !important;
   }
   html, body {
-    background: #ffffff !important;
+    background: #f6f4ef !important;
     color: #0f172a !important;
   }
 }
 
+
 /* =========================
-   Fondo principal APP (blanco + celeste suave)
+   Fondo principal APP
    ========================= */
 :root {
-  --fc-bg-1: #ffffff;  /* Blanco puro */
-  --fc-bg-2: #e0f2fe;  /* Celeste claro */
-  --fc-text: #0f172a;  /* Negro oscuro para texto */
-  --fc-accent: #0284c7;  /* Azul celeste corporativo */
+  --fc-bg-1: #f6f4ef;
+  --fc-bg-2: #f3f6fb;
+  --fc-text: #0f172a;
 }
 
 html, body,
@@ -85,7 +84,7 @@ div[data-testid="stAppViewContainer"] > .main > div {
 }
 
 html, body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;  /* Fuente corporativa */
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 /* =========================
@@ -106,23 +105,23 @@ h1#inicio { display: none !important; }
 #mobile-header .logo { display: none !important; }
 
 /* =========================
-   SIDEBAR: blanco + texto negro + borde celeste
+   SIDEBAR: blanco + texto negro
    ========================= */
-section[data-testid="stSidebar"] { border-right: 1px solid var(--fc-accent); }
+section[data-testid="stSidebar"] { border-right: 1px solid rgba(15,23,42,0.08); }
 
 section[data-testid="stSidebar"] > div,
 div[data-testid="stSidebar"] > div {
-  background: rgba(255,255,255,0.98) !important;
+  background: rgba(255,255,255,0.92) !important;
   backdrop-filter: blur(8px);
 }
 
 section[data-testid="stSidebar"] *,
 div[data-testid="stSidebar"] * {
-  color: var(--fc-text) !important;
+  color: #0f172a !important;
 }
 
 /* =========================
-   INPUTS / SELECT / DATE: blanco + borde celeste + texto negro (GLOBAL)
+   INPUTS / SELECT / DATE: blanco + texto negro (GLOBAL)
    ========================= */
 div[data-baseweb="base-input"],
 div[data-baseweb="input"],
@@ -131,10 +130,8 @@ div[data-baseweb="datepicker"],
 textarea {
   background: #ffffff !important;
   background-color: #ffffff !important;
-  color: var(--fc-text) !important;
-  border-color: var(--fc-accent) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.1) !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
 }
 
 div[data-baseweb="base-input"] input,
@@ -143,8 +140,8 @@ div[data-baseweb="select"] input,
 div[data-baseweb="datepicker"] input,
 textarea {
   background: transparent !important;
-  color: var(--fc-text) !important;
-  -webkit-text-fill-color: var(--fc-text) !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
 }
 
 /* Dropdowns (popover/menu) */
@@ -153,36 +150,19 @@ div[data-baseweb="popover"] *,
 div[data-baseweb="menu"],
 div[data-baseweb="menu"] * {
   background: #ffffff !important;
-  color: var(--fc-text) !important;
+  color: #0f172a !important;
 }
 
 /* =========================
-   BOTONES GENERALES: celeste + hover suave
-   ========================= */
-.stButton > button {
-  background: linear-gradient(135deg, var(--fc-accent), #0ea5e9) !important;
-  color: white !important;
-  border-radius: 8px !important;
-  border: none !important;
-  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2) !important;
-  transition: all 0.2s ease !important;
-}
-
-.stButton > button:hover {
-  background: linear-gradient(135deg, #0ea5e9, var(--fc-accent)) !important;
-  box-shadow: 0 4px 8px rgba(2, 132, 199, 0.3) !important;
-  transform: translateY(-1px);
-}
-
-/* =========================
-   LOGIN: fondo celeste gradiente + card blanca (se activa SOLO si existe #fc-login-marker)
+   LOGIN: fondo violeta + card (se activa SOLO si existe #fc-login-marker)
+   (con :has + fallback por overlay)
    ========================= */
 
-/* Fondo gradiente celeste */
+/* Fallback: overlay violeta detrás (funciona aunque :has falle) */
 #fc-login-marker {
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 50%, #7dd3fc 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
   z-index: 0;
   pointer-events: none;
 }
@@ -191,7 +171,7 @@ div[data-testid="stAppViewContainer"] > .main {
   z-index: 1;
 }
 
-/* Header login oculto */
+/* Si el navegador soporta :has, afinamos TODO el login */
 div[data-testid="stAppViewContainer"]:has(#fc-login-marker) header[data-testid="stHeader"] {
   visibility: hidden !important;
 }
@@ -202,11 +182,11 @@ div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .block-container {
 }
 
 div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
-  background: rgba(255, 255, 255, 0.98) !important;
-  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-radius: 24px !important;
   padding: 32px 36px !important;
-  border: 1px solid var(--fc-accent) !important;
-  box-shadow: 0 10px 25px rgba(2, 132, 199, 0.15) !important;
+  border: none !important;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15) !important;
   backdrop-filter: blur(10px) !important;
 }
 
@@ -225,16 +205,16 @@ div[data-testid="stAppViewContainer"]:has(#fc-login-marker) button[data-baseweb=
   background: transparent !important;
 }
 div[data-testid="stAppViewContainer"]:has(#fc-login-marker) button[data-baseweb="tab"][aria-selected="true"] {
-  color: var(--fc-accent) !important;
+  color: #667eea !important;
   background: white !important;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Inputs login */
+/* Inputs login (incluye botón ojo) */
 div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="base-input"],
 div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="input"] {
   background: #f8fafc !important;
-  border: 2px solid #bae6fd !important;
+  border: 2px solid #e2e8f0 !important;
   border-radius: 12px !important;
   box-shadow: none !important;
   overflow: hidden !important;
@@ -261,14 +241,14 @@ div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="in
 /* Botón login */
 div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[kind="secondaryFormSubmit"],
 div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[type="submit"] {
-  background: linear-gradient(135deg, var(--fc-accent), #0ea5e9) !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
   color: white !important;
   border-radius: 12px !important;
   font-weight: 700 !important;
   font-size: 16px !important;
   padding: 14px 28px !important;
   border: none !important;
-  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4) !important;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
   text-transform: none !important;
 }
 
@@ -276,20 +256,13 @@ div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[type=
 @media (max-width: 768px) {
   div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
     padding: 24px 20px !important;
-    border-radius: 12px !important;
+    border-radius: 20px !important;
   }
   div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .block-container {
     padding-left: 1rem !important;
     padding-right: 1rem !important;
     padding-bottom: 4rem !important;
   }
-}
-@media (max-width: 480px) {
-  div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
-    padding: 22px 18px !important;
-  }
-}
-
 /* ========================================================= */
 /* 🔒 FORZAR LIGHT MODE – ignorar dark mode del sistema */
 /* ========================================================= */
@@ -299,8 +272,8 @@ div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[type=
 }
 
 html, body {
-  background-color: #ffffff !important;
-  color: var(--fc-text) !important;
+  background-color: #f6f4ef !important;
+  color: #0f172a !important;
 }
 
 /* Anula prefers-color-scheme: dark del navegador */
@@ -312,34 +285,13 @@ html, body {
   .block-container,
   input, textarea, select, button {
     background-color: #ffffff !important;
-    color: var(--fc-text) !important;
+    color: #0f172a !important;
   }
 }
-
-/* =========================
-   CARDS Y COMPONENTES EXTRA (vendible)
-   ========================= */
-.stCard {
-  background: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid #e0f2fe !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 6px rgba(2, 132, 199, 0.1) !important;
-}
-
-/* Texto corporativo */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--fc-text) !important;
-  font-weight: 600 !important;
-}
-
-/* Enlaces en celeste */
-a {
-  color: var(--fc-accent) !important;
-  text-decoration: none !important;
-}
-
-a:hover {
-  color: #0ea5e9 !important;
+@media (max-width: 480px) {
+  div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
+    padding: 22px 18px !important;
+  }
 }
 
 /* Mover FertiChat y campana al toolbar */
@@ -351,7 +303,7 @@ a:hover {
   content: "FertiChat 🔔";
   font-size: 16px;
   font-weight: 800;
-  color: var(--fc-accent);
+  color: #0f172a;
   position: absolute;
   left: 50%;
   top: 50%;
@@ -360,7 +312,7 @@ a:hover {
   background: rgba(255, 255, 255, 0.95);
   padding: 4px 8px;
   border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Ocultar header de escritorio siempre */
