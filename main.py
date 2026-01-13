@@ -524,7 +524,7 @@ elif menu_actual == "🔍 Debug SQL factura":
     mostrar_debug_sql_factura()
 
 elif menu_actual == "📦 Stock IA":
-    mostrar_resumen_stock_rotativo()
+    mostrar_resumen_stock_rotativo(dias_vencer=30)  # Cambiado a 30 días
     mostrar_stock_ia()
 
 elif menu_actual == "🔎 Buscador IA":
