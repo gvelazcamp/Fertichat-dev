@@ -179,9 +179,11 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
         'diciembre': '12'
     }
     
-    # Parse mes_key si contiene nombre de mes y año (ej: "noviembre 2025" -> mes="2025-11", anio=2025)
+    # Parse mes_key
     mes_clean = mes_key
     anio_clean = anio
+    
+    # Si contiene espacio, es "noviembre 2025" -> parse nombre a número
     if ' ' in mes_key:
         parts = mes_key.split(' ')
         if len(parts) == 2:
@@ -190,6 +192,16 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
             mes_clean = f"{anio_str}-{mes_num.zfill(2)}"
             try:
                 anio_clean = int(anio_str)
+            except:
+                pass
+    # Si contiene '-', es "2025-11" -> extraer año
+    elif '-' in mes_key:
+        parts = mes_key.split('-')
+        if len(parts) == 2:
+            try:
+                anio_str, mes_str = parts
+                anio_clean = int(anio_str)
+                mes_clean = mes_key  # mantener "2025-11"
             except:
                 pass
     
@@ -239,7 +251,6 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                 df.attrs["fallback_mes"] = mes_alt
     
     return df if df is not None else pd.DataFrame()
-
 
 # =====================================================================
 # DETALLE COMPRAS: PROVEEDOR + AÑO
