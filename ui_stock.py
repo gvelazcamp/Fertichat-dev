@@ -179,9 +179,7 @@ def _stock_to_float(x) -> float:
 def _get_stock_cantidad_1(top_n: int = 200) -> pd.DataFrame:
     # Cambiar a stock bajo (<=10) en lugar de exactamente =1
     df = get_stock_bajo(10)
-    st.write(f"DEBUG: df from get_stock_bajo(10): shape={df.shape if df is not None else 'None'}")
-    if df is not None and not df.empty:
-        st.write(f"DEBUG: first row: {df.iloc[0].to_dict() if len(df) > 0 else 'No rows'}")
+    # DEBUG removido
     if df is None or df.empty:
         return pd.DataFrame(columns=["FAMILIA", "CODIGO", "ARTICULO", "DEPOSITO", "LOTE", "VENCIMIENTO", "STOCK"])
 
@@ -191,17 +189,15 @@ def _get_stock_cantidad_1(top_n: int = 200) -> pd.DataFrame:
 
 
 # Removido @st.cache_data para debug
-def _get_lotes_proximos_a_vencer(dias: int = 30) -> pd.DataFrame:
+def _get_lotes_proximos_a_vencer(dias: int = 30) -> pd.DataFrame:  # ✅ CAMBIADO A 30 DÍAS
     df = get_lotes_por_vencer(dias)
-    st.write(f"DEBUG: df from get_lotes_por_vencer({dias}): shape={df.shape if df is not None else 'None'}")
-    if df is not None and not df.empty:
-        st.write(f"DEBUG: first row: {df.iloc[0].to_dict() if len(df) > 0 else 'No rows'}")
+    # DEBUG removido
     if df is None or df.empty:
         return pd.DataFrame(columns=["FAMILIA", "CODIGO", "ARTICULO", "DEPOSITO", "LOTE", "VENCIMIENTO", "STOCK", "Dias_Para_Vencer"])
     return df
 
 
-def mostrar_resumen_stock_rotativo(dias_vencer: int = 30):
+def mostrar_resumen_stock_rotativo(dias_vencer: int = 30):  # ✅ CAMBIADO DEFAULT A 30
     # ✅ No auto-refresh mientras el usuario está escribiendo en el input del Stock
     pregunta_actual = ""
     try:
