@@ -17,7 +17,7 @@ from bajastock import mostrar_baja_stock
 from ordenes_compra import mostrar_ordenes_compra
 from ui_compras import Compras_IA
 from ui_buscador import mostrar_buscador_ia
-from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo  # ✅ HABILITADO
+from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo
 from ui_dashboard import (
     mostrar_dashboard,
     mostrar_indicadores_ia,
@@ -46,9 +46,13 @@ from utils_format import formatear_dataframe
 from utils_openai import responder_con_openai
 
 # =========================
-# IMPORT ORQUESTADOR PARA INTEGRACIÓN
+# IMPORT ORQUESTADOR PARA INTEGRACIÓN (con try-except para evitar errores)
 # =========================
-from orquestador import procesar_pregunta_v2
+try:
+    from orquestador import procesar_pregunta_v2
+except ImportError:
+    def procesar_pregunta_v2(*args, **kwargs):
+        return "Orquestador no disponible", None, None
 
 # =========================
 # FUNCIÓN PARA EJECUTAR CONSULTAS POR TIPO (AGREGADA)
