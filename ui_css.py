@@ -319,5 +319,196 @@ html, body {
   display: none !important;
 }
 
+/* =========================
+   VARIABLES SIDEBAR CORPORATIVO
+   ========================= */
+:root{
+  --fc-sb-bg1:#0b1f3a;          /* azul profundo */
+  --fc-sb-bg2:#143a63;          /* azul medio */
+  --fc-sb-border:rgba(255,255,255,.10);
+  --fc-sb-text:rgba(255,255,255,.90);
+  --fc-sb-text-dim:rgba(255,255,255,.65);
+  --fc-sb-active:rgba(255,255,255,.14);
+  --fc-sb-hover:rgba(255,255,255,.10);
+  --fc-sb-chip:rgba(255,255,255,.08);
+  --fc-sb-shadow:0 18px 40px rgba(0,0,0,.28);
+  --fc-sb-radius:18px;
+}
+
+/* =========================
+   CONTENEDOR SIDEBAR
+   ========================= */
+section[data-testid="stSidebar"]{
+  background: linear-gradient(180deg, var(--fc-sb-bg1) 0%, var(--fc-sb-bg2) 100%) !important;
+  border-right: 1px solid var(--fc-sb-border) !important;
+}
+
+/* Sombra “tarjeta” en modo mobile/desktop */
+section[data-testid="stSidebar"] > div{
+  padding: 14px 12px 12px 12px !important;
+}
+
+/* =========================
+   CABECERA (logo + título)
+   ========================= */
+.fc-sb-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding: 10px 10px 14px 10px;
+  margin: 4px 6px 10px 6px;
+  border-bottom: 1px solid var(--fc-sb-border);
+}
+.fc-sb-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.fc-sb-logo{
+  width:34px;height:34px;
+  border-radius:10px;
+  background: linear-gradient(135deg, #22c55e 0%, #60a5fa 55%, #1d4ed8 100%);
+  box-shadow: 0 10px 22px rgba(0,0,0,.25);
+}
+.fc-sb-title{
+  color: var(--fc-sb-text);
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: .6px;
+  margin:0;
+}
+.fc-sb-menuicon{
+  width:34px;height:34px;
+  border-radius:12px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.10);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color: rgba(255,255,255,.85);
+}
+
+/* =========================
+   BUSCADOR (input)
+   ========================= */
+section[data-testid="stSidebar"] input{
+  background: rgba(255,255,255,.07) !important;
+  color: var(--fc-sb-text) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 14px !important;
+}
+section[data-testid="stSidebar"] input::placeholder{
+  color: rgba(255,255,255,.55) !important;
+}
+section[data-testid="stSidebar"] div[data-baseweb="input"]{
+  background: transparent !important;
+}
+
+/* =========================
+   RADIO/MENÚ (estilo “lista”)
+   - Streamlit usa BaseWeb para Radio
+   ========================= */
+
+/* Quitar caja blanca del widget */
+section[data-testid="stSidebar"] div[role="radiogroup"]{
+  background: transparent !important;
+  padding: 4px 4px 2px 4px !important;
+}
+
+/* Cada opción como “fila” */
+section[data-testid="stSidebar"] div[role="radiogroup"] > div{
+  border-radius: 14px !important;
+  transition: background .15s ease, transform .12s ease;
+}
+
+/* Hover */
+section[data-testid="stSidebar"] div[role="radiogroup"] > div:hover{
+  background: var(--fc-sb-hover) !important;
+  transform: translateY(-1px);
+}
+
+/* Texto de cada opción */
+section[data-testid="stSidebar"] div[role="radiogroup"] label{
+  color: var(--fc-sb-text) !important;
+  font-weight: 600 !important;
+}
+
+/* Subtexto/ayudas si aparecen */
+section[data-testid="stSidebar"] div[role="radiogroup"] span{
+  color: var(--fc-sb-text) !important;
+}
+
+/* “Check”/círculo del radio */
+section[data-testid="stSidebar"] input[type="radio"]{
+  accent-color: #93c5fd !important;
+}
+
+/* Opción seleccionada (aprox):
+   BaseWeb suele marcar el item con aria-checked=true en el contenedor */
+section[data-testid="stSidebar"] div[role="radiogroup"] > div:has([aria-checked="true"]),
+section[data-testid="stSidebar"] div[role="radiogroup"] > div:has(input[type="radio"]:checked){
+  background: var(--fc-sb-active) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+}
+
+/* Ajuste de padding para que quede “corporativo” */
+section[data-testid="stSidebar"] div[role="radiogroup"] > div label{
+  padding: 10px 10px !important;
+}
+
+/* =========================
+   FOOTER PERFIL
+   (usalo con un bloque HTML tuyo: <div class="fc-sb-user">...</div>)
+   ========================= */
+.fc-sb-user{
+  position: sticky;
+  bottom: 10px;
+  margin: 14px 6px 4px 6px;
+  padding: 12px 12px;
+  border-radius: var(--fc-sb-radius);
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: var(--fc-sb-shadow);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.fc-sb-user-left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.fc-sb-avatar{
+  width:42px;height:42px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.18);
+}
+.fc-sb-user-name{
+  color: var(--fc-sb-text);
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.1;
+  margin:0;
+}
+.fc-sb-user-mail{
+  color: var(--fc-sb-text-dim);
+  font-weight: 600;
+  font-size: 12px;
+  margin:2px 0 0 0;
+}
+.fc-sb-gear{
+  width:40px;height:40px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color: rgba(255,255,255,.9);
+}
+
 </style>
 """
