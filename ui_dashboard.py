@@ -239,12 +239,12 @@ def mostrar_dashboard():
             st.markdown("**🛒 Últimos artículos comprados:**")
             df_ultimas = get_dashboard_ultimas_compras(5)
             if df_ultimas is not None and not df_ultimas.empty:
-                st.dataframe(df_ultimas[['Articulo', 'Proveedor', 'Fecha', 'Total']].head(10), use_container_width=True)
+                st.dataframe(df_ultimas[['articulo', 'proveedor', 'fecha', 'total']].head(10), use_container_width=True)
                 for _, row in df_ultimas.iterrows():
-                    total_fmt = f"${row['Total']:,.0f}".replace(',', '.') if pd.notna(row['Total']) else "$0"
-                    articulo = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
-                    proveedor = str(row['Proveedor'])[:15] if pd.notna(row['Proveedor']) else ""
-                    st.markdown(f"• {row['Fecha']} - **{articulo}** - {proveedor} - {total_fmt}")
+                    total_fmt = f"${row['total']:,.0f}".replace(',', '.') if pd.notna(row['total']) else "$0"
+                    articulo = str(row['articulo'])[:25] + "..." if len(str(row['articulo'])) > 25 else str(row['articulo'])
+                    proveedor = str(row['proveedor'])[:15] if pd.notna(row['proveedor']) else ""
+                    st.markdown(f"• {row['fecha']} - **{articulo}** - {proveedor} - {total_fmt}")
             else:
                 st.info("No hay compras recientes")
         except Exception as e:
