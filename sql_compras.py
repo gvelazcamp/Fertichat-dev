@@ -88,10 +88,6 @@ def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 500
     )
 
 
-# =====================================================================
-# COMPRAS MÚLTIPLES: PROVEEDORES, MESES Y AÑOS (NUEVA FUNCIÓN)
-# =====================================================================
-
 def get_compras_multiples(
     proveedores: List[str], 
     meses: Optional[List[str]] = None, 
@@ -109,18 +105,18 @@ def get_compras_multiples(
         return pd.DataFrame()
 
     where_parts = [
-        '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'  # ✅ RESTORED: Filter for purchases
+        '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\' OR "Tipo Comprobante" LIKE \'%Factura%\')'  # ✅ BROADENED: Include Factura
     ]
     params: List[Any] = []
 
-    # Proveedores (normalización simple, igual que función única)
+    # Proveedores (normalización con regexp para espacios, igual que get_detalle_compras_proveedor_mes)
     prov_clauses = []
     for p in proveedores:
         p = str(p).strip().lower()
         if not p:
             continue
         prov_clauses.append(
-            "LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s"
+            "LOWER(TRIM(regexp_replace(\"Cliente / Proveedor\", ' ', '', 'g'))) LIKE LOWER(TRIM(regexp_replace(%s, ' ', '', 'g')))"
         )
         params.append(f"%{p}%")
 
@@ -153,7 +149,6 @@ def get_compras_multiples(
         LIMIT {limite}
     """
     return ejecutar_consulta(sql, tuple(params))
-
 
 # =====================================================================
 # DETALLE COMPRAS: PROVEEDOR + MES
