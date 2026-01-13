@@ -20,59 +20,6 @@ from sql_core import (
 # COMPRAS POR AÑO (SIN FILTRO DE PROVEEDOR/ARTÍCULO)
 # =====================================================================
 
-def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
-    """Todas las compras de un año."""
-    # Usar expresión simple para evitar errores de parseo
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Articulo") AS Articulo,
-            TRIM("Nro. Comprobante") AS Nro_Factura,
-            "Fecha",
-            "Cantidad",
-            "Moneda",
-            TRIM("Monto Neto") AS Total
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año" = %s
-        ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT %s
-    """
-    return ejecutar_consulta(sql, (anio, limite))
-
-
-def get_todas_facturas_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
-    """Alias para get_compras_anio: Todas las facturas/compras de un año sin filtro de proveedor."""
-    return get_compras_anio(anio, limite)
-
-
-def get_total_compras_anio(anio: int) -> dict:
-    """Total de compras de un año (resumen)."""
-    total_pesos = _sql_total_num_expr()
-    total_usd = _sql_total_num_expr_usd()
-    sql = f"""
-        SELECT
-            COUNT(*) AS registros,
-            COALESCE(SUM(CASE WHEN TRIM("Moneda") = '$' THEN {total_pesos} ELSE 0 END), 0) AS total_pesos,
-            COALESCE(SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'U$$') THEN {total_usd} ELSE 0 END), 0) AS total_usd,
-            COUNT(DISTINCT TRIM("Cliente / Proveedor")) AS proveedores,
-            COUNT(DISTINCT TRIM("Articulo")) AS articulos
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año" = %s
-    """
-    df = ejecutar_consulta(sql, (anio,))
-    if df is not None and not df.empty:
-        return {
-            "registros": int(df["registros"].iloc[0] or 0),
-            "total_pesos": float(df["total_pesos"].iloc[0] or 0),
-            "total_usd": float(df["total_usd"].iloc[0] or 0),
-            "proveedores": int(df["proveedores"].iloc[0] or 0),
-            "articulos": int(df["articulos"].iloc[0] or 0)
-        }
-    return {"registros": 0, "total_pesos": 0.0, "total_usd": 0.0, "proveedores": 0, "articulos": 0}
-
-
 def get_detalle_facturas_proveedor_anio(
     proveedores: List[str], 
     anios: List[int], 
@@ -83,8 +30,6 @@ def get_detalle_facturas_proveedor_anio(
     
     anios = sorted(anios)
     anios_sql = ", ".join(map(str, anios))  # "2024, 2025"
-    
-    total_expr = _sql_total_num_expr_general()  # ✅ ADDED for numeric Total
     
     # Usar Total simple
     moneda_sql = ""
@@ -110,7 +55,7 @@ def get_detalle_facturas_proveedor_anio(
             "Fecha",
             "Año",
             "Moneda",
-            {total_expr} AS Total  # ✅ CHANGED to numeric
+            CAST(NULLIF(REPLACE(TRIM("Monto Neto"), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED to numeric with comma handling
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" IN ({anios_sql})
@@ -120,7 +65,7 @@ def get_detalle_facturas_proveedor_anio(
         LIMIT {limite}
     """
     return ejecutar_consulta(sql, tuple(prov_params))
-
+    
 # =====================================================================
 # COMPRAS MÚLTIPLES: PROVEEDORES, MESES Y AÑOS (NUEVA FUNCIÓN)
 # =====================================================================
