@@ -162,11 +162,11 @@ def mostrar_inicio():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Helpers HTML (móvil) - ONCLICK CORREGIDO PARA QUE FUNCIONE
+    # Helpers HTML (móvil) - ONCLICK CORREGIDO PARA NAVEGACIÓN
     # =========================
     def _mcard(go: str, icon: str, title: str, sub: str, tile_class: str) -> str:
         return f'''
-        <div class="fc-mcard" onclick="const url = new URL(window.location); url.searchParams.set('go', '{go}'); window.location.href = url.toString();">
+        <div class="fc-mcard" onclick="window.location.search = '?go={go}'">
             <div class="fc-micon {tile_class}">{icon}</div>
             <div class="fc-mtxt">
                 <p class="fc-mtitle">{title}</p>
