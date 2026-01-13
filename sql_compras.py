@@ -108,7 +108,7 @@ def get_detalle_facturas_proveedor_anio(
             "Fecha",
             "Año",
             "Moneda",
-            CAST(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.') AS NUMERIC) AS Total
+            CAST(NULLIF(TRIM("Monto Neto"), '') AS NUMERIC) AS Total
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" IN ({anios_sql})
@@ -117,7 +117,7 @@ def get_detalle_facturas_proveedor_anio(
         ORDER BY "Fecha" DESC NULLS LAST
         LIMIT {limite}
     """
-    return ejecutar_consulta(sql, tuple(prov_params))
+    return ejecutar_consulta(sql, tuple(prov_params)))
 
 
 # =====================================================================
