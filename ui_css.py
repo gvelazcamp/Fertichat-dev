@@ -1,6 +1,7 @@
-import streamlit as st
+# =========================
+# UI_CSS.PY - CSS GLOBAL (APP + LOGIN)
+# =========================
 
-# CSS GLOBAL INTEGRADO (tu ui_css.py)
 CSS_GLOBAL = r"""
 <style>
 
@@ -320,68 +321,3 @@ html, body {
 
 </style>
 """
-
-# Aplicar CSS global
-st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
-
-# Sidebar corporativo
-with st.sidebar:
-    st.title("📊 Panel Corporativo")
-    st.markdown("---")
-    
-    # Menú de navegación
-    menu = st.radio("Menú Principal", ["Inicio", "Compras IA", "Buscador IA", "Stock IA", "Dashboard", "Configuración"])
-    
-    st.markdown("---")
-    st.subheader("Herramientas")
-    if st.button("📈 Reportes"):
-        st.info("Generando reporte...")
-    if st.button("📧 Notificaciones"):
-        st.info("Enviando notificación...")
-    
-    st.markdown("---")
-    st.caption("Versión 1.0 | Empresa XYZ")
-
-# Contenido principal según menú
-if menu == "Inicio":
-    st.title("🏠 Inicio - Panel Corporativo")
-    st.markdown("Bienvenido a tu dashboard vendible.")
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Ventas", "1.2M", "+10%")
-    with col2:
-        st.metric("Clientes", "5.4K", "+5%")
-    with col3:
-        st.metric("Pedidos", "892", "+12%")
-    
-    st.markdown("### Próximas acciones")
-    st.checkbox("Revisar inventario")
-    st.checkbox("Actualizar precios")
-    
-elif menu == "Compras IA":
-    st.title("🛒 Compras IA")
-    st.write("Análisis inteligente de compras.")
-    # Agrega tu lógica aquí
-    
-elif menu == "Buscador IA":
-    st.title("🔍 Buscador IA")
-    query = st.text_input("Buscar facturas o lotes:")
-    if st.button("Buscar"):
-        st.write(f"Resultados para: {query}")
-    
-elif menu == "Stock IA":
-    st.title("📦 Stock IA")
-    st.write("Consultar inventario inteligente.")
-    
-elif menu == "Dashboard":
-    st.title("📊 Dashboard")
-    st.write("Estadísticas en Power BI o gráficos.")
-    
-elif menu == "Configuración":
-    st.title("⚙️ Configuración")
-    st.write("Ajustes del sistema.")
-
-# Footer
-st.markdown("---")
-st.caption("© 2023 Empresa XYZ - Todos los derechos reservados.")
