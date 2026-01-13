@@ -1,5 +1,5 @@
 # =========================
-# UI_CSS.PY - CSS GLOBAL (APP + LOGIN)
+# UI_CSS.PY - CSS GLOBAL (APP + LOGIN + SIDEBAR CLARO CORPORATIVO)
 # =========================
 
 CSS_GLOBAL = r"""
@@ -320,30 +320,30 @@ html, body {
 }
 
 /* =========================
-   VARIABLES SIDEBAR CORPORATIVO
+   VARIABLES SIDEBAR CORPORATIVO CLARO
    ========================= */
 :root{
-  --fc-sb-bg1:#0b1f3a;          /* azul profundo */
-  --fc-sb-bg2:#143a63;          /* azul medio */
-  --fc-sb-border:rgba(255,255,255,.10);
-  --fc-sb-text:rgba(255,255,255,.90);
-  --fc-sb-text-dim:rgba(255,255,255,.65);
-  --fc-sb-active:rgba(255,255,255,.14);
-  --fc-sb-hover:rgba(255,255,255,.10);
-  --fc-sb-chip:rgba(255,255,255,.08);
-  --fc-sb-shadow:0 18px 40px rgba(0,0,0,.28);
-  --fc-sb-radius:18px;
+  --fc-sb-bg1:#ffffff;          /* blanco puro */
+  --fc-sb-bg2:#f8fafc;           /* gris muy claro */
+  --fc-sb-border:rgba(15,23,42,0.08);
+  --fc-sb-text:#0f172a;         /* negro */
+  --fc-sb-text-dim:#64748b;     /* gris medio */
+  --fc-sb-active:#e0f2fe;       /* azul celeste claro */
+  --fc-sb-hover:#f1f5f9;        /* gris hover */
+  --fc-sb-chip:rgba(15,23,42,0.05);
+  --fc-sb-shadow:0 10px 25px rgba(0,0,0,0.08);
+  --fc-sb-radius:16px;
 }
 
 /* =========================
-   CONTENEDOR SIDEBAR
+   CONTENEDOR SIDEBAR CLARO
    ========================= */
 section[data-testid="stSidebar"]{
   background: linear-gradient(180deg, var(--fc-sb-bg1) 0%, var(--fc-sb-bg2) 100%) !important;
   border-right: 1px solid var(--fc-sb-border) !important;
 }
 
-/* Sombra “tarjeta” en modo mobile/desktop */
+/* Padding interno */
 section[data-testid="stSidebar"] > div{
   padding: 14px 12px 12px 12px !important;
 }
@@ -369,7 +369,7 @@ section[data-testid="stSidebar"] > div{
   width:34px;height:34px;
   border-radius:10px;
   background: linear-gradient(135deg, #22c55e 0%, #60a5fa 55%, #1d4ed8 100%);
-  box-shadow: 0 10px 22px rgba(0,0,0,.25);
+  box-shadow: 0 8px 16px rgba(34, 197, 94, 0.2);
 }
 .fc-sb-title{
   color: var(--fc-sb-text);
@@ -381,25 +381,25 @@ section[data-testid="stSidebar"] > div{
 .fc-sb-menuicon{
   width:34px;height:34px;
   border-radius:12px;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.10);
+  background: var(--fc-sb-chip);
+  border: 1px solid var(--fc-sb-border);
   display:flex;
   align-items:center;
   justify-content:center;
-  color: rgba(255,255,255,.85);
+  color: var(--fc-sb-text);
 }
 
 /* =========================
    BUSCADOR (input)
    ========================= */
 section[data-testid="stSidebar"] input{
-  background: rgba(255,255,255,.07) !important;
+  background: var(--fc-sb-chip) !important;
   color: var(--fc-sb-text) !important;
-  border: 1px solid rgba(255,255,255,.12) !important;
+  border: 1px solid var(--fc-sb-border) !important;
   border-radius: 14px !important;
 }
 section[data-testid="stSidebar"] input::placeholder{
-  color: rgba(255,255,255,.55) !important;
+  color: var(--fc-sb-text-dim) !important;
 }
 section[data-testid="stSidebar"] div[data-baseweb="input"]{
   background: transparent !important;
@@ -407,7 +407,6 @@ section[data-testid="stSidebar"] div[data-baseweb="input"]{
 
 /* =========================
    RADIO/MENÚ (estilo “lista”)
-   - Streamlit usa BaseWeb para Radio
    ========================= */
 
 /* Quitar caja blanca del widget */
@@ -441,25 +440,23 @@ section[data-testid="stSidebar"] div[role="radiogroup"] span{
 
 /* “Check”/círculo del radio */
 section[data-testid="stSidebar"] input[type="radio"]{
-  accent-color: #93c5fd !important;
+  accent-color: #0ea5e9 !important;
 }
 
-/* Opción seleccionada (aprox):
-   BaseWeb suele marcar el item con aria-checked=true en el contenedor */
+/* Opción seleccionada */
 section[data-testid="stSidebar"] div[role="radiogroup"] > div:has([aria-checked="true"]),
 section[data-testid="stSidebar"] div[role="radiogroup"] > div:has(input[type="radio"]:checked){
   background: var(--fc-sb-active) !important;
-  border: 1px solid rgba(255,255,255,.14) !important;
+  border: 1px solid rgba(14, 165, 233, 0.2) !important;
 }
 
-/* Ajuste de padding para que quede “corporativo” */
+/* Padding de opciones */
 section[data-testid="stSidebar"] div[role="radiogroup"] > div label{
   padding: 10px 10px !important;
 }
 
 /* =========================
    FOOTER PERFIL
-   (usalo con un bloque HTML tuyo: <div class="fc-sb-user">...</div>)
    ========================= */
 .fc-sb-user{
   position: sticky;
@@ -467,8 +464,8 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > div label{
   margin: 14px 6px 4px 6px;
   padding: 12px 12px;
   border-radius: var(--fc-sb-radius);
-  background: rgba(0,0,0,.18);
-  border: 1px solid rgba(255,255,255,.10);
+  background: var(--fc-sb-chip);
+  border: 1px solid var(--fc-sb-border);
   box-shadow: var(--fc-sb-shadow);
   display:flex;
   align-items:center;
@@ -483,8 +480,8 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > div label{
 .fc-sb-avatar{
   width:42px;height:42px;
   border-radius: 999px;
-  background: rgba(255,255,255,.16);
-  border: 1px solid rgba(255,255,255,.18);
+  background: var(--fc-sb-chip);
+  border: 1px solid var(--fc-sb-border);
 }
 .fc-sb-user-name{
   color: var(--fc-sb-text);
@@ -502,12 +499,12 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > div label{
 .fc-sb-gear{
   width:40px;height:40px;
   border-radius: 14px;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.12);
+  background: var(--fc-sb-chip);
+  border: 1px solid var(--fc-sb-border);
   display:flex;
   align-items:center;
   justify-content:center;
-  color: rgba(255,255,255,.9);
+  color: var(--fc-sb-text);
 }
 
 </style>
