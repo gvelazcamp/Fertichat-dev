@@ -210,7 +210,6 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
         WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
           AND LOWER(TRIM("Mes")) = LOWER(%s)
           {anio_filter}
-          AND ("Tipo Comprobante" LIKE '%Compra%' OR "Tipo Comprobante" LIKE '%Factura%')
         ORDER BY "Fecha" DESC NULLS LAST
     """
     
@@ -233,7 +232,6 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                 WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
                   AND LOWER(TRIM("Mes")) = LOWER(%s)
                   {anio_filter}
-                  AND ("Tipo Comprobante" LIKE '%Compra%' OR "Tipo Comprobante" LIKE '%Factura%')
                 ORDER BY "Fecha" DESC NULLS LAST
             """
             df = ejecutar_consulta(sql_alt, (f"%{proveedor_like}%", mes_alt))
