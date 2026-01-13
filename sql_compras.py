@@ -163,8 +163,20 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     """Detalle de compras de un proveedor en un mes específico, opcionalmente filtrado por año."""
     proveedor_like = (proveedor_like or "").strip().lower()
     
+    # Parse mes_key si contiene año (ej: "noviembre 2025" -> mes="noviembre", anio=2025)
+    mes_clean = mes_key
+    anio_clean = anio
+    if ' ' in mes_key:
+        parts = mes_key.rsplit(' ', 1)
+        if len(parts) == 2:
+            mes_clean, anio_str = parts
+            try:
+                anio_clean = int(anio_str)
+            except:
+                pass
+    
     # Construir la consulta con filtro opcional de año
-    anio_filter = f'AND "Año" = {anio}' if anio else ""
+    anio_filter = f'AND "Año" = {anio_clean}' if anio_clean else ""
     
     # Usar Total simple para evitar errores de parseo
     sql = f"""
@@ -184,12 +196,12 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
         ORDER BY "Fecha" DESC NULLS LAST
     """
     
-    df = ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
+    df = ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_clean))
     
     # FALLBACK AUTOMÁTICO DE MES (solo si no hay año especificado, o ajusta si es necesario)
     if df is None or df.empty:
-        mes_alt = get_ultimo_mes_disponible_hasta(mes_key)
-        if mes_alt and mes_alt != mes_key:
+        mes_alt = get_ultimo_mes_disponible_hasta(mes_clean)
+        if mes_alt and mes_alt != mes_clean:
             sql_alt = f"""
                 SELECT 
                     TRIM("Cliente / Proveedor") AS Proveedor,
