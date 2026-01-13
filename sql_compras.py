@@ -230,7 +230,7 @@ def get_detalle_facturas_proveedor_anio(
             "Fecha",
             "Año",
             "Moneda",
-            TRIM("Monto Neto") AS Total
+            CAST(NULLIF(REPLACE(TRIM("Monto Neto"), ',', '.'), '') AS NUMERIC) AS Total  # ✅ CHANGED to numeric
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" IN ({anios_sql})
@@ -240,30 +240,6 @@ def get_detalle_facturas_proveedor_anio(
         LIMIT {limite}
     """
     return ejecutar_consulta(sql, tuple(prov_params))
-
-
-def get_total_compras_proveedor_anio(
-    proveedor_like: str, 
-    anio: int
-) -> dict:
-    """Resumen total de compras de un proveedor en un solo año."""
-    proveedor_like = (proveedor_like or "").split("(")[0].strip().lower()
-    sql = f"""
-        SELECT
-            COUNT(*) AS registros,
-            COALESCE(SUM(CAST(NULLIF(TRIM("Monto Neto"), '') AS NUMERIC)), 0) AS total
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND LOWER(TRIM("Cliente / Proveedor")) LIKE %s
-          AND "Año" = %s
-    """
-    df = ejecutar_consulta(sql, (f"%{proveedor_like}%", anio))
-    if df is not None and not df.empty:
-        return {
-            "registros": int(df["registros"].iloc[0] or 0),
-            "total": float(df["total"].iloc[0] or 0)
-        }
-    return {"registros": 0, "total": 0.0}
 
 
 # =====================================================================
