@@ -468,7 +468,7 @@ def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def get_alertas_vencimiento_multiple(limite: int = 10, dias_filtro: int = 30) -> list:
+def get_alertas_vencimiento_multiple(limite: int = 10, dias_filtro: int = 90) -> list:  # ✅ CAMBIADO A 90
     """Alertas rotativas de vencimiento para el módulo Stock IA."""
     try:
         df = get_lotes_por_vencer(dias=dias_filtro)
