@@ -123,12 +123,10 @@ def get_compras_multiples(
         'diciembre': '12'
     }
 
-    where_parts = [
-        '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\' OR "Tipo Comprobante" LIKE \'%Factura%\')'  # ✅ BROADENED: Include Factura
-    ]
+    where_parts = []  # ✅ REMOVED type filter to include all records
     params: List[Any] = []
 
-    # Proveedores (normalización con regexp para espacios, igual que get_detalle_compras_proveedor_mes)
+    # Proveedores (normalización con regexp para espacios)
     prov_clauses = []
     for p in proveedores:
         p = str(p).strip().lower()
