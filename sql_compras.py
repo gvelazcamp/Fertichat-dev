@@ -252,6 +252,27 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
 # DETALLE COMPRAS: PROVEEDOR + AÑO
 # =====================================================================
 
+# =========================
+# SQL COMPRAS - CONSULTAS TRANSACCIONALES
+# =========================
+
+import re
+import pandas as pd
+from typing import List, Optional, Any
+import streamlit as st
+
+from sql_core import (
+    ejecutar_consulta,
+    _sql_total_num_expr,
+    _sql_total_num_expr_usd,
+    _sql_total_num_expr_general,
+    get_ultimo_mes_disponible_hasta
+)
+
+# =====================================================================
+# DETALLE COMPRAS: PROVEEDOR + AÑO
+# =====================================================================
+
 def get_detalle_facturas_proveedor_anio(
     proveedores: List[str], 
     anios: List[int], 
@@ -262,8 +283,6 @@ def get_detalle_facturas_proveedor_anio(
     
     anios = sorted(anios)
     anios_sql = ", ".join(map(str, anios))  # "2024, 2025"
-    
-    total_expr = _sql_total_num_expr_general()  # ✅ CHANGED to use existing expression
     
     # Usar Total simple
     moneda_sql = ""
@@ -289,7 +308,7 @@ def get_detalle_facturas_proveedor_anio(
             "Fecha",
             "Año",
             "Moneda",
-            {total_expr} AS Total  # ✅ CHANGED to numeric
+            CAST(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.') AS NUMERIC) AS Total
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" IN ({anios_sql})
@@ -299,6 +318,20 @@ def get_detalle_facturas_proveedor_anio(
         LIMIT {limite}
     """
     return ejecutar_consulta(sql, tuple(prov_params))
+
+# =====================================================================
+# COMPRAS PROVEEDOR AÑO (NUEVA FUNCIÓN PARA SIMPLIFICAR CONSULTAS SIMPLES)
+# =====================================================================
+
+def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 5000) -> pd.DataFrame:
+    """Detalle de compras de un proveedor en un año específico."""
+    # Llama a la función existente para consistencia
+    return get_detalle_facturas_proveedor_anio(
+        proveedores=[proveedor_like],
+        anios=[anio],
+        moneda=None,
+        limite=limite
+    )
 
 # =====================================================================
 # DETALLE COMPRAS: ARTÍCULO + MES
