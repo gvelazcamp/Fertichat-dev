@@ -457,7 +457,7 @@ def get_stock_por_deposito() -> pd.DataFrame:
 
 
 # =====================================================================
-# ALERTAS Y VENCIMIENTOS
+# ALERTAS Y VENCIMIENTOS - CORREGIDO PARA CAST DE TEXT A DATE/NUMERIC
 # =====================================================================
 
 def get_lotes_por_vencer(dias: int = 90) -> pd.DataFrame:
@@ -475,7 +475,8 @@ def get_lotes_por_vencer(dias: int = 90) -> pd.DataFrame:
         """
         df = ejecutar_consulta(sql, (int(dias),))
         return df if df is not None else pd.DataFrame()
-    except Exception:
+    except Exception as e:
+        print(f"Error en get_lotes_por_vencer: {e}")
         return pd.DataFrame()
 
 
@@ -491,8 +492,10 @@ def get_lotes_vencidos() -> pd.DataFrame:
               AND COALESCE("STOCK", 0) > 0
             ORDER BY "VENCIMIENTO" DESC
         """
-        return ejecutar_consulta(sql, ())
-    except Exception:
+        df = ejecutar_consulta(sql, ())
+        return df if df is not None else pd.DataFrame()
+    except Exception as e:
+        print(f"Error en get_lotes_vencidos: {e}")
         return pd.DataFrame()
 
 
@@ -511,14 +514,14 @@ def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
         """
         df = ejecutar_consulta(sql, (int(minimo),))
         return df if df is not None else pd.DataFrame()
-    except Exception:
+    except Exception as e:
+        print(f"Error en get_stock_bajo: {e}")
         return pd.DataFrame()
 
 
 def get_alertas_vencimiento_multiple(limite: int = 10, dias_filtro: int = 30) -> list:
     """Alertas rotativas de vencimiento para el módulo Stock IA."""
     try:
-        # ✅ FIX: Usamos el parámetro dias_filtro (30 por defecto)
         df = get_lotes_por_vencer(dias=dias_filtro)
         
         if df is None or df.empty:
@@ -538,11 +541,13 @@ def get_alertas_vencimiento_multiple(limite: int = 10, dias_filtro: int = 30) ->
             }
             alertas.append(alerta)
         return alertas
-    except Exception:
+    except Exception as e:
+        print(f"Error en get_alertas_vencimiento_multiple: {e}")
         return []
 
+
 def get_alertas_stock_1(limite: int = 5) -> list:
-    """✅ NUEVA FUNCIÓN: Obtiene específicamente artículos con stock = 1."""
+    """Obtiene específicamente artículos con stock = 1."""
     try:
         base, _, _ = _stock_base_subquery()
         sql = f"""
@@ -554,4 +559,6 @@ def get_alertas_stock_1(limite: int = 5) -> list:
         df = ejecutar_consulta(sql, ())
         if df is None or df.empty: return []
         return df.to_dict('records')
-    except: return []
+    except Exception as e:
+        print(f"Error en get_alertas_stock_1: {e}")
+        return []
