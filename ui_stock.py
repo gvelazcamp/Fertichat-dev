@@ -189,7 +189,7 @@ def _get_stock_cantidad_1(top_n: int = 200) -> pd.DataFrame:
 
 
 # Removido @st.cache_data para debug
-def _get_lotes_proximos_a_vencer(dias: int = 30) -> pd.DataFrame:  # ✅ CAMBIADO A 30 DÍAS
+def _get_lotes_proximos_a_vencer(dias: int = 365) -> pd.DataFrame:  # ✅ CAMBIADO A 365 DÍAS
     df = get_lotes_por_vencer(dias)
     # DEBUG removido
     if df is None or df.empty:
@@ -197,7 +197,7 @@ def _get_lotes_proximos_a_vencer(dias: int = 30) -> pd.DataFrame:  # ✅ CAMBIAD
     return df
 
 
-def mostrar_resumen_stock_rotativo(dias_vencer: int = 30):  # ✅ CAMBIADO DEFAULT A 30
+def mostrar_resumen_stock_rotativo(dias_vencer: int = 365):  # ✅ CAMBIADO DEFAULT A 365
     # ✅ No auto-refresh mientras el usuario está escribiendo en el input del Stock
     pregunta_actual = ""
     try:
