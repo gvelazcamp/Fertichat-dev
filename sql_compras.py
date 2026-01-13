@@ -252,6 +252,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     
     return df if df is not None else pd.DataFrame()
 
+
 # =====================================================================
 # DETALLE COMPRAS: PROVEEDOR + AÑO
 # =====================================================================
