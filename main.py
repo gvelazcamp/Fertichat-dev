@@ -17,7 +17,7 @@ from bajastock import mostrar_baja_stock
 from ordenes_compra import mostrar_ordenes_compra
 from ui_compras import Compras_IA
 from ui_buscador import mostrar_buscador_ia
-from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo
+# from ui_stock import mostrar_stock_ia, mostrar_resumen_stock_rotativo  # ❌ DESHABILITADO POR ERROR DE SINTAXIS
 from ui_dashboard import (
     mostrar_dashboard,
     mostrar_indicadores_ia,
@@ -520,8 +520,9 @@ elif menu_actual == "🔍 Debug SQL factura":
     mostrar_debug_sql_factura()
 
 elif menu_actual == "📦 Stock IA":
-    mostrar_resumen_stock_rotativo()
-    mostrar_stock_ia()
+    st.error("Módulo Stock IA temporalmente deshabilitado por errores de importación.")
+    # mostrar_resumen_stock_rotativo()
+    # mostrar_stock_ia()
 
 elif menu_actual == "🔎 Buscador IA":
     mostrar_buscador_ia()
