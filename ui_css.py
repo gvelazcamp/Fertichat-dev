@@ -596,4 +596,4 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > div label{
 }
 
 </style>
-"""
+"""  
