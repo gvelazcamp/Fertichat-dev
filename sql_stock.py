@@ -109,7 +109,7 @@ def _sql_date_expr_stock(col_expr: str) -> str:
 
 
 def _sql_num_expr_stock(col_expr: str) -> str:
-    """Convierte una columna (texto/num) a numeric."""
+    """Convierte una columna (texto/num) a numeric. Corrige el parsing para formatos con '.' como decimal."""
     if not col_expr:
         return "NULL::numeric"
 
@@ -117,10 +117,10 @@ def _sql_num_expr_stock(col_expr: str) -> str:
     NULLIF(
       regexp_replace(
         replace(
-          replace(TRIM({col_expr}::text), '.', ''),
+          replace(TRIM({col_expr}::text), ' ', ''),
           ',', '.'
         ),
-        '[^0-9\\.-]',
+        '[^0-9\\.]',
         '',
         'g'
       ),
@@ -137,7 +137,6 @@ def _stock_base_subquery() -> tuple:
 
     cols = _get_stock_columns(schema_s, table_s)
     # Removido debug print para producción
-    # print(f"DEBUG: schema={schema_s}, table={table_s}, cols={cols}")
 
     c_art = _pick_col(cols, ["articulo", "Artículo", "ARTICULO", "insumo", "descripcion", "descripcion_articulo", "item"])
     c_fam = _pick_col(cols, ["familia", "FAMILIA", "sector", "seccion", "sección", "rubro"])
@@ -148,7 +147,6 @@ def _stock_base_subquery() -> tuple:
     c_cod = _pick_col(cols, ["codigo", "CODIGO", "id", "ID", "cod_articulo", "cod", "codigo_articulo"])
 
     # Removido debug print para producción
-    # print(f"DEBUG: c_art={c_art}, c_fam={c_fam}, c_dep={c_dep}, c_lot={c_lot}, c_vto={c_vto}, c_stk={c_stk}, c_cod={c_cod}")
 
     art_expr = f"TRIM(COALESCE({c_art}::text,''))" if c_art else "''"
     fam_expr = f"TRIM(COALESCE({c_fam}::text,''))" if c_fam else "''"
