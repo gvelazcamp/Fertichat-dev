@@ -73,51 +73,19 @@ def get_total_compras_anio(anio: int) -> dict:
     return {"registros": 0, "total_pesos": 0.0, "total_usd": 0.0, "proveedores": 0, "articulos": 0}
 
 
-def get_detalle_facturas_proveedor_anio(
-    proveedores: List[str], 
-    anios: List[int], 
-    moneda: Optional[str] = None, 
-    limite: int = 5000
-) -> pd.DataFrame:
-    """Detalle de facturas de un proveedor en uno o varios años."""
-    
-    anios = sorted(anios)
-    anios_sql = ", ".join(map(str, anios))  # "2024, 2025"
-    
-    # Usar Total simple
-    moneda_sql = ""
-    if moneda:
-        moneda = moneda.strip().upper()
-        if moneda in ("U$S", "USD", "U$$", "US$"):
-            moneda_sql = "AND TRIM(\"Moneda\") IN ('U$S', 'U$$', 'USD', 'US$')"
-        elif moneda in ("$", "UYU"):
-            moneda_sql = "AND TRIM(\"Moneda\") = '$'"
+# =====================================================================
+# COMPRAS PROVEEDOR AÑO (NUEVA FUNCIÓN PARA SIMPLIFICAR CONSULTAS SIMPLES)
+# =====================================================================
 
-    prov_where = ""
-    prov_params = []
-    if proveedores:
-        parts = [f"LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s" for _ in proveedores]
-        prov_params = [f"%{p.lower()}%" for p in proveedores]
-        prov_where = f"AND ({' OR '.join(parts)})"
-
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Articulo") AS Articulo,
-            TRIM("Nro. Comprobante") AS Nro_Factura,
-            "Fecha",
-            "Año",
-            "Moneda",
-            CAST(NULLIF(TRIM("Monto Neto"), '') AS NUMERIC) AS Total
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año" IN ({anios_sql})
-          {prov_where}
-          {moneda_sql}
-        ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT {limite}
-    """
-    return ejecutar_consulta(sql, tuple(prov_params)))
+def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 5000) -> pd.DataFrame:
+    """Detalle de compras de un proveedor en un año específico."""
+    # Llama a la función existente para consistencia
+    return get_detalle_facturas_proveedor_anio(
+        proveedores=[proveedor_like],
+        anios=[anio],
+        moneda=None,
+        limite=limite
+    )
 
 
 # =====================================================================
@@ -143,7 +111,7 @@ def get_compras_multiples(
     total_expr = _sql_total_num_expr_general()
 
     where_parts = [
-        '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'  # ✅ ADDED back for purchases only
+        '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'
     ]
     params: List[Any] = []
 
@@ -252,27 +220,6 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
 # DETALLE COMPRAS: PROVEEDOR + AÑO
 # =====================================================================
 
-# =========================
-# SQL COMPRAS - CONSULTAS TRANSACCIONALES
-# =========================
-
-import re
-import pandas as pd
-from typing import List, Optional, Any
-import streamlit as st
-
-from sql_core import (
-    ejecutar_consulta,
-    _sql_total_num_expr,
-    _sql_total_num_expr_usd,
-    _sql_total_num_expr_general,
-    get_ultimo_mes_disponible_hasta
-)
-
-# =====================================================================
-# DETALLE COMPRAS: PROVEEDOR + AÑO
-# =====================================================================
-
 def get_detalle_facturas_proveedor_anio(
     proveedores: List[str], 
     anios: List[int], 
@@ -319,19 +266,30 @@ def get_detalle_facturas_proveedor_anio(
     """
     return ejecutar_consulta(sql, tuple(prov_params))
 
-# =====================================================================
-# COMPRAS PROVEEDOR AÑO (NUEVA FUNCIÓN PARA SIMPLIFICAR CONSULTAS SIMPLES)
-# =====================================================================
 
-def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 5000) -> pd.DataFrame:
-    """Detalle de compras de un proveedor en un año específico."""
-    # Llama a la función existente para consistencia
-    return get_detalle_facturas_proveedor_anio(
-        proveedores=[proveedor_like],
-        anios=[anio],
-        moneda=None,
-        limite=limite
-    )
+def get_total_compras_proveedor_anio(
+    proveedor_like: str, 
+    anio: int
+) -> dict:
+    """Resumen total de compras de un proveedor en un solo año."""
+    proveedor_like = (proveedor_like or "").split("(")[0].strip().lower()
+    sql = f"""
+        SELECT
+            COUNT(*) AS registros,
+            COALESCE(SUM(CAST(NULLIF(TRIM("Monto Neto"), '') AS NUMERIC)), 0) AS total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+          AND "Año" = %s
+    """
+    df = ejecutar_consulta(sql, (f"%{proveedor_like}%", anio))
+    if df is not None and not df.empty:
+        return {
+            "registros": int(df["registros"].iloc[0] or 0),
+            "total": float(df["total"].iloc[0] or 0)
+        }
+    return {"registros": 0, "total": 0.0}
+
 
 # =====================================================================
 # DETALLE COMPRAS: ARTÍCULO + MES
