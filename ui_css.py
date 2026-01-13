@@ -1,5 +1,5 @@
 # =========================
-# UI_CSS.PY - CSS GLOBAL (APP + LOGIN + SIDEBAR CLARO CORPORATIVO)
+# UI_CSS.PY - CSS GLOBAL (APP + LOGIN + SIDEBAR CLARO CORPORATIVO + TABLAS RESPONSIVAS PARA MÓVIL)
 # =========================
 
 CSS_GLOBAL = r"""
@@ -543,12 +543,27 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > div label{
     font-size: 0.9rem !important;
   }
 
-  /* Tablas/DataFrame: permitir scroll interno */
-  .stDataFrame {
-    overflow-x: auto !important;
-  }
-  .stDataFrame table {
+  /* Tablas/DataFrame: RESPONSIVAS PARA MÓVIL (SIN GIRAR EL CELULAR) */
+  .stDataFrame, .stTable {
+    overflow-x: auto !important;  /* Scroll horizontal interno */
+    -webkit-overflow-scrolling: touch !important;  /* Smooth en iOS */
     width: 100% !important;
+    max-width: 100% !important;
+  }
+  .stDataFrame table, .stTable table {
+    min-width: 100% !important;  /* Evita que se comprima demasiado */
+    font-size: 0.85rem !important;  /* Fuente más pequeña en móvil */
+    width: auto !important;  /* Deja que la tabla se expanda si es necesario */
+  }
+  .stDataFrame th, .stDataFrame td, .stTable th, .stTable td {
+    padding: 8px 6px !important;  /* Padding reducido */
+    white-space: nowrap !important;  /* Evita wrap de texto */
+    text-align: left !important;
+  }
+  .stDataFrame th, .stTable th {
+    font-weight: 700 !important;
+    background: rgba(15,23,42,0.05) !important;
+    border-bottom: 2px solid rgba(15,23,42,0.1) !important;
   }
 
   /* Toolbar: evitar que el título “empuje” */
@@ -569,6 +584,14 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > div label{
   button[data-baseweb="tab"] {
     font-size: 0.82rem !important;
     padding: 6px 7px !important;
+  }
+
+  /* Tablas aún más compactas en pantallas muy pequeñas */
+  .stDataFrame table, .stTable table {
+    font-size: 0.8rem !important;
+  }
+  .stDataFrame th, .stDataFrame td, .stTable th, .stTable td {
+    padding: 6px 4px !important;
   }
 }
 
