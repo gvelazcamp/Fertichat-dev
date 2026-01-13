@@ -651,7 +651,9 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
                 TRIM("Nro. Comprobante") AS Nro_Factura,
                 "Fecha",
                 "Cantidad",
-                "Moneda"
+                "Moneda",
+                TRIM("Monto Neto") AS "Monto Neto",  # ✅ ADD Monto Neto
+                {_sql_total_num_expr_general()} AS Total  # ✅ ADD Total
             FROM chatbot_raw
             WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", \'[áéíóúÁÉÍÓÚñÑ]\', \'[aeiouAEIOUñN]\', \'g\'))) LIKE %s
               AND "Año" = %s
@@ -665,7 +667,7 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
         df = ejecutar_consulta(sql, params)
         return df if df is not None else pd.DataFrame()
 
-    # Para otros casos, usar el query complejo original (sin Total para debug)
+    # Para otros casos, usar el query complejo original
     where_parts = [
         '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'
     ]
@@ -723,7 +725,9 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
             TRIM("Nro. Comprobante") AS Nro_Factura,
             "Fecha",
             "Cantidad",
-            "Moneda"
+            "Moneda",
+            TRIM("Monto Neto") AS "Monto Neto",  # ✅ ADD Monto Neto
+            {_sql_total_num_expr_general()} AS Total  # ✅ ADD Total
         FROM chatbot_raw
         WHERE {" AND ".join(where_parts)}
         ORDER BY "Fecha" DESC NULLS LAST
@@ -731,7 +735,6 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
     """
     df = ejecutar_consulta(sql, tuple(params))
     return df if df is not None else pd.DataFrame()
-
 
 # =========================
 # =========================
