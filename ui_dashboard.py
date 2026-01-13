@@ -19,6 +19,7 @@ from sql_compras import (
     get_dashboard_gastos_familia,
     get_dashboard_ultimas_compras,
 )
+from sql_stock import get_alertas_vencimiento_multiple  # ✅ FIXED: Import from sql_stock instead of sql_compras
 
 # =========================
 # 📊 DASHBOARD
@@ -579,27 +580,7 @@ def mostrar_resumen_compras_rotativo():
         unsafe_allow_html=True
     )
 
-
 # =========================
 # FUNCIONES ADICIONALES PARA ALERTAS
 # =========================
-
-def get_alertas_vencimiento_multiple(cantidad: int = 5) -> list:
-    """Obtiene alertas de vencimiento de artículos próximos a vencer."""
-    # Asumiendo que hay una tabla o lógica para vencimientos; ajusta según tu esquema
-    # Ejemplo: consulta a una tabla de stock con fechas de vencimiento
-    sql = f"""
-        SELECT
-            TRIM("Articulo") AS articulo,
-            "Fecha Vencimiento" AS vencimiento,
-            EXTRACT(DAY FROM "Fecha Vencimiento"::date - CURRENT_DATE) AS dias_restantes
-        FROM stock_table  -- Cambia por tu tabla real
-        WHERE "Fecha Vencimiento"::date > CURRENT_DATE
-          AND EXTRACT(DAY FROM "Fecha Vencimiento"::date - CURRENT_DATE) <= 30
-        ORDER BY "Fecha Vencimiento"::date ASC
-        LIMIT %s
-    """
-    df = ejecutar_consulta(sql, (cantidad,))
-    if df is not None and not df.empty:
-        return df.to_dict('records')
-    return []
+# ✅ REMOVED: The duplicated get_alertas_vencimiento_multiple function that was querying "stock_table" instead of using the correct one from sql_stock.py
