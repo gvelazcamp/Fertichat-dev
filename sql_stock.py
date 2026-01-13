@@ -135,6 +135,7 @@ def _stock_base_subquery() -> tuple:
     table_s = _safe_ident(table) or "stock_raw"
 
     cols = _get_stock_columns(schema_s, table_s)
+    print(f"DEBUG: schema={schema_s}, table={table_s}, cols={cols}")  # DEBUG
 
     c_art = _pick_col(cols, ["articulo", "Artículo", "ARTICULO", "insumo", "descripcion", "descripcion_articulo", "item"])
     c_fam = _pick_col(cols, ["familia", "FAMILIA", "sector", "seccion", "sección", "rubro"])
@@ -143,6 +144,8 @@ def _stock_base_subquery() -> tuple:
     c_vto = _pick_col(cols, ["vencimiento", "VENCIMIENTO", "vto", "vence", "fecha_vencimiento", "fecha_vto", "fec_vto"])
     c_stk = _pick_col(cols, ["stock", "STOCK", "cantidad", "existencia", "saldo", "unidades"])
     c_cod = _pick_col(cols, ["codigo", "CODIGO", "id", "ID", "cod_articulo", "cod", "codigo_articulo"])
+
+    print(f"DEBUG: c_art={c_art}, c_fam={c_fam}, c_dep={c_dep}, c_lot={c_lot}, c_vto={c_vto}, c_stk={c_stk}, c_cod={c_cod}")  # DEBUG
 
     art_expr = f"TRIM(COALESCE({c_art}::text,''))" if c_art else "''"
     fam_expr = f"TRIM(COALESCE({c_fam}::text,''))" if c_fam else "''"
