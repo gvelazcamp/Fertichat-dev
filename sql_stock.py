@@ -79,8 +79,8 @@ def _sql_date_expr_stock(col_expr: str) -> str:
       CASE
         WHEN NULLIF(TRIM({col_expr}::text), '') IS NULL THEN NULL::date
         WHEN TRIM({col_expr}::text) ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' THEN (TRIM({col_expr}::text))::date
-        WHEN TRIM({col_expr}::text) ~ '^\\d{{2}}/\\d{{2}}/\\d{{4}}$' THEN to_date(TRIM({col_expr}::text), 'DD/MM/YYYY')
-        WHEN TRIM({col_expr}::text) ~ '^\\d{{2}}-\\d{{2}}-\\d{{4}}$' THEN to_date(TRIM({col_expr}::text), 'DD-MM-YYYY')
+        WHEN TRIM({col_expr}::text) ~ '^\\d{{1,2}}/\\d{{1,2}}/\\d{{4}}$' THEN to_date(TRIM({col_expr}::text), 'DD/MM/YYYY')
+        WHEN TRIM({col_expr}::text) ~ '^\\d{{1,2}}-\\d{{1,2}}-\\d{{4}}$' THEN to_date(TRIM({col_expr}::text), 'DD-MM-YYYY')
         ELSE NULL::date
       END
     )
@@ -121,9 +121,9 @@ def _stock_base_subquery() -> tuple:
             (
               CASE
                 WHEN NULLIF(TRIM("VENCIMIENTO"::text), '') IS NULL THEN NULL::date
-                WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' THEN (TRIM("VENCIMIENTO"::text))::date
-                WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}/\\d{{2}}/\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD/MM/YYYY')
-                WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}-\\d{{2}}-\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD-MM-YYYY')
+                WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{4}-\\d{2}-\\d{2}' THEN (TRIM("VENCIMIENTO"::text))::date
+                WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{1,2}/\\d{1,2}/\\d{4}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD/MM/YYYY')
+                WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{1,2}-\\d{1,2}-\\d{4}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD-MM-YYYY')
                 ELSE NULL::date
               END
             ) AS "VENCIMIENTO",
@@ -143,9 +143,9 @@ def _stock_base_subquery() -> tuple:
               WHEN (
                 CASE
                   WHEN NULLIF(TRIM("VENCIMIENTO"::text), '') IS NULL THEN NULL::date
-                  WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' THEN (TRIM("VENCIMIENTO"::text))::date
-                  WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}/\\d{{2}}/\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD/MM/YYYY')
-                  WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}-\\d{{2}}-\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD-MM-YYYY')
+                  WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{4}-\\d{2}-\\d{2}' THEN (TRIM("VENCIMIENTO"::text))::date
+                  WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{1,2}/\\d{1,2}/\\d{4}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD/MM/YYYY')
+                  WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{1,2}-\\d{1,2}-\\d{4}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD-MM-YYYY')
                   ELSE NULL::date
                 END
               ) IS NULL THEN NULL
@@ -153,11 +153,11 @@ def _stock_base_subquery() -> tuple:
                 (
                   CASE
                     WHEN NULLIF(TRIM("VENCIMIENTO"::text), '') IS NULL THEN NULL::date
-                    WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' THEN (TRIM("VENCIMIENTO"::text))::date
-                    WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}/\\d{{2}}/\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD/MM/YYYY')
-                  WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}-\\d{{2}}-\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD-MM-YYYY')
-                  ELSE NULL::date
-                END
+                    WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{4}-\\d{2}-\\d{2}' THEN (TRIM("VENCIMIENTO"::text))::date
+                    WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{1,2}/\\d{1,2}/\\d{4}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD/MM/YYYY')
+                    WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{1,2}-\\d{1,2}-\\d{4}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD-MM-YYYY')
+                    ELSE NULL::date
+                  END
                 ) - CURRENT_DATE
               )
             END AS "Dias_Para_Vencer"
