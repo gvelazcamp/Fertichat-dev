@@ -19,7 +19,7 @@ from sql_compras import (
     get_dashboard_gastos_familia,
     get_dashboard_ultimas_compras,
 )
-from sql_stock import get_alertas_vencimiento_multiple  # ✅ FIXED: Import from sql_stock instead of sql_compras
+from sql_stock import get_alertas_combinadas  # ✅ CHANGED: Use combined alerts function
 
 # =========================
 # 📊 DASHBOARD
@@ -196,19 +196,20 @@ def mostrar_dashboard():
     with col_der2:
         st.subheader("🚨 Alertas y Actividad")
 
-        # Alertas de vencimiento
+        # ✅ CHANGED: Alertas combinadas (stock = 1 + vencimientos <30 días con stock > 0)
         try:
-            alertas = get_alertas_vencimiento_multiple(5)
+            alertas = get_alertas_combinadas(5, dias_filtro=30)
             if alertas:
-                st.markdown("**⚠️ Próximos vencimientos:**")
+                st.markdown("**⚠️ Alertas (stock=1 o vence <30 días):**")
                 for alerta in alertas[:3]:
-                    # ✅ FIX mínimo: soportar ambos nombres de clave (dias_restantes / dias)
-                    dias = alerta.get('dias_restantes', alerta.get('dias', None))
+                    # Procesar días restantes
+                    dias = alerta.get('dias_restantes', alerta.get('Dias_Para_Vencer', None))
                     try:
                         dias = int(dias) if dias is not None else 999999
                     except:
                         dias = 999999
 
+                    # Color por urgencia
                     if dias <= 7:
                         color = "🔴"
                     elif dias <= 30:
@@ -216,9 +217,18 @@ def mostrar_dashboard():
                     else:
                         color = "🟡"
 
-                    st.markdown(f"{color} **{alerta['articulo'][:30]}** - {alerta['vencimiento']} ({dias} días)")
+                    # Mostrar artículo, lote, stock
+                    articulo = str(alerta.get('articulo', alerta.get('ARTICULO', '')))[:30]
+                    lote = str(alerta.get('lote', alerta.get('LOTE', 'Sin lote')))
+                    stock = str(alerta.get('stock', alerta.get('STOCK', '0')))
+                    venc = str(alerta.get('vencimiento', alerta.get('VENCIMIENTO', 'Sin fecha')))
+
+                    if dias < 999999:  # Es vencimiento
+                        st.markdown(f"{color} **{articulo}** (Lote: {lote}) - Vence: {venc} ({dias} días) - Stock: {stock}")
+                    else:  # Stock = 1
+                        st.markdown(f"🟡 **{articulo}** (Lote: {lote}) - Stock: {stock} (bajo)")
             else:
-                st.success("✅ No hay vencimientos próximos")
+                st.success("✅ No hay alertas activas")
         except Exception as e:
             st.error(f"Error cargando alertas: {e}")
 
