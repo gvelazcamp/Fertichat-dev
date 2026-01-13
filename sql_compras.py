@@ -257,6 +257,7 @@ def get_detalle_facturas_proveedor_anio(
             "Fecha",
             "Año",
             "Moneda",
+            TRIM("Monto Neto") AS "Monto Neto",  # ✅ ADD Monto Neto column
             {total_expr} AS Total  # ✅ SAME AS get_compras_multiples
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
@@ -267,7 +268,6 @@ def get_detalle_facturas_proveedor_anio(
         LIMIT {limite}
     """
     return ejecutar_consulta(sql, tuple(prov_params))
-
 # =====================================================================
 # DETALLE COMPRAS: ARTÍCULO + MES
 # =====================================================================
