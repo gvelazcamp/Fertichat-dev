@@ -3,6 +3,7 @@
 # =========================
 
 import streamlit as st
+import streamlit.components.v1 as components
 from datetime import datetime
 import random
 
@@ -74,60 +75,35 @@ def mostrar_inicio():
         padding-right: 0.65rem !important;
     }
 
-    /* Botón como tarjeta móvil - CLICKEABLE CON ST.BUTTON */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button{
-        border:1px solid rgba(15,23,42,0.10);
-        background: rgba(255,255,255,0.88);
-        border-radius:20px;
+    /* Tarjeta móvil (DIV clickeable) - MISMO TAMAÑO FORZADO */
+    .fc-mcard{
+        display:flex;
+        align-items:center;
+        gap:14px;
+
+        width:100%;
+        box-sizing:border-box;
 
         height:104px;
         min-height:104px;
         max-height:104px;
 
-        padding:14px 14px 14px 78px;  /* espacio para icono 54px + 14px left + 10px gap */
-
+        border-radius:20px;
+        border:1px solid rgba(15,23,42,0.10);
+        background: rgba(255,255,255,0.88);
         box-shadow: 0 10px 24px rgba(2,6,23,0.06);
+
+        padding:14px 14px;
         cursor:pointer;
         transition: transform 140ms ease, box-shadow 140ms ease;
-
-        width:100%;
-        text-align:left;
-        white-space: pre-line;
-        font-size:13.5px;
-        font-weight:600;
-        color:#334155;
-        line-height:1.22;
-
-        display:block;
-        position: relative;
-        margin:0;
-        box-sizing: border-box;
     }
 
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button::first-line{
-        font-size:16px;
-        font-weight:900;
-        color:#0f172a;
-        letter-spacing:-0.01em;
+    .fc-mcard:active{
+        transform: scale(0.98);
     }
 
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button:hover{
-        transform:translateY(-2px);
-        box-shadow: 0 14px 34px rgba(2,6,23,0.09);
-        border-color: rgba(37,99,235,0.22);
-        background: rgba(255,255,255,0.90);
-    }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button:active{
-        transform:translateY(0);
-        box-shadow: 0 10px 24px rgba(2,6,23,0.06);
-    }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .stButton > button:focus{
-        outline:none;
-        box-shadow: 0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
-    }
-
-    /* Tile (ícono) móvil - POSITION ABSOLUTE PARA QUE EL CLICK VAYA AL BOTÓN */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .fc-home-tile{
+    /* icon */
+    .fc-micon{
         width:54px;
         height:54px;
         border-radius:16px;
@@ -137,21 +113,38 @@ def mostrar_inicio():
         font-size:26px;
 
         border:1px solid rgba(15,23,42,0.08);
-        background: rgba(255,255,255,0.90);
+        background:rgba(255,255,255,0.90);
         box-shadow:0 10px 18px rgba(2,6,23,0.07);
 
-        position:absolute;
-        left:14px;
-        top:50%;
-        transform: translateY(-50%);
-        z-index:5;
+        flex:0 0 54px;
+    }
 
-        pointer-events:none; /* no bloquea el click del botón */
-        user-select:none;
+    /* text block */
+    .fc-mtxt{
+        display:flex;
+        flex-direction:column;
+        gap:4px;
+        min-width:0;
+    }
+
+    .fc-mtitle{
+        margin:0;
+        font-size:16px;
+        font-weight:900;
+        color:#0f172a;
+        line-height:1.05;
+    }
+
+    .fc-msub{
+        margin:0;
+        font-size:13px;
+        font-weight:600;
+        color:#64748b;
+        line-height:1.2;
     }
 
     /* separación entre tarjetas */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile .fc-mstack{
+    .fc-mstack{
         display:flex;
         flex-direction:column;
         gap:14px;
@@ -170,7 +163,21 @@ def mostrar_inicio():
     """, unsafe_allow_html=True)
 
     # =========================
-    # LAYOUT MÓVIL (CON ST.BUTTON CLICKEABLES)
+    # Helpers HTML (móvil) - ONCLICK FUNCIONA CON COMPONENTS
+    # =========================
+    def _mcard(go: str, icon: str, title: str, sub: str, tile_class: str) -> str:
+        return f'''
+        <div class="fc-mcard" onclick="window.location.search = '?go={go}'">
+            <div class="fc-micon {tile_class}">{icon}</div>
+            <div class="fc-mtxt">
+                <p class="fc-mtitle">{title}</p>
+                <p class="fc-msub">{sub}</p>
+            </div>
+        </div>
+        '''
+
+    # =========================
+    # LAYOUT MÓVIL (ÚNICO - PERFECTAS + FUNCIONAN EN CELULAR)
     # =========================
     st.markdown('<div class="fc-home-mobile">', unsafe_allow_html=True)
 
@@ -179,24 +186,15 @@ def mostrar_inicio():
         unsafe_allow_html=True
     )
 
-    st.markdown('<div class="fc-mstack">', unsafe_allow_html=True)
-    st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
-    if st.button("Compras IA\nConsultas inteligentes", key="compras"):
-        st.query_params["go"] = "compras"
-        st.rerun()
-    st.markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
-    if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador"):
-        st.query_params["go"] = "buscador"
-        st.rerun()
-    st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
-    if st.button("Stock IA\nConsultar inventario", key="stock"):
-        st.query_params["go"] = "stock"
-        st.rerun()
-    st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
-    if st.button("Dashboard\nVer estadísticas", key="dashboard"):
-        st.query_params["go"] = "dashboard"
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    html_principales = f"""
+    <div class="fc-mstack">
+        {_mcard("compras", "🛒", "Compras IA", "Consultas inteligentes", "tile-compras")}
+        {_mcard("buscador", "🔎", "Buscador IA", "Buscar facturas / lotes", "tile-buscador")}
+        {_mcard("stock", "📦", "Stock IA", "Consultar inventario", "tile-stock")}
+        {_mcard("dashboard", "📊", "Dashboard", "Ver estadísticas", "tile-dashboard")}
+    </div>
+    """
+    components.html(html_principales, height=500)  # ajustar height si necesario
 
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
 
@@ -205,24 +203,15 @@ def mostrar_inicio():
         unsafe_allow_html=True
     )
 
-    st.markdown('<div class="fc-mstack">', unsafe_allow_html=True)
-    st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
-    if st.button("Pedidos internos\nGestionar pedidos", key="pedidos"):
-        st.query_params["go"] = "pedidos"
-        st.rerun()
-    st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
-    if st.button("Baja de stock\nRegistrar bajas", key="baja"):
-        st.query_params["go"] = "baja"
-        st.rerun()
-    st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
-    if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
-        st.query_params["go"] = "ordenes"
-        st.rerun()
-    st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
-    if st.button("Indicadores\nPower BI", key="indicadores"):
-        st.query_params["go"] = "indicadores"
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    html_gestion = f"""
+    <div class="fc-mstack">
+        {_mcard("pedidos", "📄", "Pedidos internos", "Gestionar pedidos", "tile-pedidos")}
+        {_mcard("baja", "🧾", "Baja de stock", "Registrar bajas", "tile-baja")}
+        {_mcard("ordenes", "📦", "Órdenes de compra", "Crear órdenes", "tile-ordenes")}
+        {_mcard("indicadores", "📈", "Indicadores", "Power BI", "tile-indicadores")}
+    </div>
+    """
+    components.html(html_gestion, height=500)
 
     st.markdown("</div>", unsafe_allow_html=True)  # cierre fc-home-mobile
 
