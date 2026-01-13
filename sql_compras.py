@@ -109,7 +109,7 @@ def get_compras_multiples(
         return pd.DataFrame()
 
     where_parts = [
-        # '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'  # TEMPORAL: Quitado para probar
+        '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'  # ✅ RESTORED: Filter for purchases
     ]
     params: List[Any] = []
 
@@ -178,9 +178,9 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
             TRIM("Monto Neto") AS Total
         FROM chatbot_raw 
         WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
-          AND TRIM("Mes") = %s
+          AND LOWER(TRIM("Mes")) = LOWER(%s)
           {anio_filter}
-          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Tipo Comprobante" LIKE '%Compra%'
         ORDER BY "Fecha" DESC NULLS LAST
     """
     
@@ -201,9 +201,9 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                     TRIM("Monto Neto") AS Total
                 FROM chatbot_raw 
                 WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
-                  AND TRIM("Mes") = %s
+                  AND LOWER(TRIM("Mes")) = LOWER(%s)
                   {anio_filter}
-                  AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+                  AND "Tipo Comprobante" LIKE '%Compra%'
                 ORDER BY "Fecha" DESC NULLS LAST
             """
             df = ejecutar_consulta(sql_alt, (f"%{proveedor_like}%", mes_alt))
