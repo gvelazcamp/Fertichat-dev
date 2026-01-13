@@ -31,7 +31,7 @@ def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
             "Fecha",
             "Cantidad",
             "Moneda",
-            TRIM("Monto Neto") AS Total
+            CAST(NULLIF(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED for thousand separator and comma decimal
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" = %s
@@ -180,7 +180,7 @@ def get_compras_multiples(
             "Fecha",
             "Cantidad",
             "Moneda",
-            TRIM("Monto Neto") AS Total
+            CAST(NULLIF(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED for thousand separator and comma decimal
         FROM chatbot_raw
         WHERE {" AND ".join(where_parts)}
         ORDER BY "Fecha" DESC NULLS LAST
@@ -251,7 +251,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
             "Fecha",
             "Cantidad",
             "Moneda",
-            TRIM("Monto Neto") AS Total
+            CAST(NULLIF(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED for thousand separator and comma decimal
         FROM chatbot_raw 
         WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", ' ', '', 'g'))) LIKE LOWER(TRIM(regexp_replace(%s, ' ', '', 'g')))
           AND LOWER(TRIM("Mes")) = LOWER(%s)
@@ -273,7 +273,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                     "Fecha",
                     "Cantidad",
                     "Moneda",
-                    TRIM("Monto Neto") AS Total
+                    CAST(NULLIF(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED for thousand separator and comma decimal
                 FROM chatbot_raw 
                 WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", ' ', '', 'g'))) LIKE LOWER(TRIM(regexp_replace(%s, ' ', '', 'g')))
                   AND LOWER(TRIM("Mes")) = LOWER(%s)
@@ -326,7 +326,7 @@ def get_detalle_facturas_proveedor_anio(
             "Fecha",
             "Año",
             "Moneda",
-            TRIM("Monto Neto") AS Total
+            CAST(NULLIF(REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED for thousand separator and comma decimal
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" IN ({anios_sql})
