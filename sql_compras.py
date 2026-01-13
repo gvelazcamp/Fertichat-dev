@@ -20,52 +20,74 @@ from sql_core import (
 # COMPRAS POR AÑO (SIN FILTRO DE PROVEEDOR/ARTÍCULO)
 # =====================================================================
 
-def get_detalle_facturas_proveedor_anio(
-    proveedores: List[str], 
-    anios: List[int], 
-    moneda: Optional[str] = None, 
-    limite: int = 5000
-) -> pd.DataFrame:
-    """Detalle de facturas de un proveedor en uno o varios años."""
-    
-    anios = sorted(anios)
-    anios_sql = ", ".join(map(str, anios))  # "2024, 2025"
-    
-    # Usar Total simple
-    moneda_sql = ""
-    if moneda:
-        moneda = moneda.strip().upper()
-        if moneda in ("U$S", "USD", "U$$", "US$"):
-            moneda_sql = "AND TRIM(\"Moneda\") IN ('U$S', 'U$$', 'USD', 'US$')"
-        elif moneda in ("$", "UYU"):
-            moneda_sql = "AND TRIM(\"Moneda\") = '$'"
-
-    prov_where = ""
-    prov_params = []
-    if proveedores:
-        parts = [f"LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s" for _ in proveedores]
-        prov_params = [f"%{p.lower()}%" for p in proveedores]
-        prov_where = f"AND ({' OR '.join(parts)})"
-
+def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
+    """Todas las compras de un año."""
+    total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
             TRIM("Articulo") AS Articulo,
             TRIM("Nro. Comprobante") AS Nro_Factura,
             "Fecha",
-            "Año",
+            "Cantidad",
             "Moneda",
-            CAST(NULLIF(REPLACE(TRIM("Monto Neto"), ',', '.'), '') AS NUMERIC) AS Total  # ✅ FIXED to numeric with comma handling
+            {total_expr} AS Total
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año" IN ({anios_sql})
-          {prov_where}
-          {moneda_sql}
+          AND "Año" = %s
         ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT {limite}
+        LIMIT %s
     """
-    return ejecutar_consulta(sql, tuple(prov_params))
-    
+    return ejecutar_consulta(sql, (anio, limite))
+
+
+def get_todas_facturas_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
+    """Alias para get_compras_anio: Todas las facturas/compras de un año sin filtro de proveedor."""
+    return get_compras_anio(anio, limite)
+
+
+def get_total_compras_anio(anio: int) -> dict:
+    """Total de compras de un año (resumen)."""
+    total_pesos = _sql_total_num_expr()
+    total_usd = _sql_total_num_expr_usd()
+    sql = f"""
+        SELECT
+            COUNT(*) AS registros,
+            COALESCE(SUM(CASE WHEN TRIM("Moneda") = '$' THEN {total_pesos} ELSE 0 END), 0) AS total_pesos,
+            COALESCE(SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'U$$') THEN {total_usd} ELSE 0 END), 0) AS total_usd,
+            COUNT(DISTINCT TRIM("Cliente / Proveedor")) AS proveedores,
+            COUNT(DISTINCT TRIM("Articulo")) AS articulos
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año" = %s
+    """
+    df = ejecutar_consulta(sql, (anio,))
+    if df is not None and not df.empty:
+        return {
+            "registros": int(df["registros"].iloc[0] or 0),
+            "total_pesos": float(df["total_pesos"].iloc[0] or 0),
+            "total_usd": float(df["total_usd"].iloc[0] or 0),
+            "proveedores": int(df["proveedores"].iloc[0] or 0),
+            "articulos": int(df["articulos"].iloc[0] or 0)
+        }
+    return {"registros": 0, "total_pesos": 0.0, "total_usd": 0.0, "proveedores": 0, "articulos": 0}
+
+
+# =====================================================================
+# COMPRAS PROVEEDOR AÑO (NUEVA FUNCIÓN PARA SIMPLIFICAR CONSULTAS SIMPLES)
+# =====================================================================
+
+def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 5000) -> pd.DataFrame:
+    """Detalle de compras de un proveedor en un año específico."""
+    # Llama a la función existente para consistencia
+    return get_detalle_facturas_proveedor_anio(
+        proveedores=[proveedor_like],
+        anios=[anio],
+        moneda=None,
+        limite=limite
+    )
+
+
 # =====================================================================
 # COMPRAS MÚLTIPLES: PROVEEDORES, MESES Y AÑOS (NUEVA FUNCIÓN)
 # =====================================================================
@@ -86,8 +108,10 @@ def get_compras_multiples(
     if not proveedores:
         return pd.DataFrame()
 
+    total_expr = _sql_total_num_expr_general()
+
     where_parts = [
-        # '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'  # TEMPORAL: Quitado para probar
+        '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'  # ✅ ADDED back for purchases only
     ]
     params: List[Any] = []
 
@@ -124,7 +148,7 @@ def get_compras_multiples(
             "Fecha",
             "Cantidad",
             "Moneda",
-            TRIM("Monto Neto") AS Total
+            {total_expr} AS Total
         FROM chatbot_raw
         WHERE {" AND ".join(where_parts)}
         ORDER BY "Fecha" DESC NULLS LAST
@@ -144,7 +168,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     # Construir la consulta con filtro opcional de año
     anio_filter = f'AND "Año" = {anio}' if anio else ""
     
-    # Usar Total simple para evitar errores de parseo
+    total_expr = _sql_total_num_expr_general()
     sql = f"""
         SELECT 
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -153,7 +177,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
             "Fecha",
             "Cantidad",
             "Moneda",
-            TRIM("Monto Neto") AS Total
+            {total_expr} AS Total
         FROM chatbot_raw 
         WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
           AND TRIM("Mes") = %s
@@ -168,6 +192,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     if df is None or df.empty:
         mes_alt = get_ultimo_mes_disponible_hasta(mes_key)
         if mes_alt and mes_alt != mes_key:
+            total_expr = _sql_total_num_expr_general()
             sql_alt = f"""
                 SELECT 
                     TRIM("Cliente / Proveedor") AS Proveedor,
@@ -176,7 +201,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                     "Fecha",
                     "Cantidad",
                     "Moneda",
-                    TRIM("Monto Neto") AS Total
+                    {total_expr} AS Total
                 FROM chatbot_raw 
                 WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
                   AND TRIM("Mes") = %s
@@ -230,7 +255,7 @@ def get_detalle_facturas_proveedor_anio(
             "Fecha",
             "Año",
             "Moneda",
-            CAST(NULLIF(REPLACE(TRIM("Monto Neto"), ',', '.'), '') AS NUMERIC) AS Total  # ✅ CHANGED to numeric
+            CAST(NULLIF(REPLACE(TRIM("Monto Neto"), ',', '.'), '') AS NUMERIC) AS Total
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" IN ({anios_sql})
@@ -240,6 +265,30 @@ def get_detalle_facturas_proveedor_anio(
         LIMIT {limite}
     """
     return ejecutar_consulta(sql, tuple(prov_params))
+
+
+def get_total_compras_proveedor_anio(
+    proveedor_like: str, 
+    anio: int
+) -> dict:
+    """Resumen total de compras de un proveedor en un solo año."""
+    proveedor_like = (proveedor_like or "").split("(")[0].strip().lower()
+    sql = f"""
+        SELECT
+            COUNT(*) AS registros,
+            COALESCE(SUM(CAST(NULLIF(TRIM("Monto Neto"), '') AS NUMERIC)), 0) AS total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+          AND "Año" = %s
+    """
+    df = ejecutar_consulta(sql, (f"%{proveedor_like}%", anio))
+    if df is not None and not df.empty:
+        return {
+            "registros": int(df["registros"].iloc[0] or 0),
+            "total": float(df["total"].iloc[0] or 0)
+        }
+    return {"registros": 0, "total": 0.0}
 
 
 # =====================================================================
