@@ -108,69 +108,35 @@ def get_compras_multiples(
     if not proveedores:
         return pd.DataFrame()
 
-    meses_dict = {
-        'enero': '01',
-        'febrero': '02',
-        'marzo': '03',
-        'abril': '04',
-        'mayo': '05',
-        'junio': '06',
-        'julio': '07',
-        'agosto': '08',
-        'septiembre': '09',
-        'octubre': '10',
-        'noviembre': '11',
-        'diciembre': '12'
-    }
-
-    where_parts = []  # ✅ REMOVED type filter to include all records
+    where_parts = [
+        # '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'  # TEMPORAL: Quitado para probar
+    ]
     params: List[Any] = []
 
-    # Proveedores (normalización con regexp para espacios)
+    # Proveedores (normalización simple, igual que función única)
     prov_clauses = []
     for p in proveedores:
         p = str(p).strip().lower()
         if not p:
             continue
         prov_clauses.append(
-            "LOWER(TRIM(regexp_replace(\"Cliente / Proveedor\", ' ', '', 'g'))) LIKE LOWER(TRIM(regexp_replace(%s, ' ', '', 'g')))"
+            "LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s"
         )
         params.append(f"%{p}%")
 
     if prov_clauses:
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
-    # Meses -> parse si es nombre de mes, combinar con años si necesario
+    # Meses -> por "Mes" (con TRIM para manejar espacios)
     if meses:
         mes_clauses = []
-        for m in meses:
-            m = str(m).strip()
+        for m in (meses or []):
             if not m:
                 continue
-            if ' ' not in m and '-' not in m:  # Asume es nombre de mes como 'noviembre'
-                mes_num = meses_dict.get(m.lower(), m)
-                if anios:
-                    for a in anios:
-                        mes_clauses.append('TRIM("Mes") = %s')
-                        params.append(f"{a}-{mes_num.zfill(2)}")
-                else:
-                    # Si no hay años, busca en cualquier año (no ideal, pero para compatibilidad)
-                    mes_clauses.append('TRIM("Mes") LIKE %s')
-                    params.append(f"%-{mes_num.zfill(2)}")
-            else:
-                # Ya es formato '2025-11'
-                mes_clauses.append('TRIM("Mes") = %s')
-                params.append(m)
+            mes_clauses.append('TRIM("Mes") = %s')
+            params.append(m)
         if mes_clauses:
             where_parts.append("(" + " OR ".join(mes_clauses) + ")")
-
-    # Años -> si no hay meses específicos, filtra por años
-    if anios and not meses:
-        anios_ok = [a for a in anios if isinstance(a, int)]
-        if anios_ok:
-            ph = ", ".join(["%s"] * len(anios_ok))
-            where_parts.append(f'"Año" IN ({ph})')
-            params.extend(anios_ok)
 
     sql = f"""
         SELECT
@@ -197,50 +163,8 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     """Detalle de compras de un proveedor en un mes específico, opcionalmente filtrado por año."""
     proveedor_like = (proveedor_like or "").strip().lower()
     
-    # Mapeo de nombres de meses a números
-    meses = {
-        'enero': '01',
-        'febrero': '02',
-        'marzo': '03',
-        'abril': '04',
-        'mayo': '05',
-        'junio': '06',
-        'julio': '07',
-        'agosto': '08',
-        'septiembre': '09',
-        'octubre': '10',
-        'noviembre': '11',
-        'diciembre': '12'
-    }
-    
-    # Parse mes_key
-    mes_clean = mes_key
-    anio_clean = anio
-    
-    # Si contiene espacio, es "noviembre 2025" -> parse nombre a número
-    if ' ' in mes_key:
-        parts = mes_key.split(' ')
-        if len(parts) == 2:
-            mes_name, anio_str = parts
-            mes_num = meses.get(mes_name.lower(), mes_name)
-            mes_clean = f"{anio_str}-{mes_num.zfill(2)}"
-            try:
-                anio_clean = int(anio_str)
-            except:
-                pass
-    # Si contiene '-', es "2025-11" -> extraer año
-    elif '-' in mes_key:
-        parts = mes_key.split('-')
-        if len(parts) == 2:
-            try:
-                anio_str, mes_str = parts
-                anio_clean = int(anio_str)
-                mes_clean = mes_key  # mantener "2025-11"
-            except:
-                pass
-    
     # Construir la consulta con filtro opcional de año
-    anio_filter = f'AND "Año" = {anio_clean}' if anio_clean else ""
+    anio_filter = f'AND "Año" = {anio}' if anio else ""
     
     # Usar Total simple para evitar errores de parseo
     sql = f"""
@@ -253,18 +177,19 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
             "Moneda",
             TRIM("Monto Neto") AS Total
         FROM chatbot_raw 
-        WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", ' ', '', 'g'))) LIKE LOWER(TRIM(regexp_replace(%s, ' ', '', 'g')))
-          AND LOWER(TRIM("Mes")) = LOWER(%s)
+        WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+          AND TRIM("Mes") = %s
           {anio_filter}
+          AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
         ORDER BY "Fecha" DESC NULLS LAST
     """
     
-    df = ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_clean))
+    df = ejecutar_consulta(sql, (f"%{proveedor_like}%", mes_key))
     
     # FALLBACK AUTOMÁTICO DE MES (solo si no hay año especificado, o ajusta si es necesario)
     if df is None or df.empty:
-        mes_alt = get_ultimo_mes_disponible_hasta(mes_clean)
-        if mes_alt and mes_alt != mes_clean:
+        mes_alt = get_ultimo_mes_disponible_hasta(mes_key)
+        if mes_alt and mes_alt != mes_key:
             sql_alt = f"""
                 SELECT 
                     TRIM("Cliente / Proveedor") AS Proveedor,
@@ -275,9 +200,10 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                     "Moneda",
                     TRIM("Monto Neto") AS Total
                 FROM chatbot_raw 
-                WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", ' ', '', 'g'))) LIKE LOWER(TRIM(regexp_replace(%s, ' ', '', 'g')))
-                  AND LOWER(TRIM("Mes")) = LOWER(%s)
+                WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+                  AND TRIM("Mes") = %s
                   {anio_filter}
+                  AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
                 ORDER BY "Fecha" DESC NULLS LAST
             """
             df = ejecutar_consulta(sql_alt, (f"%{proveedor_like}%", mes_alt))
