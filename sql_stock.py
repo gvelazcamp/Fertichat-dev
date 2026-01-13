@@ -448,8 +448,8 @@ def get_lotes_vencidos() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
-    """Devuelve registros con stock <= minimo (por defecto 10)."""
+def get_stock_bajo(minimo: int = 1) -> pd.DataFrame:
+    """Devuelve registros con stock > minimo (por defecto 1) y vencimiento <30 días."""
     try:
         base, _, _ = _stock_base_subquery()
         sql = f"""
@@ -457,9 +457,11 @@ def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
                 "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
             FROM ({base}) s
             WHERE "STOCK" IS NOT NULL
-              AND "STOCK" <= %s
-              AND "STOCK" > 0
-            ORDER BY "STOCK" ASC NULLS LAST, "ARTICULO" ASC
+              AND "STOCK" > %s
+              AND "VENCIMIENTO" IS NOT NULL
+              AND "VENCIMIENTO" >= CURRENT_DATE
+              AND "VENCIMIENTO" < CURRENT_DATE + INTERVAL '30 days'
+            ORDER BY "VENCIMIENTO" ASC NULLS LAST, "ARTICULO" ASC
         """
         df = ejecutar_consulta(sql, (int(minimo),))
         return df if df is not None else pd.DataFrame()
