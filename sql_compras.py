@@ -22,7 +22,7 @@ from sql_core import (
 
 def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
     """Todas las compras de un año."""
-    total_expr = _sql_total_num_expr_general()  # ✅ CHANGED to numeric
+    # Usar expresión simple para evitar errores de parseo
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -31,7 +31,7 @@ def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
             "Fecha",
             "Cantidad",
             "Moneda",
-            {total_expr} AS Total  # ✅ CHANGED to numeric
+            TRIM("Monto Neto") AS Total
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" = %s
@@ -138,7 +138,6 @@ def get_compras_multiples(
         if mes_clauses:
             where_parts.append("(" + " OR ".join(mes_clauses) + ")")
 
-    total_expr = _sql_total_num_expr_general()  # ✅ CHANGED to numeric
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -147,7 +146,7 @@ def get_compras_multiples(
             "Fecha",
             "Cantidad",
             "Moneda",
-            {total_expr} AS Total  # ✅ CHANGED to numeric
+            TRIM("Monto Neto") AS Total
         FROM chatbot_raw
         WHERE {" AND ".join(where_parts)}
         ORDER BY "Fecha" DESC NULLS LAST
@@ -167,7 +166,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     # Construir la consulta con filtro opcional de año
     anio_filter = f'AND "Año" = {anio}' if anio else ""
     
-    total_expr = _sql_total_num_expr_general()  # ✅ CHANGED to numeric
+    # Usar Total simple para evitar errores de parseo
     sql = f"""
         SELECT 
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -176,7 +175,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
             "Fecha",
             "Cantidad",
             "Moneda",
-            {total_expr} AS Total  # ✅ CHANGED to numeric
+            TRIM("Monto Neto") AS Total
         FROM chatbot_raw 
         WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
           AND TRIM("Mes") = %s
@@ -191,7 +190,6 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     if df is None or df.empty:
         mes_alt = get_ultimo_mes_disponible_hasta(mes_key)
         if mes_alt and mes_alt != mes_key:
-            total_expr = _sql_total_num_expr_general()  # ✅ CHANGED to numeric
             sql_alt = f"""
                 SELECT 
                     TRIM("Cliente / Proveedor") AS Proveedor,
@@ -200,7 +198,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                     "Fecha",
                     "Cantidad",
                     "Moneda",
-                    {total_expr} AS Total  # ✅ CHANGED to numeric
+                    TRIM("Monto Neto") AS Total
                 FROM chatbot_raw 
                 WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
                   AND TRIM("Mes") = %s
@@ -246,7 +244,6 @@ def get_detalle_facturas_proveedor_anio(
         prov_params = [f"%{p.lower()}%" for p in proveedores]
         prov_where = f"AND ({' OR '.join(parts)})"
 
-    total_expr = _sql_total_num_expr_general()  # ✅ CHANGED to numeric
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -255,7 +252,7 @@ def get_detalle_facturas_proveedor_anio(
             "Fecha",
             "Año",
             "Moneda",
-            {total_expr} AS Total  # ✅ CHANGED to numeric
+            TRIM("Monto Neto") AS Total
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" IN ({anios_sql})
