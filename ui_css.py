@@ -1,599 +1,597 @@
 # =========================
-# UI_CSS.PY - CSS GLOBAL (APP + LOGIN + SIDEBAR CLARO CORPORATIVO + TABLAS RESPONSIVAS PARA MÓVIL)
+# UI_DASHBOARD.PY - MÓDULO DASHBOARD
 # =========================
 
-CSS_GLOBAL = r"""
-<style>
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime
 
-/* =========================
-   Ocultar basura (no rompe menú/sidebar)
-   ========================= */
-footer { visibility: hidden; }
-div[data-testid="stDecoration"] { display: none !important; }
+from config import DEBUG_MODE, POWERBI_URL
+from utils_format import _fmt_num_latam, _safe_float
+from sql_compras import (
+    ejecutar_consulta,
+    _sql_total_num_expr_general,
+    get_dashboard_totales,
+    get_dashboard_compras_por_mes,
+    get_dashboard_top_proveedores,
+    get_dashboard_gastos_familia,
+    get_dashboard_ultimas_compras,
+)
+from sql_stock import get_alertas_combinadas  # ✅ CHANGED: Use combined alerts function
 
-/* =========================
-   FORZAR MODO CLARO (GLOBAL)
-   ========================= */
-:root, html, body, .stApp {
-  color-scheme: light !important;
-}
-/* ================================
-   FORZAR LIGHT MODE (ANTI DARK)
-   ================================ */
+# =========================
+# 📊 DASHBOARD
+# =========================
 
-/* Decirle al navegador que SOLO usamos light */
-:root {
-  color-scheme: light !important;
-}
+def mostrar_dashboard():
+    """Dashboard con gráficos de compras y stock"""
 
-/* Evitar dark automático de Chrome */
-html {
-  background-color: #f6f4ef !important;
-}
+    st.title("📊 Dashboard")
 
-/* Inputs, cards, contenedores */
-* {
-  background-color: inherit;
-}
+    # Selector de año
+    anio_actual = datetime.now().year
+    col_filtro, col_espacio = st.columns([1, 3])
+    with col_filtro:
+        anio = st.selectbox("Año:", [anio_actual, anio_actual - 1, anio_actual - 2], index=0)
 
-/* Anti "forced dark" de Chrome */
-@media (prefers-color-scheme: dark) {
-  html, body {
-    background: #f6f4ef !important;
-    color: #0f172a !important;
-  }
+    st.markdown("---")
 
-  * {
-    filter: none !important;
-  }
-}
-html, body {
-  background: #f6f4ef !important;
-  color: #0f172a !important;
-}
+    # =====================
+    # MÉTRICAS PRINCIPALES
+    # =====================
+    try:
+        totales = get_dashboard_totales(anio)
 
-/* Si el sistema está dark, igual lo dejamos claro */
-@media (prefers-color-scheme: dark) {
-  :root, html, body, .stApp {
-    color-scheme: light !important;
-  }
-  html, body {
-    background: #f6f4ef !important;
-    color: #0f172a !important;
-  }
-}
+        col1, col2, col3, col4 = st.columns(4)
 
-/* =========================
-   Fondo principal APP
-   ========================= */
-:root {
-  --fc-bg-1: #f6f4ef;
-  --fc-bg-2: #f3f6fb;
-  --fc-text: #0f172a;
-}
+        with col1:
+            total_fmt = f"${totales['total_pesos']:,.0f}".replace(',', '.')
+            st.metric("💰 Total Compras $", total_fmt)
 
-html, body,
-.stApp,
-div[data-testid="stApp"],
-div[data-testid="stAppViewContainer"],
-div[data-testid="stAppViewContainer"] > .main,
-div[data-testid="stAppViewContainer"] > .main > div {
-  background: linear-gradient(135deg, var(--fc-bg-1), var(--fc-bg-2)) !important;
-  color: var(--fc-text) !important;
-}
+        with col2:
+            usd_fmt = f"U$S {totales['total_usd']:,.0f}".replace(',', '.')
+            st.metric("💵 Total USD", usd_fmt)
 
-html, body {
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
+        with col3:
+            st.metric("🏭 Proveedores", totales['proveedores'])
 
-/* =========================
-   OCULTAR SOLO el linkcito del H1 (ícono ancla)
-   ========================= */
-[data-testid="stHeaderActionElements"] { display: none !important; }
-h1 > span.eqpbrs03, h2 > span.eqpbrs03, h3 > span.eqpbrs03 { display: none !important; }
+        with col4:
+            st.metric("📄 Facturas", totales['facturas'])
+    except Exception as e:
+        st.error(f"Error cargando métricas: {e}")
 
-/* =========================
-   OCULTAR EL H1 "Inicio" gigante
-   ========================= */
-h1#inicio { display: none !important; }
+    st.markdown("---")
 
-/* =========================
-   (Opcional) ocultar tus cosas custom si quedaron
-   ========================= */
-#campana-mobile { display: none !important; }
-#mobile-header .logo { display: none !important; }
+    # =====================
+    # GRÁFICOS EN 2 COLUMNAS
+    # =====================
+    col_izq, col_der = st.columns(2)
 
-/* =========================
-   SIDEBAR: blanco + texto negro
-   ========================= */
-section[data-testid="stSidebar"] { border-right: 1px solid rgba(15,23,42,0.08); }
+    # GRÁFICO 1: Compras por Mes (Barras)
+    with col_izq:
+        st.subheader("📈 Compras por Mes")
+        try:
+            df_meses = get_dashboard_compras_por_mes(anio)
+            if df_meses is not None and not df_meses.empty:
+                fig_meses = px.bar(
+                    df_meses,
+                    x='mes',
+                    y='total',
+                    color='total',
+                    color_continuous_scale='Blues',
+                    labels={'total': 'Monto ($)', 'mes': ''}
+                )
+                fig_meses.update_layout(
+                    showlegend=False,
+                    coloraxis_showscale=False,
+                    height=350,
+                    margin=dict(l=20, r=20, t=30, b=20)
+                )
+                fig_meses.update_traces(
+                    texttemplate='%{y:,.0f}',
+                    textposition='outside',
+                    textfont_size=10
+                )
+                st.plotly_chart(fig_meses, use_container_width=True)
+            else:
+                st.info("No hay datos para este año")
+        except Exception as e:
+            st.error(f"Error: {e}")
 
-section[data-testid="stSidebar"] > div,
-div[data-testid="stSidebar"] > div {
-  background: rgba(255,255,255,0.92) !important;
-  backdrop-filter: blur(8px);
-}
+    # GRÁFICO 2: Top Proveedores (por moneda)
+    with col_der:
+        st.subheader("🏆 Top Proveedores (por moneda)")
+        try:
+            tabs = st.tabs(["$ Pesos", "U$S USD"])
 
-section[data-testid="stSidebar"] *,
-div[data-testid="stSidebar"] * {
-  color: #0f172a !important;
-}
+            with tabs[0]:
+                df_provs = get_dashboard_top_proveedores(anio, 10, moneda="$")
+                if df_provs is not None and not df_provs.empty:
+                    fig_provs = px.bar(
+                        df_provs,
+                        x='total',
+                        y='proveedor',
+                        orientation='h',
+                        color='total',
+                        color_continuous_scale='Oranges',
+                        labels={'total': 'Monto ($)', 'proveedor': ''}
+                    )
+                    fig_provs.update_layout(
+                        showlegend=False,
+                        coloraxis_showscale=False,
+                        height=350,
+                        margin=dict(l=20, r=20, t=30, b=20)
+                    )
+                    st.plotly_chart(fig_provs, use_container_width=True)
+                else:
+                    st.info("No hay datos en $ para este año")
 
-/* =========================
-   INPUTS / SELECT / DATE: blanco + texto negro (GLOBAL)
-   ========================= */
-div[data-baseweb="base-input"],
-div[data-baseweb="input"],
-div[data-baseweb="select"],
-div[data-baseweb="datepicker"],
-textarea {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  border-color: #e2e8f0 !important;
-}
+            with tabs[1]:
+                df_provs_usd = get_dashboard_top_proveedores(anio, 10, moneda="U$S")
+                if df_provs_usd is not None and not df_provs_usd.empty:
+                    fig_provs_usd = px.bar(
+                        df_provs_usd,
+                        x='total',
+                        y='proveedor',
+                        orientation='h',
+                        color='total',
+                        color_continuous_scale='Oranges',
+                        labels={'total': 'Monto (U$S)', 'proveedor': ''}
+                    )
+                    fig_provs_usd.update_layout(
+                        showlegend=False,
+                        coloraxis_showscale=False,
+                        height=350,
+                        margin=dict(l=20, r=20, t=30, b=20)
+                    )
+                    st.plotly_chart(fig_provs_usd, use_container_width=True)
+                else:
+                    st.info("No hay datos en U$S para este año")
 
-div[data-baseweb="base-input"] input,
-div[data-baseweb="input"] input,
-div[data-baseweb="select"] input,
-div[data-baseweb="datepicker"] input,
-textarea {
-  background: transparent !important;
-  color: #0f172a !important;
-  -webkit-text-fill-color: #0f172a !important;
-}
+        except Exception as e:
+            st.error(f"Error: {e}")
 
-/* Dropdowns (popover/menu) */
-div[data-baseweb="popover"],
-div[data-baseweb="popover"] *,
-div[data-baseweb="menu"],
-div[data-baseweb="menu"] * {
-  background: #ffffff !important;
-  color: #0f172a !important;
-}
+    # SEGUNDA FILA DE GRÁFICOS
+    col_izq2, col_der2 = st.columns(2)
 
-/* =========================
-   LOGIN: fondo violeta + card (se activa SOLO si existe #fc-login-marker)
-   (con :has + fallback por overlay)
-   ========================= */
+    # GRÁFICO 3: Gastos por Familia (Torta)
+    with col_izq2:
+        st.subheader("🥧 Gastos por Familia")
+        try:
+            df_familias = get_dashboard_gastos_familia(anio)
+            if df_familias is not None and not df_familias.empty:
+                fig_torta = px.pie(
+                    df_familias,
+                    values='total',
+                    names='familia',
+                    color_discrete_sequence=px.colors.qualitative.Set3,
+                    hole=0.4  # Donut chart
+                )
+                fig_torta.update_layout(
+                    height=350,
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    showlegend=True,
+                    legend=dict(
+                        orientation="v",
+                        yanchor="middle",
+                        y=0.5,
+                        xanchor="left",
+                        x=1.02
+                    )
+                )
+                fig_torta.update_traces(
+                    textposition='inside',
+                    textinfo='percent',
+                    textfont_size=11
+                )
+                st.plotly_chart(fig_torta, use_container_width=True)
+            else:
+                st.info("No hay datos para este año")
+        except Exception as e:
+            st.error(f"Error: {e}")
 
-/* Fallback: overlay violeta detrás (funciona aunque :has falle) */
-#fc-login-marker {
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-  z-index: 0;
-  pointer-events: none;
-}
-div[data-testid="stAppViewContainer"] > .main {
-  position: relative;
-  z-index: 1;
-}
+    # GRÁFICO 4: Alertas y Últimas Compras
+    with col_der2:
+        st.subheader("🚨 Alertas y Actividad")
 
-/* Si el navegador soporta :has, afinamos TODO el login */
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) header[data-testid="stHeader"] {
-  visibility: hidden !important;
-}
+        # ✅ CHANGED: Alertas combinadas (stock = 1 + vencimientos <30 días con stock > 0)
+        try:
+            alertas = get_alertas_combinadas(5, dias_filtro=30)
+            if alertas:
+                st.markdown("**⚠️ Alertas (stock=1 o vence <30 días):**")
+                for alerta in alertas[:3]:
+                    # Procesar días restantes
+                    dias = alerta.get('dias_restantes', alerta.get('Dias_Para_Vecer', None))
+                    try:
+                        dias = int(dias) if dias is not None else 999999
+                    except:
+                        dias = 999999
 
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .block-container {
-  padding-top: 2rem !important;
-  padding-bottom: 1rem !important;
-}
+                    # Color por urgencia
+                    if dias <= 7:
+                        color = "🔴"
+                    elif dias <= 30:
+                        color = "🟠"
+                    else:
+                        color = "🟡"
 
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-radius: 24px !important;
-  padding: 32px 36px !important;
-  border: none !important;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15) !important;
-  backdrop-filter: blur(10px) !important;
-}
+                    # Mostrar artículo, lote, stock
+                    articulo = str(alerta.get('articulo', alerta.get('ARTICULO', '')))[:30]
+                    lote = str(alerta.get('lote', alerta.get('LOTE', 'Sin lote')))
+                    stock = str(alerta.get('stock', alerta.get('STOCK', '0')))
+                    venc = str(alerta.get('vencimiento', alerta.get('VENCIMIENTO', 'Sin fecha')))
 
-/* Tabs login */
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-baseweb="tab-list"] {
-  background: #f1f5f9 !important;
-  border-radius: 12px !important;
-  padding: 4px !important;
-  gap: 4px !important;
-}
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) button[data-baseweb="tab"] {
-  color: #64748b !important;
-  font-weight: 600 !important;
-  border-radius: 10px !important;
-  padding: 10px 20px !important;
-  background: transparent !important;
-}
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) button[data-baseweb="tab"][aria-selected="true"] {
-  color: #667eea !important;
-  background: white !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-}
+                    if dias < 999999:  # Es vencimiento
+                        st.markdown(f"{color} **{articulo}** (Lote: {lote}) - Vence: {venc} ({dias} días) - Stock: {stock}")
+                    else:  # Stock = 1
+                        st.markdown(f"🟡 **{articulo}** (Lote: {lote}) - Stock: {stock} (bajo)")
+            else:
+                st.success("✅ No hay alertas activas")
+        except Exception as e:
+            st.error(f"Error cargando alertas: {e}")
 
-/* Inputs login (incluye botón ojo) */
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="base-input"],
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="input"] {
-  background: #f8fafc !important;
-  border: 2px solid #e2e8f0 !important;
-  border-radius: 12px !important;
-  box-shadow: none !important;
-  overflow: hidden !important;
-}
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="base-input"] input,
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="input"] input {
-  border: none !important;
-  outline: none !important;
-  background: transparent !important;
-  color: #1e293b !important;
-  -webkit-text-fill-color: #1e293b !important;
-  padding: 12px 16px !important;
-  font-size: 16px !important;
-}
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="base-input"] button,
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) div[data-baseweb="input"] button {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: #475569 !important;
-  padding-right: 10px !important;
-}
+        st.markdown("---")
 
-/* Botón login */
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[kind="secondaryFormSubmit"],
-div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[type="submit"] {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  color: white !important;
-  border-radius: 12px !important;
-  font-weight: 700 !important;
-  font-size: 16px !important;
-  padding: 14px 28px !important;
-  border: none !important;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
-  text-transform: none !important;
-}
+        # Últimos artículos comprados
+        try:
+            st.markdown("**🛒 Últimos artículos comprados:**")
+            df_ultimas = get_dashboard_ultimas_compras(5)
+            if df_ultimas is not None and not df_ultimas.empty:
+                st.dataframe(df_ultimas[['articulo', 'proveedor', 'fecha', 'total']].head(10), use_container_width=True)
+                for _, row in df_ultimas.iterrows():
+                    total_fmt = f"${row['total']:,.0f}".replace(',', '.') if pd.notna(row['total']) else "$0"
+                    articulo = str(row['articulo'])[:25] + "..." if len(str(row['articulo'])) > 25 else str(row['articulo'])
+                    proveedor = str(row['proveedor'])[:15] if pd.notna(row['proveedor']) else ""
+                    st.markdown(f"• {row['fecha']} - **{articulo}** - {proveedor} - {total_fmt}")
+            else:
+                st.info("No hay compras recientes")
+        except Exception as e:
+            st.error(f"Error cargando últimas compras: {e}")
 
-/* Responsive login */
-@media (max-width: 768px) {
-  div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
-    padding: 24px 20px !important;
-    border-radius: 20px !important;
-  }
-  div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .block-container {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-    padding-bottom: 4rem !important;
-  }
-} /* <-- CIERRE CORRECTO del @media 768 del login */
 
-/* ========================================================= */
-/* 🔒 FORZAR LIGHT MODE – ignorar dark mode del sistema */
-/* ========================================================= */
-:root {
-  color-scheme: light !important;
-}
+# =========================
+# 📈 INDICADORES IA (POWER BI)
+# =========================
 
-html, body {
-  background-color: #f6f4ef !important;
-  color: #0f172a !important;
-}
+def mostrar_indicadores_ia():
+    url = "https://app.powerbi.com/view?r=eyJrIjoiMTBhMGY0ZjktYmM1YS00OTM4LTg3ZjItMTEzYWVmZWNkMGIyIiwidCI6ImQxMzBmYmU3LTFiZjAtNDczNi1hM2Q5LTQ1YjBmYWUwMDVmYSIsImMiOjR9"
 
-/* Anula prefers-color-scheme: dark del navegador */
-@media (prefers-color-scheme: dark) {
-  html, body,
-  [data-testid="stAppViewContainer"],
-  [data-testid="stSidebar"],
-  section[data-testid="stSidebar"] > div,
-  .block-container,
-  input, textarea, select, button {
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-}
+    scale = 0.50  # ✅ Zoom 65%
 
-@media (max-width: 480px) {
-  div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
-    padding: 22px 18px !important;
-  }
-}
+    st.markdown(
+        f"""
+        <style>
+          .pbi-wrap {{
+            width: 100%;
+            height: 92vh;
+            padding: 18px 24px;   /* aire alrededor */
+            box-sizing: border-box;
+            overflow: hidden;     /* evita scroll extra por el scale */
+          }}
 
-/* Mover FertiChat y campana al toolbar */
-.stAppToolbar {
-  position: relative;
-  min-height: 40px;
-}
-.stAppToolbar::before {
-  content: "FertiChat 🔔";
-  font-size: 16px;
-  font-weight: 800;
-  color: #0f172a;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 4px 8px;
-  border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
+          .pbi-iframe {{
+            width: calc(100% / {scale});
+            height: calc(92vh / {scale});
+            transform: scale({scale});
+            transform-origin: top left;
+            border: 0;
+            border-radius: 14px;
+          }}
+        </style>
 
-/* Ocultar header de escritorio siempre */
-.header-desktop-wrapper {
-  display: none !important;
-}
+        <div class="pbi-wrap">
+          <iframe class="pbi-iframe" src="{url}" allowfullscreen="true"></iframe>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-/* =========================
-   VARIABLES SIDEBAR CORPORATIVO CLARO
-   ========================= */
-:root{
-  --fc-sb-bg1:#ffffff;          /* blanco puro */
-  --fc-sb-bg2:#f8fafc;          /* gris muy claro */
-  --fc-sb-border:rgba(15,23,42,0.08);
-  --fc-sb-text:#0f172a;         /* negro */
-  --fc-sb-text-dim:#64748b;     /* gris medio */
-  --fc-sb-active:#e0f2fe;       /* azul celeste claro */
-  --fc-sb-hover:#f1f5f9;        /* gris hover */
-  --fc-sb-chip:rgba(15,23,42,0.05);
-  --fc-sb-shadow:0 10px 25px rgba(0,0,0,0.08);
-  --fc-sb-radius:16px;
-}
 
-/* =========================
-   CONTENEDOR SIDEBAR CLARO
-   ========================= */
-section[data-testid="stSidebar"]{
-  background: linear-gradient(180deg, var(--fc-sb-bg1) 0%, var(--fc-sb-bg2) 100%) !important;
-  border-right: 1px solid var(--fc-sb-border) !important;
-}
+# ========================
+# 📊 RESUMEN RÁPIDO
+# ========================
+def _safe_float(x) -> float:
+    try:
+        if x is None:
+            return 0.0
+        return float(x)
+    except Exception:
+        return 0.0
 
-/* Padding interno */
-section[data-testid="stSidebar"] > div{
-  padding: 14px 12px 12px 12px !important;
-}
 
-/* =========================
-   CABECERA (logo + título)
-   ========================= */
-.fc-sb-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding: 10px 10px 14px 10px;
-  margin: 4px 6px 10px 6px;
-  border-bottom: 1px solid var(--fc-sb-border);
-}
-.fc-sb-brand{
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.fc-sb-logo{
-  width:34px;height:34px;
-  border-radius:10px;
-  background: linear-gradient(135deg, #22c55e 0%, #60a5fa 55%, #1d4ed8 100%);
-  box-shadow: 0 8px 16px rgba(34, 197, 94, 0.2);
-}
-.fc-sb-title{
-  color: var(--fc-sb-text);
-  font-weight: 800;
-  font-size: 20px;
-  letter-spacing: .6px;
-  margin:0;
-}
-.fc-sb-menuicon{
-  width:34px;height:34px;
-  border-radius:12px;
-  background: var(--fc-sb-chip);
-  border: 1px solid var(--fc-sb-border);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color: var(--fc-sb-text);
-}
+@st.cache_data(ttl=300)
+def _get_totales_anio(anio: int) -> dict:
+    total_expr = _sql_total_num_expr_general()
 
-/* =========================
-   BUSCADOR (input)
-   ========================= */
-section[data-testid="stSidebar"] input{
-  background: var(--fc-sb-chip) !important;
-  color: var(--fc-sb-text) !important;
-  border: 1px solid var(--fc-sb-border) !important;
-  border-radius: 14px !important;
-}
-section[data-testid="stSidebar"] input::placeholder{
-  color: var(--fc-sb-text-dim) !important;
-}
-section[data-testid="stSidebar"] div[data-baseweb="input"]{
-  background: transparent !important;
-}
+    query = f"""
+        SELECT
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) = '$'
+                     THEN {total_expr} ELSE 0 END) AS total_pesos,
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) IN ('U$S','U$$')
+                     THEN {total_expr} ELSE 0 END) AS total_usd
+        FROM chatbot_raw
+        WHERE
+            ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+            AND "Año"::int = %s
+    """
 
-/* =========================
-   RADIO/MENÚ (estilo “lista”)
-   ========================= */
+    params = (anio,)
 
-/* Quitar caja blanca del widget */
-section[data-testid="stSidebar"] div[role="radiogroup"]{
-  background: transparent !important;
-  padding: 4px 4px 2px 4px !important;
-}
+    # DEBUG (opcional)
+    if DEBUG_MODE:
+        st.session_state.debug = {
+            "pregunta": "total compras por año",
+            "proveedor": None,
+            "mes": None,
+            "anio": anio,
+            "sql": query,
+            "params": params,
+            "ruta": "TOTAL_COMPRAS_ANIO",
+        }
 
-/* Cada opción como “fila” */
-section[data-testid="stSidebar"] div[role="radiogroup"] > div{
-  border-radius: 14px !important;
-  transition: background .15s ease, transform .12s ease;
-}
+    df = ejecutar_consulta(query, params)
+    if df is None or df.empty:
+        return {"pesos": 0.0, "usd": 0.0}
 
-/* Hover */
-section[data-testid="stSidebar"] div[role="radiogroup"] > div:hover{
-  background: var(--fc-sb-hover) !important;
-  transform: translateY(-1px);
-}
+    return {
+        "pesos": _safe_float(df["total_pesos"].iloc[0]),
+        "usd": _safe_float(df["total_usd"].iloc[0]),
+    }
 
-/* Texto de cada opción */
-section[data-testid="stSidebar"] div[role="radiogroup"] label{
-  color: var(--fc-sb-text) !important;
-  font-weight: 600 !important;
-}
 
-/* Subtexto/ayudas si aparecen */
-section[data-testid="stSidebar"] div[role="radiogroup"] span{
-  color: var(--fc-sb-text) !important;
-}
+@st.cache_data(ttl=300)
+def _get_totales_mes(mes_key: str) -> dict:
+    total_expr = _sql_total_num_expr_general()
 
-/* “Check”/círculo del radio */
-section[data-testid="stSidebar"] input[type="radio"]{
-  accent-color: #0ea5e9 !important;
-}
+    query = f"""
+        SELECT
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) = '$'
+                     THEN {total_expr} ELSE 0 END) AS total_pesos,
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) IN ('U$S','U$$')
+                     THEN {total_expr} ELSE 0 END) AS total_usd
+        FROM chatbot_raw
+        WHERE
+            ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+            AND TRIM("Mes") = %s
+    """
+    df = ejecutar_consulta(query, (mes_key,))
+    if df is None or df.empty:
+        return {"pesos": 0.0, "usd": 0.0}
 
-/* Opción seleccionada */
-section[data-testid="stSidebar"] div[role="radiogroup"] > div:has([aria-checked="true"]),
-section[data-testid="stSidebar"] div[role="radiogroup"] > div:has(input[type="radio"]:checked){
-  background: var(--fc-sb-active) !important;
-  border: 1px solid rgba(14, 165, 233, 0.2) !important;
-}
+    return {
+        "pesos": _safe_float(df["total_pesos"].iloc[0]),
+        "usd": _safe_float(df["total_usd"].iloc[0]),
+    }
 
-/* Padding de opciones */
-section[data-testid="stSidebar"] div[role="radiogroup"] > div label{
-  padding: 10px 10px !important;
-}
 
-/* =========================
-   FOOTER PERFIL
-   ========================= */
-.fc-sb-user{
-  position: sticky;
-  bottom: 10px;
-  margin: 14px 6px 4px 6px;
-  padding: 12px 12px;
-  border-radius: var(--fc-sb-radius);
-  background: var(--fc-sb-chip);
-  border: 1px solid var(--fc-sb-border);
-  box-shadow: var(--fc-sb-shadow);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-}
-.fc-sb-user-left{
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.fc-sb-avatar{
-  width:42px;height:42px;
-  border-radius: 999px;
-  background: var(--fc-sb-chip);
-  border: 1px solid var(--fc-sb-border);
-}
-.fc-sb-user-name{
-  color: var(--fc-sb-text);
-  font-weight: 800;
-  font-size: 14px;
-  line-height: 1.1;
-  margin:0;
-}
-.fc-sb-user-mail{
-  color: var(--fc-sb-text-dim);
-  font-weight: 600;
-  font-size: 12px;
-  margin:2px 0 0 0;
-}
-.fc-sb-gear{
-  width:40px;height:40px;
-  border-radius: 14px;
-  background: var(--fc-sb-chip);
-  border: 1px solid var(--fc-sb-border);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color: var(--fc-sb-text);
-}
+@st.cache_data(ttl=300)
+def _get_top_proveedores_anio(anio: int, top_n: int = 20) -> pd.DataFrame:
+    total_expr = _sql_total_num_expr_general()
 
-/* =========================================================
-   RESPONSIVE GENERAL (APP) - PARA QUE SE VEA BIEN EN CELULAR
-   ========================================================= */
-@media (max-width: 768px) {
+    query = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS "Proveedor",
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) = '$'
+                     THEN {total_expr} ELSE 0 END) AS "Total_$",
+            SUM(CASE WHEN TRIM(COALESCE("Moneda",'')) IN ('U$S','U$$')
+                     THEN {total_expr} ELSE 0 END) AS "Total_USD"
+        FROM chatbot_raw
+        WHERE
+            ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+            AND "Año"::int = %s
+            AND "Cliente / Proveedor" IS NOT NULL
+            AND TRIM("Cliente / Proveedor") <> ''
+        GROUP BY TRIM("Cliente / Proveedor")
+        ORDER BY "Total_$" DESC, "Total_USD" DESC
+        LIMIT {int(top_n)}
+    """
+    df = ejecutar_consulta(query, (anio,))
+    if df is None:
+        return pd.DataFrame(columns=["Proveedor", "Total_$", "Total_USD"])
+    return df
+        
+# =========================
+# 🧾 RESUMEN COMPRAS (ROTATIVO) - RESPONSIVE Z FLIP 5
+# =========================
+def mostrar_resumen_compras_rotativo():
+    # 🔄 re-ejecuta cada 5 segundos
+    tick = 0
+    try:
+        from streamlit_autorefresh import st_autorefresh
+        tick = st_autorefresh(interval=5000, key="__rotar_proveedor_5s__") or 0
+    except Exception:
+        tick = 0
+    
+    # Usar 2025 ya que 2026 no tiene datos todavía
+    anio = 2025
+    mes_key = "2025-12"  # Último mes con datos
+    
+    tot_anio = _get_totales_anio(anio)
+    tot_mes = _get_totales_mes(mes_key)
+    dfp = _get_top_proveedores_anio(anio, top_n=20)
+    
+    prov_nom = "—"
+    prov_pesos = 0.0
+    prov_usd = 0.0
+    
+    if dfp is not None and not dfp.empty:
+        idx = int(tick) % len(dfp)
+        row = dfp.iloc[idx]
+        for col in dfp.columns:
+            if col.lower() == "proveedor":
+                nombre = str(row[col]) if pd.notna(row[col]) else "—"
+                prov_nom = " ".join(nombre.split()[:2])  # ✅ SOLO 2 PALABRAS
+            elif col.lower() == "total_$":
+                prov_pesos = _safe_float(row[col])
+            elif col.lower() == "total_usd":
+                prov_usd = _safe_float(row[col])
+    
+    total_anio_txt = f"$ {_fmt_num_latam(tot_anio['pesos'], 0)}"
+    total_anio_sub = f"U$S {_fmt_num_latam(tot_anio['usd'], 0)}"
+    prov_sub = f"$ {_fmt_num_latam(prov_pesos, 0)} | U$S {_fmt_num_latam(prov_usd, 0)}"
+    mes_txt = f"$ {_fmt_num_latam(tot_mes['pesos'], 0)}"
+    mes_sub = f"U$S {_fmt_num_latam(tot_mes['usd'], 0)}"
+    
+    # 🎨 CSS – RESPONSIVE PARA Z FLIP 5
+    st.markdown(
+        """
+        <style>
+          .mini-resumen {
+            display: flex;
+            gap: 16px;
+            margin: 16px 0 20px 0;
+          }
+          
+          .mini-card {
+            flex: 1;
+            min-width: 0;
+            height: 145px;
+            border-radius: 16px;
+            padding: 16px 18px;
+            background: #1f2933;
+            border: 1px solid #374151;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+          }
+          
+          .mini-t {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #9ca3af;
+            margin: 0;
+          }
+          
+          .mini-v {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #f9fafb;
+            margin: 4px 0 0 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          
+          .mini-s {
+            font-size: 0.9rem;
+            color: #d1d5db;
+            margin: 0;
+          }
+          
+          /* ========================================
+             MOBILE RESPONSIVE (Z Flip 5 y similares)
+             ======================================== */
+          @media (max-width: 768px) {
+            .mini-resumen {
+              flex-direction: column;
+              gap: 12px;
+              margin: 12px 0 16px 0;
+            }
+            
+            .mini-card {
+              height: auto;
+              min-height: 110px;
+              padding: 14px 16px;
+              background: #f6f4ef !important;
+              border: 1px solid #e2e8f0 !important;
+            }
+            
+            .mini-t {
+              font-size: 0.8rem;
+              color: #64748b !important;
+              margin-bottom: 6px;
+            }
+            
+            .mini-v {
+              font-size: 1.35rem;
+              font-weight: 800;
+              color: #0f172a !important;
+              margin: 0 0 6px 0;
+              line-height: 1.2;
+            }
+            
+            .mini-s {
+              font-size: 0.85rem;
+              color: #475569 !important;
+            }
+          }
+          
+          /* Para pantallas MUY pequeñas (< 400px) */
+          @media (max-width: 400px) {
+            .mini-card {
+              padding: 12px 14px;
+              min-height: 100px;
+            }
+            
+            .mini-v {
+              font-size: 1.2rem;
+            }
+            
+            .mini-s {
+              font-size: 0.8rem;
+            }
+          }
+          
+          /* ========================================
+             FIX INPUT BUSCADOR EN MÓVIL
+             ======================================== */
+          @media (max-width: 768px) {
+            /* Input de búsqueda "Escribí tu consulta..." */
+            .block-container input[type="text"],
+            .block-container textarea,
+            [data-baseweb="input"] input,
+            [data-baseweb="textarea"] textarea {
+              font-size: 14px !important;
+              padding: 10px 12px !important;
+              min-height: 42px !important;
+              height: auto !important;
+            }
+            
+            /* Contenedor del input */
+            [data-baseweb="input"],
+            [data-baseweb="textarea"] {
+              min-height: auto !important;
+            }
+            
+            /* Placeholder text */
+            .block-container input::placeholder,
+            .block-container textarea::placeholder {
+              font-size: 14px !important;
+              opacity: 0.6;
+            }
+          }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # 🧾 HTML FINAL
+    st.markdown(
+        f"""
+        <div class="mini-resumen">
+          <div class="mini-card">
+            <p class="mini-t">💰 Total {anio}</p>
+            <p class="mini-v">{total_anio_txt}</p>
+            <p class="mini-s">{total_anio_sub}</p>
+          </div>
+          <div class="mini-card">
+            <p class="mini-t">🏭 Proveedor</p>
+            <p class="mini-v" title="{prov_nom}">{prov_nom}</p>
+            <p class="mini-s">{prov_sub}</p>
+          </div>
+          <div class="mini-card">
+            <p class="mini-t">🗓️ Mes actual</p>
+            <p class="mini-v">{mes_txt}</p>
+            <p class="mini-s">{mes_sub}</p>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-  /* Evitar scroll horizontal */
-  html, body, .stApp, [data-testid="stAppViewContainer"] {
-    overflow-x: hidden !important;
-  }
-
-  /* Contenedor principal: padding real de móvil */
-  .block-container {
-    padding-left: 0.85rem !important;
-    padding-right: 0.85rem !important;
-    padding-top: 1rem !important;
-    padding-bottom: 4rem !important;
-    max-width: 100% !important;
-  }
-
-  /* Tabs más compactas */
-  button[data-baseweb="tab"] {
-    font-size: 0.85rem !important;
-    padding: 6px 8px !important;
-  }
-
-  /* Métricas más chicas */
-  [data-testid="stMetricValue"] {
-    font-size: 1.6rem !important;
-    line-height: 1.1 !important;
-  }
-  [data-testid="stMetricLabel"] {
-    font-size: 0.9rem !important;
-  }
-
-  /* Tablas/DataFrame: RESPONSIVAS PARA MÓVIL (SIN GIRAR EL CELULAR) */
-  .stDataFrame, .stTable {
-    overflow-x: auto !important;  /* Scroll horizontal interno */
-    -webkit-overflow-scrolling: touch !important;  /* Smooth en iOS */
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  .stDataFrame table, .stTable table {
-    min-width: 100% !important;  /* Evita que se comprima demasiado */
-    font-size: 0.85rem !important;  /* Fuente más pequeña en móvil */
-    width: auto !important;  /* Deja que la tabla se expanda si es necesario */
-  }
-  .stDataFrame th, .stDataFrame td, .stTable th, .stTable td {
-    padding: 8px 6px !important;  /* Padding reducido */
-    white-space: nowrap !important;  /* Evita wrap de texto */
-    text-align: left !important;
-  }
-  .stDataFrame th, .stTable th {
-    font-weight: 700 !important;
-    background: rgba(15,23,42,0.05) !important;
-    border-bottom: 2px solid rgba(15,23,42,0.1) !important;
-  }
-
-  /* Toolbar: evitar que el título “empuje” */
-  .stAppToolbar::before {
-    font-size: 15px !important;
-    padding: 3px 6px !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .block-container {
-    padding-left: 0.75rem !important;
-    padding-right: 0.75rem !important;
-  }
-  [data-testid="stMetricValue"] {
-    font-size: 1.45rem !important;
-  }
-  button[data-baseweb="tab"] {
-    font-size: 0.82rem !important;
-    padding: 6px 7px !important;
-  }
-
-  /* Tablas aún más compactas en pantallas muy pequeñas */
-  .stDataFrame table, .stTable table {
-    font-size: 0.8rem !important;
-  }
-  .stDataFrame th, .stDataFrame td, .stTable th, .stTable td {
-    padding: 6px 4px !important;
-  }
-}
-
-</style>
-"""  
+# =========================
+# FUNCIONES ADICIONALES PARA ALERTAS
+# =========================
+# ✅ REMOVED: The duplicated get_alertas_vencimiento_multiple function that was querying "stock_table" instead of using the correct one from sql_stock.py
