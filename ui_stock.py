@@ -30,41 +30,8 @@ _STOCK_TABLE_CANDIDATES = [
 # =====================================================================
 
 def _get_stock_schema_table() -> tuple:
-    """Obtiene schema y tabla de stock con DEBUG mejorado."""
-    schema = st.secrets.get("STOCK_SCHEMA", os.getenv("STOCK_SCHEMA", "public"))
-    schema = _safe_ident(schema) or "public"
-
-    table = st.secrets.get("STOCK_TABLE", os.getenv("STOCK_TABLE", "")).strip()
-    table = _safe_ident(table)
-
-    if table:
-        print(f"✅ DEBUG: Usando tabla configurada: {schema}.{table}")
-        return schema, table
-
-    try:
-        sql = """
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = %s
-              AND table_type = 'BASE TABLE'
-        """
-        df = ejecutar_consulta(sql, (schema,))
-        existing = set()
-        if df is not None and not df.empty and "table_name" in df.columns:
-            existing = set([str(x) for x in df["table_name"].tolist()])
-
-        print(f"🔍 DEBUG: Tablas encontradas en schema '{schema}': {existing}")
-
-        for t in _STOCK_TABLE_CANDIDATES:
-            if t in existing:
-                print(f"✅ DEBUG: Tabla de stock detectada: {schema}.{t}")
-                return schema, t
-
-        print(f"⚠️ DEBUG: No se encontró tabla de stock. Usando default: {schema}.stock_raw")
-        return schema, "stock_raw"
-    except Exception as e:
-        print(f"❌ DEBUG: Error detectando tabla: {e}")
-        return schema, "stock_raw"
+    """Hardcoded para usar public.stock - CAMBIA SI ES NECESARIO"""
+    return "public", "stock"
 
 
 def _get_stock_columns(schema: str, table: str) -> list:
@@ -145,10 +112,9 @@ def _stock_base_subquery() -> tuple:
     """Construye un subquery estándar con aliases esperados."""
     schema, table = _get_stock_schema_table()
     schema_s = _safe_ident(schema) or "public"
-    table_s = _safe_ident(table) or "stock_raw"
+    table_s = _safe_ident(table) or "stock"
 
     cols = _get_stock_columns(schema_s, table_s)
-    print(f"🔍 DEBUG: Columnas detectadas para {schema_s}.{table_s}: {cols}")
 
     # ✅ DETECTAR COLUMNAS CON MÁS VARIANTES
     c_art = _pick_col(cols, [
@@ -188,8 +154,6 @@ def _stock_base_subquery() -> tuple:
         "id", "ID", "cod_articulo", "cod", "codigo_articulo", "code"
     ])
 
-    print(f"🔍 DEBUG: Columnas mapeadas - ARTICULO: {c_art}, FAMILIA: {c_fam}, DEPOSITO: {c_dep}, LOTE: {c_lot}, VENCIMIENTO: {c_vto}, STOCK: {c_stk}, CODIGO: {c_cod}")
-
     # ✅ CONSTRUCCIÓN DE EXPRESIONES CON FALLBACK
     art_expr = f"TRIM(COALESCE({c_art}::text,''))" if c_art else "'SIN ARTICULO'"
     fam_expr = f"TRIM(COALESCE({c_fam}::text,''))" if c_fam else "'SIN FAMILIA'"
@@ -218,7 +182,6 @@ def _stock_base_subquery() -> tuple:
         FROM {full_table}
     """
     
-    print(f"📊 DEBUG: Subquery generada: {sub[:300]}...")
     return sub, schema_s, table_s
 
 
