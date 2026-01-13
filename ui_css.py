@@ -262,10 +262,11 @@ div[data-testid="stAppViewContainer"]:has(#fc-login-marker) .stForm button[type=
     padding-right: 1rem !important;
     padding-bottom: 4rem !important;
   }
+} /* <-- CIERRE CORRECTO del @media 768 del login */
+
 /* ========================================================= */
 /* 🔒 FORZAR LIGHT MODE – ignorar dark mode del sistema */
 /* ========================================================= */
-
 :root {
   color-scheme: light !important;
 }
@@ -287,6 +288,7 @@ html, body {
     color: #0f172a !important;
   }
 }
+
 @media (max-width: 480px) {
   div[data-testid="stAppViewContainer"]:has(#fc-login-marker) [data-testid="stForm"] {
     padding: 22px 18px !important;
@@ -324,7 +326,7 @@ html, body {
    ========================= */
 :root{
   --fc-sb-bg1:#ffffff;          /* blanco puro */
-  --fc-sb-bg2:#f8fafc;           /* gris muy claro */
+  --fc-sb-bg2:#f8fafc;          /* gris muy claro */
   --fc-sb-border:rgba(15,23,42,0.08);
   --fc-sb-text:#0f172a;         /* negro */
   --fc-sb-text-dim:#64748b;     /* gris medio */
@@ -505,6 +507,69 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > div label{
   align-items:center;
   justify-content:center;
   color: var(--fc-sb-text);
+}
+
+/* =========================================================
+   RESPONSIVE GENERAL (APP) - PARA QUE SE VEA BIEN EN CELULAR
+   ========================================================= */
+@media (max-width: 768px) {
+
+  /* Evitar scroll horizontal */
+  html, body, .stApp, [data-testid="stAppViewContainer"] {
+    overflow-x: hidden !important;
+  }
+
+  /* Contenedor principal: padding real de móvil */
+  .block-container {
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+    padding-top: 1rem !important;
+    padding-bottom: 4rem !important;
+    max-width: 100% !important;
+  }
+
+  /* Tabs más compactas */
+  button[data-baseweb="tab"] {
+    font-size: 0.85rem !important;
+    padding: 6px 8px !important;
+  }
+
+  /* Métricas más chicas */
+  [data-testid="stMetricValue"] {
+    font-size: 1.6rem !important;
+    line-height: 1.1 !important;
+  }
+  [data-testid="stMetricLabel"] {
+    font-size: 0.9rem !important;
+  }
+
+  /* Tablas/DataFrame: permitir scroll interno */
+  .stDataFrame {
+    overflow-x: auto !important;
+  }
+  .stDataFrame table {
+    width: 100% !important;
+  }
+
+  /* Toolbar: evitar que el título “empuje” */
+  .stAppToolbar::before {
+    font-size: 15px !important;
+    padding: 3px 6px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .block-container {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  [data-testid="stMetricValue"] {
+    font-size: 1.45rem !important;
+  }
+  button[data-baseweb="tab"] {
+    font-size: 0.82rem !important;
+    padding: 6px 7px !important;
+  }
 }
 
 </style>
