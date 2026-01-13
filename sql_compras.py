@@ -910,24 +910,19 @@ def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
     return ejecutar_consulta(sql, (anio,))
 
 
-def get_dashboard_ultimas_compras(anio: int, limite: int = 5) -> pd.DataFrame:
-    """Obtiene las últimas compras desde chatbot_raw para un año específico"""
-    try:
-        query = """
-            SELECT
-                "Fecha" AS fecha,
-                "Articulo" AS articulo,
-                "Cliente / Proveedor" AS proveedor,
-                "Monto Neto" AS total
-            FROM chatbot_raw
-            WHERE "Tipo Comprobante" LIKE '%Compra%'
-              AND "Fecha" IS NOT NULL
-              AND "Año"::int = %s
-            ORDER BY "Fecha" DESC
-            LIMIT %s
-        """
-        df = ejecutar_consulta(query, (anio, limite))
-        return df if df is not None else pd.DataFrame()
-    except Exception as e:
-        print(f"Error en get_dashboard_ultimas_compras: {e}")
-        return pd.DataFrame()
+def get_dashboard_ultimas_compras(anio: int, limite: int = 10) -> pd.DataFrame:
+    """Últimas compras recientes."""
+    total_expr = _sql_total_num_expr_general()
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            "Fecha",
+            {total_expr} AS Total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+        AND "Año"::int = %s
+        ORDER BY "Fecha" DESC NULLS LAST
+        LIMIT %s
+    """
+    return ejecutar_consulta(sql, (anio, limite))
