@@ -30,41 +30,8 @@ _STOCK_TABLE_CANDIDATES = [
 # =====================================================================
 
 def _get_stock_schema_table() -> tuple:
-    """Obtiene schema y tabla de stock con DEBUG mejorado."""
-    schema = st.secrets.get("STOCK_SCHEMA", os.getenv("STOCK_SCHEMA", "public"))
-    schema = _safe_ident(schema) or "public"
-
-    table = st.secrets.get("STOCK_TABLE", os.getenv("STOCK_TABLE", "")).strip()
-    table = _safe_ident(table)
-
-    if table:
-        print(f"✅ DEBUG: Usando tabla configurada: {schema}.{table}")
-        return schema, table
-
-    try:
-        sql = """
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = %s
-              AND table_type = 'BASE TABLE'
-        """
-        df = ejecutar_consulta(sql, (schema,))
-        existing = set()
-        if df is not None and not df.empty and "table_name" in df.columns:
-            existing = set([str(x) for x in df["table_name"].tolist()])
-
-        print(f"🔍 DEBUG: Tablas encontradas en schema '{schema}': {existing}")
-
-        for t in _STOCK_TABLE_CANDIDATES:
-            if t in existing:
-                print(f"✅ DEBUG: Tabla de stock detectada: {schema}.{t}")
-                return schema, t
-
-        print(f"⚠️ DEBUG: No se encontró tabla de stock. Usando default: {schema}.stock_raw")
-        return schema, "stock_raw"
-    except Exception as e:
-        print(f"❌ DEBUG: Error detectando tabla: {e}")
-        return schema, "stock_raw"
+    """Hardcoded para usar public.stock"""
+    return "public", "stock"
 
 
 def _get_stock_columns(schema: str, table: str) -> list:
@@ -142,80 +109,62 @@ def _sql_num_expr_stock(col_expr: str) -> str:
 
 
 def _stock_base_subquery() -> tuple:
-    """Construye un subquery estándar con aliases esperados."""
-    schema, table = _get_stock_schema_table()
-    schema_s = _safe_ident(schema) or "public"
-    table_s = _safe_ident(table) or "stock_raw"
-
-    cols = _get_stock_columns(schema_s, table_s)
-
-    # ✅ DETECTAR COLUMNAS CON MÁS VARIANTES
-    c_art = _pick_col(cols, [
-        "articulo", "Articulo", "Artículo", "ARTICULO",
-        "insumo", "descripcion", "descripcion_articulo", "item",
-        "producto", "material", "nombre"
-    ])
+    """Subquery hardcoded para evitar problemas de detección de columnas."""
     
-    c_fam = _pick_col(cols, [
-        "familia", "Familia", "FAMILIA",
-        "sector", "seccion", "sección", "rubro", "categoria", "categoría"
-    ])
-    
-    c_dep = _pick_col(cols, [
-        "deposito", "Deposito", "Depósito", "DEPOSITO",
-        "ubicacion", "ubicación", "boca", "almacen", "almacén", "bodega"
-    ])
-    
-    c_lot = _pick_col(cols, [
-        "lote", "Lote", "LOTE",
-        "batch", "nro_lote", "numero_lote", "número_lote", "num_lote"
-    ])
-    
-    c_vto = _pick_col(cols, [
-        "vencimiento", "Vencimiento", "VENCIMIENTO",
-        "vto", "vence", "fecha_vencimiento", "fecha_vto", "fec_vto",
-        "Fecha Vencimiento", "FechaVencimiento"
-    ])
-    
-    c_stk = _pick_col(cols, [
-        "stock", "Stock", "STOCK",
-        "cantidad", "Cantidad", "existencia", "saldo", "unidades", "cant"
-    ])
-    
-    c_cod = _pick_col(cols, [
-        "codigo", "Codigo", "Código", "CODIGO",
-        "id", "ID", "cod_articulo", "cod", "codigo_articulo", "code"
-    ])
-
-    # ✅ CONSTRUCCIÓN DE EXPRESIONES CON FALLBACK
-    art_expr = f"TRIM(COALESCE({c_art}::text,''))" if c_art else "'SIN ARTICULO'"
-    fam_expr = f"TRIM(COALESCE({c_fam}::text,''))" if c_fam else "'SIN FAMILIA'"
-    dep_expr = f"TRIM(COALESCE({c_dep}::text,''))" if c_dep else "'SIN DEPOSITO'"
-    lot_expr = f"TRIM(COALESCE({c_lot}::text,''))" if c_lot else "'SIN LOTE'"
-    cod_expr = f"TRIM(COALESCE({c_cod}::text,''))" if c_cod else "''"
-
-    vto_expr = _sql_date_expr_stock(c_vto) if c_vto else "NULL::date"
-    stk_expr = _sql_num_expr_stock(c_stk) if c_stk else "0::numeric"
-
-    full_table = f'"{schema_s}"."{table_s}"'
-
-    sub = f"""
+    sub = """
         SELECT
-            {cod_expr} AS "CODIGO",
-            {art_expr} AS "ARTICULO",
-            {fam_expr} AS "FAMILIA",
-            {dep_expr} AS "DEPOSITO",
-            {lot_expr} AS "LOTE",
-            {vto_expr} AS "VENCIMIENTO",
-            {stk_expr} AS "STOCK",
+            TRIM(COALESCE("CODIGO"::text,'')) AS "CODIGO",
+            TRIM(COALESCE("ARTICULO"::text,'')) AS "ARTICULO",
+            TRIM(COALESCE("FAMILIA"::text,'')) AS "FAMILIA",
+            TRIM(COALESCE("DEPOSITO"::text,'')) AS "DEPOSITO",
+            TRIM(COALESCE("LOTE"::text,'')) AS "LOTE",
+            (
+              CASE
+                WHEN NULLIF(TRIM("VENCIMIENTO"::text), '') IS NULL THEN NULL::date
+                WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' THEN (TRIM("VENCIMIENTO"::text))::date
+                WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}/\\d{{2}}/\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD/MM/YYYY')
+                WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}-\\d{{2}}-\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD-MM-YYYY')
+                ELSE NULL::date
+              END
+            ) AS "VENCIMIENTO",
+            NULLIF(
+              regexp_replace(
+                replace(
+                  replace(TRIM("STOCK"::text), ' ', ''),
+                  ',', '.'
+                ),
+                '[^0-9\\.]',
+                '',
+                'g'
+              ),
+              ''
+            )::numeric AS "STOCK",
             CASE
-              WHEN {vto_expr} IS NULL THEN NULL
-              ELSE ({vto_expr} - CURRENT_DATE)
+              WHEN (
+                CASE
+                  WHEN NULLIF(TRIM("VENCIMIENTO"::text), '') IS NULL THEN NULL::date
+                  WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' THEN (TRIM("VENCIMIENTO"::text))::date
+                  WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}/\\d{{2}}/\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD/MM/YYYY')
+                  WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}-\\d{{2}}-\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD-MM-YYYY')
+                  ELSE NULL::date
+                END
+              ) IS NULL THEN NULL
+              ELSE (
+                (
+                  CASE
+                    WHEN NULLIF(TRIM("VENCIMIENTO"::text), '') IS NULL THEN NULL::date
+                    WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' THEN (TRIM("VENCIMIENTO"::text))::date
+                    WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}/\\d{{2}}/\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD/MM/YYYY')
+                    WHEN TRIM("VENCIMIENTO"::text) ~ '^\\d{{2}}-\\d{{2}}-\\d{{4}}$' THEN to_date(TRIM("VENCIMIENTO"::text), 'DD-MM-YYYY')
+                    ELSE NULL::date
+                  END
+                ) - CURRENT_DATE
+              )
             END AS "Dias_Para_Vencer"
-        FROM {full_table}
+        FROM "public"."stock"
     """
     
-    return sub, schema_s, table_s
+    return sub, "public", "stock"
 
 
 # =====================================================================
