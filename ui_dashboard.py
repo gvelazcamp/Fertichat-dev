@@ -242,13 +242,14 @@ def mostrar_dashboard():
                 st.dataframe(df_ultimas[['Articulo', 'Proveedor', 'Fecha', 'Total']].head(10), use_container_width=True)
                 for _, row in df_ultimas.iterrows():
                     total_fmt = f"${row['Total']:,.0f}".replace(',', '.') if pd.notna(row['Total']) else "$0"
-                    articulo = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo']
+                    articulo = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
                     proveedor = str(row['Proveedor'])[:15] if pd.notna(row['Proveedor']) else ""
                     st.markdown(f"• {row['Fecha']} - **{articulo}** - {proveedor} - {total_fmt}")
             else:
                 st.info("No hay compras recientes")
         except Exception as e:
             st.error(f"Error cargando últimas compras: {e}")
+
 
 # =========================
 # 📈 INDICADORES IA (POWER BI)
