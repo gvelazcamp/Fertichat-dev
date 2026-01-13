@@ -1,489 +1,589 @@
-import streamlit as st
+# =========================
+# SQL STOCK - INVENTARIO Y LOTES
+# =========================
+
+import os
 import pandas as pd
-from datetime import datetime
-from typing import Tuple, Optional
-import time
+import streamlit as st
+from sql_core import ejecutar_consulta, _safe_ident
 
-from utils_format import formatear_dataframe, df_to_excel
-from sql_stock import (
-    get_stock_total,
-    get_stock_por_familia,
-    get_stock_por_deposito,
-    get_stock_articulo,
-    get_stock_familia,
-    get_lotes_por_vencer,
-    get_lotes_vencidos,
-    get_stock_bajo,
-    get_stock_lote_especifico,
-    get_alertas_vencimiento_multiple,
-)
 
 # =====================================================================
-# MÓDULO STOCK IA (CHATBOT)
+# CONSTANTES DE STOCK
 # =====================================================================
 
-def detectar_intencion_stock(texto: str) -> dict:
-    """Detecta la intención para consultas de stock"""
-    texto_lower = texto.lower().strip()
-
-    # Vencimientos
-    if any(k in texto_lower for k in ['vencer', 'vencen', 'vencimiento', 'vence', 'por vencer', 'proximo a vencer']):
-        if 'vencido' in texto_lower or 'ya vencio' in texto_lower:
-            return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
-        # Extraer días si se menciona
-        import re
-        match = re.search(r'(\d+)\s*(dias|día|dia|días)', texto_lower)
-        dias = int(match.group(1)) if match else 90
-        return {'tipo': 'lotes_por_vencer', 'dias': dias, 'debug': f'Lotes por vencer en {dias} días'}
-
-    # Vencidos
-    if any(k in texto_lower for k in ['vencido', 'vencidos', 'ya vencio', 'caducado']):
-        return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
-
-    # Stock bajo
-    if any(k in texto_lower for k in ['stock bajo', 'poco stock', 'bajo stock', 'quedan pocos', 'se acaba', 'reponer']):
-        return {'tipo': 'stock_bajo', 'debug': 'Stock bajo'}
-
-    # Lote específico
-    if any(k in texto_lower for k in ['lote', 'nro lote', 'numero de lote']):
-        # Buscar patrón de lote (alfanumérico)
-        import re
-        match = re.search(r'lote\s+(\w+)', texto_lower)
-        if match:
-            return {'tipo': 'lote_especifico', 'lote': match.group(1), 'debug': f'Lote específico: {match.group(1)}'}
-
-    # Stock por familia
-    if any(k in texto_lower for k in ['familia', 'familias', 'por familia', 'seccion', 'secciones']):
-        # Ver si menciona una familia específica
-        familias_conocidas = ['id', 'fb', 'g', 'tr', 'xx', 'hm', 'mi']
-        for fam in familias_conocidas:
-            if fam in texto_lower.split():
-                return {'tipo': 'stock_familia', 'familia': fam.upper(), 'debug': f'Stock familia {fam.upper()}'}
-        return {'tipo': 'stock_por_familia', 'debug': 'Stock por familias'}
-
-    # Stock por depósito
-    if any(k in texto_lower for k in ['deposito', 'depósito', 'depositos', 'depósitos', 'almacen']):
-        return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
-
-    # Stock de artículo específico
-    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
-        # Extraer nombre del artículo
-        palabras_excluir = ['stock', 'cuanto', 'cuánto', 'hay', 'de', 'del', 'tenemos', 'disponible', 'el', 'la', 'los', 'las', 'que']
-        palabras = [p for p in texto_lower.split() if p not in palabras_excluir and len(p) > 2]
-        if palabras:
-            articulo = ' '.join(palabras)
-            return {'tipo': 'stock_articulo', 'articulo': articulo, 'debug': f'Stock de artículo: {articulo}'}
-
-    # Total general
-    if any(k in texto_lower for k in ['total', 'resumen', 'general', 'todo el stock']):
-        return {'tipo': 'stock_total', 'debug': 'Stock total'}
-
-    # Por defecto, intentar buscar artículo
-    return {'tipo': 'stock_articulo', 'articulo': texto, 'debug': f'Búsqueda general: {texto}'}
+_STOCK_TABLE_CANDIDATES = [
+    "stock_rows",  # ✅ PRIORIDAD 1: según tu CSV importado
+    "stock_raw",
+    "stock",
+    "stocks",
+    "stock_lotes",
+    "lotes_stock",
+    "estado_stock",
+    "estado_mercaderia_stock",
+    "estado_mercaderia",
+]
 
 
-def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
-    """Procesa una pregunta sobre stock"""
+# =====================================================================
+# HELPERS INTERNOS DE STOCK
+# =====================================================================
 
-    intencion = detectar_intencion_stock(pregunta)
-    tipo = intencion.get('tipo')
+def _get_stock_schema_table() -> tuple:
+    """Obtiene schema y tabla de stock con DEBUG mejorado."""
+    schema = st.secrets.get("STOCK_SCHEMA", os.getenv("STOCK_SCHEMA", "public"))
+    schema = _safe_ident(schema) or "public"
 
-    print(f"🔍 STOCK IA - Intención: {tipo}")
-    print(f"📋 Debug: {intencion.get('debug')}")
+    table = st.secrets.get("STOCK_TABLE", os.getenv("STOCK_TABLE", "")).strip()
+    table = _safe_ident(table)
 
-    # Stock total
-    if tipo == 'stock_total':
-        df = get_stock_total()
-        if df is not None and not df.empty:
-            return "📦 Resumen de stock total:", df
-        return "No pude obtener el stock total.", None
+    if table:
+        print(f"✅ DEBUG: Usando tabla configurada: {schema}.{table}")
+        return schema, table
 
-    # Stock por familia
-    if tipo == 'stock_por_familia':
-        df = get_stock_por_familia()
-        if df is not None and not df.empty:
-            return "📊 Stock agrupado por familia:", df
-        return "No encontré datos de stock por familia.", None
-
-    # Stock de una familia específica
-    if tipo == 'stock_familia':
-        familia = intencion.get('familia', '')
-        df = get_stock_familia(familia)
-        if df is not None and not df.empty:
-            return f"📦 Stock de familia {familia}:", df
-        return f"No encontré stock para la familia {familia}.", None
-
-    # Stock por depósito
-    if tipo == 'stock_por_deposito':
-        df = get_stock_por_deposito()
-        if df is not None and not df.empty:
-            return "🏢 Stock agrupado por depósito:", df
-        return "No encontré datos de stock por depósito.", None
-
-    # Lotes por vencer
-    if tipo == 'lotes_por_vencer':
-        dias = intencion.get('dias', 90)
-        df = get_lotes_por_vencer(dias)
-        if df is not None and not df.empty:
-            return f"⚠️ Lotes que vencen en los próximos {dias} días:", df
-        return f"No hay lotes que venzan en los próximos {dias} días.", None
-
-    # Lotes vencidos
-    if tipo == 'lotes_vencidos':
-        df = get_lotes_vencidos()
-        if df is not None and not df.empty:
-            return "🚨 Lotes ya vencidos:", df
-        return "No hay lotes vencidos registrados.", None
-
-    # Stock bajo
-    if tipo == 'stock_bajo':
-        df = get_stock_bajo(10)
-        if df is not None and not df.empty:
-            return "📉 Artículos con stock bajo (≤10 unidades):", df
-        return "No hay artículos con stock bajo.", None
-
-    # Lote específico
-    if tipo == 'lote_especifico':
-        lote = intencion.get('lote', '')
-        df = get_stock_lote_especifico(lote)
-        if df is not None and not df.empty:
-            return f"🔍 Información del lote {lote}:", df
-        return f"No encontré el lote {lote}.", None
-
-    # Stock de artículo
-    if tipo == 'stock_articulo':
-        articulo = intencion.get('articulo', pregunta)
-        df = get_stock_articulo(articulo)
-        if df is not None and not df.empty:
-            return f"📦 Stock de '{articulo}':", df
-        return f"No encontré stock para '{articulo}'.", None
-
-    return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo'.", None
-
-
-# =========================
-# 📦 RESUMEN STOCK (ROTATIVO CADA 5s)
-# =========================
-def _stock_to_float(x) -> float:
     try:
-        if x is None:
-            return 0.0
-        s = str(x).strip().replace(" ", "")
-        s = s.replace(",", ".")
-        return float(s)
-    except Exception:
-        return 0.0
+        sql = """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = %s
+              AND table_type = 'BASE TABLE'
+        """
+        df = ejecutar_consulta(sql, (schema,))
+        existing = set()
+        if df is not None and not df.empty and "table_name" in df.columns:
+            existing = set([str(x) for x in df["table_name"].tolist()])
 
+        print(f"🔍 DEBUG: Tablas encontradas en schema '{schema}': {existing}")
 
-# Removido @st.cache_data para debug
-def _get_stock_cantidad_1(top_n: int = 200) -> pd.DataFrame:
-    # Cambiar a stock bajo (<=10) en lugar de exactamente =1
-    df = get_stock_bajo(10)
-    st.write(f"DEBUG: df from get_stock_bajo(10): shape={df.shape if df is not None else 'None'}")
-    if df is not None and not df.empty:
-        st.write(f"DEBUG: first row: {df.iloc[0].to_dict() if len(df) > 0 else 'No rows'}")
-    if df is None or df.empty:
-        return pd.DataFrame(columns=["FAMILIA", "CODIGO", "ARTICULO", "DEPOSITO", "LOTE", "VENCIMIENTO", "STOCK"])
+        for t in _STOCK_TABLE_CANDIDATES:
+            if t in existing:
+                print(f"✅ DEBUG: Tabla de stock detectada: {schema}.{t}")
+                return schema, t
 
-    # No filtrar a ≈1, mostrar todos con stock <=10
-    dfx = df.copy()
-    return dfx.head(int(top_n))
-
-
-# Removido @st.cache_data para debug
-def _get_lotes_proximos_a_vencer(dias: int = 30) -> pd.DataFrame:
-    df = get_lotes_por_vencer(dias)
-    st.write(f"DEBUG: df from get_lotes_por_vencer({dias}): shape={df.shape if df is not None else 'None'}")
-    if df is not None and not df.empty:
-        st.write(f"DEBUG: first row: {df.iloc[0].to_dict() if len(df) > 0 else 'No rows'}")
-    if df is None or df.empty:
-        return pd.DataFrame(columns=["FAMILIA", "CODIGO", "ARTICULO", "DEPOSITO", "LOTE", "VENCIMIENTO", "STOCK", "Dias_Para_Vencer"])
-    return df
-
-
-def mostrar_resumen_stock_rotativo(dias_vencer: int = 30):
-    # ✅ No auto-refresh mientras el usuario está escribiendo en el input del Stock
-    pregunta_actual = ""
-    try:
-        pregunta_actual = str(st.session_state.get("input_stock", "") or "")
-    except Exception:
-        pregunta_actual = ""
-
-    tick = 0
-    if not pregunta_actual.strip():
-        try:
-            from streamlit_autorefresh import st_autorefresh
-            tick = st_autorefresh(interval=5000, key="__rotar_stock_5s__") or 0
-        except Exception:
-            tick = 0  # si no está instalado, queda fijo
-
-    df_stock_1 = _get_stock_cantidad_1(top_n=200)
-    df_vencer = _get_lotes_proximos_a_vencer(dias=int(dias_vencer))
-
-    stock1_txt = "—"
-    stock1_sub = "Sin registros con stock bajo"
-    stock1_count = 0
-
-    if df_stock_1 is not None and not df_stock_1.empty:
-        stock1_count = len(df_stock_1)
-        idx1 = int(tick) % stock1_count
-        r1 = df_stock_1.iloc[idx1]
-
-        art = str(r1.get("ARTICULO", "—"))
-        lote = str(r1.get("LOTE", "—"))
-        dep = str(r1.get("DEPOSITO", "—"))
-        ven = str(r1.get("VENCIMIENTO", "—"))
-        stk = str(r1.get("STOCK", "—"))
-
-        stock1_txt = art
-        stock1_sub = f"Lote {lote} | Depósito {dep} | Venc {ven} | Stock {stk}"
-
-    vencer_txt = "—"
-    vencer_sub = f"Sin lotes que venzan en {dias_vencer} días"
-    vencer_count = 0
-
-    if df_vencer is not None and not df_vencer.empty:
-        vencer_count = len(df_vencer)
-        idx2 = int(tick) % vencer_count
-        r2 = df_vencer.iloc[idx2]
-
-        art = str(r2.get("ARTICULO", "—"))
-        lote = str(r2.get("LOTE", "—"))
-        dep = str(r2.get("DEPOSITO", "—"))
-        ven = str(r2.get("VENCIMIENTO", "—"))
-        stk = str(r2.get("STOCK", "—"))
-        dias = str(r2.get("Dias_Para_Vencer", "—"))
-
-        vencer_txt = art
-        vencer_sub = f"Lote {lote} | Depósito {dep} | Venc {ven} ({dias} días) | Stock {stk}"
-
-    st.markdown("""
-    <style>
-      .mini-stock-wrap{
-        display:flex;
-        gap:12px;
-        margin: 6px 0 10px 0;
-      }
-      .mini-stock-card{
-        flex:1;
-        border:1px solid #e5e7eb;
-        border-radius:12px;
-        padding:10px 12px;
-        background: rgba(255,255,255,0.85);
-      }
-      .mini-stock-top{
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:10px;
-        margin:0;
-      }
-      .mini-stock-t{
-        font-size:0.80rem;
-        font-weight:600;
-        opacity:0.85;
-        margin:0;
-      }
-      .mini-stock-badge{
-        font-size:0.75rem;
-        opacity:0.75;
-        border:1px solid #e5e7eb;
-        padding:2px 8px;
-        border-radius:999px;
-        background: rgba(255,255,255,0.7);
-        white-space:nowrap;
-      }
-      .mini-stock-v{
-        font-size:1.00rem;
-        font-weight:700;
-        margin:4px 0 0 0;
-        line-height:1.15;
-      }
-      .mini-stock-s{
-        font-size:0.80rem;
-        opacity:0.75;
-        margin:4px 0 0 0;
-        line-height:1.2;
-      }
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown(f"""
-      <div class="mini-stock-wrap">
-        <div class="mini-stock-card">
-          <div class="mini-stock-top">
-            <p class="mini-stock-t">📉 Artículos con STOCK bajo (≤10)</p>
-            <span class="mini-stock-badge">{stock1_count} regs</span>
-          </div>
-          <p class="mini-stock-v">{stock1_txt}</p>
-          <p class="mini-stock-s">{stock1_sub}</p>
-        </div>
-
-        <div class="mini-stock-card">
-          <div class="mini-stock-top">
-            <p class="mini-stock-t">⏳ Lotes próximos a vencer ({dias_vencer} días)</p>
-            <span class="mini-stock-badge">{vencer_count} regs</span>
-          </div>
-          <p class="mini-stock-v">{vencer_txt}</p>
-          <p class="mini-stock-s">{vencer_sub}</p>
-        </div>
-      </div>
-    """, unsafe_allow_html=True)
-
-
-# =========================
-# 📦 STOCK IA (SIN TARJETAS ADENTRO)
-# =========================
-def mostrar_stock_ia():
-    """Módulo Stock IA - Chat para consultas de stock"""
-
-    st.title("📦 Stock IA")
-    st.markdown("*Consultas de stock con lenguaje natural*")
-
-    # ⛔ IMPORTANTE: NO LLAMAR mostrar_resumen_stock_rotativo() ACÁ
-    # porque se renderiza arriba del menú desde main()
-
-    st.markdown("---")
-
-    if 'historial_stock' not in st.session_state:
-        st.session_state.historial_stock = []
-
-    with st.sidebar:
-        st.header("📦 Stock IA - Ayuda")
-        st.markdown("""
-        **Este módulo entiende:**
-
-        📊 **Consultas generales:**
-        - "stock total"
-        - "stock por familia"
-        - "stock por depósito"
-
-        🔍 **Búsquedas específicas:**
-        - "stock vitek"
-        - "lote D250829AF"
-        - "stock familia ID"
-
-        ⚠️ **Vencimientos:**
-        - "lotes por vencer"
-        - "vencen en 30 días"
-        - "lotes vencidos"
-
-        📉 **Alertas:**
-        - "stock bajo"
-        - "artículos a reponer"
-        """)
-
-        st.markdown("---")
-
-        if st.button("🗑️ Limpiar historial", key="limpiar_stock", use_container_width=True):
-            st.session_state.historial_stock = []
-            st.rerun()
-
-    pregunta = st.text_input(
-        "Escribe tu consulta de stock:",
-        placeholder="Ej: stock vitek / lotes por vencer / stock bajo",
-        key="input_stock"
-    )
-
-    # 🔴 ALERTA DE VENCIMIENTO ROTATIVA (basada en tiempo)
-    try:
-        alertas = get_alertas_vencimiento_multiple(10)
-        if alertas:
-            import time
-            # Cambiar cada 5 segundos basado en el tiempo actual
-            indice = int(time.time() // 5) % len(alertas)
-            alerta = alertas[indice]
-
-            # ✅ CORREGIDO: usar 'dias_restantes' en vez de 'dias'
-            dias = alerta['dias_restantes']
-            articulo = alerta['articulo']
-            lote = alerta['lote']
-            venc = alerta['vencimiento']
-            stock = alerta['stock']
-
-            # Contador
-            contador = f"<div style='text-align: center; font-size: 0.8em; color: #666; margin-top: 5px;'>{indice + 1} de {len(alertas)} alertas</div>"
-
-            if dias <= 7:
-                # Crítico - rojo
-                st.markdown(f"""
-                <div style="background-color: #fee2e2; border-left: 5px solid #dc2626; padding: 15px; border-radius: 5px; margin: 10px 0;">
-                    <span style="color: #dc2626; font-weight: bold; font-size: 1.1em;">🚨 ¡ALERTA CRÍTICA!</span><br>
-                    <span style="color: #7f1d1d;"><b>{articulo}</b> - Lote: <b>{lote}</b></span><br>
-                    <span style="color: #7f1d1d;">Vence: <b>{venc}</b> ({dias} días) | Stock: {stock}</span>
-                </div>
-                {contador}
-                """, unsafe_allow_html=True)
-            elif dias <= 30:
-                # Urgente - naranja
-                st.markdown(f"""
-                <div style="background-color: #fff7ed; border-left: 5px solid #ea580c; padding: 15px; border-radius: 5px; margin: 10px 0;">
-                    <span style="color: #ea580c; font-weight: bold; font-size: 1.1em;">⚠️ PRÓXIMO A VENCER</span><br>
-                    <span style="color: #9a3412;"><b>{articulo}</b> - Lote: <b>{lote}</b></span><br>
-                    <span style="color: #9a3412;">Vence: <b>{venc}</b> ({dias} días) | Stock: {stock}</span>
-                </div>
-                {contador}
-                """, unsafe_allow_html=True)
-            else:
-                # Atención - amarillo
-                st.markdown(f"""
-                <div style="background-color: #fefce8; border-left: 5px solid #ca8a04; padding: 15px; border-radius: 5px; margin: 10px 0;">
-                    <span style="color: #ca8a04; font-weight: bold; font-size: 1.1em;">📋 Próximo vencimiento</span><br>
-                    <span style="color: #854d0e;"><b>{articulo}</b> - Lote: <b>{lote}</b></span><br>
-                    <span style="color: #854d0e;">Vence: <b>{venc}</b> ({dias} días) | Stock: {stock}</span>
-                </div>
-                {contador}
-                """, unsafe_allow_html=True)
+        print(f"⚠️ DEBUG: No se encontró tabla de stock. Usando default: {schema}.stock_raw")
+        return schema, "stock_raw"
     except Exception as e:
-        print(f"⚠️ Error en alertas de vencimiento: {e}")
-        pass  # Si falla la alerta, no afecta el resto
+        print(f"❌ DEBUG: Error detectando tabla: {e}")
+        return schema, "stock_raw"
 
-    if pregunta:
-        with st.spinner("🔍 Consultando stock."):
-            respuesta, df = procesar_pregunta_stock(pregunta)
 
-            st.session_state.historial_stock.append({
-                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'pregunta': pregunta,
-                'respuesta': respuesta,
-                'tiene_datos': df is not None and not df.empty
-            })
+def _get_stock_columns(schema: str, table: str) -> list:
+    """Obtiene columnas de la tabla con manejo de errores."""
+    try:
+        sql = """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = %s AND table_name = %s
+        """
+        df = ejecutar_consulta(sql, (schema, table))
+        if df is None or df.empty or "column_name" not in df.columns:
+            print(f"⚠️ DEBUG: No se encontraron columnas para {schema}.{table}")
+            return []
+        
+        cols = [str(x) for x in df["column_name"].tolist()]
+        print(f"🔍 DEBUG: Columnas encontradas en {schema}.{table}: {cols}")
+        return cols
+    except Exception as e:
+        print(f"❌ DEBUG: Error obteniendo columnas: {e}")
+        return []
 
-            st.markdown(f"**{respuesta}**")
 
-            if df is not None and not df.empty:
-                if 'STOCK' in df.columns:
-                    try:
-                        total_stock = df['STOCK'].apply(lambda x: float(
-                            str(x).replace(',', '.').replace(' ', '')
-                        ) if pd.notna(x) else 0).sum()
-                        st.info(f"📦 **Total stock:** {total_stock:,.0f} unidades".replace(',', '.'))
-                    except Exception:
-                        pass
+def _pick_col(cols: list, candidates: list) -> str:
+    """Devuelve el nombre REAL de la columna (con comillas) si existe."""
+    if not cols:
+        return ""
 
-                if 'Dias_Para_Vencer' in df.columns:
-                    try:
-                        criticos = len(df[df['Dias_Para_Vencer'] <= 30])
-                        if criticos > 0:
-                            st.warning(f"⚠️ **{criticos}** lotes vencen en menos de 30 días")
-                    except Exception:
-                        pass
+    col_map = {c.lower(): c for c in cols}
+    for cand in candidates:
+        key = str(cand).lower()
+        if key in col_map:
+            real = col_map[key]
+            return f'"{real}"'
+    return ""
 
-                st.dataframe(df, use_container_width=True, hide_index=True)
 
-                excel_data = df_to_excel(df)
-                st.download_button(
-                    label="📥 Descargar Excel",
-                    data=excel_data,
-                    file_name="consulta_stock.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+def _sql_date_expr_stock(col_expr: str) -> str:
+    """Convierte una columna (texto/date) a DATE de forma robusta."""
+    if not col_expr:
+        return "NULL::date"
+
+    return f"""
+    (
+      CASE
+        WHEN NULLIF(TRIM({col_expr}::text), '') IS NULL THEN NULL::date
+        WHEN TRIM({col_expr}::text) ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' THEN (TRIM({col_expr}::text))::date
+        WHEN TRIM({col_expr}::text) ~ '^\\d{{2}}/\\d{{2}}/\\d{{4}}$' THEN to_date(TRIM({col_expr}::text), 'DD/MM/YYYY')
+        WHEN TRIM({col_expr}::text) ~ '^\\d{{2}}-\\d{{2}}-\\d{{4}}$' THEN to_date(TRIM({col_expr}::text), 'DD-MM-YYYY')
+        ELSE NULL::date
+      END
+    )
+    """
+
+
+def _sql_num_expr_stock(col_expr: str) -> str:
+    """Convierte una columna (texto/num) a numeric."""
+    if not col_expr:
+        return "NULL::numeric"
+
+    return f"""
+    NULLIF(
+      regexp_replace(
+        replace(
+          replace(TRIM({col_expr}::text), ' ', ''),
+          ',', '.'
+        ),
+        '[^0-9\\.]',
+        '',
+        'g'
+      ),
+      ''
+    )::numeric
+    """
+
+
+def _stock_base_subquery() -> tuple:
+    """Construye un subquery estándar con aliases esperados."""
+    schema, table = _get_stock_schema_table()
+    schema_s = _safe_ident(schema) or "public"
+    table_s = _safe_ident(table) or "stock_raw"
+
+    cols = _get_stock_columns(schema_s, table_s)
+    print(f"🔍 DEBUG: Columnas detectadas para {schema_s}.{table_s}: {cols}")
+
+    # ✅ DETECTAR COLUMNAS CON MÁS VARIANTES
+    c_art = _pick_col(cols, [
+        "articulo", "Articulo", "Artículo", "ARTICULO",
+        "insumo", "descripcion", "descripcion_articulo", "item",
+        "producto", "material", "nombre"
+    ])
+    
+    c_fam = _pick_col(cols, [
+        "familia", "Familia", "FAMILIA",
+        "sector", "seccion", "sección", "rubro", "categoria", "categoría"
+    ])
+    
+    c_dep = _pick_col(cols, [
+        "deposito", "Deposito", "Depósito", "DEPOSITO",
+        "ubicacion", "ubicación", "boca", "almacen", "almacén", "bodega"
+    ])
+    
+    c_lot = _pick_col(cols, [
+        "lote", "Lote", "LOTE",
+        "batch", "nro_lote", "numero_lote", "número_lote", "num_lote"
+    ])
+    
+    c_vto = _pick_col(cols, [
+        "vencimiento", "Vencimiento", "VENCIMIENTO",
+        "vto", "vence", "fecha_vencimiento", "fecha_vto", "fec_vto",
+        "Fecha Vencimiento", "FechaVencimiento"
+    ])
+    
+    c_stk = _pick_col(cols, [
+        "stock", "Stock", "STOCK",
+        "cantidad", "Cantidad", "existencia", "saldo", "unidades", "cant"
+    ])
+    
+    c_cod = _pick_col(cols, [
+        "codigo", "Codigo", "Código", "CODIGO",
+        "id", "ID", "cod_articulo", "cod", "codigo_articulo", "code"
+    ])
+
+    print(f"🔍 DEBUG: Columnas mapeadas - ARTICULO: {c_art}, FAMILIA: {c_fam}, DEPOSITO: {c_dep}, LOTE: {c_lot}, VENCIMIENTO: {c_vto}, STOCK: {c_stk}, CODIGO: {c_cod}")
+
+    # ✅ CONSTRUCCIÓN DE EXPRESIONES CON FALLBACK
+    art_expr = f"TRIM(COALESCE({c_art}::text,''))" if c_art else "'SIN ARTICULO'"
+    fam_expr = f"TRIM(COALESCE({c_fam}::text,''))" if c_fam else "'SIN FAMILIA'"
+    dep_expr = f"TRIM(COALESCE({c_dep}::text,''))" if c_dep else "'SIN DEPOSITO'"
+    lot_expr = f"TRIM(COALESCE({c_lot}::text,''))" if c_lot else "'SIN LOTE'"
+    cod_expr = f"TRIM(COALESCE({c_cod}::text,''))" if c_cod else "''"
+
+    vto_expr = _sql_date_expr_stock(c_vto) if c_vto else "NULL::date"
+    stk_expr = _sql_num_expr_stock(c_stk) if c_stk else "0::numeric"
+
+    full_table = f'"{schema_s}"."{table_s}"'
+
+    sub = f"""
+        SELECT
+            {cod_expr} AS "CODIGO",
+            {art_expr} AS "ARTICULO",
+            {fam_expr} AS "FAMILIA",
+            {dep_expr} AS "DEPOSITO",
+            {lot_expr} AS "LOTE",
+            {vto_expr} AS "VENCIMIENTO",
+            {stk_expr} AS "STOCK",
+            CASE
+              WHEN {vto_expr} IS NULL THEN NULL
+              ELSE ({vto_expr} - CURRENT_DATE)
+            END AS "Dias_Para_Vencer"
+        FROM {full_table}
+    """
+    
+    print(f"📊 DEBUG: Subquery generada: {sub[:300]}...")
+    return sub, schema_s, table_s
+
+
+# =====================================================================
+# LISTADOS DE STOCK
+# =====================================================================
+
+def get_lista_articulos_stock() -> list:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT DISTINCT "ARTICULO"
+            FROM ({base}) s
+            WHERE "ARTICULO" IS NOT NULL
+              AND TRIM("ARTICULO") <> ''
+              AND TRIM("ARTICULO") <> 'SIN ARTICULO'
+            ORDER BY "ARTICULO"
+            LIMIT 5000
+        """
+        df = ejecutar_consulta(sql, ())
+        items = ["Todos"]
+        if df is not None and not df.empty and "ARTICULO" in df.columns:
+            items += [str(x) for x in df["ARTICULO"].tolist()]
+        return items
+    except Exception:
+        return ["Todos"]
+
+
+def get_lista_familias_stock() -> list:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT DISTINCT "FAMILIA"
+            FROM ({base}) s
+            WHERE "FAMILIA" IS NOT NULL
+              AND TRIM("FAMILIA") <> ''
+              AND TRIM("FAMILIA") <> 'SIN FAMILIA'
+            ORDER BY "FAMILIA"
+            LIMIT 5000
+        """
+        df = ejecutar_consulta(sql, ())
+        items = ["Todos"]
+        if df is not None and not df.empty and "FAMILIA" in df.columns:
+            items += [str(x) for x in df["FAMILIA"].tolist()]
+        return items
+    except Exception:
+        return ["Todos"]
+
+
+def get_lista_depositos_stock() -> list:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT DISTINCT "DEPOSITO"
+            FROM ({base}) s
+            WHERE "DEPOSITO" IS NOT NULL
+              AND TRIM("DEPOSITO") <> ''
+              AND TRIM("DEPOSITO") <> 'SIN DEPOSITO'
+            ORDER BY "DEPOSITO"
+            LIMIT 5000
+        """
+        df = ejecutar_consulta(sql, ())
+        items = ["Todos"]
+        if df is not None and not df.empty and "DEPOSITO" in df.columns:
+            items += [str(x) for x in df["DEPOSITO"].tolist()]
+        return items
+    except Exception:
+        return ["Todos"]
+
+
+# =====================================================================
+# BÚSQUEDAS DE STOCK
+# =====================================================================
+
+def buscar_stock_por_lote(
+    articulo: str = None,
+    lote: str = None,
+    familia: str = None,
+    deposito: str = None,
+    texto_busqueda: str = None
+) -> pd.DataFrame:
+    try:
+        base, _, _ = _stock_base_subquery()
+
+        where = []
+        params = []
+
+        if articulo:
+            where.append("LOWER(COALESCE(\"ARTICULO\", '')) LIKE %s")
+            params.append(f"%{articulo.lower().strip()}%")
+
+        if familia:
+            where.append("LOWER(COALESCE(\"FAMILIA\", '')) LIKE %s")
+            params.append(f"%{familia.lower().strip()}%")
+
+        if deposito:
+            where.append("LOWER(COALESCE(\"DEPOSITO\", '')) LIKE %s")
+            params.append(f"%{deposito.lower().strip()}%")
+
+        if lote:
+            where.append("LOWER(COALESCE(\"LOTE\", '')) LIKE %s")
+            params.append(f"%{lote.lower().strip()}%")
+
+        if texto_busqueda:
+            t = texto_busqueda.lower().strip()
+            where.append("""
+                (
+                  LOWER(COALESCE("ARTICULO", '')) LIKE %s OR
+                  LOWER(COALESCE("LOTE", '')) LIKE %s OR
+                  LOWER(COALESCE("CODIGO", '')) LIKE %s OR
+                  LOWER(COALESCE("FAMILIA", '')) LIKE %s OR
+                  LOWER(COALESCE("DEPOSITO", '')) LIKE %s
                 )
+            """)
+            params.extend([f"%{t}%"] * 5)
 
-    if st.session_state.historial_stock:
-        st.markdown("---")
-        st.subheader("📜 Historial")
+        where_sql = "WHERE " + " AND ".join(where) if where else ""
 
-        for i, item in enumerate(reversed(st.session_state.historial_stock[-5:])):
-            with st.expander(f"🕐 {item['timestamp']} - {item['pregunta'][:40]}."):
-                st.markdown(f"**Pregunta:** {item['pregunta']}")
-                st.markdown(f"**Respuesta:** {item['respuesta']}")
+        sql = f"""
+            SELECT
+                "CODIGO",
+                "ARTICULO",
+                "FAMILIA",
+                "DEPOSITO",
+                "LOTE",
+                "VENCIMIENTO",
+                "Dias_Para_Vencer",
+                "STOCK"
+            FROM ({base}) s
+            {where_sql}
+            ORDER BY "VENCIMIENTO" ASC NULLS LAST, "ARTICULO" ASC
+            LIMIT 5000
+        """
+        df = ejecutar_consulta(sql, tuple(params))
+        return df if df is not None else pd.DataFrame()
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_stock_articulo(articulo: str) -> pd.DataFrame:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT
+                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+            FROM ({base}) s
+            WHERE LOWER(COALESCE("ARTICULO", '')) LIKE %s
+            ORDER BY "VENCIMIENTO" ASC NULLS LAST, "LOTE" ASC
+        """
+        return ejecutar_consulta(sql, (f"%{articulo.lower().strip()}%",))
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_stock_lote_especifico(lote: str) -> pd.DataFrame:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT
+                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+            FROM ({base}) s
+            WHERE LOWER(COALESCE("LOTE", '')) LIKE %s
+            ORDER BY "VENCIMIENTO" ASC NULLS LAST, "ARTICULO" ASC
+        """
+        return ejecutar_consulta(sql, (f"%{lote.lower().strip()}%",))
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_stock_familia(familia: str) -> pd.DataFrame:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT
+                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+            FROM ({base}) s
+            WHERE LOWER(COALESCE("FAMILIA", '')) LIKE %s
+            ORDER BY "ARTICULO" ASC, "VENCIMIENTO" ASC NULLS LAST
+        """
+        return ejecutar_consulta(sql, (f"%{familia.lower().strip()}%",))
+    except Exception:
+        return pd.DataFrame()
+
+
+# =====================================================================
+# RESÚMENES Y AGREGACIONES
+# =====================================================================
+
+def get_stock_total() -> pd.DataFrame:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT
+                COUNT(*) AS registros,
+                COUNT(DISTINCT NULLIF(TRIM("ARTICULO"), '')) AS articulos,
+                COUNT(DISTINCT NULLIF(TRIM("LOTE"), '')) AS lotes,
+                COALESCE(SUM("STOCK"), 0) AS stock_total
+            FROM ({base}) s
+        """
+        df = ejecutar_consulta(sql, ())
+        return df if df is not None else pd.DataFrame()
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_stock_por_familia() -> pd.DataFrame:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT
+                COALESCE(NULLIF(TRIM("FAMILIA"), ''), 'SIN FAMILIA') AS familia,
+                COUNT(*) AS registros,
+                COUNT(DISTINCT NULLIF(TRIM("ARTICULO"), '')) AS articulos,
+                COALESCE(SUM("STOCK"), 0) AS stock_total
+            FROM ({base}) s
+            GROUP BY COALESCE(NULLIF(TRIM("FAMILIA"), ''), 'SIN FAMILIA')
+            ORDER BY stock_total DESC
+        """
+        return ejecutar_consulta(sql, ())
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_stock_por_deposito() -> pd.DataFrame:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT
+                COALESCE(NULLIF(TRIM("DEPOSITO"), ''), 'SIN DEPÓSITO') AS deposito,
+                COUNT(*) AS registros,
+                COUNT(DISTINCT NULLIF(TRIM("ARTICULO"), '')) AS articulos,
+                COALESCE(SUM("STOCK"), 0) AS stock_total
+            FROM ({base}) s
+            GROUP BY COALESCE(NULLIF(TRIM("DEPOSITO"), ''), 'SIN DEPÓSITO')
+            ORDER BY stock_total DESC
+        """
+        return ejecutar_consulta(sql, ())
+    except Exception:
+        return pd.DataFrame()
+
+
+# =====================================================================
+# ALERTAS Y VENCIMIENTOS - CORREGIDO PARA CAST DE TEXT A DATE/NUMERIC
+# =====================================================================
+
+def get_lotes_por_vencer(dias: int = 90) -> pd.DataFrame:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT
+                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+            FROM ({base}) s
+            WHERE "VENCIMIENTO" IS NOT NULL
+              AND "VENCIMIENTO" >= CURRENT_DATE
+              AND "VENCIMIENTO" <= (CURRENT_DATE + (%s || ' days')::interval)
+              AND COALESCE("STOCK", 0) > 0
+            ORDER BY "VENCIMIENTO" ASC
+        """
+        df = ejecutar_consulta(sql, (int(dias),))
+        return df if df is not None else pd.DataFrame()
+    except Exception as e:
+        print(f"Error en get_lotes_por_vencer: {e}")
+        return pd.DataFrame()
+
+
+def get_lotes_vencidos() -> pd.DataFrame:
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT
+                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+            FROM ({base}) s
+            WHERE "VENCIMIENTO" IS NOT NULL
+              AND "VENCIMIENTO" < CURRENT_DATE
+              AND COALESCE("STOCK", 0) > 0
+            ORDER BY "VENCIMIENTO" DESC
+        """
+        df = ejecutar_consulta(sql, ())
+        return df if df is not None else pd.DataFrame()
+    except Exception as e:
+        print(f"Error en get_lotes_vencidos: {e}")
+        return pd.DataFrame()
+
+
+def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
+    """Devuelve registros con stock <= minimo (por defecto 10)."""
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT
+                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+            FROM ({base}) s
+            WHERE "STOCK" IS NOT NULL
+              AND "STOCK" <= %s
+              AND "STOCK" > 0
+            ORDER BY "STOCK" ASC NULLS LAST, "ARTICULO" ASC
+        """
+        df = ejecutar_consulta(sql, (int(minimo),))
+        return df if df is not None else pd.DataFrame()
+    except Exception as e:
+        print(f"Error en get_stock_bajo: {e}")
+        return pd.DataFrame()
+
+
+def get_alertas_vencimiento_multiple(limite: int = 10, dias_filtro: int = 30) -> list:
+    """Alertas rotativas de vencimiento para el módulo Stock IA."""
+    try:
+        df = get_lotes_por_vencer(dias=dias_filtro)
+        
+        if df is None or df.empty:
+            return []
+
+        df = df.head(int(limite))
+
+        alertas = []
+        for _, r in df.iterrows():
+            alerta = {
+                "articulo": str(r.get("ARTICULO", "") or ""),
+                "lote": str(r.get("LOTE", "") or ""),
+                "deposito": str(r.get("DEPOSITO", "") or ""),
+                "vencimiento": str(r.get("VENCIMIENTO", "") or ""),
+                "dias_restantes": int(r.get("Dias_Para_Vencer", 0) or 0),
+                "stock": str(r.get("STOCK", "") or "")
+            }
+            alertas.append(alerta)
+        return alertas
+    except Exception as e:
+        print(f"Error en get_alertas_vencimiento_multiple: {e}")
+        return []
+
+
+def get_alertas_stock_1(limite: int = 5) -> list:
+    """Obtiene específicamente artículos con stock = 1."""
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT * FROM ({base}) s
+            WHERE "STOCK" = 1
+            ORDER BY "ARTICULO" ASC
+            LIMIT {int(limite)}
+        """
+        df = ejecutar_consulta(sql, ())
+        if df is None or df.empty: return []
+        return df.to_dict('records')
+    except Exception as e:
+        print(f"Error en get_alertas_stock_1: {e}")
+        return []
+
+
+def get_alertas_combinadas(limite: int = 10, dias_filtro: int = 30) -> list:
+    """✅ NUEVA FUNCIÓN: Combina alertas de stock = 1 y vencimientos en <30 días con stock > 0."""
+    try:
+        # Obtener alertas de stock = 1
+        df_stock_1 = pd.DataFrame(get_alertas_stock_1(limite=limite))
+        
+        # Obtener alertas de vencimiento
+        alertas_vto = get_alertas_vencimiento_multiple(limite=limite, dias_filtro=dias_filtro)
+        df_vto = pd.DataFrame(alertas_vto)
+        
+        # Combinar sin duplicados (basado en ARTICULO + LOTE)
+        df_combinado = pd.concat([df_stock_1, df_vto], ignore_index=True).drop_duplicates(subset=['ARTICULO', 'LOTE'])
+        
+        # Limitar y convertir a lista
+        df_combinado = df_combinado.head(limite)
+        return df_combinado.to_dict('records')
+    except Exception as e:
+        print(f"Error en get_alertas_combinadas: {e}")
+        return []
