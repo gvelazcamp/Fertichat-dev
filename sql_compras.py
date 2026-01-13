@@ -910,8 +910,8 @@ def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
     return ejecutar_consulta(sql, (anio,))
 
 
-def get_dashboard_ultimas_compras(limite: int = 5) -> pd.DataFrame:
-    """Obtiene las últimas compras desde chatbot_raw"""
+def get_dashboard_ultimas_compras(anio: int, limite: int = 5) -> pd.DataFrame:
+    """Obtiene las últimas compras desde chatbot_raw para un año específico"""
     try:
         query = """
             SELECT
@@ -922,10 +922,11 @@ def get_dashboard_ultimas_compras(limite: int = 5) -> pd.DataFrame:
             FROM chatbot_raw
             WHERE "Tipo Comprobante" LIKE 'Compra%'
               AND "Fecha" IS NOT NULL
+              AND "Año"::int = %s
             ORDER BY "Fecha" DESC
             LIMIT %s
         """
-        df = ejecutar_consulta(query, (limite,))
+        df = ejecutar_consulta(query, (anio, limite))
         return df if df is not None else pd.DataFrame()
     except Exception as e:
         print(f"Error en get_dashboard_ultimas_compras: {e}")
