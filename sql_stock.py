@@ -153,7 +153,7 @@ def _stock_base_subquery() -> tuple:
     c_art = _pick_col(cols, [
         "articulo", "Articulo", "Artículo", "ARTICULO",
         "insumo", "descripcion", "descripcion_articulo", "item",
-        "producto", "material", "nombre"  # ✅ AGREGADAS
+        "producto", "material", "nombre"
     ])
     
     c_fam = _pick_col(cols, [
@@ -174,7 +174,7 @@ def _stock_base_subquery() -> tuple:
     c_vto = _pick_col(cols, [
         "vencimiento", "Vencimiento", "VENCIMIENTO",
         "vto", "vence", "fecha_vencimiento", "fecha_vto", "fec_vto",
-        "Fecha Vencimiento", "FechaVencimiento"  # ✅ AGREGADAS
+        "Fecha Vencimiento", "FechaVencimiento"
     ])
     
     c_stk = _pick_col(cols, [
@@ -186,16 +186,6 @@ def _stock_base_subquery() -> tuple:
         "codigo", "Codigo", "Código", "CODIGO",
         "id", "ID", "cod_articulo", "cod", "codigo_articulo", "code"
     ])
-
-    # ✅ DEBUG: Mostrar qué columnas se detectaron
-    print("🔍 DEBUG: Columnas mapeadas:")
-    print(f"  - Artículo: {c_art or 'NO ENCONTRADA'}")
-    print(f"  - Familia: {c_fam or 'NO ENCONTRADA'}")
-    print(f"  - Depósito: {c_dep or 'NO ENCONTRADA'}")
-    print(f"  - Lote: {c_lot or 'NO ENCONTRADA'}")
-    print(f"  - Vencimiento: {c_vto or 'NO ENCONTRADA'}")
-    print(f"  - Stock: {c_stk or 'NO ENCONTRADA'}")
-    print(f"  - Código: {c_cod or 'NO ENCONTRADA'}")
 
     # ✅ CONSTRUCCIÓN DE EXPRESIONES CON FALLBACK
     art_expr = f"TRIM(COALESCE({c_art}::text,''))" if c_art else "'SIN ARTICULO'"
@@ -225,8 +215,6 @@ def _stock_base_subquery() -> tuple:
         FROM {full_table}
     """
     
-    print(f"📝 DEBUG: Subquery generado para {full_table}")
-    
     return sub, schema_s, table_s
 
 
@@ -250,10 +238,8 @@ def get_lista_articulos_stock() -> list:
         items = ["Todos"]
         if df is not None and not df.empty and "ARTICULO" in df.columns:
             items += [str(x) for x in df["ARTICULO"].tolist()]
-        print(f"✅ DEBUG: get_lista_articulos_stock() devolvió {len(items)} items")
         return items
-    except Exception as e:
-        print(f"❌ DEBUG: Error en get_lista_articulos_stock(): {e}")
+    except Exception:
         return ["Todos"]
 
 
@@ -274,8 +260,7 @@ def get_lista_familias_stock() -> list:
         if df is not None and not df.empty and "FAMILIA" in df.columns:
             items += [str(x) for x in df["FAMILIA"].tolist()]
         return items
-    except Exception as e:
-        print(f"❌ DEBUG: Error en get_lista_familias_stock(): {e}")
+    except Exception:
         return ["Todos"]
 
 
@@ -296,8 +281,7 @@ def get_lista_depositos_stock() -> list:
         if df is not None and not df.empty and "DEPOSITO" in df.columns:
             items += [str(x) for x in df["DEPOSITO"].tolist()]
         return items
-    except Exception as e:
-        print(f"❌ DEBUG: Error en get_lista_depositos_stock(): {e}")
+    except Exception:
         return ["Todos"]
 
 
@@ -365,10 +349,8 @@ def buscar_stock_por_lote(
             LIMIT 5000
         """
         df = ejecutar_consulta(sql, tuple(params))
-        print(f"✅ DEBUG: buscar_stock_por_lote() devolvió {len(df) if df is not None else 0} registros")
         return df if df is not None else pd.DataFrame()
-    except Exception as e:
-        print(f"❌ DEBUG: Error en buscar_stock_por_lote(): {e}")
+    except Exception:
         return pd.DataFrame()
 
 
@@ -433,10 +415,8 @@ def get_stock_total() -> pd.DataFrame:
             FROM ({base}) s
         """
         df = ejecutar_consulta(sql, ())
-        print(f"✅ DEBUG: get_stock_total() devolvió: {df.to_dict('records') if df is not None and not df.empty else 'vacío'}")
         return df if df is not None else pd.DataFrame()
-    except Exception as e:
-        print(f"❌ DEBUG: Error en get_stock_total(): {e}")
+    except Exception:
         return pd.DataFrame()
 
 
@@ -494,12 +474,8 @@ def get_lotes_por_vencer(dias: int = 90) -> pd.DataFrame:
             ORDER BY "VENCIMIENTO" ASC
         """
         df = ejecutar_consulta(sql, (int(dias),))
-        print(f"✅ DEBUG: get_lotes_por_vencer({dias}) devolvió {len(df) if df is not None else 0} registros")
-        if df is not None and not df.empty:
-            print(f"  Primeros vencimientos: {df.head(3).to_dict('records')}")
         return df if df is not None else pd.DataFrame()
-    except Exception as e:
-        print(f"❌ DEBUG: Error en get_lotes_por_vencer(): {e}")
+    except Exception:
         return pd.DataFrame()
 
 
@@ -534,26 +510,19 @@ def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
             ORDER BY "STOCK" ASC NULLS LAST, "ARTICULO" ASC
         """
         df = ejecutar_consulta(sql, (int(minimo),))
-        print(f"✅ DEBUG: get_stock_bajo({minimo}) devolvió {len(df) if df is not None else 0} registros")
         return df if df is not None else pd.DataFrame()
-    except Exception as e:
-        print(f"❌ DEBUG: Error en get_stock_bajo(): {e}")
+    except Exception:
         return pd.DataFrame()
 
 
-def get_alertas_vencimiento_multiple(limite: int = 10) -> list:
+def get_alertas_vencimiento_multiple(limite: int = 10, dias_filtro: int = 30) -> list:
     """Alertas rotativas de vencimiento para el módulo Stock IA."""
     try:
-        print(f"🔍 DEBUG: Ejecutando get_alertas_vencimiento_multiple(limite={limite})")
-        
-        df = get_lotes_por_vencer(dias=90)
+        # ✅ FIX: Usamos el parámetro dias_filtro (30 por defecto)
+        df = get_lotes_por_vencer(dias=dias_filtro)
         
         if df is None or df.empty:
-            print("⚠️ DEBUG: get_lotes_por_vencer() devolvió DataFrame vacío")
             return []
-
-        if "VENCIMIENTO" in df.columns:
-            df = df.sort_values(by="VENCIMIENTO", ascending=True, na_position="last")
 
         df = df.head(int(limite))
 
@@ -568,14 +537,21 @@ def get_alertas_vencimiento_multiple(limite: int = 10) -> list:
                 "stock": str(r.get("STOCK", "") or "")
             }
             alertas.append(alerta)
-            
-        print(f"✅ DEBUG: get_alertas_vencimiento_multiple() devolvió {len(alertas)} alertas")
-        if alertas:
-            print(f"  Primera alerta: {alertas[0]}")
-            
         return alertas
-    except Exception as e:
-        print(f"❌ DEBUG: Error en get_alertas_vencimiento_multiple(): {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception:
         return []
+
+def get_alertas_stock_1(limite: int = 5) -> list:
+    """✅ NUEVA FUNCIÓN: Obtiene específicamente artículos con stock = 1."""
+    try:
+        base, _, _ = _stock_base_subquery()
+        sql = f"""
+            SELECT * FROM ({base}) s
+            WHERE "STOCK" = 1
+            ORDER BY "ARTICULO" ASC
+            LIMIT {int(limite)}
+        """
+        df = ejecutar_consulta(sql, ())
+        if df is None or df.empty: return []
+        return df.to_dict('records')
+    except: return []
