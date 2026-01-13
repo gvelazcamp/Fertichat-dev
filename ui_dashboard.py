@@ -203,7 +203,7 @@ def mostrar_dashboard():
                 st.markdown("**⚠️ Alertas (stock=1 o vence <30 días):**")
                 for alerta in alertas[:3]:
                     # Procesar días restantes
-                    dias = alerta.get('dias_restantes', alerta.get('Dias_Para_Vencer', None))
+                    dias = alerta.get('dias_restantes', alerta.get('Dias_Para_Vecer', None))
                     try:
                         dias = int(dias) if dias is not None else 999999
                     except:
