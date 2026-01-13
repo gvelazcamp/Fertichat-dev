@@ -1,7 +1,7 @@
-# =========================
-# UI_CSS.PY - CSS GLOBAL (APP + LOGIN)
-# =========================
+import streamlit as st
+import hashlib
 
+# CSS GLOBAL INTEGRADO (tu ui_css.py)
 CSS_GLOBAL = r"""
 <style>
 
@@ -321,3 +321,85 @@ html, body {
 
 </style>
 """
+
+# Función para hash de contraseña (simple demo)
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# Usuarios demo (en producción, usa DB)
+USERS = {
+    "admin": hash_password("123"),
+    "user": hash_password("456")
+}
+
+# Aplicar CSS
+st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
+
+# Estado de login
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+
+if not st.session_state.logged_in:
+    # Pantalla de login
+    st.markdown('<div id="fc-login-marker"></div>', unsafe_allow_html=True)
+    
+    with st.form("login_form"):
+        st.title("🔐 Iniciar Sesión")
+        username = st.text_input("Usuario")
+        password = st.text_input("Contraseña", type="password")
+        
+        # Usa selectbox en lugar de tabs (no funciona en form)
+        tab = st.selectbox("Tipo", ["Login", "Registro"])
+        
+        submitted = st.form_submit_button("Entrar")
+        if submitted:
+            if tab == "Login" and username in USERS and USERS[username] == hash_password(password):
+                st.session_state.logged_in = True
+                st.success("Login exitoso!")
+                st.rerun()
+            elif tab == "Registro":
+                st.info("Registro demo - usuario agregado.")
+                USERS[username] = hash_password(password)
+                st.success("Registrado!")
+            else:
+                st.error("Usuario o contraseña incorrectos.")
+else:
+    # Panel corporativo después de login
+    st.title("🏢 Panel Corporativo - Bienvenido!")
+    
+    # Sidebar
+    with st.sidebar:
+        st.title("📊 Panel Corporativo")
+        st.markdown("---")
+        
+        menu = st.radio("Menú Principal", ["Inicio", "Compras IA", "Buscador IA", "Stock IA", "Dashboard", "Configuración"])
+        
+        st.markdown("---")
+        st.subheader("Herramientas")
+        if st.button("📈 Reportes"):
+            st.info("Generando reporte...")
+        if st.button("📧 Notificaciones"):
+            st.info("Enviando notificación...")
+        
+        st.markdown("---")
+        if st.button("Cerrar Sesión"):
+            st.session_state.logged_in = False
+            st.rerun()
+        st.caption("Versión 1.0 | Empresa XYZ")
+    
+    # Contenido según menú
+    if menu == "Inicio":
+        st.markdown("Bienvenido al dashboard.")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Ventas", "1.2M", "+10%")
+        with col2:
+            st.metric("Clientes", "5.4K", "+5%")
+        with col3:
+            st.metric("Pedidos", "892", "+12%")
+    elif menu == "Compras IA":
+        st.write("Análisis de compras.")
+    # Agrega más
+    
+    st.markdown("---")
+    st.caption("© 2023 Empresa XYZ")
