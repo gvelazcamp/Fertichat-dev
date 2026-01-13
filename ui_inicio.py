@@ -5,7 +5,6 @@
 import streamlit as st
 from datetime import datetime
 import random
-import textwrap
 
 
 def mostrar_inicio():
@@ -48,39 +47,52 @@ def mostrar_inicio():
     st.markdown('<div id="fc-home-marker" style="display:none;"></div>', unsafe_allow_html=True)
 
     # =========================
-    # CSS para botones como tarjetas (SOLO HOME)
+    # CSS para HOME (PC + MÓVIL)
     # =========================
     st.markdown("""
     <style>
     /* =========================================================
-       SOLO HOME (scoped): si el marcador existe, aplico estilos
+       SOLO HOME (scoped)
        ========================================================= */
     div[data-testid="stAppViewContainer"]:has(#fc-home-marker) div[data-testid="column"]{
-        position: relative; /* el tile se posiciona dentro de la columna */
+        position: relative;
     }
 
-    /* Botón como tarjeta (MISMO TAMAÑO SIEMPRE) */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-        border:1px solid rgba(15,23,42,0.10);
-        background:rgba(255,255,255,0.82);
-        border-radius:20px;
+    /* =========================
+       DESKTOP (tu grilla actual)
+       ========================= */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop{
+        display: block;
+    }
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile{
+        display: none;
+    }
 
-        /* tamaño fijo para que todas queden iguales */
+    /* Asegurar full width del wrapper del botón */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton{
+        width: 100%;
+    }
+
+    /* Botón como tarjeta (DESKTOP) */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button{
+        border:1px solid rgba(15,23,42,0.10);
+        background: rgba(255,255,255,0.82);
+        border-radius: 20px;
+
         height: 96px;
         min-height: 96px;
 
-        /* espacio para el tile */
         padding:16px 16px 16px 92px;
 
-        box-shadow:0 10px 24px rgba(2,6,23,0.06);
-        cursor:pointer;
-        transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+        box-shadow: 0 10px 24px rgba(2,6,23,0.06);
+        cursor: pointer;
+        transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
 
         width:100%;
-        text-align:left;
+        text-align: left;
 
-        white-space: pre-line; /* respeta \n del texto */
-        font-size:13.5px;      /* “desc” */
+        white-space: pre-line;
+        font-size:13.5px;
         font-weight:600;
         color:#334155;
         line-height:1.22;
@@ -88,34 +100,33 @@ def mostrar_inicio():
         display:block;
         position: relative;
         margin:0;
+        box-sizing: border-box;
     }
 
-    /* Primera línea como título */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button::first-line{
         font-size:16px;
         font-weight:900;
         color:#0f172a;
         letter-spacing:-0.01em;
     }
 
-    /* Hover */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:hover{
-        transform:translateY(-2px);
-        box-shadow:0 14px 34px rgba(2,6,23,0.09);
-        border-color:rgba(37,99,235,0.22);
-        background:rgba(255,255,255,0.90);
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:hover{
+        transform: translateY(-2px);
+        box-shadow: 0 14px 34px rgba(2,6,23,0.09);
+        border-color: rgba(37,99,235,0.22);
+        background: rgba(255,255,255,0.90);
     }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:active{
-        transform:translateY(0);
-        box-shadow:0 10px 24px rgba(2,6,23,0.06);
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:active{
+        transform: translateY(0);
+        box-shadow: 0 10px 24px rgba(2,6,23,0.06);
     }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button:focus{
-        outline:none;
-        box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .stButton > button:focus{
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) -> aún más abajo (~0.5cm más) */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
+    /* Tile (ícono) - DESKTOP */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop .fc-home-tile{
         width:54px;
         height:54px;
         border-radius:16px;
@@ -124,98 +135,150 @@ def mostrar_inicio():
         justify-content:center;
 
         border:1px solid rgba(15,23,42,0.08);
-        background:rgba(255,255,255,0.86);
+        background: rgba(255,255,255,0.86);
         font-size:26px;
 
         position:absolute;
-        left: 16px;
-        top: calc(50% + 48px);          /* <-- BAJADO ~0.5cm MÁS */
+        left:16px;
+        top:50%;
         transform: translateY(-50%);
-        z-index: 5;
+        z-index:5;
 
-        pointer-events:none; /* no bloquea el click */
-        box-shadow:0 10px 18px rgba(2,6,23,0.07);
+        pointer-events:none;
+        box-shadow: 0 10px 18px rgba(2,6,23,0.07);
         user-select:none;
     }
 
     /* Colores tiles */
-    .tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
-    .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
-    .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
+    .tile-compras { background: rgba(16,185,129,0.10); border-color: rgba(16,185,129,0.18); }
+    .tile-buscador { background: rgba(59,130,246,0.10); border-color: rgba(59,130,246,0.18); }
+    .tile-stock { background: rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
     .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
     .tile-pedidos { background:rgba(2,132,199,0.10); border-color:rgba(2,132,199,0.18); }
     .tile-baja { background:rgba(244,63,94,0.10); border-color:rgba(244,63,94,0.18); }
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
-    /* Responsive */
-    @media (max-width: 900px){
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-tile{
-            width:48px;
-            height:48px;
-            border-radius:14px;
-            font-size:24px;
-            left: 14px;
-            top: calc(50% + 44px);      /* <-- BAJADO ~0.5cm MÁS MOBILE */
+    /* =========================
+       MÓVIL: OCULTAR DESKTOP, MOSTRAR MOBILE
+       ========================= */
+    @media (max-width: 768px){
+        /* OCULTAR layout desktop */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-desktop{
+            display:none !important;
         }
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button{
-            height: 92px;
-            min-height: 92px;
-            padding:14px 14px 14px 78px;
+        
+        /* MOSTRAR layout móvil */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-home-mobile{
+            display: block !important;
         }
-        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .stButton > button::first-line{
-            font-size:15px;
+
+        /* más ancho útil */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .block-container{
+            padding-left:0.65rem !important;
+            padding-right: 0.65rem !important;
         }
-    }
 
-    /* SIDEBAR LIGHT SOLO EN HOME */
-    section[data-testid="stSidebar"] {
-      background: #ffffff !important;
-      background-color: #ffffff !important;
-      background-image: none !important;
-      border-right: 1px solid rgba(15,23,42,0.08);
-      color: #0f172a !important;
-    }
+        /* Tarjeta móvil (DIV clickeable) - MISMO TAMAÑO FORZADO */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard{
+            display:flex;
+            align-items:center;
+            gap:14px;
 
-    section[data-testid="stSidebar"] > div,
-    div[data-testid="stSidebar"] > div {
-      background: #ffffff !important;
-      background-color: #ffffff !important;
-      backdrop-filter: none !important;
-    }
+            width:100%;
+            box-sizing:border-box;
 
-    section[data-testid="stSidebar"] *,
-    section[data-testid="stSidebar"] li,
-    section[data-testid="stSidebar"] span,
-    section[data-testid="stSidebar"] div,
-    section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] label {
-      color: #0f172a !important;
-      background: transparent !important;
-    }
+            height:104px;
+            min-height:104px;
+            max-height:104px;
 
-    /* Específico para radio buttons */
-    section[data-testid="stSidebar"] .stRadio label {
-      color: #0f172a !important;
-    }
+            border-radius:20px;
+            border:1px solid rgba(15,23,42,0.10);
+            background: rgba(255,255,255,0.88);
+            box-shadow: 0 10px 24px rgba(2,6,23,0.06);
 
-    /* Específico para botones */
-    section[data-testid="stSidebar"] .stButton button {
-      background: #f1f5f9 !important;
-      color: #0f172a !important;
-      border: 1px solid #e2e8f0 !important;
-    }
+            padding:14px 14px;
+            cursor:pointer;
+            transition: transform 140ms ease, box-shadow 140ms ease;
+        }
 
-    section[data-testid="stSidebar"] .stButton button:hover {
-      background: #e2e8f0 !important;
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mcard:active{
+            transform: scale(0.98);
+        }
+
+        /* icon */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-micon{
+            width:54px;
+            height:54px;
+            border-radius:16px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:26px;
+
+            border:1px solid rgba(15,23,42,0.08);
+            background:rgba(255,255,255,0.90);
+            box-shadow:0 10px 18px rgba(2,6,23,0.07);
+
+            flex:0 0 54px;
+        }
+
+        /* text block */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mtxt{
+            display:flex;
+            flex-direction:column;
+            gap:4px;
+            min-width:0;
+        }
+
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mtitle{
+            margin:0;
+            font-size:16px;
+            font-weight:900;
+            color:#0f172a;
+            line-height:1.05;
+        }
+
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-msub{
+            margin:0;
+            font-size:13px;
+            font-weight:600;
+            color:#64748b;
+            line-height:1.2;
+        }
+
+        /* separación entre tarjetas */
+        div[data-testid="stAppViewContainer"]:has(#fc-home-marker) .fc-mstack{
+            display:flex;
+            flex-direction:column;
+            gap:14px;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones
+    # Helpers HTML (móvil) - ONCLICK CORREGIDO PARA QUE FUNCIONE
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    def _mcard(go: str, icon: str, title: str, sub: str, tile_class: str) -> str:
+        return f'''
+        <div class="fc-mcard" onclick="const url = new URL(window.location); url.searchParams.set('go', '{go}'); window.location.href = url.toString();">
+            <div class="fc-micon {tile_class}">{icon}</div>
+            <div class="fc-mtxt">
+                <p class="fc-mtitle">{title}</p>
+                <p class="fc-msub">{sub}</p>
+            </div>
+        </div>
+        '''
+
+    # =========================
+    # LAYOUT DESKTOP (ACTIVADO - FUNCIONA BIEN EN PC)
+    # =========================
+    st.markdown('<div class="fc-home-desktop">', unsafe_allow_html=True)
+    st.markdown(
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
+        unsafe_allow_html=True
+    )
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -240,7 +303,11 @@ def mostrar_inicio():
             st.rerun()
 
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
+
+    st.markdown(
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>",
+        unsafe_allow_html=True
+    )
 
     col5, col6, col7, col8 = st.columns(4)
     with col5:
@@ -263,6 +330,49 @@ def mostrar_inicio():
         if st.button("Indicadores\nPower BI", key="indicadores"):
             st.query_params["go"] = "indicadores"
             st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)  # cierre fc-home-desktop
+
+    # =========================
+    # LAYOUT MÓVIL (ÚNICO - PERFECTAS + FUNCIONAN EN CELULAR)
+    # =========================
+    st.markdown('<div class="fc-home-mobile">', unsafe_allow_html=True)
+
+    st.markdown(
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        f"""
+        <div class="fc-mstack">
+            {_mcard("compras", "🛒", "Compras IA", "Consultas inteligentes", "tile-compras")}
+            {_mcard("buscador", "🔎", "Buscador IA", "Buscar facturas / lotes", "tile-buscador")}
+            {_mcard("stock", "📦", "Stock IA", "Consultar inventario", "tile-stock")}
+            {_mcard("dashboard", "📊", "Dashboard", "Ver estadísticas", "tile-dashboard")}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
+
+    st.markdown(
+        "<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        f"""
+        <div class="fc-mstack">
+            {_mcard("pedidos", "📄", "Pedidos internos", "Gestionar pedidos", "tile-pedidos")}
+            {_mcard("baja", "🧾", "Baja de stock", "Registrar bajas", "tile-baja")}
+            {_mcard("ordenes", "📦", "Órdenes de compra", "Crear órdenes", "tile-ordenes")}
+            {_mcard("indicadores", "📈", "Indicadores", "Power BI", "tile-indicadores")}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown("</div>", unsafe_allow_html=True)  # cierre fc-home-mobile
 
     # =========================
     # TIP DEL DÍA
