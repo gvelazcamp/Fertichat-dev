@@ -207,7 +207,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
             "Moneda",
             TRIM("Monto Neto") AS Total
         FROM chatbot_raw 
-        WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+        WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", ' ', '', 'g'))) LIKE LOWER(TRIM(regexp_replace(%s, ' ', '', 'g')))
           AND LOWER(TRIM("Mes")) = LOWER(%s)
           {anio_filter}
         ORDER BY "Fecha" DESC NULLS LAST
@@ -229,7 +229,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                     "Moneda",
                     TRIM("Monto Neto") AS Total
                 FROM chatbot_raw 
-                WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+                WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", ' ', '', 'g'))) LIKE LOWER(TRIM(regexp_replace(%s, ' ', '', 'g')))
                   AND LOWER(TRIM("Mes")) = LOWER(%s)
                   {anio_filter}
                 ORDER BY "Fecha" DESC NULLS LAST
