@@ -203,7 +203,7 @@ def mostrar_dashboard():
                 st.markdown("**⚠️ Alertas (stock=1 o vence <30 días):**")
                 for alerta in alertas[:3]:
                     # Procesar días restantes
-                    dias = alerta.get('dias_restantes', alerta.get('Dias_Para_Vencer', None))
+                    dias = alerta.get('dias_restantes', alerta.get('Dias_Para_Vecer', None))
                     try:
                         dias = int(dias) if dias is not None else 999999
                     except:
@@ -239,6 +239,7 @@ def mostrar_dashboard():
             st.markdown("**🛒 Últimos artículos comprados:**")
             df_ultimas = get_dashboard_ultimas_compras(5)
             if df_ultimas is not None and not df_ultimas.empty:
+                st.dataframe(df_ultimas[['articulo', 'proveedor', 'fecha', 'total']].head(10), use_container_width=True)
                 for _, row in df_ultimas.iterrows():
                     total_fmt = f"${row['total']:,.0f}".replace(',', '.') if pd.notna(row['total']) else "$0"
                     articulo = str(row['articulo'])[:25] + "..." if len(str(row['articulo'])) > 25 else str(row['articulo'])
