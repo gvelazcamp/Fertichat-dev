@@ -956,38 +956,18 @@ def Compras_IA():
                     st.caption(f"⚠️ Dashboard vendible falló: {e}")
 
     # =========================
-    # TIPS / EJEMPLOS (CAJA AMARILLA JUSTO ARRIBA DEL INPUT)
+    # TIPS / EJEMPLOS (CAJA AMARILLA ANTES DEL INPUT)
     # =========================
     tips_html = """
-    <style>
-    /* Contenedor pegado arriba del chat input */
-    .fc-tips-box {
-        position: fixed;
-        bottom: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% - 80px);
-        max-width: 900px;
-        z-index: 999;
-        background: rgba(255, 243, 205, 0.95);
+    <div style="
+        background: rgba(255, 243, 205, 0.85);
         border: 1px solid rgba(245, 158, 11, 0.30);
         border-left: 4px solid rgba(245, 158, 11, 0.75);
         border-radius: 12px;
         padding: 16px 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        backdrop-filter: blur(10px);
-    }
-    
-    @media (max-width: 768px) {
-        .fc-tips-box {
-            bottom: 70px;
-            width: calc(100% - 40px);
-            padding: 12px 16px;
-        }
-    }
-    </style>
-    
-    <div class="fc-tips-box">
+        margin: 16px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    ">
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
             <span style="font-size: 22px;">💡</span>
             <span style="font-size: 16px; font-weight: 700; color: #78350f;">Ejemplos de preguntas:</span>
