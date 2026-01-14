@@ -26,15 +26,15 @@ def mostrar_inicio_desktop():
         saludo = "¡Buenas noches"
 
     # =========================
-    # Header (saludo)
+    # Header compacto (saludo)
     # =========================
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:0 auto;text-align:center;padding:10px 0 18px 0;">
-            <h2 style="margin:0;color:#0f172a;font-size:34px;font-weight:800;letter-spacing:-0.02em;">
+        <div style="max-width:1100px;margin:0 auto;text-align:center;padding:2px 0 8px 0;">
+            <h2 style="margin:0;color:#0f172a;font-size:26px;font-weight:800;letter-spacing:-0.02em;">
                 {saludo}, {nombre.split()[0]}! 👋
             </h2>
-            <p style="margin:8px 0 0 0;color:#64748b;font-size:16px;">
+            <p style="margin:2px 0 0 0;color:#64748b;font-size:14px;">
                 ¿Qué querés hacer hoy?
             </p>
         </div>
