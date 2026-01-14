@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(
     page_title="FertiChat",
-    page_icon="🦋",
+    page_icon="C:\Users\gvelazquez\Downloads\logo.ico",
     layout="wide",
     initial_sidebar_state="auto",
 )
