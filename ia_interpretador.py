@@ -628,6 +628,8 @@ def es_tipo_valido(tipo: str) -> bool:
         "comparar_proveedor_anios",
         "comparar_proveedores_meses",
         "comparar_proveedores_anios",
+        "comparar_proveedores_meses_multi",
+        "comparar_proveedores_anios_multi",
     ]
     return tipo in MAPEO_FUNCIONES or tipo in tipos_especiales
 
@@ -1052,7 +1054,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             print(f"  Año      : {anios[0]}")
             return {"tipo": "compras_anio", "parametros": {"anio": anios[0]}, "debug": "compras año"}
 
-    # COMPARAR
+    # COMPARAR - ✅ MEJORADO CON SOPORTE PARA TODOS LOS PROVEEDORES
     if contiene_comparar(texto_lower_original):
         # ✅ MEJORADO: Extraer múltiples proveedores con coma
         proveedores_comparar: List[str] = []
@@ -1189,7 +1191,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     return {
         "tipo": "no_entendido",
         "parametros": {},
-        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025 | total 2025 | total facturas por moneda | total compras por moneda",
+        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025 | total 2025 | total facturas por moneda | total compras por moneda | comparar 2024 2025",
         "debug": "no match",
     }
 
@@ -1212,7 +1214,7 @@ def agentic_decidir(pregunta: str) -> Dict[str, Any]:
 
 def agentic_es_ejecutable(decision: Dict[str, Any]) -> bool:
     """
-    True si la decisión tiene tipo válido para el orquestador.
+    True si la decisión tiene tipo válido para el router/orquestador.
     No ejecuta nada: solo valida formato mínimo.
     """
     if not isinstance(decision, dict):
