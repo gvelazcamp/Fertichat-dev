@@ -196,9 +196,9 @@ def mostrar_inicio_desktop():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones - MUY MUY ARRIBA
+    # Secciones con botones - AL TOPE
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:-60px auto 0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:-100px auto 0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
