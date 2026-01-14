@@ -848,6 +848,45 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         _dbg_set_result(df)
         return df
 
+    # ===== COMPARATIVAS MULTI (NUEVO - TODOS LOS PROVEEDORES) =====
+    elif tipo == "comparar_proveedores_meses_multi":
+        proveedores = parametros.get("proveedores", [])
+        meses = parametros.get("meses", [])
+        
+        # Si proveedores está vacío, significa TODOS
+        if not proveedores:
+            proveedores = None
+        
+        print(f"🐛 DEBUG ejecutar_consulta: comparar_proveedores_meses_multi")
+        print(f"   Proveedores: {proveedores or 'TODOS'}")
+        print(f"   Meses: {meses}")
+        
+        df = sqlq_comparativas.comparar_compras(
+            meses=meses,
+            proveedores=proveedores
+        )
+        _dbg_set_result(df)
+        return df
+    
+    elif tipo == "comparar_proveedores_anios_multi":
+        proveedores = parametros.get("proveedores", [])
+        anios = parametros.get("anios", [])
+        
+        # Si proveedores está vacío, significa TODOS
+        if not proveedores:
+            proveedores = None
+        
+        print(f"🐛 DEBUG ejecutar_consulta: comparar_proveedores_anios_multi")
+        print(f"   Proveedores: {proveedores or 'TODOS'}")
+        print(f"   Años: {anios}")
+        
+        df = sqlq_comparativas.comparar_compras(
+            anios=anios,
+            proveedores=proveedores
+        )
+        _dbg_set_result(df)
+        return df
+
     # ===== STOCK =====
     elif tipo == "stock_total":
         df = sqlq_compras.get_stock_total()  # Ajusta si es otro módulo
