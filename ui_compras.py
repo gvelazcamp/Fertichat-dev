@@ -904,190 +904,257 @@ def Compras_IA():
 
     st.markdown("### 🤖 Asistente de Compras y Facturas")
 
-    if st.button("🗑️ Limpiar chat"):
-        st.session_state["historial_compras"] = []
-        _dbg_set_interpretacion({})
-        _dbg_set_sql(None, "", [], None)
-        st.rerun()
+    # TABS PRINCIPALES: Chat IA + Comparativas
+    tab_chat, tab_comparativas = st.tabs(["💬 Chat IA", "📊 Comparativas"])
 
-    st.markdown("---")
+    with tab_chat:
+        # BOTÓN LIMPIAR (solo en chat)
+        if st.button("🗑️ Limpiar chat"):
+            st.session_state["historial_compras"] = []
+            _dbg_set_interpretacion({})
+            _dbg_set_sql(None, "", [], None)
+            st.rerun()
 
-    # Mostrar historial
-    for idx, msg in enumerate(st.session_state["historial_compras"]):
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+        st.markdown("---")
 
-            if "df" in msg and msg["df"] is not None:
-                df = msg["df"]
+        # Mostrar historial
+        for idx, msg in enumerate(st.session_state["historial_compras"]):
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
-                # Dashboard vendible compacto
+                if "df" in msg and msg["df"] is not None:
+                    df = msg["df"]
+
+                    # Dashboard vendible compacto
+                    try:
+                        st.markdown("---")
+                        render_dashboard_compras_vendible(
+                            df,
+                            titulo="Datos",
+                            key_prefix=f"hist_{idx}_"
+                        )
+                    except Exception as e:
+                        # Fallback viejo (no romper nada)
+                        totales = calcular_totales_por_moneda(df)
+                        if totales:
+                            col1, col2, col3 = st.columns([2, 2, 3])
+
+                            with col1:
+                                pesos = totales.get("Pesos", 0)
+                                pesos_str = (
+                                    f"${pesos/1_000_000:,.2f}M"
+                                    if pesos >= 1_000_000
+                                    else f"${pesos:,.2f}"
+                                )
+                                st.metric(
+                                    "💵 Total Pesos",
+                                    pesos_str,
+                                    help=f"Valor exacto: ${pesos:,.2f}",
+                                )
+
+                            with col2:
+                                usd = totales.get("USD", 0)
+                                usd_str = (
+                                    f"${usd/1_000_000:,.2f}M"
+                                    if usd >= 1_000_000
+                                    else f"${usd:,.2f}"
+                                )
+                                st.metric(
+                                    "💵 Total USD",
+                                    usd_str,
+                                    help=f"Valor exacto: ${usd:,.2f}",
+                                )
+
+                        st.markdown("---")
+                        st.dataframe(df, use_container_width=True, height=400)
+                        st.caption(f"⚠️ Dashboard vendible falló: {e}")
+
+        # =========================
+        # TIPS / EJEMPLOS (CAJA AMARILLA ANTES DEL INPUT)
+        # =========================
+        tips_html = """
+        <div style="
+            background: rgba(255, 243, 205, 0.85);
+            border: 1px solid rgba(245, 158, 11, 0.30);
+            border-left: 4px solid rgba(245, 158, 11, 0.75);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        ">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <span style="font-size: 22px;">💡</span>
+                <span style="font-size: 16px; font-weight: 700; color: #78350f;">Ejemplos de preguntas:</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 14px; color: #451a03;">
+                <div>• Compras roche 2024</div>
+                <div>• Facturas roche noviembre 2025</div>
+                <div>• Compras roche, tresul 2024 2025</div>
+                <div>• Detalle factura A00060907</div>
+                <div>• Total facturas por moneda</div>
+                <div>• Top proveedores 2025</div>
+                <div>• Compras 2025</div>
+                <div>• Compras vitek 2024</div>
+                <div>• Comparar roche 2024 2025</div>
+                <div>• Total compras octubre 2025</div>
+            </div>
+        </div>
+        """
+        st.markdown(tips_html, unsafe_allow_html=True)
+
+        # Input
+        pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
+
+        if pregunta:
+            st.session_state["historial_compras"].append(
+                {
+                    "role": "user",
+                    "content": pregunta,
+                    "timestamp": datetime.now().timestamp(),
+                }
+            )
+
+            resultado = interpretar_pregunta(pregunta)
+            _dbg_set_interpretacion(resultado)
+
+            tipo = resultado.get("tipo", "")
+            parametros = resultado.get("parametros", {})
+
+            respuesta_content = ""
+            respuesta_df = None
+
+            if tipo == "conversacion":
+                respuesta_content = responder_con_openai(pregunta, tipo="conversacion")
+
+            elif tipo == "conocimiento":
+                respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
+
+            elif tipo == "no_entendido":
+                respuesta_content = "🤔 No entendí bien tu pregunta."
+                sugerencia = resultado.get("sugerencia", "")
+                if sugerencia:
+                    respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
+
+            else:
                 try:
-                    st.markdown("---")
-                    render_dashboard_compras_vendible(
-                        df,
-                        titulo="Datos",
-                        key_prefix=f"hist_{idx}_"
-                    )
-                except Exception as e:
-                    # Fallback viejo (no romper nada)
-                    totales = calcular_totales_por_moneda(df)
-                    if totales:
-                        col1, col2, col3 = st.columns([2, 2, 3])
+                    resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
 
-                        with col1:
-                            pesos = totales.get("Pesos", 0)
-                            pesos_str = (
-                                f"${pesos/1_000_000:,.2f}M"
-                                if pesos >= 1_000_000
-                                else f"${pesos:,.2f}"
-                            )
-                            st.metric(
-                                "💵 Total Pesos",
-                                pesos_str,
-                                help=f"Valor exacto: ${pesos:,.2f}",
-                            )
+                    # Convertir "Mes" a nombres antes de mostrar
+                    if isinstance(resultado_sql, pd.DataFrame) and 'Mes' in resultado_sql.columns:
+                        resultado_sql['Mes'] = resultado_sql['Mes'].apply(convertir_mes_a_nombre)
 
-                        with col2:
-                            usd = totales.get("USD", 0)
-                            usd_str = (
-                                f"${usd/1_000_000:,.2f}M"
-                                if usd >= 1_000_000
-                                else f"${usd:,.2f}"
-                            )
-                            st.metric(
-                                "💵 Total USD",
-                                usd_str,
-                                help=f"Valor exacto: ${usd:,.2f}",
-                            )
-
-                    st.markdown("---")
-                    st.dataframe(df, use_container_width=True, height=400)
-                    st.caption(f"⚠️ Dashboard vendible falló: {e}")
-
-    # =========================
-    # TIPS / EJEMPLOS (CAJA AMARILLA ANTES DEL INPUT)
-    # =========================
-    tips_html = """
-    <div style="
-        background: rgba(255, 243, 205, 0.85);
-        border: 1px solid rgba(245, 158, 11, 0.30);
-        border-left: 4px solid rgba(245, 158, 11, 0.75);
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin: 16px 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    ">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-            <span style="font-size: 22px;">💡</span>
-            <span style="font-size: 16px; font-weight: 700; color: #78350f;">Ejemplos de preguntas:</span>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 14px; color: #451a03;">
-            <div>• Compras roche 2024</div>
-            <div>• Facturas roche noviembre 2025</div>
-            <div>• Compras roche, tresul 2024 2025</div>
-            <div>• Detalle factura A00060907</div>
-            <div>• Total facturas por moneda</div>
-            <div>• Top proveedores 2025</div>
-            <div>• Compras 2025</div>
-            <div>• Compras vitek 2024</div>
-            <div>• Comparar roche 2024 2025</div>
-            <div>• Total compras octubre 2025</div>
-        </div>
-    </div>
-    """
-    st.markdown(tips_html, unsafe_allow_html=True)
-
-    # Input
-    pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
-
-    if pregunta:
-        st.session_state["historial_compras"].append(
-            {
-                "role": "user",
-                "content": pregunta,
-                "timestamp": datetime.now().timestamp(),
-            }
-        )
-
-        resultado = interpretar_pregunta(pregunta)
-        _dbg_set_interpretacion(resultado)
-
-        tipo = resultado.get("tipo", "")
-        parametros = resultado.get("parametros", {})
-
-        respuesta_content = ""
-        respuesta_df = None
-
-        if tipo == "conversacion":
-            respuesta_content = responder_con_openai(pregunta, tipo="conversacion")
-
-        elif tipo == "conocimiento":
-            respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
-
-        elif tipo == "no_entendido":
-            respuesta_content = "🤔 No entendí bien tu pregunta."
-            sugerencia = resultado.get("sugerencia", "")
-            if sugerencia:
-                respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
-
-        else:
-            try:
-                resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
-
-                # Convertir "Mes" a nombres antes de mostrar
-                if isinstance(resultado_sql, pd.DataFrame) and 'Mes' in resultado_sql.columns:
-                    resultado_sql['Mes'] = resultado_sql['Mes'].apply(convertir_mes_a_nombre)
-
-                if isinstance(resultado_sql, pd.DataFrame):
-                    if len(resultado_sql) == 0:
-                        respuesta_content = "⚠️ No se encontraron resultados"
-                    else:
-                        if tipo == "detalle_factura":
-                            nro = parametros.get("nro_factura", "")
-                            respuesta_content = f"✅ **Factura {nro}** - {len(resultado_sql)} artículos"
-                        elif tipo.startswith("facturas_"):
-                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** facturas"
-                        elif tipo.startswith("compras_"):
-                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** compras"
-                        elif tipo.startswith("comparar_"):
-                            respuesta_content = f"✅ Comparación lista - {len(resultado_sql)} filas"
-                        elif tipo.startswith("stock_"):
-                            respuesta_content = f"✅ Stock encontrado - {len(resultado_sql)} filas"
-                        elif tipo == "listado_facturas_anio":
-                            anio = parametros.get("anio", "")
-                            respuesta_content = f"✅ **Listado de Facturas {anio}** - {len(resultado_sql)} proveedores"
-                        elif tipo == "total_facturas_por_moneda_anio":
-                            anio = parametros.get("anio", "")
-                            respuesta_content = f"✅ **Totales de Facturas {anio} por Moneda** - {len(resultado_sql)} monedas"
-                        elif tipo == "total_facturas_por_moneda_generico":
-                            respuesta_content = f"✅ **Totales de Facturas por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
-                        elif tipo == "total_compras_por_moneda_generico":
-                            respuesta_content = f"✅ **Totales de Compras por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
+                    if isinstance(resultado_sql, pd.DataFrame):
+                        if len(resultado_sql) == 0:
+                            respuesta_content = "⚠️ No se encontraron resultados"
                         else:
-                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** resultados"
+                            if tipo == "detalle_factura":
+                                nro = parametros.get("nro_factura", "")
+                                respuesta_content = f"✅ **Factura {nro}** - {len(resultado_sql)} artículos"
+                            elif tipo.startswith("facturas_"):
+                                respuesta_content = f"✅ Encontré **{len(resultado_sql)}** facturas"
+                            elif tipo.startswith("compras_"):
+                                respuesta_content = f"✅ Encontré **{len(resultado_sql)}** compras"
+                            elif tipo.startswith("comparar_"):
+                                respuesta_content = f"✅ Comparación lista - {len(resultado_sql)} filas"
+                            elif tipo.startswith("stock_"):
+                                respuesta_content = f"✅ Stock encontrado - {len(resultado_sql)} filas"
+                            elif tipo == "listado_facturas_anio":
+                                anio = parametros.get("anio", "")
+                                respuesta_content = f"✅ **Listado de Facturas {anio}** - {len(resultado_sql)} proveedores"
+                            elif tipo == "total_facturas_por_moneda_anio":
+                                anio = parametros.get("anio", "")
+                                respuesta_content = f"✅ **Totales de Facturas {anio} por Moneda** - {len(resultado_sql)} monedas"
+                            elif tipo == "total_facturas_por_moneda_generico":
+                                respuesta_content = f"✅ **Totales de Facturas por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
+                            elif tipo == "total_compras_por_moneda_generico":
+                                respuesta_content = f"✅ **Totales de Compras por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
+                            else:
+                                respuesta_content = f"✅ Encontré **{len(resultado_sql)}** resultados"
 
-                        respuesta_df = resultado_sql
-                else:
-                    respuesta_content = str(resultado_sql)
+                            respuesta_df = resultado_sql
+                    else:
+                        respuesta_content = str(resultado_sql)
 
-            except Exception as e:
-                _dbg_set_sql(
-                    tipo,
-                    f"-- Error ejecutando consulta_por_tipo: {str(e)}",
-                    parametros,
-                    None,
-                )
-                respuesta_content = f"❌ Error: {str(e)}"
+                except Exception as e:
+                    _dbg_set_sql(
+                        tipo,
+                        f"-- Error ejecutando consulta_por_tipo: {str(e)}",
+                        parametros,
+                        None,
+                    )
+                    respuesta_content = f"❌ Error: {str(e)}"
 
-        st.session_state["historial_compras"].append(
-            {
-                "role": "assistant",
-                "content": respuesta_content,
-                "df": respuesta_df,
-                "tipo": tipo,
-                "pregunta": pregunta,
-                "timestamp": datetime.now().timestamp(),
-            }
+            st.session_state["historial_compras"].append(
+                {
+                    "role": "assistant",
+                    "content": respuesta_content,
+                    "df": respuesta_df,
+                    "tipo": tipo,
+                    "pregunta": pregunta,
+                    "timestamp": datetime.now().timestamp(),
+                }
+            )
+
+            st.rerun()
+
+    with tab_comparativas:
+        st.markdown("### 📊 Menú Comparativas Fáciles")
+        st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
+
+        # Tipo de comparación
+        tipo_comp = st.selectbox(
+            "Tipo de comparación",
+            options=[
+                "Multi Meses (ej: noviembre 2024-2025)",
+                "Meses (proveedores)",
+                "Años (proveedores)"
+            ],
+            key="tipo_comp"
         )
 
-        st.rerun()
+        # Proveedores
+        prov_options = ["roche", "tresul", "biodiagnostico", "cabinsur"]
+        if "Multi Meses" in tipo_comp:
+            proveedores = st.multiselect("Proveedores", options=prov_options, default=["roche", "tresul"], key="prov_multi")
+            meses = st.multiselect("Meses", options=["2024-11", "2025-11", "2024-12", "2025-12"], default=["2024-11", "2025-11"], key="meses_multi")
+            anios = []
+        elif "Meses" in tipo_comp:
+            proveedores = st.multiselect("Proveedores", options=prov_options, default=["roche", "tresul"], key="prov_meses")
+            meses = st.multiselect("Meses", options=["2024-11", "2025-11"], default=["2024-11", "2025-11"], key="meses_prov")
+            anios = []
+        else:  # Años
+            proveedores = st.multiselect("Proveedores", options=prov_options, default=["roche", "tresul"], key="prov_anios")
+            anios = st.multiselect("Años", options=[2024, 2025], default=[2024, 2025], key="anios_prov")
+            meses = []
+
+        # Botón comparar
+        if st.button("🔍 Comparar", key="btn_comparar"):
+            try:
+                if "Multi Meses" in tipo_comp:
+                    df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(proveedores=proveedores, meses=meses)
+                elif "Meses" in tipo_comp:
+                    # Para 2 proveedores, 2 meses
+                    if len(proveedores) == 2 and len(meses) == 2:
+                        df = sqlq_comparativas.get_comparacion_proveedores_meses(
+                            proveedores=proveedores, mes1=meses[0], mes2=meses[1], label1=meses[0], label2=meses[1]
+                        )
+                    else:
+                        st.error("Para 'Meses (proveedores)' selecciona exactamente 2 proveedores y 2 meses.")
+                        df = None
+                else:  # A��os
+                    if len(proveedores) == 2 and len(anios) == 2:
+                        df = sqlq_comparativas.get_comparacion_proveedores_anios(
+                            proveedores=proveedores, anios=anios, label1=str(anios[0]), label2=str(anios[1])
+                        )
+                    else:
+                        st.error("Para 'Años (proveedores)' selecciona exactamente 2 proveedores y 2 años.")
+                        df = None
+
+                if df is not None and not df.empty:
+                    render_dashboard_compras_vendible(df, titulo=f"Comparación: {tipo_comp}")
+                elif df is not None:
+                    st.warning("⚠️ No se encontraron resultados para esa comparación.")
+            except Exception as e:
+                st.error(f"❌ Error en comparación: {e}")
+
+# ... existing code ...
