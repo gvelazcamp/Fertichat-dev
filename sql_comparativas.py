@@ -422,7 +422,6 @@ def get_comparacion_proveedores_meses_multi(
         FROM chatbot_raw
         WHERE ({prov_where})
           AND TRIM("Mes") IN ({meses_placeholders})
-          AND LOWER(TRIM("Tipo Comprobante")) LIKE 'compra%%'
         GROUP BY TRIM("Cliente / Proveedor")
         ORDER BY Proveedor
         LIMIT 300
