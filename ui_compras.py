@@ -715,8 +715,8 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     elif tipo == "facturas_proveedor":
-        # ✅ Usa sql_compras para incluir filtro de Tipo Comprobante
-        df = sqlq_compras.get_facturas_proveedor_detalle(
+        # ✅ Usa la función corregida de sql_facturas.py
+        df = sqlq_facturas.get_facturas_proveedor(
             proveedores=parametros.get("proveedores", []),
             meses=parametros.get("meses"),
             anios=parametros.get("anios"),
@@ -731,15 +731,6 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     elif tipo == "ultima_factura":
         df = sqlq_facturas.get_ultima_factura_inteligente(parametros["patron"])
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "facturas_articulo":
-        df = sqlq_facturas.get_facturas_articulo(
-            parametros["articulo"],
-            solo_ultima=parametros.get("solo_ultima", False),
-            limite=parametros.get("limite", 50),
-        )
         _dbg_set_result(df)
         return df
 
