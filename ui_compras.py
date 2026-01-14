@@ -955,37 +955,41 @@ def Compras_IA():
                     st.dataframe(df, use_container_width=True, height=400)
                     st.caption(f"⚠️ Dashboard vendible falló: {e}")
 
+    # =========================
+    # TIPS / EJEMPLOS (CAJA AMARILLA ANTES DEL INPUT)
+    # =========================
+    tips_html = """
+    <div style="
+        background: rgba(255, 243, 205, 0.85);
+        border: 1px solid rgba(245, 158, 11, 0.30);
+        border-left: 4px solid rgba(245, 158, 11, 0.75);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin: 16px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    ">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <span style="font-size: 22px;">💡</span>
+            <span style="font-size: 16px; font-weight: 700; color: #78350f;">Ejemplos de preguntas:</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 14px; color: #451a03;">
+            <div>• Compras roche 2024</div>
+            <div>• Facturas roche noviembre 2025</div>
+            <div>• Compras roche, tresul 2024 2025</div>
+            <div>• Detalle factura A00060907</div>
+            <div>• Total facturas por moneda</div>
+            <div>• Top proveedores 2025</div>
+            <div>• Compras 2025</div>
+            <div>• Compras vitek 2024</div>
+            <div>• Comparar roche 2024 2025</div>
+            <div>• Total compras octubre 2025</div>
+        </div>
+    </div>
+    """
+    st.markdown(tips_html, unsafe_allow_html=True)
+
     # Input
     pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
-    
-    # =========================
-    # TIPS / EJEMPLOS DE PREGUNTAS (ABAJO DEL INPUT)
-    # =========================
-    st.markdown("---")
-    st.markdown("#### 💡 Ejemplos de preguntas:")
-    
-    tips_compras = [
-        "Compras roche 2024",
-        "Compras roche, tresul 2024 2025", 
-        "Total facturas por moneda",
-        "Compras 2025",
-        "Comparar roche 2024 2025",
-        "Facturas roche noviembre 2025",
-        "Detalle factura A00060907",
-        "Top proveedores 2025",
-        "Compras vitek 2024",
-        "Total compras octubre 2025",
-    ]
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        for tip in tips_compras[:5]:
-            st.markdown(f"• {tip}")
-    
-    with col2:
-        for tip in tips_compras[5:]:
-            st.markdown(f"• {tip}")
 
     if pregunta:
         st.session_state["historial_compras"].append(
