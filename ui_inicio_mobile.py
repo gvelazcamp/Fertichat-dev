@@ -26,15 +26,15 @@ def mostrar_inicio_mobile():
         saludo = "¡Buenas noches"
 
     # =========================
-    # Header (saludo)
+    # Header (saludo) - MÁS COMPACTO
     # =========================
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:0 auto;text-align:center;padding:10px 0 18px 0;">
-            <h2 style="margin:0;color:#0f172a;font-size:34px;font-weight:800;letter-spacing:-0.02em;">
+        <div style="max-width:600px;margin:0 auto;text-align:center;padding:8px 0 14px 0;">
+            <h2 style="margin:0;color:#0f172a;font-size:26px;font-weight:800;letter-spacing:-0.02em;">
                 {saludo}, {nombre.split()[0]}! 👋
             </h2>
-            <p style="margin:8px 0 0 0;color:#64748b;font-size:16px;">
+            <p style="margin:6px 0 0 0;color:#64748b;font-size:14px;">
                 ¿Qué querés hacer hoy?
             </p>
         </div>
@@ -59,58 +59,41 @@ def mostrar_inicio_mobile():
         position: relative; /* el tile se posiciona dentro de la columna */
     }
 
-    /* Botón como tarjeta (MISMO TAMAÑO SIEMPRE) */
+    /* Botón como tarjeta (MÁS COMPACTO PARA MOBILE) */
     div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .stButton > button{
         border:1px solid rgba(15,23,42,0.10);
         background:rgba(255,255,255,0.82);
-        border-radius:20px;
+        border-radius:16px;
 
-        /* tamaño fijo para que todas queden iguales */
-        height: 96px;
-        min-height: 96px;
+        /* Más compacto */
+        height: 80px;
+        min-height: 80px;
 
-        /* espacio para el tile */
-        padding:16px 16px 16px 92px;
+        /* Menos padding */
+        padding:12px 12px 12px 72px;
 
-        box-shadow:0 10px 24px rgba(2,6,23,0.06);
+        box-shadow:0 8px 20px rgba(2,6,23,0.06);
         cursor:pointer;
         transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
 
-        width:100% !important;   /* FORZAR ANCHO COMPLETO */
+        width:100% !important;
         max-width: 100% !important;
         text-align:left;
 
-        white-space: pre-line; /* respeta \n del texto */
-        font-size:13.5px;      /* "desc" */
+        white-space: pre-line;
+        font-size:12.5px;
         font-weight:600;
         color:#334155;
-        line-height:1.22;
+        line-height:1.3;
 
         display:block;
         position: relative;
-        margin:0;
-    }
-    
-    /* Forzar que las columnas ocupen todo el ancho disponible */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) div[data-testid="column"] {
-        width: 100% !important;
-        max-width: 100% !important;
-        flex: 1 !important;
-    }
-    
-    /* Forzar que el contenedor de botones sea full-width */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .stButton {
-        width: 100% !important;
-    }
-    
-    /* Reducir gap entre columnas en mobile */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) div[data-testid="stHorizontalBlock"] {
-        gap: 0.5rem !important;
+        margin:0 0 8px 0;  /* Espacio entre tarjetas */
     }
 
-    /* Primera línea como título */
+    /* Primera línea como título - más pequeño */
     div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .stButton > button::first-line{
-        font-size:16px;
+        font-size:14.5px;
         font-weight:900;
         color:#0f172a;
         letter-spacing:-0.01em;
@@ -132,27 +115,27 @@ def mostrar_inicio_mobile():
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) -> aún más abajo (~0.5cm más) */
+    /* Tile (ícono) -> más pequeño y mejor posicionado */
     div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .fc-home-tile{
-        width:54px;
-        height:54px;
-        border-radius:16px;
+        width:46px;
+        height:46px;
+        border-radius:13px;
         display:flex;
         align-items:center;
         justify-content:center;
 
         border:1px solid rgba(15,23,42,0.08);
         background:rgba(255,255,255,0.86);
-        font-size:26px;
+        font-size:22px;
 
         position:absolute;
-        left: 16px;
-        top: calc(50% + 48px);          /* <-- BAJADO ~0.5cm MÁS */
+        left: 12px;
+        top: 50%;
         transform: translateY(-50%);
         z-index: 5;
 
-        pointer-events:none; /* no bloquea el click */
-        box-shadow:0 10px 18px rgba(2,6,23,0.07);
+        pointer-events:none;
+        box-shadow:0 8px 16px rgba(2,6,23,0.07);
         user-select:none;
     }
 
@@ -166,23 +149,23 @@ def mostrar_inicio_mobile():
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
-    /* Responsive */
-    @media (max-width: 900px){
+    /* Responsive - pantallas muy pequeñas */
+    @media (max-width: 400px){
         div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .fc-home-tile{
-            width:48px;
-            height:48px;
-            border-radius:14px;
-            font-size:24px;
-            left: 14px;
-            top: calc(50% + 44px);      /* <-- BAJADO ~0.5cm MÁS MOBILE */
+            width:42px;
+            height:42px;
+            border-radius:12px;
+            font-size:20px;
+            left: 10px;
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .stButton > button{
-            height: 92px;
-            min-height: 92px;
-            padding:14px 14px 14px 78px;
+            height: 76px;
+            min-height: 76px;
+            padding:10px 10px 10px 64px;
+            font-size:12px;
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .stButton > button::first-line{
-            font-size:15px;
+            font-size:13.5px;
         }
     }
 
@@ -231,54 +214,58 @@ def mostrar_inicio_mobile():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones
+    # Secciones con botones - 2 COLUMNAS COMPACTAS
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:0 auto;padding:0 0.75rem;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:600px;margin:0 auto;'><div style='color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px 8px;display:flex;align-items:center;gap:6px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
 
-    # Una tarjeta por fila (100% ancho)
-    st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
-    if st.button("Compras IA\nConsultas inteligentes", key="compras"):
-        st.query_params["go"] = "compras"
-        st.rerun()
+    col1, col2 = st.columns(2, gap="small")
+    with col1:
+        st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
+        if st.button("Compras IA\nConsultas inteligentes", key="compras"):
+            st.query_params["go"] = "compras"
+            st.rerun()
+        
+        st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
+        if st.button("Stock IA\nConsultar inventario", key="stock"):
+            st.query_params["go"] = "stock"
+            st.rerun()
     
-    st.markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
-    if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador"):
-        st.query_params["go"] = "buscador"
-        st.rerun()
-    
-    st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
-    if st.button("Stock IA\nConsultar inventario", key="stock"):
-        st.query_params["go"] = "stock"
-        st.rerun()
-    
-    st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
-    if st.button("Dashboard\nVer estadísticas", key="dashboard"):
-        st.query_params["go"] = "dashboard"
-        st.rerun()
+    with col2:
+        st.markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
+        if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador"):
+            st.query_params["go"] = "buscador"
+            st.rerun()
+        
+        st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
+        if st.button("Dashboard\nVer estadísticas", key="dashboard"):
+            st.query_params["go"] = "dashboard"
+            st.rerun()
 
-    st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:0 auto;padding:0 0.75rem;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:600px;margin:0 auto;'><div style='color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px 8px;display:flex;align-items:center;gap:6px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
 
-    # Una tarjeta por fila (100% ancho)
-    st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
-    if st.button("Pedidos internos\nGestionar pedidos", key="pedidos"):
-        st.query_params["go"] = "pedidos"
-        st.rerun()
+    col3, col4 = st.columns(2, gap="small")
+    with col3:
+        st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
+        if st.button("Pedidos internos\nGestionar pedidos", key="pedidos"):
+            st.query_params["go"] = "pedidos"
+            st.rerun()
+        
+        st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
+        if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
+            st.query_params["go"] = "ordenes"
+            st.rerun()
     
-    st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
-    if st.button("Baja de stock\nRegistrar bajas", key="baja"):
-        st.query_params["go"] = "baja"
-        st.rerun()
-    
-    st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
-    if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
-        st.query_params["go"] = "ordenes"
-        st.rerun()
-    
-    st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
-    if st.button("Indicadores\nPower BI", key="indicadores"):
-        st.query_params["go"] = "indicadores"
-        st.rerun()
+    with col4:
+        st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
+        if st.button("Baja de stock\nRegistrar bajas", key="baja"):
+            st.query_params["go"] = "baja"
+            st.rerun()
+        
+        st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
+        if st.button("Indicadores\nPower BI", key="indicadores"):
+            st.query_params["go"] = "indicadores"
+            st.rerun()
 
     # =========================
     # TIP DEL DÍA
@@ -294,16 +281,16 @@ def mostrar_inicio_mobile():
 
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:16px auto 0 auto;padding:0 0.75rem;">
+        <div style="max-width:600px;margin:20px auto 0 auto;padding:0 8px;">
             <div style="
                 background: rgba(255,255,255,0.70);
                 border: 1px solid rgba(15,23,42,0.10);
                 border-left: 4px solid rgba(37,99,235,0.55);
-                border-radius: 16px;
-                padding: 14px 16px;
-                box-shadow: 0 10px 26px rgba(2,6,23,0.06);
+                border-radius: 14px;
+                padding: 12px 14px;
+                box-shadow: 0 8px 20px rgba(2,6,23,0.06);
             ">
-                <p style="margin:0;color:#0b3b60;font-size:14px;font-weight:600;">
+                <p style="margin:0;color:#0b3b60;font-size:13px;font-weight:600;line-height:1.4;">
                     {tip}
                 </p>
             </div>
