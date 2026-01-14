@@ -628,5 +628,5 @@ elif menu_actual == "📑 Comprobantes":
     mostrar_menu_comprobantes()
 
 # Marca visual para saber que el orquestador está cargado
-st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
-st.write("ORQUESTADOR_CARGADO = True")
+# st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
+# st.write("ORQUESTADOR_CARGADO = True")
