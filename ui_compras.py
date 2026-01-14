@@ -542,7 +542,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -960,61 +960,78 @@ def Compras_IA():
 
     st.markdown("### 🤖 Asistente de Compras y Facturas")
 
-    if st.button("🗑️ Limpiar chat"):
-        st.session_state["historial_compras"] = []
-        _dbg_set_interpretacion({})
-        _dbg_set_sql(None, "", [], None)
-        st.rerun()
+    # Persistencia de selecciones en Comparativas
+    if "prov_multi" not in st.session_state:
+        st.session_state["prov_multi"] = []
+    if "meses_multi" not in st.session_state:
+        st.session_state["meses_multi"] = ["2024-11", "2025-11"]
+    if "art_multi" not in st.session_state:
+        st.session_state["art_multi"] = []
 
-    st.markdown("---")
+    # Fetch opciones dinámicas
+    prov_options = get_unique_proveedores()[:100]  # Limitar para performance
+    art_options = get_unique_articulos()[:100]
 
-    # Mostrar historial
-    for idx, msg in enumerate(st.session_state["historial_compras"]):
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+    # TABS PRINCIPALES: Chat IA + Comparativas
+    tab_chat, tab_comparativas = st.tabs(["💬Compras", "📊 Comparativas"])
 
-            if "df" in msg and msg["df"] is not None:
-                df = msg["df"]
+    with tab_chat:
+        # BOTÓN LIMPIAR (solo en chat)
+        if st.button("🗑️ Limpiar chat"):
+            st.session_state["historial_compras"] = []
+            _dbg_set_interpretacion({})
+            _dbg_set_sql(None, "", [], None)
+            st.rerun()
 
-                # Dashboard vendible compacto
-                try:
-                    st.markdown("---")
-                    render_dashboard_compras_vendible(
-                        df,
-                        titulo="Datos",
-                        key_prefix=f"hist_{idx}_"
-                    )
-                except Exception as e:
-                    # Fallback viejo (no romper nada)
-                    totales = calcular_totales_por_moneda(df)
-                    if totales:
-                        col1, col2, col3 = st.columns([2, 2, 3])
+        st.markdown("---")
 
-                        with col1:
-                            pesos = totales.get("Pesos", 0)
-                            pesos_str = (
-                                f"${pesos/1_000_000:,.2f}M"
-                                if pesos >= 1_000_000
-                                else f"${pesos:,.2f}"
-                            )
-                            st.metric(
-                                "💵 Total Pesos",
-                                pesos_str,
-                                help=f"Valor exacto: ${pesos:,.2f}",
-                            )
+        # Mostrar historial
+        for idx, msg in enumerate(st.session_state["historial_compras"]):
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
-                        with col2:
-                            usd = totales.get("USD", 0)
-                            usd_str = (
-                                f"${usd/1_000_000:,.2f}M"
-                                if usd >= 1_000_000
-                                else f"${usd:,.2f}"
-                            )
-                            st.metric(
-                                "💵 Total USD",
-                                usd_str,
-                                help=f"Valor exacto: ${usd:,.2f}",
-                            )
+                if "df" in msg and msg["df"] is not None:
+                    df = msg["df"]
+
+                    # Dashboard vendible compacto
+                    try:
+                        st.markdown("---")
+                        render_dashboard_compras_vendible(
+                            df,
+                            titulo="Datos",
+                            key_prefix=f"hist_{idx}_"
+                        )
+                    except Exception as e:
+                        # Fallback viejo (no romper nada)
+                        totales = calcular_totales_por_moneda(df)
+                        if totales:
+                            col1, col2, col3 = st.columns([2, 2, 3])
+
+                            with col1:
+                                pesos = totales.get("Pesos", 0)
+                                pesos_str = (
+                                    f"${pesos/1_000_000:,.2f}M"
+                                    if pesos >= 1_000_000
+                                    else f"${pesos:,.2f}"
+                                )
+                                st.metric(
+                                    "💵 Total Pesos",
+                                    pesos_str,
+                                    help=f"Valor exacto: ${pesos:,.2f}",
+                                )
+
+                            with col2:
+                                usd = totales.get("USD", 0)
+                                usd_str = (
+                                    f"${usd/1_000_000:,.2f}M"
+                                    if usd >= 1_000_000
+                                    else f"${usd:,.2f}"
+                                )
+                                st.metric(
+                                    "💵 Total USD",
+                                    usd_str,
+                                    help=f"Valor exacto: ${usd:,.2f}",
+                                )
 
                     st.markdown("---")
                     st.dataframe(df, use_container_width=True, height=400)
@@ -1033,7 +1050,7 @@ def Compras_IA():
             margin: 20px 0 16px 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         ">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <div style="display: flex: align-items: center; gap: 10px; margin-bottom: 12px;">
                 <span style="font-size: 22px;">💡</span>
                 <span style="font-size: 16px; font-weight: 700; color: #78350f;">Ejemplos de preguntas:</span>
             </div>
@@ -1147,3 +1164,67 @@ def Compras_IA():
         )
 
         st.rerun()
+
+    with tab_comparativas:
+        st.markdown("### 📊 Menú Comparativas Fáciles")
+        st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
+
+        # Agregado: Submenús Compras y Comparativas
+        tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
+
+        if tipo_consulta == "Compras":
+            st.markdown("#### 🛒 Consultas de Compras")
+            
+            anio_compras = st.selectbox("Año", options=[2023, 2024, 2025, 2026], index=2, key="anio_compras")
+            mes_compras = st.selectbox("Mes", options=month_names + ["Todos"], index=len(month_names), key="mes_compras")
+            proveedor_compras = st.selectbox("Proveedor", options=["Todos"] + prov_options[:50], index=0, key="proveedor_compras")
+            
+            if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
+                try:
+                    if mes_compras == "Todos":
+                        if proveedor_compras == "Todos":
+                            df = sqlq_compras.get_compras_anio(anio_compras)
+                        else:
+                            df = sqlq_facturas.get_facturas_proveedor(proveedores=[proveedor_compras], anios=[anio_compras])
+                    else:
+                        mes_code = f"{anio_compras}-{month_num[mes_compras]}"
+                        if proveedor_compras == "Todos":
+                            df = sqlq_compras.get_compras_por_mes_excel(mes_code)
+                        else:
+                            df = sqlq_compras.get_detalle_compras_proveedor_mes(proveedor_compras, mes_code)
+                    
+                    if df is not None and not df.empty:
+                        render_dashboard_compras_vendible(df, titulo="Compras")
+                    elif df is not None:
+                        st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
+                except Exception as e:
+                    st.error(f"❌ Error en búsqueda: {e}")
+
+        elif tipo_consulta == "Comparativas":
+            st.markdown("#### 📊 Comparativas")
+            
+            # Proveedores
+            proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_multi", []) if x in prov_options], key="prov_multi")
+            meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
+            anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
+            # Generar combinaciones
+            meses = []
+            for a in anios:
+                for m in meses_sel:
+                    code = f"{a}-{month_num[m]}"
+                    meses.append(code)
+            st.session_state["meses_multi"] = meses
+            articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
+
+            # Botón comparar
+            if st.button("🔍 Comparar", key="btn_comparar"):
+                try:
+                    df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(proveedores=proveedores, meses=meses, articulos=articulos)
+                    if df is not None and not df.empty:
+                        render_dashboard_compras_vendible(df, titulo="Comparación")
+                    elif df is not None:
+                        st.warning("⚠️ No se encontraron resultados para esa comparación.")
+                except Exception as e:
+                    st.error(f"❌ Error en comparación: {e}")
+
+# ... existing code ...
