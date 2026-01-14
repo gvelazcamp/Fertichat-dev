@@ -12,7 +12,26 @@ from utils_openai import responder_con_openai
 import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
 import sql_facturas as sqlq_facturas
+from sql_core import get_unique_proveedores, get_unique_articulos  # Agregado
 
+# Temporary fix for get_unique functions
+def get_unique_proveedores():
+    try:
+        from sql_core import ejecutar_consulta
+        sql = 'SELECT DISTINCT TRIM("Cliente / Proveedor") AS prov FROM chatbot_raw WHERE TRIM("Cliente / Proveedor") != \'\' ORDER BY prov'
+        df = ejecutar_consulta(sql)
+        return df['prov'].tolist() if not df.empty else []
+    except:
+        return []
+
+def get_unique_articulos():
+    try:
+        from sql_core import ejecutar_consulta
+        sql = 'SELECT DISTINCT TRIM("Articulo") AS art FROM chatbot_raw WHERE TRIM("Articulo") != \'\' ORDER BY art'
+        df = ejecutar_consulta(sql)
+        return df['art'].tolist() if not df.empty else []
+    except:
+        return []
 
 # =========================
 # CONVERSIÓN DE MESES A NOMBRES
@@ -542,7 +561,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -1050,7 +1069,7 @@ def Compras_IA():
             margin: 20px 0 16px 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         ">
-            <div style="display: flex: align-items: center; gap: 10px; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
                 <span style="font-size: 22px;">💡</span>
                 <span style="font-size: 16px; font-weight: 700; color: #78350f;">Ejemplos de preguntas:</span>
             </div>
