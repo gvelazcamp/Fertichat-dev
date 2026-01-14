@@ -561,7 +561,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -651,7 +651,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             _render_tabla_simple(df_uyu, "UYU")
 
     with tab_usd:
-        df_usd = df_f[df_f["__moneda_view__"] == "USD"]
+        df_usd = df_f[df_f["__moneda_view__"] =="USD"]
         if col_proveedor:
             _render_resumen_top_proveedores(df_usd, "USD")
         else:
@@ -907,7 +907,8 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
     elif tipo == "comparar_proveedores_meses_multi":
         df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(
             proveedores=parametros.get("proveedores", []),
-            meses=parametros.get("meses", [])
+            meses=parametros.get("meses", []),
+            articulos=parametros.get("articulos", [])  # Agregado articulos
         )
         _dbg_set_result(df)
         return df
