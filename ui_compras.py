@@ -562,7 +562,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd/openhtmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -1186,8 +1186,7 @@ def Compras_IA():
         # Proveedores
         proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_multi", []) if x in prov_options], key="prov_multi")
         meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
-        anios_input = st.text_input("Años (ej: 2023 2024 o 2023-2026)", value="2024 2025", key="anios_input")
-        anios = extraer_anios(anios_input)
+        anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
         # Generar combinaciones
         meses = []
         for a in anios:
