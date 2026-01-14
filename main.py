@@ -55,6 +55,62 @@ except ImportError:
         return "Orquestador no disponible", None, None
 
 # =========================
+# DETECCIÓN DE DISPOSITIVO
+# =========================
+def inicializar_deteccion_dispositivo():
+    """
+    Inicializa la detección de dispositivo usando JavaScript.
+    Se ejecuta una sola vez al inicio.
+    """
+    if "device_detected" not in st.session_state:
+        st.session_state["device_detected"] = False
+        st.session_state["is_mobile"] = False  # Default a desktop
+        
+        # JavaScript para detectar ancho de pantalla
+        js_detect = """
+        <script>
+        const width = window.innerWidth || document.documentElement.clientWidth;
+        const isMobile = width < 768;
+        
+        // Guardar en localStorage para persistencia
+        if (typeof(Storage) !== "undefined") {
+            localStorage.setItem('viewport_width', width);
+            localStorage.setItem('is_mobile', isMobile);
+        }
+        </script>
+        """
+        
+        st.components.v1.html(js_detect, height=0)
+        
+        # Marcar como detectado
+        st.session_state["device_detected"] = True
+
+
+def agregar_selector_manual_dispositivo():
+    """
+    Agrega un selector manual en el sidebar para cambiar entre mobile/desktop.
+    Útil para testing y para usuarios que quieran forzar una vista.
+    """
+    with st.sidebar:
+        st.markdown("---")
+        
+        # Obtener estado actual
+        es_mobile_actual = st.session_state.get("is_mobile", False)
+        
+        dispositivo = st.radio(
+            "🖥️ Vista",
+            options=["💻 Desktop", "📱 Mobile"],
+            index=1 if es_mobile_actual else 0,
+            horizontal=True,
+            key="selector_dispositivo_manual",
+            help="Cambia la vista entre desktop y mobile"
+        )
+        
+        # Actualizar session_state
+        st.session_state["is_mobile"] = (dispositivo == "📱 Mobile")
+
+
+# =========================
 # FUNCIÓN PARA EJECUTAR CONSULTAS POR TIPO (AGREGADA)
 # =========================
 def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
@@ -235,6 +291,11 @@ st.session_state["ORQUESTADOR_CARGADO"] = True
 
 # Reaplicar CSS (por compatibilidad con versiones anteriores)
 st.markdown(f"<style>{CSS_GLOBAL}</style>", unsafe_allow_html=True)
+
+# =========================
+# INICIALIZAR DETECCIÓN DE DISPOSITIVO
+# =========================
+inicializar_deteccion_dispositivo()
 
 # =========================
 # NOTIFICACIONES
@@ -436,6 +497,9 @@ with st.sidebar:
     st.session_state["DEBUG_SQL"] = st.checkbox(
         "Debug SQL", value=False, key="debug_sql"
     )
+    
+    # Selector manual de dispositivo (para testing)
+    agregar_selector_manual_dispositivo()
 
     st.markdown("---")
     st.markdown("## 📌 Menú")
