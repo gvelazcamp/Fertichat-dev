@@ -498,8 +498,8 @@ with st.sidebar:
         "Debug SQL", value=False, key="debug_sql"
     )
     
-    # Selector manual de dispositivo (para testing)
-    agregar_selector_manual_dispositivo()
+    # Selector manual de dispositivo (DESHABILITADO - descomentar si necesitas testing)
+    # agregar_selector_manual_dispositivo()
 
     st.markdown("---")
     st.markdown("## 📌 Menú")
