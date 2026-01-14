@@ -234,9 +234,9 @@ def mostrar_inicio_desktop():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones - CON CSS PADDING CERO + MARGEN NEGATIVO
+    # Secciones con botones - FORZANDO AL MÁXIMO
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:-80px auto 0 auto;'>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:-150px auto 0 auto;'>", unsafe_allow_html=True)
     st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
@@ -263,8 +263,8 @@ def mostrar_inicio_desktop():
     
     st.markdown("</div>", unsafe_allow_html=True)  # Cierra el contenedor con margen negativo
 
-    st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:-30px auto 0 auto;'>", unsafe_allow_html=True)
+    st.markdown("<div style='height:0px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:-60px auto 0 auto;'>", unsafe_allow_html=True)
     st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div>", unsafe_allow_html=True)
 
     col5, col6, col7, col8 = st.columns(4)
