@@ -66,6 +66,22 @@ def mostrar_inicio_desktop():
         margin-top: 0 !important;
     }
     
+    /* MÁS ESPECÍFICO: Todos los selectores posibles para block-container */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) [data-testid="stMainBlockContainer"],
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .block-container,
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) div.block-container {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+    
+    /* Eliminar gap y padding de vertical blocks también */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stVerticalBlock,
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) [data-testid="stVerticalBlock"] {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+        gap: 0 !important;
+    }
+    
     /* Oculta el título "Inicio" de Streamlit */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) h1 {
         display: none !important;
@@ -234,9 +250,9 @@ def mostrar_inicio_desktop():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones - FORZANDO AL MÁXIMO
+    # Secciones con botones - PEGADAS AL TOPE ABSOLUTO
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:-150px auto 0 auto;'>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:-180px auto 0 auto;'>", unsafe_allow_html=True)
     st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
@@ -264,7 +280,7 @@ def mostrar_inicio_desktop():
     st.markdown("</div>", unsafe_allow_html=True)  # Cierra el contenedor con margen negativo
 
     st.markdown("<div style='height:0px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:-60px auto 0 auto;'>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:-80px auto 0 auto;'>", unsafe_allow_html=True)
     st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div>", unsafe_allow_html=True)
 
     col5, col6, col7, col8 = st.columns(4)
