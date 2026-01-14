@@ -5,6 +5,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np  # Agregado para is_numeric_dtype
+import re  # Agregado para extraer_anios
 from datetime import datetime
 from typing import Optional
 
@@ -14,6 +15,23 @@ import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
 import sql_facturas as sqlq_facturas
 from sql_core import get_unique_proveedores, get_unique_articulos  # Agregado
+
+
+# =========================
+# DETECCIÓN DE AÑOS
+# =========================
+def extraer_anios(texto: str) -> list[int]:
+    encontrados = re.findall(r"\b(20\d{2})\b", texto)
+    anios = sorted(set(int(a) for a in encontrados))
+
+    # rango tipo "de 2023 a 2026"
+    m = re.search(r"(20\d{2})\s*(a|-|hasta)\s*(20\d{2})", texto)
+    if m:
+        inicio = int(m.group(1))
+        fin = int(m.group(3))  # Note: group(2) is the separator
+        anios = list(range(min(inicio, fin), max(inicio, fin) + 1))
+
+    return anios
 
 
 # =========================
@@ -544,7 +562,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openhtmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -1168,10 +1186,11 @@ def Compras_IA():
         # Proveedores
         proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_multi", []) if x in prov_options], key="prov_multi")
         meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
-        anios_sel = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
+        anios_input = st.text_input("Años (ej: 2023 2024 o 2023-2026)", value="2024 2025", key="anios_input")
+        anios = extraer_anios(anios_input)
         # Generar combinaciones
         meses = []
-        for a in anios_sel:
+        for a in anios:
             for m in meses_sel:
                 code = f"{a}-{month_num[m]}"
                 meses.append(code)
