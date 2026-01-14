@@ -1054,31 +1054,57 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     # COMPARAR
     if contiene_comparar(texto_lower_original):
+        # ✅ MEJORADO: Extraer múltiples proveedores con coma
+        proveedores_comparar: List[str] = []
+        if "," in texto_lower_original:
+            # Buscar proveedores separados por coma
+            parts = texto_lower_original.split()
+            for i, p in enumerate(parts):
+                if "," in p or (i > 0 and parts[i-1].endswith(",")):
+                    # Limpiar y agregar
+                    clean = re.sub(r"[^\w]", "", p)
+                    if clean and clean not in MESES and clean not in ["comparar", "compara", "comparame"]:
+                        match_prov = _match_best(clean, idx_prov, max_items=1)
+                        if match_prov:
+                            proveedores_comparar.append(_alias_proveedor(match_prov[0]))
+        
+        # Si no encontró con coma, usar detección normal
+        if not proveedores_comparar:
+            proveedores_comparar = [_alias_proveedor(p) for p in provs] if provs else []
+        
+        # Extraer meses para comparar
         meses_cmp: List[str] = []
         if meses_yyyymm:
             meses_cmp = meses_yyyymm[:2]
         elif meses_nombre and anios:
             for mn in meses_nombre[:2]:
                 meses_cmp.append(_to_yyyymm(anios[0], mn))
-
+        
+        # ===== COMPARAR MESES =====
         if len(meses_cmp) == 2:
-            if len(provs) >= 2:
+            if len(proveedores_comparar) >= 2:
+                print("\n[INTÉRPRETE] COMPARAR_PROVEEDORES_MESES (múltiples)")
+                print(f"  Proveedores: {proveedores_comparar}")
+                print(f"  Meses: {meses_cmp}")
                 return {
                     "tipo": "comparar_proveedores_meses",
                     "parametros": {
-                        "proveedores": [_alias_proveedor(p) for p in provs[:MAX_PROVEEDORES]],
+                        "proveedores": proveedores_comparar[:MAX_PROVEEDORES],
                         "mes1": meses_cmp[0],
                         "mes2": meses_cmp[1],
                         "label1": meses_cmp[0],
                         "label2": meses_cmp[1],
                     },
-                    "debug": "comparar proveedores meses",
+                    "debug": f"comparar {len(proveedores_comparar)} proveedores meses",
                 }
-            if len(provs) == 1:
+            elif len(proveedores_comparar) == 1:
+                print("\n[INTÉRPRETE] COMPARAR_PROVEEDOR_MESES (uno)")
+                print(f"  Proveedor: {proveedores_comparar[0]}")
+                print(f"  Meses: {meses_cmp}")
                 return {
                     "tipo": "comparar_proveedor_meses",
                     "parametros": {
-                        "proveedor": _alias_proveedor(provs[0]),
+                        "proveedor": proveedores_comparar[0],
                         "mes1": meses_cmp[0],
                         "mes2": meses_cmp[1],
                         "label1": meses_cmp[0],
@@ -1086,36 +1112,68 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     },
                     "debug": "comparar proveedor meses",
                 }
-
+            else:
+                # ✅ NUEVO: Sin proveedor = comparar TODOS los proveedores
+                print("\n[INTÉRPRETE] COMPARAR_PROVEEDORES_MESES (TODOS)")
+                print(f"  Meses: {meses_cmp}")
+                return {
+                    "tipo": "comparar_proveedores_meses_multi",
+                    "parametros": {
+                        "proveedores": [],  # Vacío = todos
+                        "meses": meses_cmp,
+                    },
+                    "debug": "comparar todos los proveedores meses",
+                }
+        
+        # ===== COMPARAR AÑOS =====
         if len(anios) >= 2:
-            if len(provs) >= 2:
+            if len(proveedores_comparar) >= 2:
+                print("\n[INTÉRPRETE] COMPARAR_PROVEEDORES_ANIOS (múltiples)")
+                print(f"  Proveedores: {proveedores_comparar}")
+                print(f"  Años: {anios[:2]}")
                 return {
                     "tipo": "comparar_proveedores_anios",
                     "parametros": {
-                        "proveedores": [_alias_proveedor(p) for p in provs[:MAX_PROVEEDORES]],
+                        "proveedores": proveedores_comparar[:MAX_PROVEEDORES],
                         "anios": anios[:2],
                         "label1": str(anios[0]),
                         "label2": str(anios[1]),
                     },
-                    "debug": "comparar proveedores años",
+                    "debug": f"comparar {len(proveedores_comparar)} proveedores años",
                 }
-            if len(provs) == 1:
+            elif len(proveedores_comparar) == 1:
+                print("\n[INTÉRPRETE] COMPARAR_PROVEEDOR_ANIOS (uno)")
+                print(f"  Proveedor: {proveedores_comparar[0]}")
+                print(f"  Años: {anios[:2]}")
                 return {
                     "tipo": "comparar_proveedor_anios",
                     "parametros": {
-                        "proveedor": _alias_proveedor(provs[0]),
+                        "proveedor": proveedores_comparar[0],
                         "anios": anios[:2],
                         "label1": str(anios[0]),
                         "label2": str(anios[1]),
                     },
                     "debug": "comparar proveedor años",
                 }
-
+            else:
+                # ✅ NUEVO: Sin proveedor = comparar TODOS los proveedores
+                print("\n[INTÉRPRETE] COMPARAR_PROVEEDORES_ANIOS (TODOS)")
+                print(f"  Años: {anios[:2]}")
+                return {
+                    "tipo": "comparar_proveedores_anios_multi",
+                    "parametros": {
+                        "proveedores": [],  # Vacío = todos
+                        "anios": anios[:2],
+                    },
+                    "debug": "comparar todos los proveedores años",
+                }
+        
+        # Si llegó acá, falta info
         return {
             "tipo": "no_entendido",
             "parametros": {},
-            "sugerencia": "Ej: comparar compras roche junio julio 2025 | comparar compras roche 2024 2025",
-            "debug": "comparar: faltan 2 meses o 2 años (o proveedor)",
+            "sugerencia": "Ej: comparar compras roche junio julio 2025 | comparar compras roche 2024 2025 | comparar 2024 2025",
+            "debug": "comparar: faltan 2 meses o 2 años",
         }
 
     # STOCK
