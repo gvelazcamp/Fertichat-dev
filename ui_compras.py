@@ -895,6 +895,38 @@ def Compras_IA():
 
     st.markdown("### 🤖 Asistente de Compras y Facturas")
 
+    # =========================
+    # TIPS / EJEMPLOS DE PREGUNTAS
+    # =========================
+    with st.expander("💡 Ejemplos de preguntas", expanded=False):
+        tips_compras = [
+            "💬 **Compras roche 2024** - Ver todas las compras de un proveedor en un año",
+            "💬 **Compras roche, tresul 2024 2025** - Múltiples proveedores y años",
+            "💬 **Total facturas por moneda** - Resumen general de facturas por divisa",
+            "💬 **Compras 2025** - Todas las compras del año actual",
+            "💬 **Comparar roche 2024 2025** - Evolución de compras entre años",
+            "💬 **Facturas roche noviembre 2025** - Facturas de un proveedor en un mes específico",
+            "💬 **Detalle factura A00060907** - Ver items de una factura específica",
+            "💬 **Top proveedores 2025** - Ranking de proveedores por monto",
+            "💬 **Compras vitek 2024** - Buscar por artículo o producto",
+            "💬 **Total compras octubre 2025** - Compras de un mes específico",
+        ]
+        
+        st.markdown("#### 🎯 Ejemplos de consultas que podés hacer:")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            for tip in tips_compras[:5]:
+                st.markdown(f"- {tip}")
+        
+        with col2:
+            for tip in tips_compras[5:]:
+                st.markdown(f"- {tip}")
+        
+        st.markdown("---")
+        st.caption("💡 **Tip:** Podés combinar proveedores, años, meses y monedas en una misma pregunta.")
+
     if st.button("🗑️ Limpiar chat"):
         st.session_state["historial_compras"] = []
         _dbg_set_interpretacion({})
