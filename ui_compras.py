@@ -561,7 +561,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -1052,9 +1052,9 @@ def Compras_IA():
                                     help=f"Valor exacto: ${usd:,.2f}",
                                 )
 
-                    st.markdown("---")
-                    st.dataframe(df, use_container_width=True, height=400)
-                    st.caption(f"⚠️ Dashboard vendible falló: {e}")
+                        st.markdown("---")
+                        st.dataframe(df, use_container_width=True, height=400)
+                        st.caption(f"⚠️ Dashboard vendible falló: {e}")
 
         # =========================
         # TIPS / EJEMPLOS (CAJA AMARILLA ANTES DEL INPUT)
