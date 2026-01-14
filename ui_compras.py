@@ -4,6 +4,7 @@
 
 import streamlit as st
 import pandas as pd
+import numpy as np  # Agregado para is_numeric_dtype
 from datetime import datetime
 from typing import Optional
 
@@ -315,10 +316,16 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     else:
         df_view["__fecha_view__"] = pd.NaT
 
+    # FIX: Calcular __total_num__ correctamente para comparaciones
     if col_total:
         df_view["__total_num__"] = df_view[col_total].apply(_safe_to_float)
     else:
-        df_view["__total_num__"] = 0.0
+        numeric_cols = [c for c in df_view.columns if c != col_proveedor and pd.api.types.is_numeric_dtype(df_view[c])]
+        if numeric_cols:
+            # Para comparaciones: suma las columnas numéricas (ej: "2024-11" + "2025-11")
+            df_view["__total_num__"] = df_view[numeric_cols].sum(axis=1)
+        else:
+            df_view["__total_num__"] = 0.0
 
     # Contexto
     filas_total = int(len(df_view))
@@ -1141,7 +1148,7 @@ def Compras_IA():
                     else:
                         st.error("Para 'Meses (proveedores)' selecciona exactamente 2 proveedores y 2 meses.")
                         df = None
-                else:  # A��os
+                else:  # Años
                     if len(proveedores) == 2 and len(anios) == 2:
                         df = sqlq_comparativas.get_comparacion_proveedores_anios(
                             proveedores=proveedores, anios=anios, label1=str(anios[0]), label2=str(anios[1])
