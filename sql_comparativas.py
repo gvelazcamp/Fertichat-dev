@@ -15,8 +15,6 @@ from sql_core import (
 # =====================================================================
 # EXPRESIÓN TOTAL NUMÉRICA GENERAL (ACTUALIZADA PARA "Monto Neto")
 # =====================================================================
-# ... existing code ...
-
 def _sql_total_num_expr_general() -> str:
     """
     Expresión SQL para calcular el total numérico desde "Monto Neto".
@@ -420,12 +418,13 @@ def get_comparacion_proveedores_meses_multi(
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Moneda") AS Moneda,
             {cols_sql}
         FROM chatbot_raw
         WHERE ({prov_where})
           AND TRIM("Mes") IN ({meses_placeholders})
-        GROUP BY TRIM("Cliente / Proveedor")
-        ORDER BY Proveedor
+        GROUP BY TRIM("Cliente / Proveedor"), TRIM("Moneda")
+        ORDER BY Proveedor, Moneda
         LIMIT 300
     """
 
