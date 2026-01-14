@@ -321,7 +321,7 @@ def mostrar_inicio_desktop():
 
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:10px auto 0 auto;">
+        <div style="max-width:1100px;margin:40px auto 0 auto;">
             <div style="
                 background: rgba(255,255,255,0.70);
                 border: 1px solid rgba(15,23,42,0.10);
