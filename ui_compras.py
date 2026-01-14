@@ -905,7 +905,7 @@ def Compras_IA():
     st.markdown("### 🤖 Asistente de Compras y Facturas")
 
     # TABS PRINCIPALES: Chat IA + Comparativas
-    tab_chat, tab_comparativas = st.tabs(["💬 Chat IA", "📊 Comparativas"])
+    tab_chat, tab_comparativas = st.tabs(["💬Compras", "📊 Comparativas"])
 
     with tab_chat:
         # BOTÓN LIMPIAR (solo en chat)
