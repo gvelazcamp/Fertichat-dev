@@ -12,12 +12,45 @@ from sql_core import (
     _sql_total_num_expr_general
 )
 
+# =====================================================================
+# EXPRESIÓN TOTAL NUMÉRICA GENERAL (ACTUALIZADA PARA "Monto Neto")
+# =====================================================================
+def _sql_total_num_expr_general() -> str:
+    """
+    Expresión SQL para calcular el total numérico desde "Monto Neto".
+    Maneja formatos LATAM (coma como decimal), negativos en paréntesis, y limpia espacios/dólares.
+    """
+    return '''
+        CASE 
+            WHEN TRIM("Monto Neto") LIKE \'(%%)\' THEN 
+                -1 * COALESCE(CAST(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                SUBSTRING(TRIM("Monto Neto"), 2, LENGTH(TRIM("Monto Neto")) - 2), 
+                                \'.\', \'\'
+                            ), 
+                            \',\', \'.\'
+                        ), 
+                        \'$\', \'\'
+                    ) AS NUMERIC
+                ), 0)
+            ELSE 
+                COALESCE(CAST(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(TRIM("Monto Neto"), \'.\', \'\'), 
+                            \',\', \'.\'
+                        ), 
+                        \'$\', \'\'
+                    ) AS NUMERIC
+                ), 0)
+        END
+    '''
 
 # =====================================================================
 # COMPARACIONES POR MESES
 # =====================================================================
-
-# ... existing code ...
 
 def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
     """
@@ -123,7 +156,6 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
 
     return ejecutar_consulta(sql, params)
 
-
 # =====================================================================
 # COMPARACIONES POR AÑOS
 # =====================================================================
@@ -152,7 +184,6 @@ def get_comparacion_articulo_anios(anios: List[int], articulo_like: str) -> pd.D
         LIMIT 100
     """
     return ejecutar_consulta(sql, (f"%{articulo_like.lower()}%",))
-
 
 def get_comparacion_proveedor_anios_like(proveedor_like: str, anios: list[int]) -> pd.DataFrame:
     """
@@ -196,7 +227,6 @@ def get_comparacion_proveedor_anios_like(proveedor_like: str, anios: list[int]) 
         df = df.drop(columns=["total_general"])
 
     return df
-
 
 def get_comparacion_proveedor_anios(*args, **kwargs) -> pd.DataFrame:
     """
@@ -256,7 +286,6 @@ def get_comparacion_proveedor_anios(*args, **kwargs) -> pd.DataFrame:
     print(f"🐛 DEBUG SQL_COMPARATIVAS: Resultado - filas={len(df) if df is not None else 0}")
     return df
 
-
 def get_comparacion_proveedor_anios_monedas(anios: List[int], proveedores: List[str] = None) -> pd.DataFrame:
     """Compara proveedores por años con separación de monedas."""
     total_pesos = _sql_total_num_expr()
@@ -297,7 +326,6 @@ def get_comparacion_proveedor_anios_monedas(anios: List[int], proveedores: List[
     """
     return ejecutar_consulta(sql, tuple(prov_params) if prov_params else None)
 
-
 def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] = None) -> pd.DataFrame:
     """Compara familias por años con separación de monedas."""
     total_pesos = _sql_total_num_expr()
@@ -337,7 +365,6 @@ def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] 
         LIMIT 300
     """
     return ejecutar_consulta(sql, tuple(fam_params) if fam_params else None)
-
 
 # =====================================================================
 # COMPARACIÓN MULTI PROVEEDORES - MULTI MESES (FIX)
@@ -402,7 +429,6 @@ def get_comparacion_proveedores_meses_multi(
     """
 
     return ejecutar_consulta(sql, tuple(params))
-
 
 # =====================================================================
 # COMPARACIÓN MULTI PROVEEDORES - MULTI AÑOS (NUEVO) - CON MONEDA
@@ -492,7 +518,6 @@ def get_comparacion_proveedores_anios_multi(
     df = ejecutar_consulta(sql, tuple(params))
     print(f"🐛 DEBUG SQL_COMPARATIVAS: SQL ejecutado, resultado filas={len(df) if not df.empty else 0}")
     return df
-
 
 # =====================================================================
 # NUEVO: COMPARACIÓN MULTI PROVEEDORES - MULTI TIEMPO (AÑOS O MESES) - AGRUPADO POR MONEDA
@@ -595,7 +620,6 @@ def get_comparacion_multi_proveedores_tiempo_monedas(proveedores: List[str], ani
 
     return ejecutar_consulta(sql, tuple(params))
 
-
 # =====================================================================
 # GASTOS POR FAMILIAS
 # =====================================================================
@@ -616,7 +640,6 @@ def get_gastos_todas_familias_mes(mes_key: str) -> pd.DataFrame:
     """
     return ejecutar_consulta(sql, (mes_key,))
 
-
 def get_gastos_todas_familias_anio(anio: int) -> pd.DataFrame:
     """Gastos de todas las familias en un año."""
     total_pesos = _sql_total_num_expr()
@@ -632,7 +655,6 @@ def get_gastos_todas_familias_anio(anio: int) -> pd.DataFrame:
         ORDER BY Total_Pesos DESC, Total_USD DESC
     """
     return ejecutar_consulta(sql, (anio,))
-
 
 def get_gastos_secciones_detalle_completo(familias: List[str], mes_key: str) -> pd.DataFrame:
     """Detalle de gastos de familias específicas en un mes."""
@@ -652,7 +674,6 @@ def get_gastos_secciones_detalle_completo(familias: List[str], mes_key: str) -> 
     """
     params = [mes_key] + [f.upper() for f in familias]
     return ejecutar_consulta(sql, tuple(params))
-
 
 def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
     """Gastos por familia con where personalizado."""
