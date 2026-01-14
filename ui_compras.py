@@ -13,6 +13,7 @@ from utils_openai import responder_con_openai
 import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
 import sql_facturas as sqlq_facturas
+from sql_core import get_unique_proveedores, get_unique_articulos  # Agregado
 
 
 # =========================
@@ -521,7 +522,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd.openhtmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -598,23 +599,37 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
 
     with tab_all:
-        if col_proveedor:
-            _render_resumen_top_proveedores(df_f, "todas las monedas")
+        if col_total:
+            if col_proveedor:
+                _render_resumen_top_proveedores(df_f, "todas las monedas")
+            else:
+                _render_tabla_simple(df_f, "todas las monedas")
         else:
+            # Comparación: mostrar tabla completa
             _render_tabla_simple(df_f, "todas las monedas")
 
     with tab_uyu:
-        df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
-        if col_proveedor:
-            _render_resumen_top_proveedores(df_uyu, "UYU")
+        if col_total:
+            df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
+            if col_proveedor:
+                _render_resumen_top_proveedores(df_uyu, "UYU")
+            else:
+                _render_tabla_simple(df_uyu, "UYU")
         else:
+            # Comparación: mostrar tabla filtrada por UYU
+            df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
             _render_tabla_simple(df_uyu, "UYU")
 
     with tab_usd:
-        df_usd = df_f[df_f["__moneda_view__"] == "USD"]
-        if col_proveedor:
-            _render_resumen_top_proveedores(df_usd, "USD")
+        if col_total:
+            df_usd = df_f[df_f["__moneda_view__"] == "USD"]
+            if col_proveedor:
+                _render_resumen_top_proveedores(df_usd, "USD")
+            else:
+                _render_tabla_simple(df_usd, "USD")
         else:
+            # Comparación: mostrar tabla filtrada por USD
+            df_usd = df_f[df_f["__moneda_view__"] == "USD"]
             _render_tabla_simple(df_usd, "USD")
 
     with tab_graf:
@@ -926,14 +941,24 @@ def Compras_IA():
         st.session_state["prov_multi"] = ["roche", "tresul"]
     if "meses_multi" not in st.session_state:
         st.session_state["meses_multi"] = ["2024-11", "2025-11"]
+    if "art_multi" not in st.session_state:
+        st.session_state["art_multi"] = []
     if "prov_meses" not in st.session_state:
         st.session_state["prov_meses"] = ["roche", "tresul"]
     if "meses_prov" not in st.session_state:
         st.session_state["meses_prov"] = ["2024-11", "2025-11"]
+    if "art_meses" not in st.session_state:
+        st.session_state["art_meses"] = []
     if "prov_anios" not in st.session_state:
         st.session_state["prov_anios"] = ["roche", "tresul"]
     if "anios_prov" not in st.session_state:
         st.session_state["anios_prov"] = [2024, 2025]
+    if "art_anios" not in st.session_state:
+        st.session_state["art_anios"] = []
+
+    # Fetch opciones dinámicas
+    prov_options = get_unique_proveedores()[:100]  # Limitar para performance
+    art_options = get_unique_articulos()[:100]
 
     # TABS PRINCIPALES: Chat IA + Comparativas
     tab_chat, tab_comparativas = st.tabs(["💬Compras", "📊 Comparativas"])
@@ -1144,25 +1169,27 @@ def Compras_IA():
         )
 
         # Proveedores
-        prov_options = ["roche", "tresul", "biodiagnostico", "cabinsur"]
         if "Multi Meses" in tipo_comp:
             proveedores = st.multiselect("Proveedores", options=prov_options, default=st.session_state.get("prov_multi", ["roche", "tresul"]), key="prov_multi")
             meses = st.multiselect("Meses", options=["2024-11", "2025-11", "2024-12", "2025-12"], default=st.session_state.get("meses_multi", ["2024-11", "2025-11"]), key="meses_multi")
+            articulos = st.multiselect("Artículos", options=art_options, default=st.session_state.get("art_multi", []), key="art_multi")
             anios = []
         elif "Meses" in tipo_comp:
             proveedores = st.multiselect("Proveedores", options=prov_options, default=st.session_state.get("prov_meses", ["roche", "tresul"]), key="prov_meses")
             meses = st.multiselect("Meses", options=["2024-11", "2025-11"], default=st.session_state.get("meses_prov", ["2024-11", "2025-11"]), key="meses_prov")
+            articulos = st.multiselect("Artículos", options=art_options, default=st.session_state.get("art_meses", []), key="art_meses")
             anios = []
         else:  # Años
             proveedores = st.multiselect("Proveedores", options=prov_options, default=st.session_state.get("prov_anios", ["roche", "tresul"]), key="prov_anios")
             anios = st.multiselect("Años", options=[2024, 2025], default=st.session_state.get("anios_prov", [2024, 2025]), key="anios_prov")
+            articulos = st.multiselect("Artículos", options=art_options, default=st.session_state.get("art_anios", []), key="art_anios")
             meses = []
 
         # Botón comparar
         if st.button("🔍 Comparar", key="btn_comparar"):
             try:
                 if "Multi Meses" in tipo_comp:
-                    df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(proveedores=proveedores, meses=meses)
+                    df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(proveedores=proveedores, meses=meses, articulos=articulos)
                 elif "Meses" in tipo_comp:
                     # Para 2 proveedores, 2 meses
                     if len(proveedores) == 2 and len(meses) == 2:
