@@ -74,7 +74,63 @@ def get_total_compras_anio(anio: int) -> dict:
 
 
 # =====================================================================
-# COMPRAS PROVEEDOR AÑO 
+# DETALLE COMPRAS: PROVEEDOR + AÑO (FUNCIÓN PRINCIPAL)
+# =====================================================================
+def get_detalle_facturas_proveedor_anio(
+    proveedores: List[str], 
+    anios: List[int], 
+    moneda: Optional[str] = None, 
+    limite: int = 5000
+) -> pd.DataFrame:
+    """Detalle de facturas de un proveedor en uno o varios años."""
+    
+    anios = sorted(anios)
+    anios_sql = ", ".join(map(str, anios))  # "2024, 2025"
+    
+    total_expr = _sql_total_num_expr_general()  # ✅ Expresión para calcular Total
+    
+    # Filtro de moneda
+    moneda_sql = ""
+    if moneda:
+        moneda = moneda.strip().upper()
+        if moneda in ("U$S", "USD", "U$$", "US$"):
+            moneda_sql = "AND TRIM(\"Moneda\") IN ('U$S', 'U$$', 'USD', 'US$')"
+        elif moneda in ("$", "UYU"):
+            moneda_sql = "AND TRIM(\"Moneda\") = '$'"
+    
+    # Filtro de proveedores
+    prov_where = ""
+    prov_params = []
+    if proveedores:
+        parts = [f"LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s" for _ in proveedores]
+        prov_params = [f"%{p.lower()}%" for p in proveedores]
+        prov_where = f"AND ({' OR '.join(parts)})"
+    
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            TRIM("Nro. Comprobante") AS Nro_Factura,
+            "Fecha",
+            "Año",
+            "Cantidad",
+            "Moneda",
+            TRIM("Monto Neto") AS "Monto Neto",
+            {total_expr} AS Total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año" IN ({anios_sql})
+          {prov_where}
+          {moneda_sql}
+        ORDER BY "Fecha" DESC NULLS LAST
+        LIMIT {limite}
+    """
+    
+    return ejecutar_consulta(sql, tuple(prov_params))
+
+
+# =====================================================================
+# COMPRAS PROVEEDOR AÑO (WRAPPER SIMPLIFICADO)
 # =====================================================================
 def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 5000) -> pd.DataFrame:
     """
@@ -99,7 +155,6 @@ def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 500
         moneda=None,
         limite=limite
     )
-
 
 # =====================================================================
 # COMPRAS MÚLTIPLES: PROVEEDORES, MESES Y AÑOS (NUEVA FUNCIÓN)
