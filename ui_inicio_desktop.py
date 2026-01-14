@@ -65,12 +65,12 @@ def mostrar_inicio_desktop():
         background:rgba(255,255,255,0.82);
         border-radius:20px;
 
-        /* tamaño fijo para que todas queden iguales */
-        height: 96px;
-        min-height: 96px;
+        /* tamaño fijo para que todas queden iguales - MÁS ALTO */
+        height: 110px;
+        min-height: 110px;
 
-        /* espacio para el tile */
-        padding:16px 16px 16px 92px;
+        /* espacio para el tile - AJUSTADO */
+        padding:14px 14px 14px 78px;
 
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
         cursor:pointer;
@@ -114,7 +114,7 @@ def mostrar_inicio_desktop():
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) -> aún más abajo (~0.5cm más) */
+    /* Tile (ícono) -> ajustado para nueva altura */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .fc-home-tile{
         width:54px;
         height:54px;
@@ -128,8 +128,8 @@ def mostrar_inicio_desktop():
         font-size:26px;
 
         position:absolute;
-        left: 16px;
-        top: calc(50% + 48px);          /* <-- BAJADO ~0.5cm MÁS */
+        left: 12px;
+        top: calc(50% + 55px);          /* <-- AJUSTADO PARA NUEVA ALTURA */
         transform: translateY(-50%);
         z-index: 5;
 
