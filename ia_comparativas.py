@@ -401,6 +401,7 @@ def _detectar_proveedores_multi(texto_lower: str, idx_prov: List[Tuple[str, str]
             return out
 
     return []
+
 # =====================================================================
 # INTÉRPRETE COMPARATIVAS (FUNCIÓN PRINCIPAL)
 # =====================================================================
@@ -494,6 +495,22 @@ def interpretar_comparativas(pregunta: str) -> Dict:
                     "debug": f"comparar multi proveedores meses (nombre+anio): {proveedores_multi} {m1}-{m2}",
                 }
 
+            # D) Multi proveedor + mes + años (ej: roche tresul noviembre 2024 2025)
+            if len(meses_nombre) == 1 and len(anios) >= 2:
+                mes_name = meses_nombre[0]
+                meses = [f"{anio}-{MESES[mes_name]}" for anio in anios[:MAX_MESES]]
+                if len(meses) >= 2:
+                    return {
+                        "tipo": "comparar_proveedores_meses_multi",
+                        "parametros": {
+                            "proveedores": proveedores_multi,
+                            "meses": meses,
+                            "label1": f"{mes_name} {anios[0]}",
+                            "label2": f"{mes_name} {anios[1]}",
+                        },
+                        "debug": f"comparar multi proveedores mes+años: {proveedores_multi} {meses}",
+                    }
+
             return {
                 "tipo": "no_entendido",
                 "parametros": {},
@@ -562,6 +579,23 @@ def interpretar_comparativas(pregunta: str) -> Dict:
                 "debug": "comparar proveedor meses (nombre+anio)",
             }
 
+        # 4) mes + años (ej: noviembre 2024 2025 -> meses ["2024-11", "2025-11"])
+        if len(meses_nombre) == 1 and len(anios) >= 2:
+            mes_name = meses_nombre[0]
+            meses = [f"{anio}-{MESES[mes_name]}" for anio in anios[:MAX_MESES]]
+            if len(meses) >= 2:
+                return {
+                    "tipo": "comparar_proveedor_meses_multi",
+                    "parametros": {
+                        "proveedor": proveedor_final,
+                        "proveedores": [proveedor_final],
+                        "meses": meses,
+                        "label1": f"{mes_name} {anios[0]}",
+                        "label2": f"{mes_name} {anios[1]}",
+                    },
+                    "debug": f"comparar proveedor mes+años: {proveedor_final} {meses}",
+                }
+
         # 3) año vs año
         if len(anios) >= 2:
             return {
@@ -615,6 +649,7 @@ if __name__ == "__main__":
         "comparar compras roche tresul 2024 2025",
         "comparar compras roche, tresul 2024 2025",
         "comparar compras roche y tresul 2025-06 2025-07",
+        "comparar compras roche, tresul noviembre 2024 2025",  # Nueva prueba
     ]
 
     for p in pruebas:
