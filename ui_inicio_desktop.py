@@ -26,23 +26,6 @@ def mostrar_inicio_desktop():
         saludo = "¡Buenas noches"
 
     # =========================
-    # Header compacto (saludo)
-    # =========================
-    st.markdown(
-        f"""
-        <div style="max-width:1100px;margin:0 auto;text-align:center;padding:2px 0 8px 0;">
-            <h2 style="margin:0;color:#0f172a;font-size:26px;font-weight:800;letter-spacing:-0.02em;">
-                {saludo}, {nombre.split()[0]}! 👋
-            </h2>
-            <p style="margin:2px 0 0 0;color:#64748b;font-size:14px;">
-                ¿Qué querés hacer hoy?
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # =========================
     # MARCADOR DESKTOP (para aplicar CSS SOLO en esta pantalla)
     # =========================
     st.markdown('<div id="fc-home-desktop-marker" style="display:none;"></div>', unsafe_allow_html=True)
