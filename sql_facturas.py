@@ -196,11 +196,7 @@ def get_facturas_proveedor(
 ) -> pd.DataFrame:
     """
     Lista facturas/comprobantes de compra por proveedor(es) directamente desde chatbot_raw.
-
-    - NO filtra por tipo de comprobante (para no dejar afuera nada raro).
-    - Filtra por proveedor LIKE %texto%.
-    - Filtra por año (columna "Año") si se especifica.
-    - Opcionalmente filtra por meses/rango/moneda/artículo.
+    DETALLE LÍNEA POR LÍNEA (no agrupado).
     """
 
     if not proveedores:
@@ -255,59 +251,50 @@ def get_facturas_proveedor(
             if anios_ok:
                 if len(anios_ok) == 1:
                     where_parts.append('"Año" = %s')
-                    params.append(str(anios_ok[0]))  # CAMBIO: convertir a string
+                    params.append(str(anios_ok[0]))
                 else:
                     ph = ", ".join(["%s"] * len(anios_ok))
                     where_parts.append(f'"Año" IN ({ph})')
-                    params.extend([str(a) for a in anios_ok])  # CAMBIO: convertir a string
+                    params.extend([str(a) for a in anios_ok])
+
+    # Filtro de tipo comprobante (COMPRAS)
+    where_parts.append('("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%%\')')
 
     # Seguridad: si por algún motivo no hay filtros, no traigas todo
-    if not where_parts:
+    if len(where_parts) <= 1:  # Solo tiene el filtro de tipo comprobante
         where_parts.append("1=0")
 
-    monto_expr = _sql_monto_neto_num_expr()
+    total_expr = _sql_total_num_expr_general()  # ✅ USA LA EXPRESIÓN CORRECTA
 
     query = f"""
         SELECT
-          ROW_NUMBER() OVER (ORDER BY "Fecha"::date, "Nro. Comprobante") AS nro,
           TRIM("Cliente / Proveedor") AS proveedor,
-          "Año",
-          "Mes",
+          TRIM("Articulo") AS articulo,
+          TRIM("Nro. Comprobante") AS nro_factura,
           "Fecha",
-          "Tipo Comprobante",
-          "Nro. Comprobante",
+          "Cantidad",
           "Moneda",
-          SUM({monto_expr}) AS monto_neto
+          {total_expr} AS Total
         FROM chatbot_raw
         WHERE {" AND ".join(where_parts)}
-        GROUP BY
-          TRIM("Cliente / Proveedor"),
-          "Año",
-          "Mes",
-          "Fecha",
-          "Tipo Comprobante",
-          "Nro. Comprobante",
-          "Moneda"
-        ORDER BY
-          nro
+        ORDER BY "Fecha" DESC NULLS LAST
         LIMIT {limite};
     """
 
     # DEBUG hacia la UI si está en Streamlit
     try:
         import streamlit as st
-        st.session_state["DBG_SQL_LAST_TAG"] = "facturas_proveedor (chatbot_raw directo)"
+        st.session_state["DBG_SQL_LAST_TAG"] = "facturas_proveedor (DETALLE línea por línea)"
         st.session_state["DBG_SQL_LAST_QUERY"] = query
         st.session_state["DBG_SQL_LAST_PARAMS"] = tuple(params)
     except Exception:
         pass
 
-    print("DEBUG facturas_proveedor (chatbot_raw directo):")
+    print("DEBUG facturas_proveedor (DETALLE):")
     print(query.strip())
     print("Params:", tuple(params))
 
     return ejecutar_consulta(query, tuple(params))
-
 
 # =====================================================================
 # RESUMEN / TOTAL POR PROVEEDOR
