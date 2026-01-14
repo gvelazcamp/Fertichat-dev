@@ -3,7 +3,7 @@
 # =========================
 
 import pandas as pd
-from typing import List
+from typing import List, Optional
 
 from sql_core import (
     ejecutar_consulta,
@@ -49,7 +49,164 @@ def _sql_total_num_expr_general() -> str:
     '''
 
 # =====================================================================
-# COMPARACIONES POR MESES
+# 🆕 FUNCIÓN PRINCIPAL PARA MENÚ DE COMPARATIVAS
+# =====================================================================
+
+def comparar_compras(
+    anios: Optional[List[int]] = None,
+    meses: Optional[List[str]] = None,
+    proveedores: Optional[List[str]] = None,
+    articulos: Optional[List[str]] = None
+) -> pd.DataFrame:
+    """
+    🎯 FUNCIÓN UNIVERSAL DE COMPARATIVAS
+    
+    Compara compras con cualquier combinación de filtros.
+    Retorna tabla con columnas dinámicas por tiempo y separación por moneda.
+    
+    Args:
+        anios: Lista de años [2024, 2025]
+        meses: Lista de meses ["2024-01", "2024-02"]
+        proveedores: Lista de proveedores ["ROCHE", "TRESUL"] o None para todos
+        articulos: Lista de artículos (opcional)
+    
+    Returns:
+        DataFrame con columnas:
+        - Proveedor (o Artículo si se filtra por artículos)
+        - Moneda
+        - Una columna por cada año/mes
+        - Diferencia (si hay exactamente 2 tiempos)
+    
+    Ejemplos:
+        # Comparar todos los proveedores 2024 vs 2025
+        df = comparar_compras(anios=[2024, 2025])
+        
+        # Comparar ROCHE y TRESUL en 2024-2025
+        df = comparar_compras(anios=[2024, 2025], proveedores=["ROCHE", "TRESUL"])
+        
+        # Comparar enero vs febrero 2025
+        df = comparar_compras(meses=["2025-01", "2025-02"], proveedores=["ROCHE"])
+    """
+    
+    # Validaciones
+    if not anios and not meses:
+        print("⚠️ comparar_compras: Se requiere anios o meses")
+        return pd.DataFrame()
+    
+    # Decidir si usar años o meses (meses tiene prioridad)
+    usar_meses = bool(meses)
+    tiempos = meses if usar_meses else anios
+    
+    if not tiempos or len(tiempos) < 2:
+        print(f"⚠️ comparar_compras: Se requieren al menos 2 tiempos, recibió {len(tiempos) if tiempos else 0}")
+        return pd.DataFrame()
+    
+    tiempos_sorted = sorted(list(set(tiempos)))
+    
+    total_expr = _sql_total_num_expr_general()
+    
+    # ===== CONSTRUIR COLUMNAS DINÁMICAS POR TIEMPO =====
+    cols = []
+    params: List = []
+    
+    for t in tiempos_sorted:
+        if usar_meses:
+            cols.append(
+                f"""SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) AS "{t}" """
+            )
+            params.append(t)
+        else:
+            # Años - embeber directamente (seguro)
+            cols.append(
+                f"""SUM(CASE WHEN "Año"::int = {int(t)} THEN {total_expr} ELSE 0 END) AS "{t}" """
+            )
+    
+    cols_sql = ",\n            ".join(cols)
+    
+    # ===== COLUMNA DIFERENCIA (solo si hay exactamente 2 tiempos) =====
+    diff_sql = ""
+    if len(tiempos_sorted) == 2:
+        t1, t2 = tiempos_sorted[0], tiempos_sorted[1]
+        if usar_meses:
+            diff_sql = f""",
+                (SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) -
+                 SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END)) AS Diferencia
+            """
+            params.extend([t2, t1])
+        else:
+            diff_sql = f""",
+                (SUM(CASE WHEN "Año"::int = {int(t2)} THEN {total_expr} ELSE 0 END) -
+                 SUM(CASE WHEN "Año"::int = {int(t1)} THEN {total_expr} ELSE 0 END)) AS Diferencia
+            """
+    
+    # ===== WHERE PROVEEDORES =====
+    prov_where = ""
+    if proveedores:
+        prov_clauses = []
+        for p in proveedores:
+            p_norm = p.strip().lower()
+            if not p_norm:
+                continue
+            prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
+            params.append(f"%{p_norm}%")
+        
+        if prov_clauses:
+            prov_where = "AND (" + " OR ".join(prov_clauses) + ")"
+    
+    # ===== WHERE ARTÍCULOS =====
+    art_where = ""
+    if articulos:
+        art_clauses = []
+        for a in articulos:
+            a_norm = a.strip().lower()
+            if not a_norm:
+                continue
+            art_clauses.append('LOWER(TRIM("Articulo")) LIKE %s')
+            params.append(f"%{a_norm}%")
+        
+        if art_clauses:
+            art_where = "AND (" + " OR ".join(art_clauses) + ")"
+    
+    # ===== WHERE TIEMPO (IN clause) =====
+    tiempo_col = "Mes" if usar_meses else "Año"
+    if usar_meses:
+        tiempo_placeholders = ", ".join(["%s"] * len(tiempos_sorted))
+        params.extend(tiempos_sorted)
+        tiempo_where = f'TRIM("{tiempo_col}") IN ({tiempo_placeholders})'
+    else:
+        tiempo_placeholders = ", ".join(str(int(y)) for y in tiempos_sorted)
+        tiempo_where = f'"{tiempo_col}"::int IN ({tiempo_placeholders})'
+    
+    # ===== CONSTRUIR SQL =====
+    group_by_col = "Articulo" if articulos else "Proveedor"
+    select_col = f'TRIM("Articulo")' if articulos else 'TRIM("Cliente / Proveedor")'
+    
+    sql = f"""
+        SELECT
+            {select_col} AS {group_by_col},
+            TRIM("Moneda") AS Moneda,
+            {cols_sql}
+            {diff_sql}
+        FROM chatbot_raw
+        WHERE {tiempo_where}
+          {prov_where}
+          {art_where}
+        GROUP BY {select_col}, TRIM("Moneda")
+        ORDER BY {group_by_col}, Moneda
+        LIMIT 500
+    """
+    
+    print(f"🐛 DEBUG comparar_compras: Ejecutando con {len(params)} params")
+    print(f"🐛 SQL (primeros 300 chars): {sql[:300]}...")
+    
+    df = ejecutar_consulta(sql, tuple(params))
+    print(f"🐛 Resultado: {len(df) if df is not None and not df.empty else 0} filas")
+    
+    return df
+
+
+# =====================================================================
+# COMPARACIONES POR MESES (LEGACY - Mantener compatibilidad)
 # =====================================================================
 
 def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
@@ -74,7 +231,7 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
 
     # Caso kwargs (si alguien llama con nombres)
     if kwargs:
-        proveedor = kwargs.get("proveedor", None) or kwargs.get("proveedores", None)  # soporte para list
+        proveedor = kwargs.get("proveedor", None) or kwargs.get("proveedores", None)
         mes1 = kwargs.get("mes1", None)
         mes2 = kwargs.get("mes2", None)
         label1 = kwargs.get("label1", None)
@@ -82,7 +239,6 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
 
     # Caso args posicionales
     if args and (mes1 is None and mes2 is None):
-        # Firma vieja: (mes1, mes2, label1, label2, proveedores?)
         if len(args) >= 4 and isinstance(args[0], str) and isinstance(args[1], str) and (
             args[0].startswith("202") and args[1].startswith("202")
         ):
@@ -91,11 +247,10 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
             label1 = args[2]
             label2 = args[3]
             if len(args) >= 5:
-                proveedor = args[4]  # puede ser list o str
+                proveedor = args[4]
         else:
-            # Firma nueva: (proveedor, mes1, mes2, label1?, label2?)
             if len(args) >= 3:
-                proveedor = args[0]  # puede ser list o str
+                proveedor = args[0]
                 mes1 = args[1]
                 mes2 = args[2]
             if len(args) >= 4:
@@ -103,7 +258,6 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
             if len(args) >= 5:
                 label2 = args[4]
 
-    # Defaults de labels
     if mes1 is None or mes2 is None:
         return pd.DataFrame()
 
@@ -112,13 +266,11 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
     if not label2:
         label2 = mes2
 
-    # Sanitizar labels
     label1_sql = str(label1).replace('"', "").strip()
     label2_sql = str(label2).replace('"', "").strip()
 
     total_expr = _sql_total_num_expr_general()
 
-    # WHERE dinámico (con o sin proveedor/es)
     prov_where = ""
     prov_param = []
     if proveedor:
@@ -157,7 +309,7 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
     return ejecutar_consulta(sql, params)
 
 # =====================================================================
-# COMPARACIONES POR AÑOS
+# COMPARACIONES POR AÑOS (LEGACY - Mantener compatibilidad)
 # =====================================================================
 
 def get_comparacion_articulo_anios(anios: List[int], articulo_like: str) -> pd.DataFrame:
@@ -232,10 +384,9 @@ def get_comparacion_proveedor_anios(*args, **kwargs) -> pd.DataFrame:
     """
     Compara proveedores entre años. Compatible con firmas flexibles:
     
-    - get_comparacion_proveedor_anios(proveedor: str, anios: List[int])  # Un proveedor
-    - get_comparacion_proveedor_anios(proveedores: List[str], anios: List[int])  # Múltiples proveedores
-    - get_comparacion_proveedor_anios(proveedor1: str, proveedor2: str, anio1: int, anio2: int)  # Dos proveedores, dos años
-    - Y otros formatos similares detectados automáticamente.
+    - get_comparacion_proveedor_anios(proveedor: str, anios: List[int])
+    - get_comparacion_proveedor_anios(proveedores: List[str], anios: List[int])
+    - get_comparacion_proveedor_anios(proveedor1: str, proveedor2: str, anio1: int, anio2: int)
     """
     print(f"🐛 DEBUG SQL_COMPARATIVAS: Llamando get_comparacion_proveedor_anios con args={args}, kwargs={kwargs}")
     
@@ -243,21 +394,17 @@ def get_comparacion_proveedor_anios(*args, **kwargs) -> pd.DataFrame:
     anios = None
     
     if len(args) == 2:
-        # Firma canónica: (proveedor/es, anios)
         first, second = args
         if isinstance(first, str) and isinstance(second, list):
-            # Un proveedor: ("roche", [2024, 2025])
             proveedores = [first]
             anios = second
         elif isinstance(first, list) and isinstance(second, list):
-            # Múltiples proveedores: (["roche", "tresul"], [2024, 2025])
             proveedores = first
             anios = second
         else:
             return pd.DataFrame()
     
     elif len(args) == 4:
-        # Firma extendida: (prov1, prov2, anio1, anio2)
         prov1, prov2, anio1, anio2 = args
         if isinstance(prov1, str) and isinstance(prov2, str):
             proveedores = [prov1, prov2]
@@ -271,17 +418,14 @@ def get_comparacion_proveedor_anios(*args, **kwargs) -> pd.DataFrame:
     else:
         return pd.DataFrame()
     
-    # Normalizar y validar
     if not proveedores or not anios:
         return pd.DataFrame()
     
-    # Si proveedores es str (por compatibilidad), convertir a lista
     if isinstance(proveedores, str):
         proveedores = [proveedores]
     
     print(f"🐛 DEBUG SQL_COMPARATIVAS: Detectado proveedores={proveedores}, anios={anios}")
     
-    # Llamar a la función multi existente para manejar la lógica
     df = get_comparacion_proveedores_anios_multi(proveedores, anios)
     print(f"🐛 DEBUG SQL_COMPARATIVAS: Resultado - filas={len(df) if df is not None else 0}")
     return df
@@ -367,7 +511,7 @@ def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] 
     return ejecutar_consulta(sql, tuple(fam_params) if fam_params else None)
 
 # =====================================================================
-# COMPARACIÓN MULTI PROVEEDORES - MULTI MESES (FIX)
+# COMPARACIÓN MULTI PROVEEDORES - MULTI MESES
 # =====================================================================
 
 def get_comparacion_proveedores_meses_multi(
@@ -377,9 +521,6 @@ def get_comparacion_proveedores_meses_multi(
 ) -> pd.DataFrame:
     """
     Compara múltiples proveedores en múltiples meses.
-    Ej:
-      proveedores = ["roche", "biodiagnostico", "tresul"]
-      meses = ["2025-06", "2025-07"]
     """
 
     if not proveedores or not meses:
@@ -387,7 +528,6 @@ def get_comparacion_proveedores_meses_multi(
 
     total_expr = _sql_total_num_expr_general()
 
-    # 1) Columnas dinámicas por mes (sus %s van PRIMERO en params)
     cols = []
     params: List = []
     for m in meses:
@@ -398,7 +538,6 @@ def get_comparacion_proveedores_meses_multi(
 
     cols_sql = ",\n            ".join(cols)
 
-    # 2) WHERE proveedores (sus %s van DESPUÉS)
     prov_clauses = []
     for p in proveedores:
         p_norm = p.strip().lower()
@@ -412,7 +551,6 @@ def get_comparacion_proveedores_meses_multi(
 
     prov_where = " OR ".join(prov_clauses)
 
-    # WHERE articulos
     art_where = ""
     art_params = []
     if articulos:
@@ -420,7 +558,6 @@ def get_comparacion_proveedores_meses_multi(
         art_where = " AND (" + " OR ".join(art_clauses) + ")"
         art_params = [f"%{a.strip().lower()}%" for a in articulos if a.strip()]
 
-    # 3) IN meses (sus %s van AL FINAL)
     meses_placeholders = ", ".join(["%s"] * len(meses))
     params.extend(meses)
     params.extend(art_params)
@@ -442,7 +579,7 @@ def get_comparacion_proveedores_meses_multi(
     return ejecutar_consulta(sql, tuple(params))
 
 # =====================================================================
-# COMPARACIÓN MULTI PROVEEDORES - MULTI AÑOS (NUEVO) - CON MONEDA
+# COMPARACIÓN MULTI PROVEEDORES - MULTI AÑOS
 # =====================================================================
 
 def get_comparacion_proveedores_anios_multi(
@@ -451,10 +588,6 @@ def get_comparacion_proveedores_anios_multi(
 ) -> pd.DataFrame:
     """
     Compara múltiples proveedores en múltiples años, separado por moneda.
-    Ej:
-      proveedores = ["roche", "tresul"]
-      anios = [2024, 2025]
-    Devuelve filas por Proveedor y Moneda, columnas por año (y Diferencia si hay 2 años).
     """
     print(f"🐛 DEBUG SQL_COMPARATIVAS: Ejecutando comparación multi-proveedores-años con moneda")
     print(f"🐛 DEBUG SQL_COMPARATIVAS: Proveedores={proveedores}, Años={anios}")
@@ -462,7 +595,6 @@ def get_comparacion_proveedores_anios_multi(
     if not proveedores or not anios:
         return pd.DataFrame()
 
-    # Normalizar años a int
     anios_ok: List[int] = []
     for y in anios:
         try:
@@ -476,7 +608,6 @@ def get_comparacion_proveedores_anios_multi(
 
     total_expr = _sql_total_num_expr_general()
 
-    # Columnas por año (embebidas como int seguro)
     cols = []
     for y in anios_ok:
         cols.append(
@@ -484,7 +615,6 @@ def get_comparacion_proveedores_anios_multi(
         )
     cols_sql = ",\n            ".join(cols)
 
-    # Diferencia solo si hay exactamente 2 años
     diff_sql = ""
     if len(anios_ok) == 2:
         y1, y2 = anios_ok[0], anios_ok[1]
@@ -495,7 +625,6 @@ def get_comparacion_proveedores_anios_multi(
 
     anios_sql = ", ".join(str(y) for y in anios_ok)
 
-    # WHERE proveedores
     prov_clauses = []
     params: List = []
     for p in proveedores:
@@ -531,25 +660,20 @@ def get_comparacion_proveedores_anios_multi(
     return df
 
 # =====================================================================
-# NUEVO: COMPARACIÓN MULTI PROVEEDORES - MULTI TIEMPO (AÑOS O MESES) - AGRUPADO POR MONEDA
+# COMPARACIÓN MULTI (AÑOS O MESES) CON MONEDAS
 # =====================================================================
 
-def get_comparacion_multi_proveedores_tiempo_monedas(proveedores: List[str], anios: List[int] = None, meses: List[str] = None) -> pd.DataFrame:
+def get_comparacion_multi_proveedores_tiempo_monedas(
+    proveedores: List[str], 
+    anios: List[int] = None, 
+    meses: List[str] = None
+) -> pd.DataFrame:
     """
     Compara múltiples proveedores en múltiples años O meses, separado por moneda.
-    Si se pasan meses, usa meses; sino, años.
-    
-    Ej:
-      proveedores = ["roche", "tresul"]
-      anios = [2024, 2025]  # Usa años
-      # o
-      meses = ["2025-01", "2025-02"]  # Usa meses
-    Devuelve filas por Proveedor y Moneda, columnas por tiempo (año/mes) y Diferencia si hay 2 tiempos.
     """
     if not proveedores:
         return pd.DataFrame()
 
-    # Determinar si usar años o meses
     usar_meses = bool(meses)
     tiempos = meses if usar_meses else anios
 
@@ -562,7 +686,6 @@ def get_comparacion_multi_proveedores_tiempo_monedas(proveedores: List[str], ani
 
     total_expr = _sql_total_num_expr_general()
 
-    # Columnas por tiempo (meses usan %s, años embebidos)
     cols = []
     params: List = []
     for t in tiempos_ok:
@@ -577,7 +700,6 @@ def get_comparacion_multi_proveedores_tiempo_monedas(proveedores: List[str], ani
             )
     cols_sql = ",\n            ".join(cols)
 
-    # Diferencia solo si hay exactamente 2 tiempos
     diff_sql = ""
     if len(tiempos_ok) == 2:
         t1, t2 = tiempos_ok[0], tiempos_ok[1]
@@ -593,7 +715,6 @@ def get_comparacion_multi_proveedores_tiempo_monedas(proveedores: List[str], ani
                  SUM(CASE WHEN "Año"::int = {int(t1)} THEN {total_expr} ELSE 0 END)) AS Diferencia
             """
 
-    # WHERE proveedores
     prov_clauses = []
     for p in proveedores:
         p_norm = p.strip().lower()
@@ -607,7 +728,6 @@ def get_comparacion_multi_proveedores_tiempo_monedas(proveedores: List[str], ani
 
     prov_where = " OR ".join(prov_clauses)
 
-    # IN tiempo
     tiempo_col = "Mes" if usar_meses else "Año"
     if usar_meses:
         tiempo_placeholders = ", ".join(["%s"] * len(tiempos_ok))
