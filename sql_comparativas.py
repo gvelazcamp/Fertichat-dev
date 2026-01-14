@@ -19,15 +19,16 @@ def _sql_total_num_expr_general() -> str:
     """
     Expresión SQL para calcular el total numérico desde "Monto Neto".
     Maneja formatos LATAM (coma como decimal), negativos en paréntesis, y limpia espacios/dólares.
+    Actualizado para remover espacios.
     """
     return '''
         CASE 
-            WHEN TRIM("Monto Neto") LIKE \'(%%)\' THEN 
+            WHEN TRIM(REPLACE("Monto Neto", ' ', '')) LIKE \'(%%)\' THEN 
                 -1 * COALESCE(CAST(
                     REPLACE(
                         REPLACE(
                             REPLACE(
-                                SUBSTRING(TRIM("Monto Neto"), 2, LENGTH(TRIM("Monto Neto")) - 2), 
+                                SUBSTRING(TRIM(REPLACE("Monto Neto", ' ', '')), 2, LENGTH(TRIM(REPLACE("Monto Neto", ' ', ''))) - 2), 
                                 \'.\', \'\'
                             ), 
                             \',\', \'.\'
@@ -39,7 +40,7 @@ def _sql_total_num_expr_general() -> str:
                 COALESCE(CAST(
                     REPLACE(
                         REPLACE(
-                            REPLACE(TRIM("Monto Neto"), \'.\', \'\'), 
+                            REPLACE(TRIM(REPLACE("Monto Neto", ' ', '')), \'.\', \'\'), 
                             \',\', \'.\'
                         ), 
                         \'$\', \'\'
