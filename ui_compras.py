@@ -353,6 +353,10 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     # KPIs (sobre TODO el resultado, antes de filtros)
     tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
     tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
+    # FIX: Si no hay columna moneda (como en comparaciones), mostrar total general en UYU
+    if not col_moneda:
+        tot_uyu = float(df_view["__total_num__"].sum())
+        tot_usd = 0.0
 
     k1, k2, k3, k4 = st.columns(4)
     with k1:
@@ -360,7 +364,11 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     with k2:
         st.metric("Total USD", _fmt_compact_money(tot_usd, "USD"), help=f"Valor exacto: U$S {tot_usd:,.2f}".replace(",", "."))
     with k3:
-        st.metric("Facturas", f"{facturas}")
+        # FIX: Si no hay columna nro_factura (como en comparaciones), mostrar "Registros" en lugar de "Facturas"
+        if col_nro:
+            st.metric("Facturas", f"{facturas}")
+        else:
+            st.metric("Registros", f"{filas_total}")
     with k4:
         st.metric("Proveedores", f"{proveedores}")
 
@@ -513,7 +521,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openhtmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -911,6 +919,22 @@ def Compras_IA():
 
     st.markdown("### 🤖 Asistente de Compras y Facturas")
 
+    # Persistencia de selecciones en Comparativas
+    if "tipo_comp" not in st.session_state:
+        st.session_state["tipo_comp"] = "Multi Meses (ej: noviembre 2024-2025)"
+    if "prov_multi" not in st.session_state:
+        st.session_state["prov_multi"] = ["roche", "tresul"]
+    if "meses_multi" not in st.session_state:
+        st.session_state["meses_multi"] = ["2024-11", "2025-11"]
+    if "prov_meses" not in st.session_state:
+        st.session_state["prov_meses"] = ["roche", "tresul"]
+    if "meses_prov" not in st.session_state:
+        st.session_state["meses_prov"] = ["2024-11", "2025-11"]
+    if "prov_anios" not in st.session_state:
+        st.session_state["prov_anios"] = ["roche", "tresul"]
+    if "anios_prov" not in st.session_state:
+        st.session_state["anios_prov"] = [2024, 2025]
+
     # TABS PRINCIPALES: Chat IA + Comparativas
     tab_chat, tab_comparativas = st.tabs(["💬Compras", "📊 Comparativas"])
 
@@ -1122,16 +1146,16 @@ def Compras_IA():
         # Proveedores
         prov_options = ["roche", "tresul", "biodiagnostico", "cabinsur"]
         if "Multi Meses" in tipo_comp:
-            proveedores = st.multiselect("Proveedores", options=prov_options, default=["roche", "tresul"], key="prov_multi")
-            meses = st.multiselect("Meses", options=["2024-11", "2025-11", "2024-12", "2025-12"], default=["2024-11", "2025-11"], key="meses_multi")
+            proveedores = st.multiselect("Proveedores", options=prov_options, default=st.session_state.get("prov_multi", ["roche", "tresul"]), key="prov_multi")
+            meses = st.multiselect("Meses", options=["2024-11", "2025-11", "2024-12", "2025-12"], default=st.session_state.get("meses_multi", ["2024-11", "2025-11"]), key="meses_multi")
             anios = []
         elif "Meses" in tipo_comp:
-            proveedores = st.multiselect("Proveedores", options=prov_options, default=["roche", "tresul"], key="prov_meses")
-            meses = st.multiselect("Meses", options=["2024-11", "2025-11"], default=["2024-11", "2025-11"], key="meses_prov")
+            proveedores = st.multiselect("Proveedores", options=prov_options, default=st.session_state.get("prov_meses", ["roche", "tresul"]), key="prov_meses")
+            meses = st.multiselect("Meses", options=["2024-11", "2025-11"], default=st.session_state.get("meses_prov", ["2024-11", "2025-11"]), key="meses_prov")
             anios = []
         else:  # Años
-            proveedores = st.multiselect("Proveedores", options=prov_options, default=["roche", "tresul"], key="prov_anios")
-            anios = st.multiselect("Años", options=[2024, 2025], default=[2024, 2025], key="anios_prov")
+            proveedores = st.multiselect("Proveedores", options=prov_options, default=st.session_state.get("prov_anios", ["roche", "tresul"]), key="prov_anios")
+            anios = st.multiselect("Años", options=[2024, 2025], default=st.session_state.get("anios_prov", [2024, 2025]), key="anios_prov")
             meses = []
 
         # Botón comparar
