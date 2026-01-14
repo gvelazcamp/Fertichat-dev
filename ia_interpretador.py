@@ -1154,7 +1154,7 @@ def agentic_decidir(pregunta: str) -> Dict[str, Any]:
 
 def agentic_es_ejecutable(decision: Dict[str, Any]) -> bool:
     """
-    True si la decisión tiene tipo válido para el router/orquestador.
+    True si la decisión tiene tipo válido para el orquestador.
     No ejecuta nada: solo valida formato mínimo.
     """
     if not isinstance(decision, dict):
