@@ -1,11 +1,15 @@
 import streamlit as st
+from PIL import Image
+
+ICON_PATH = r"C:\Users\gvelazquez\Downloads\logo.ico"
+icon = Image.open(ICON_PATH)
 
 st.set_page_config(
     page_title="FertiChat",
-    page_icon="🦋",
-    layout="wide",
-    initial_sidebar_state="auto",
+    page_icon=icon,
+    layout="wide"
 )
+
 
 from ui_css import CSS_GLOBAL
 from login_page import require_auth, get_current_user, logout
