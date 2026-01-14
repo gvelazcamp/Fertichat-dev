@@ -36,6 +36,25 @@ def mostrar_inicio_desktop():
     st.markdown("""
     <style>
     /* =========================================================
+       ELIMINAR PADDING SUPERIOR DEL CONTENEDOR PRINCIPAL
+       ========================================================= */
+    /* Elimina padding top del contenedor cuando está en home */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) {
+        padding-top: 0 !important;
+    }
+    
+    /* Elimina padding del main también */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .main .block-container {
+        padding-top: 0 !important;
+        padding-bottom: 1rem !important;
+    }
+    
+    /* Oculta el título "Inicio" de Streamlit cuando estamos en home */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) h1 {
+        display: none !important;
+    }
+    
+    /* =========================================================
        SOLO HOME DESKTOP (scoped): si el marcador existe, aplico estilos
        ========================================================= */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) div[data-testid="column"]{
@@ -196,9 +215,9 @@ def mostrar_inicio_desktop():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones - PEGADAS AL TOPE TOTAL
+    # Secciones con botones - APROVECHANDO PADDING CERO
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:-140px auto 0 auto;'>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:-30px auto 0 auto;'>", unsafe_allow_html=True)
     st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
@@ -226,7 +245,7 @@ def mostrar_inicio_desktop():
     st.markdown("</div>", unsafe_allow_html=True)  # Cierra el contenedor con margen negativo
 
     st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:-40px auto 0 auto;'>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:-10px auto 0 auto;'>", unsafe_allow_html=True)
     st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div>", unsafe_allow_html=True)
 
     col5, col6, col7, col8 = st.columns(4)
