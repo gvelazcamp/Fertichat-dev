@@ -994,58 +994,38 @@ def Compras_IA():
                     st.dataframe(df, use_container_width=True, height=400)
                     st.caption(f"⚠️ Dashboard vendible falló: {e}")
 
-    # =========================
-    # TIPS / EJEMPLOS (CAJA AMARILLA JUSTO ARRIBA DEL INPUT)
-    # =========================
-    tips_html = """
-    <style>
-    /* Contenedor pegado arriba del chat input */
-    .fc-tips-box {
-        position: fixed;
-        bottom: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% - 80px);
-        max-width: 900px;
-        z-index: 999;
-        background: rgba(255, 243, 205, 0.95);
-        border: 1px solid rgba(245, 158, 11, 0.30);
-        border-left: 4px solid rgba(245, 158, 11, 0.75);
-        border-radius: 12px;
-        padding: 16px 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        backdrop-filter: blur(10px);
-    }
-    
-    @media (max-width: 768px) {
-        .fc-tips-box {
-            bottom: 70px;
-            width: calc(100% - 40px);
-            padding: 12px 16px;
-        }
-    }
-    </style>
-    
-    <div class="fc-tips-box">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-            <span style="font-size: 22px;">💡</span>
-            <span style="font-size: 16px; font-weight: 700; color: #78350f;">Ejemplos de preguntas:</span>
+        # =========================
+        # TIPS / EJEMPLOS (CAJA AMARILLA ANTES DEL INPUT)
+        # =========================
+        tips_html = """
+        <div style="
+            background: rgba(255, 243, 205, 0.85);
+            border: 1px solid rgba(245, 158, 11, 0.30);
+            border-left: 4px solid rgba(245, 158, 11, 0.75);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 20px 0 16px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        ">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <span style="font-size: 22px;">💡</span>
+                <span style="font-size: 16px; font-weight: 700; color: #78350f;">Ejemplos de preguntas:</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 14px; color: #451a03;">
+                <div>• Compras roche 2024</div>
+                <div>• Facturas roche noviembre 2025</div>
+                <div>• Compras roche, tresul 2024 2025</div>
+                <div>• Detalle factura A00060907</div>
+                <div>• Total facturas por moneda</div>
+                <div>• Top proveedores 2025</div>
+                <div>• Compras 2025</div>
+                <div>• Compras vitek 2024</div>
+                <div>• Comparar roche 2024 2025</div>
+                <div>• Total compras octubre 2025</div>
+            </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 14px; color: #451a03;">
-            <div>• Compras roche 2024</div>
-            <div>• Facturas roche noviembre 2025</div>
-            <div>• Compras roche, tresul 2024 2025</div>
-            <div>• Detalle factura A00060907</div>
-            <div>• Total facturas por moneda</div>
-            <div>• Top proveedores 2025</div>
-            <div>• Compras 2025</div>
-            <div>• Compras vitek 2024</div>
-            <div>• Comparar roche 2024 2025</div>
-            <div>• Total compras octubre 2025</div>
-        </div>
-    </div>
-    """
-    st.markdown(tips_html, unsafe_allow_html=True)
+        """
+        st.markdown(tips_html, unsafe_allow_html=True)
 
     # Input
     pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
