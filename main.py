@@ -1,7 +1,10 @@
 import streamlit as st
 from PIL import Image
+import os
 
-ICON_PATH = r"C:\Users\gvelazquez\Downloads\logo.ico"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ICON_PATH = os.path.join(BASE_DIR, "assets", "logo.ico")
+
 icon = Image.open(ICON_PATH)
 
 st.set_page_config(
