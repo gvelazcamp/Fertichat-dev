@@ -76,7 +76,8 @@ def mostrar_inicio_mobile():
         cursor:pointer;
         transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
 
-        width:100%;
+        width:100% !important;   /* FORZAR ANCHO COMPLETO */
+        max-width: 100% !important;
         text-align:left;
 
         white-space: pre-line; /* respeta \n del texto */
@@ -88,6 +89,23 @@ def mostrar_inicio_mobile():
         display:block;
         position: relative;
         margin:0;
+    }
+    
+    /* Forzar que las columnas ocupen todo el ancho disponible */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) div[data-testid="column"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 !important;
+    }
+    
+    /* Forzar que el contenedor de botones sea full-width */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .stButton {
+        width: 100% !important;
+    }
+    
+    /* Reducir gap entre columnas en mobile */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) div[data-testid="stHorizontalBlock"] {
+        gap: 0.5rem !important;
     }
 
     /* Primera línea como título */
@@ -215,7 +233,7 @@ def mostrar_inicio_mobile():
     # =========================
     # Secciones con botones
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:0 auto;padding:0 0.75rem;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -242,7 +260,7 @@ def mostrar_inicio_mobile():
             st.rerun()
 
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:0 auto;padding:0 0.75rem;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
 
     col5, col6 = st.columns(2)
     with col5:
@@ -282,7 +300,7 @@ def mostrar_inicio_mobile():
 
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:16px auto 0 auto;">
+        <div style="max-width:1100px;margin:16px auto 0 auto;padding:0 0.75rem;">
             <div style="
                 background: rgba(255,255,255,0.70);
                 border: 1px solid rgba(15,23,42,0.10);
