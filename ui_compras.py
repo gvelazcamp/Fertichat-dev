@@ -544,7 +544,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd/openhtmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -957,33 +957,16 @@ def Compras_IA():
     st.markdown("### 🤖 Asistente de Compras y Facturas")
 
     # Persistencia de selecciones en Comparativas
-    if "tipo_comp" not in st.session_state:
-        st.session_state["tipo_comp"] = "Multi Meses (ej: noviembre 2024-2025)"
     if "prov_multi" not in st.session_state:
         st.session_state["prov_multi"] = []
     if "meses_multi" not in st.session_state:
         st.session_state["meses_multi"] = ["2024-11", "2025-11"]
     if "art_multi" not in st.session_state:
         st.session_state["art_multi"] = []
-    if "prov_meses" not in st.session_state:
-        st.session_state["prov_meses"] = []
-    if "meses_prov" not in st.session_state:
-        st.session_state["meses_prov"] = ["2024-11", "2025-11"]
-    if "art_meses" not in st.session_state:
-        st.session_state["art_meses"] = []
-    if "prov_anios" not in st.session_state:
-        st.session_state["prov_anios"] = []
-    if "anios_prov" not in st.session_state:
-        st.session_state["anios_prov"] = [2023, 2024, 2025, 2026]
-    if "art_anios" not in st.session_state:
-        st.session_state["art_anios"] = []
 
     # Fetch opciones dinámicas
     prov_options = get_unique_proveedores()[:100]  # Limitar para performance
     art_options = get_unique_articulos()[:100]
-
-    # Opciones de meses con nombres amigables
-    month_display_options = list(MONTH_MAPPING.values())
 
     # TABS PRINCIPALES: Chat IA + Comparativas
     tab_chat, tab_comparativas = st.tabs(["💬Compras", "📊 Comparativas"])
@@ -1182,75 +1165,25 @@ def Compras_IA():
         st.markdown("### 📊 Menú Comparativas Fáciles")
         st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
-        # Tipo de comparación
-        tipo_comp = st.selectbox(
-            "Tipo de comparación",
-            options=[
-                "Multi Meses (ej: noviembre 2024-2025)",
-                "Meses (proveedores)",
-                "Años (proveedores)"
-            ],
-            key="tipo_comp"
-        )
-
         # Proveedores
-        if "Multi Meses" in tipo_comp:
-            proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_multi", []) if x in prov_options], key="prov_multi")
-            meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
-            anios_sel = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
-            # Generar combinaciones
-            meses = []
-            for a in anios_sel:
-                for m in meses_sel:
-                    code = f"{a}-{month_num[m]}"
-                    meses.append(code)
-            st.session_state["meses_multi"] = meses
-            articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
-            anios = []
-        elif "Meses" in tipo_comp:
-            proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_meses", []) if x in prov_options], key="prov_meses")
-            meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel_prov")
-            anios_sel = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel_prov")
-            # Generar combinaciones
-            meses = []
-            for a in anios_sel:
-                for m in meses_sel:
-                    code = f"{a}-{month_num[m]}"
-                    meses.append(code)
-            st.session_state["meses_prov"] = meses
-            articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_meses", []) if x in art_options], key="art_meses")
-            anios = []
-        else:  # Años
-            proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_anios", []) if x in prov_options], key="prov_anios")
-            anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=st.session_state.get("anios_prov", [2023, 2024, 2025, 2026]), key="anios_prov")
-            articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_anios", []) if x in art_options], key="art_anios")
-            meses = []
+        proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_multi", []) if x in prov_options], key="prov_multi")
+        meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
+        anios_sel = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
+        # Generar combinaciones
+        meses = []
+        for a in anios_sel:
+            for m in meses_sel:
+                code = f"{a}-{month_num[m]}"
+                meses.append(code)
+        st.session_state["meses_multi"] = meses
+        articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
         # Botón comparar
         if st.button("🔍 Comparar", key="btn_comparar"):
             try:
-                if "Multi Meses" in tipo_comp:
-                    df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(proveedores=proveedores, meses=meses, articulos=articulos)
-                elif "Meses" in tipo_comp:
-                    # Para 2 proveedores, 2 meses
-                    if len(proveedores) == 2 and len(meses) == 2:
-                        df = sqlq_comparativas.get_comparacion_proveedores_meses(
-                            proveedores=proveedores, mes1=meses[0], mes2=meses[1], label1=meses[0], label2=meses[1]
-                        )
-                    else:
-                        st.error("Para 'Meses (proveedores)' selecciona exactamente 2 proveedores y 2 meses.")
-                        df = None
-                else:  # Años
-                    if len(proveedores) == 2 and len(anios) == 2:
-                        df = sqlq_comparativas.get_comparacion_proveedores_anios(
-                            proveedores=proveedores, anios=anios, label1=str(anios[0]), label2=str(anios[1])
-                        )
-                    else:
-                        st.error("Para 'Años (proveedores)' selecciona exactamente 2 proveedores y 2 años.")
-                        df = None
-
+                df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(proveedores=proveedores, meses=meses, articulos=articulos)
                 if df is not None and not df.empty:
-                    render_dashboard_compras_vendible(df, titulo=f"Comparación: {tipo_comp}")
+                    render_dashboard_compras_vendible(df, titulo="Comparación")
                 elif df is not None:
                     st.warning("⚠️ No se encontraron resultados para esa comparación.")
             except Exception as e:
