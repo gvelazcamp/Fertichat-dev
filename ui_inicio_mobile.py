@@ -217,7 +217,7 @@ def mostrar_inicio_mobile():
     # =========================
     st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
     with col1:
         st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
         if st.button("Compras IA\nConsultas inteligentes", key="compras"):
@@ -228,6 +228,8 @@ def mostrar_inicio_mobile():
         if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador"):
             st.query_params["go"] = "buscador"
             st.rerun()
+    
+    col3, col4 = st.columns(2)
     with col3:
         st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
         if st.button("Stock IA\nConsultar inventario", key="stock"):
@@ -242,7 +244,7 @@ def mostrar_inicio_mobile():
     st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
     st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
 
-    col5, col6, col7, col8 = st.columns(4)
+    col5, col6 = st.columns(2)
     with col5:
         st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
         if st.button("Pedidos internos\nGestionar pedidos", key="pedidos"):
@@ -253,6 +255,8 @@ def mostrar_inicio_mobile():
         if st.button("Baja de stock\nRegistrar bajas", key="baja"):
             st.query_params["go"] = "baja"
             st.rerun()
+    
+    col7, col8 = st.columns(2)
     with col7:
         st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
         if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
