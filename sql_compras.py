@@ -22,7 +22,7 @@ from sql_core import (
 
 def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
     """Todas las compras de un año."""
-    total_expr = _sql_total_num_expr_general()
+    # Usar expresión simple para evitar errores de parseo
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -31,7 +31,7 @@ def get_compras_anio(anio: int, limite: int = 5000) -> pd.DataFrame:
             "Fecha",
             "Cantidad",
             "Moneda",
-            {total_expr} AS Total
+            TRIM("Monto Neto") AS Total
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" = %s
@@ -108,10 +108,8 @@ def get_compras_multiples(
     if not proveedores:
         return pd.DataFrame()
 
-    total_expr = _sql_total_num_expr_general()
-
     where_parts = [
-        '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'
+        # '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'  # TEMPORAL: Quitado para probar
     ]
     params: List[Any] = []
 
@@ -148,7 +146,7 @@ def get_compras_multiples(
             "Fecha",
             "Cantidad",
             "Moneda",
-            {total_expr} AS Total
+            TRIM("Monto Neto") AS Total
         FROM chatbot_raw
         WHERE {" AND ".join(where_parts)}
         ORDER BY "Fecha" DESC NULLS LAST
@@ -168,7 +166,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     # Construir la consulta con filtro opcional de año
     anio_filter = f'AND "Año" = {anio}' if anio else ""
     
-    total_expr = _sql_total_num_expr_general()
+    # Usar Total simple para evitar errores de parseo
     sql = f"""
         SELECT 
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -177,7 +175,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
             "Fecha",
             "Cantidad",
             "Moneda",
-            {total_expr} AS Total
+            TRIM("Monto Neto") AS Total
         FROM chatbot_raw 
         WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
           AND TRIM("Mes") = %s
@@ -192,7 +190,6 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
     if df is None or df.empty:
         mes_alt = get_ultimo_mes_disponible_hasta(mes_key)
         if mes_alt and mes_alt != mes_key:
-            total_expr = _sql_total_num_expr_general()
             sql_alt = f"""
                 SELECT 
                     TRIM("Cliente / Proveedor") AS Proveedor,
@@ -201,7 +198,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
                     "Fecha",
                     "Cantidad",
                     "Moneda",
-                    {total_expr} AS Total
+                    TRIM("Monto Neto") AS Total
                 FROM chatbot_raw 
                 WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
                   AND TRIM("Mes") = %s
@@ -231,8 +228,6 @@ def get_detalle_facturas_proveedor_anio(
     anios = sorted(anios)
     anios_sql = ", ".join(map(str, anios))  # "2024, 2025"
     
-    total_expr = _sql_total_num_expr_general()  # ✅ USE SAME AS get_compras_multiples
-    
     # Usar Total simple
     moneda_sql = ""
     if moneda:
@@ -257,8 +252,7 @@ def get_detalle_facturas_proveedor_anio(
             "Fecha",
             "Año",
             "Moneda",
-            TRIM("Monto Neto") AS "Monto Neto",  # ✅ ADD Monto Neto column
-            {total_expr} AS Total  # ✅ SAME AS get_compras_multiples
+            TRIM("Monto Neto") AS Total
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" IN ({anios_sql})
@@ -268,6 +262,32 @@ def get_detalle_facturas_proveedor_anio(
         LIMIT {limite}
     """
     return ejecutar_consulta(sql, tuple(prov_params))
+
+
+def get_total_compras_proveedor_anio(
+    proveedor_like: str, 
+    anio: int
+) -> dict:
+    """Resumen total de compras de un proveedor en un solo año."""
+    proveedor_like = (proveedor_like or "").split("(")[0].strip().lower()
+    sql = f"""
+        SELECT
+            COUNT(*) AS registros,
+            COALESCE(SUM(CAST(NULLIF(TRIM("Monto Neto"), '') AS NUMERIC)), 0) AS total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+          AND "Año" = %s
+    """
+    df = ejecutar_consulta(sql, (f"%{proveedor_like}%", anio))
+    if df is not None and not df.empty:
+        return {
+            "registros": int(df["registros"].iloc[0] or 0),
+            "total": float(df["total"].iloc[0] or 0)
+        }
+    return {"registros": 0, "total": 0.0}
+
+
 # =====================================================================
 # DETALLE COMPRAS: ARTÍCULO + MES
 # =====================================================================
@@ -651,9 +671,7 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
                 TRIM("Nro. Comprobante") AS Nro_Factura,
                 "Fecha",
                 "Cantidad",
-                "Moneda",
-                TRIM("Monto Neto") AS "Monto Neto",  # ✅ ADD Monto Neto
-                {_sql_total_num_expr_general()} AS Total  # ✅ ADD Total
+                "Moneda"
             FROM chatbot_raw
             WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", \'[áéíóúÁÉÍÓÚñÑ]\', \'[aeiouAEIOUñN]\', \'g\'))) LIKE %s
               AND "Año" = %s
@@ -667,7 +685,7 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
         df = ejecutar_consulta(sql, params)
         return df if df is not None else pd.DataFrame()
 
-    # Para otros casos, usar el query complejo original
+    # Para otros casos, usar el query complejo original (sin Total para debug)
     where_parts = [
         '("Tipo Comprobante" = \'Compra Contado\' OR "Tipo Comprobante" LIKE \'Compra%\')'
     ]
@@ -725,9 +743,7 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
             TRIM("Nro. Comprobante") AS Nro_Factura,
             "Fecha",
             "Cantidad",
-            "Moneda",
-            TRIM("Monto Neto") AS "Monto Neto",  # ✅ ADD Monto Neto
-            {_sql_total_num_expr_general()} AS Total  # ✅ ADD Total
+            "Moneda"
         FROM chatbot_raw
         WHERE {" AND ".join(where_parts)}
         ORDER BY "Fecha" DESC NULLS LAST
@@ -735,6 +751,7 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
     """
     df = ejecutar_consulta(sql, tuple(params))
     return df if df is not None else pd.DataFrame()
+
 
 # =========================
 # =========================
