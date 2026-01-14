@@ -196,9 +196,9 @@ def mostrar_inicio_desktop():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones
+    # Secciones con botones - MUY ARRIBA
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:-20px auto 0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -222,8 +222,8 @@ def mostrar_inicio_desktop():
             st.query_params["go"] = "dashboard"
             st.rerun()
 
-    st.markdown("<div style='height:22px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:0 auto;'><div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
 
     col5, col6, col7, col8 = st.columns(4)
     with col5:
@@ -261,7 +261,7 @@ def mostrar_inicio_desktop():
 
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:16px auto 0 auto;">
+        <div style="max-width:1100px;margin:10px auto 0 auto;">
             <div style="
                 background: rgba(255,255,255,0.70);
                 border: 1px solid rgba(15,23,42,0.10);
