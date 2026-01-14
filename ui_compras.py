@@ -561,7 +561,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -651,7 +651,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             _render_tabla_simple(df_uyu, "UYU")
 
     with tab_usd:
-        df_usd = df_f[df_f["__moneda_view__"] =="USD"]
+        df_usd = df_f[df_f["__moneda_view__"] == "USD"]
         if col_proveedor:
             _render_resumen_top_proveedores(df_usd, "USD")
         else:
@@ -1238,13 +1238,37 @@ def Compras_IA():
 
             # Botón comparar
             if st.button("🔍 Comparar", key="btn_comparar"):
-                try:
-                    df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(proveedores=proveedores, meses=meses, articulos=articulos)
-                    if df is not None and not df.empty:
-                        render_dashboard_compras_vendible(df, titulo="Comparación")
-                    elif df is not None:
-                        st.warning("⚠️ No se encontraron resultados para esa comparación.")
-                except Exception as e:
-                    st.error(f"❌ Error en comparación: {e}")
+                with st.spinner("Comparando..."):
+                    try:
+                        # 🐛 DEBUG: Mostrar qué se está pasando
+                        st.info(f"Comparando meses: {meses} | Proveedores: {proveedores if proveedores else 'TODOS'} | Artículos: {articulos if articulos else 'TODOS'}")
+                        
+                        df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(proveedores=proveedores, meses=meses, articulos=articulos)
+                        
+                        # 🐛 DEBUG: Ver qué devuelve
+                        st.write(f"DataFrame recibido: {len(df) if df is not None else 'None'} filas")
+                        
+                        if df is not None and not df.empty:
+                            st.success(f"✅ Comparación lista - {len(df)} filas")
+                            
+                            # 🐛 DEBUG: Ver los datos crudos
+                            with st.expander("🔍 Ver primeras filas (debug)"):
+                                st.dataframe(df.head(20))
+                            
+                            st.markdown("---")
+                            render_dashboard_compras_vendible(
+                                df,
+                                titulo=f"Comparación de proveedores en {len(meses)} meses",
+                                key_prefix="tab_comp_meses_"
+                            )
+                        else:
+                            st.warning("⚠️ No se encontraron resultados para esa comparación.")
+                            st.error("Causas posibles:")
+                            st.write("- No hay datos para esos meses en la BD")
+                            st.write("- Los proveedores no tienen compras en esos meses")
+                            
+                    except Exception as e:
+                        st.error(f"❌ ERROR AL COMPARAR:")
+                        st.exception(e)
 
 # ... existing code ...
