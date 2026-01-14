@@ -372,7 +372,8 @@ def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] 
 
 def get_comparacion_proveedores_meses_multi(
     proveedores: List[str],
-    meses: List[str]
+    meses: List[str],
+    articulos: List[str] = None
 ) -> pd.DataFrame:
     """
     Compara múltiples proveedores en múltiples meses.
@@ -411,9 +412,18 @@ def get_comparacion_proveedores_meses_multi(
 
     prov_where = " OR ".join(prov_clauses)
 
+    # WHERE articulos
+    art_where = ""
+    art_params = []
+    if articulos:
+        art_clauses = ['LOWER(TRIM("Articulo")) LIKE %s' for _ in articulos]
+        art_where = " AND (" + " OR ".join(art_clauses) + ")"
+        art_params = [f"%{a.strip().lower()}%" for a in articulos if a.strip()]
+
     # 3) IN meses (sus %s van AL FINAL)
     meses_placeholders = ", ".join(["%s"] * len(meses))
     params.extend(meses)
+    params.extend(art_params)
 
     sql = f"""
         SELECT
@@ -423,6 +433,7 @@ def get_comparacion_proveedores_meses_multi(
         FROM chatbot_raw
         WHERE ({prov_where})
           AND TRIM("Mes") IN ({meses_placeholders})
+          {art_where}
         GROUP BY TRIM("Cliente / Proveedor"), TRIM("Moneda")
         ORDER BY Proveedor, Moneda
         LIMIT 300
