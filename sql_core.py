@@ -131,22 +131,22 @@ def _sql_total_num_expr_usd() -> str:
         REPLACE(
             REPLACE(
                 REPLACE(
+                REPLACE(
                     REPLACE(
                         REPLACE(
-                            REPLACE(
-                                REPLACE(TRIM(COALESCE("Monto Neto", '')), 'U$S', ''),
-                                'U$$', ''
-                            ),
-                            '$', ''
+                            REPLACE(TRIM(COALESCE("Monto Neto", '')), 'U$S', ''),
+                            'U$$', ''
                         ),
-                        '.', ''
+                        '$', ''
                     ),
-                    ',', '.'
+                    '.', ''
                 ),
-                '(', '-'
+                ',', '.'
             ),
-            ')', ''
-        )
+            '(', '-'
+        ),
+        ')', ''
+    )
     """
     return _sql_num_from_text(limpio)
 
@@ -433,3 +433,18 @@ def get_ultimo_mes_disponible_hasta(mes_key: str) -> Optional[str]:
     except Exception as e:
         print(f"❌ Error buscando último mes disponible: {e}")
         return None
+
+
+# =====================================================================
+# NUEVAS FUNCIONES PARA UI_COMPRAS
+# =====================================================================
+
+def get_unique_proveedores() -> List[str]:
+    sql = 'SELECT DISTINCT TRIM("Cliente / Proveedor") AS prov FROM chatbot_raw WHERE TRIM("Cliente / Proveedor") != \'\' ORDER BY prov'
+    df = ejecutar_consulta(sql)
+    return df['prov'].tolist() if df is not None and not df.empty else []
+
+def get_unique_articulos() -> List[str]:
+    sql = 'SELECT DISTINCT TRIM("Articulo") AS art FROM chatbot_raw WHERE TRIM("Articulo") != \'\' ORDER BY art'
+    df = ejecutar_consulta(sql)
+    return df['art'].tolist() if df is not None and not df.empty else []
