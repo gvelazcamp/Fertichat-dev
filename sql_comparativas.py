@@ -15,11 +15,12 @@ from sql_core import (
 # =====================================================================
 # EXPRESIÓN TOTAL NUMÉRICA GENERAL (ACTUALIZADA PARA "Monto Neto")
 # =====================================================================
+# ... existing code ...
+
 def _sql_total_num_expr_general() -> str:
     """
     Expresión SQL para calcular el total numérico desde "Monto Neto".
     Maneja formatos LATAM (coma como decimal), negativos en paréntesis, y limpia espacios/dólares.
-    Actualizado para remover espacios.
     """
     return '''
         CASE 
