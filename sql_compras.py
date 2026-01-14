@@ -74,12 +74,25 @@ def get_total_compras_anio(anio: int) -> dict:
 
 
 # =====================================================================
-# COMPRAS PROVEEDOR AÑO (NUEVA FUNCIÓN PARA SIMPLIFICAR CONSULTAS SIMPLES)
+# COMPRAS PROVEEDOR AÑO 
 # =====================================================================
-
 def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 5000) -> pd.DataFrame:
-    """Detalle de compras de un proveedor en un año específico."""
-    # Llama a la función existente para consistencia
+    """
+    Detalle de compras de un proveedor en un año específico.
+    
+    Wrapper simplificado de get_detalle_facturas_proveedor_anio para casos comunes.
+    
+    Args:
+        proveedor_like: Nombre o parte del nombre del proveedor (ej: "roche")
+        anio: Año a consultar (ej: 2025)
+        limite: Cantidad máxima de registros a retornar (default: 5000)
+    
+    Returns:
+        DataFrame con las compras del proveedor en ese año
+    
+    Example:
+        >>> df = get_compras_proveedor_anio("roche", 2025)
+    """
     return get_detalle_facturas_proveedor_anio(
         proveedores=[proveedor_like],
         anios=[anio],
