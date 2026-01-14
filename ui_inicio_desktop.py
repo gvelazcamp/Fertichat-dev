@@ -59,18 +59,18 @@ def mostrar_inicio_desktop():
         position: relative; /* el tile se posiciona dentro de la columna */
     }
 
-    /* Botón como tarjeta (MISMO TAMAÑO SIEMPRE) */
+    /* Botón como tarjeta (MUCHO MÁS GRANDE) */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button{
         border:1px solid rgba(15,23,42,0.10);
         background:rgba(255,255,255,0.82);
         border-radius:20px;
 
-        /* tamaño fijo para que todas queden iguales - MÁS ALTO */
-        height: 110px;
-        min-height: 110px;
+        /* tamaño fijo MUCHO MÁS ALTO */
+        height: 140px;
+        min-height: 140px;
 
-        /* espacio para el tile - AJUSTADO */
-        padding:14px 14px 14px 78px;
+        /* espacio para el tile */
+        padding:20px 20px 20px 90px;
 
         box-shadow:0 10px 24px rgba(2,6,23,0.06);
         cursor:pointer;
@@ -80,19 +80,19 @@ def mostrar_inicio_desktop():
         text-align:left;
 
         white-space: pre-line; /* respeta \n del texto */
-        font-size:13.5px;      /* "desc" */
+        font-size:14.5px;      /* desc más grande */
         font-weight:600;
         color:#334155;
-        line-height:1.22;
+        line-height:1.35;
 
         display:block;
         position: relative;
         margin:0;
     }
 
-    /* Primera línea como título */
+    /* Primera línea como título - MÁS GRANDE */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button::first-line{
-        font-size:16px;
+        font-size:18px;
         font-weight:900;
         color:#0f172a;
         letter-spacing:-0.01em;
@@ -114,22 +114,22 @@ def mostrar_inicio_desktop():
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) -> ajustado para nueva altura */
+    /* Tile (ícono) -> MÁS GRANDE y ajustado */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .fc-home-tile{
-        width:54px;
-        height:54px;
-        border-radius:16px;
+        width:60px;
+        height:60px;
+        border-radius:18px;
         display:flex;
         align-items:center;
         justify-content:center;
 
         border:1px solid rgba(15,23,42,0.08);
         background:rgba(255,255,255,0.86);
-        font-size:26px;
+        font-size:30px;
 
         position:absolute;
-        left: 12px;
-        top: calc(50% + 55px);          /* <-- AJUSTADO PARA NUEVA ALTURA */
+        left: 16px;
+        top: calc(50% + 70px);          /* <-- AJUSTADO PARA 140px */
         transform: translateY(-50%);
         z-index: 5;
 
