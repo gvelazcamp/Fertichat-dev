@@ -281,6 +281,28 @@ def _paginate(df_in: pd.DataFrame, page: int, page_size: int) -> pd.DataFrame:
     return df_in.iloc[start:end]
 
 
+# Agregado: Mapeo de meses para display amigable
+MONTH_MAPPING = {
+    "2024-11": "Noviembre 2024",
+    "2025-11": "Noviembre 2025",
+    "2024-12": "Diciembre 2024",
+    "2025-12": "Diciembre 2025",
+    # Agrega más si es necesario
+}
+
+def code_to_display(code: str) -> str:
+    return MONTH_MAPPING.get(code, code)
+
+def display_to_code(display: str) -> str:
+    reverse_mapping = {v: k for k, v in MONTH_MAPPING.items()}
+    return reverse_mapping.get(display, display)
+
+def rename_month_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df_renamed = df.copy()
+    df_renamed.rename(columns=MONTH_MAPPING, inplace=True)
+    return df_renamed
+
+
 def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado", key_prefix: str = ""):
     if df is None or df.empty:
         st.warning("⚠️ No hay resultados para mostrar.")
@@ -297,7 +319,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         unsafe_allow_html=True
     )
 
-    df_view = df.copy()
+    df_view = rename_month_columns(df.copy())  # Renombra columnas de meses para display
 
     col_proveedor = _find_col(df_view, ["proveedor", "cliente / proveedor"])
     col_articulo = _find_col(df_view, ["articulo", "artículo"])
@@ -522,7 +544,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd.openhtmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openhtmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -952,13 +974,16 @@ def Compras_IA():
     if "prov_anios" not in st.session_state:
         st.session_state["prov_anios"] = []
     if "anios_prov" not in st.session_state:
-        st.session_state["anios_prov"] = [2024, 2025]
+        st.session_state["anios_prov"] = [2023, 2024, 2025, 2026]  # Actualizado a 2023-2026
     if "art_anios" not in st.session_state:
         st.session_state["art_anios"] = []
 
     # Fetch opciones dinámicas
     prov_options = get_unique_proveedores()[:100]  # Limitar para performance
     art_options = get_unique_articulos()[:100]
+
+    # Opciones de meses con nombres amigables
+    month_display_options = list(MONTH_MAPPING.values())
 
     # TABS PRINCIPALES: Chat IA + Comparativas
     tab_chat, tab_comparativas = st.tabs(["💬Compras", "📊 Comparativas"])
@@ -1038,7 +1063,7 @@ def Compras_IA():
             margin: 16px 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         ">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <div style="display: flex: align-items: center; gap: 10px; margin-bottom: 12px;">
                 <span style="font-size: 22px;">💡</span>
                 <span style="font-size: 16px; font-weight: 700; color: #78350f;">Ejemplos de preguntas:</span>
             </div>
@@ -1171,17 +1196,21 @@ def Compras_IA():
         # Proveedores
         if "Multi Meses" in tipo_comp:
             proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_multi", []) if x in prov_options], key="prov_multi")
-            meses = st.multiselect("Meses", options=["2024-11", "2025-11", "2024-12", "2025-12"], default=st.session_state.get("meses_multi", ["2024-11", "2025-11"]), key="meses_multi")
+            meses_display = st.multiselect("Meses", options=month_display_options, default=[code_to_display(x) for x in st.session_state.get("meses_multi", ["2024-11", "2025-11"])], key="meses_multi_display")
+            meses = [display_to_code(m) for m in meses_display]  # Convierte a códigos para SQL
+            st.session_state["meses_multi"] = meses  # Guarda códigos
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
             anios = []
         elif "Meses" in tipo_comp:
             proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_meses", []) if x in prov_options], key="prov_meses")
-            meses = st.multiselect("Meses", options=["2024-11", "2025-11"], default=st.session_state.get("meses_prov", ["2024-11", "2025-11"]), key="meses_prov")
+            meses_display = st.multiselect("Meses", options=["Noviembre 2024", "Noviembre 2025"], default=[code_to_display(x) for x in st.session_state.get("meses_prov", ["2024-11", "2025-11"])], key="meses_prov_display")
+            meses = [display_to_code(m) for m in meses_display]
+            st.session_state["meses_prov"] = meses
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_meses", []) if x in art_options], key="art_meses")
             anios = []
         else:  # Años
             proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_anios", []) if x in prov_options], key="prov_anios")
-            anios = st.multiselect("Años", options=[2024, 2025], default=st.session_state.get("anios_prov", [2024, 2025]), key="anios_prov")
+            anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=st.session_state.get("anios_prov", [2023, 2024, 2025, 2026]), key="anios_prov")  # Actualizado a 2023-2026
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_anios", []) if x in art_options], key="art_anios")
             meses = []
 
