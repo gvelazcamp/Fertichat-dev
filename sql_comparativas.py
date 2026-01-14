@@ -499,7 +499,7 @@ def get_comparacion_familia_anios_monedas(anios: List[int], familias: List[str] 
 
     sql = f"""
         SELECT
-            TRIM("Cliente / Proveedor") AS Familia,
+            TRIM(COALESCE("Familia", 'SIN FAMILIA')) AS Familia,
             {cols_sql}
         FROM chatbot_raw
         WHERE "Año"::int IN ({anios_sql})
@@ -521,9 +521,10 @@ def get_comparacion_proveedores_meses_multi(
 ) -> pd.DataFrame:
     """
     Compara múltiples proveedores en múltiples meses.
+    Si proveedores está vacío, incluye TODOS los proveedores.
     """
 
-    if not proveedores or not meses:
+    if not meses:
         return pd.DataFrame()
 
     total_expr = _sql_total_num_expr_general()
@@ -538,18 +539,18 @@ def get_comparacion_proveedores_meses_multi(
 
     cols_sql = ",\n            ".join(cols)
 
-    prov_clauses = []
-    for p in proveedores:
-        p_norm = p.strip().lower()
-        if not p_norm:
-            continue
-        prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
-        params.append(f"%{p_norm}%")
-
-    if not prov_clauses:
-        return pd.DataFrame()
-
-    prov_where = " OR ".join(prov_clauses)
+    prov_where = ""
+    if proveedores:
+        prov_clauses = []
+        for p in proveedores:
+            p_norm = p.strip().lower()
+            if not p_norm:
+                continue
+            prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
+            params.append(f"%{p_norm}%")
+        
+        if prov_clauses:
+            prov_where = "AND (" + " OR ".join(prov_clauses) + ")"
 
     art_where = ""
     art_params = []
@@ -568,8 +569,8 @@ def get_comparacion_proveedores_meses_multi(
             TRIM("Moneda") AS Moneda,
             {cols_sql}
         FROM chatbot_raw
-        WHERE ({prov_where})
-          AND TRIM("Mes") IN ({meses_placeholders})
+        WHERE TRIM("Mes") IN ({meses_placeholders})
+          {prov_where}
           {art_where}
         GROUP BY TRIM("Cliente / Proveedor"), TRIM("Moneda")
         ORDER BY Proveedor, Moneda
@@ -588,11 +589,12 @@ def get_comparacion_proveedores_anios_multi(
 ) -> pd.DataFrame:
     """
     Compara múltiples proveedores en múltiples años, separado por moneda.
+    Si proveedores está vacío, incluye TODOS los proveedores.
     """
     print(f"🐛 DEBUG SQL_COMPARATIVAS: Ejecutando comparación multi-proveedores-años con moneda")
     print(f"🐛 DEBUG SQL_COMPARATIVAS: Proveedores={proveedores}, Años={anios}")
 
-    if not proveedores or not anios:
+    if not anios:
         return pd.DataFrame()
 
     anios_ok: List[int] = []
@@ -625,19 +627,19 @@ def get_comparacion_proveedores_anios_multi(
 
     anios_sql = ", ".join(str(y) for y in anios_ok)
 
-    prov_clauses = []
+    prov_where = ""
     params: List = []
-    for p in proveedores:
-        p_norm = p.strip().lower()
-        if not p_norm:
-            continue
-        prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
-        params.append(f"%{p_norm}%")
-
-    if not prov_clauses:
-        return pd.DataFrame()
-
-    prov_where = " OR ".join(prov_clauses)
+    if proveedores:
+        prov_clauses = []
+        for p in proveedores:
+            p_norm = p.strip().lower()
+            if not p_norm:
+                continue
+            prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
+            params.append(f"%{p_norm}%")
+        
+        if prov_clauses:
+            prov_where = "AND (" + " OR ".join(prov_clauses) + ")"
 
     sql = f"""
         SELECT
@@ -646,8 +648,8 @@ def get_comparacion_proveedores_anios_multi(
             {cols_sql}
             {diff_sql}
         FROM chatbot_raw
-        WHERE ({prov_where})
-          AND "Año"::int IN ({anios_sql})
+        WHERE "Año"::int IN ({anios_sql})
+          {prov_where}
         GROUP BY TRIM("Cliente / Proveedor"), TRIM("Moneda")
         ORDER BY Proveedor, Moneda
         LIMIT 300
