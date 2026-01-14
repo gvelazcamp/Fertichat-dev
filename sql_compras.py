@@ -134,7 +134,7 @@ def get_detalle_facturas_proveedor_anio(
 
 
 # =====================================================================
-# COMPRAS PROVEEDOR AÑO (WRAPPER SIMPLIFICADO)
+# COMPRAS PROVEEDOR AÑO (FUNCIONA PERFECTAMENTE NO MODIFICAR)
 # =====================================================================
 def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 5000) -> pd.DataFrame:
     """
@@ -161,7 +161,7 @@ def get_compras_proveedor_anio(proveedor_like: str, anio: int, limite: int = 500
     )
 
 # =====================================================================
-# COMPRAS MÚLTIPLES: PROVEEDORES, MESES Y AÑOS (NUEVA FUNCIÓN)
+# COMPRAS MÚLTIPLES: PROVEEDORES, MESES Y AÑOS ((FUNCIONA PERFECTAMENTE NO MODIFICAR))
 # =====================================================================
 
 def get_compras_multiples(
@@ -634,7 +634,7 @@ def get_facturas_de_articulo(patron_articulo: str, solo_ultima: bool = False) ->
     return ejecutar_consulta(sql, (f"%{patron_articulo.lower()}%",))
 
 # =========================
-# TOTAL FACTURAS POR PROVEEDOR
+# TOTAL FACTURAS POR PROVEEDOR 
 # =========================
 def get_total_facturas_proveedor(
     proveedores: List[str],
