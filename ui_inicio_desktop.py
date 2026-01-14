@@ -250,9 +250,9 @@ def mostrar_inicio_desktop():
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones - CON MARGEN POSITIVO
+    # Secciones con botones - MUCHO MÁS ABAJO
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:40px auto 0 auto;'>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1100px;margin:140px auto 0 auto;'>", unsafe_allow_html=True)
     st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
