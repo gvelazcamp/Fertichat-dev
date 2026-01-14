@@ -279,6 +279,28 @@ def _paginate(df_in: pd.DataFrame, page: int, page_size: int) -> pd.DataFrame:
     return df_in.iloc[start:end]
 
 
+# Agregado: Mapeo de meses para display amigable
+month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+month_num = {name: f"{i+1:02d}" for i, name in enumerate(month_names)}
+
+MONTH_MAPPING = {}
+for year in [2023, 2024, 2025, 2026]:
+    for month, num in month_num.items():
+        MONTH_MAPPING[f"{year}-{num}"] = f"{month} {year}"
+
+def code_to_display(code: str) -> str:
+    return MONTH_MAPPING.get(code, code)
+
+def display_to_code(display: str) -> str:
+    reverse_mapping = {v: k for k, v in MONTH_MAPPING.items()}
+    return reverse_mapping.get(display, display)
+
+def rename_month_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df_renamed = df.copy()
+    df_renamed.rename(columns=MONTH_MAPPING, inplace=True)
+    return df_renamed
+
+
 def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado", key_prefix: str = ""):
     if df is None or df.empty:
         st.warning("⚠️ No hay resultados para mostrar.")
@@ -295,7 +317,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         unsafe_allow_html=True
     )
 
-    df_view = df.copy()
+    df_view = rename_month_columns(df.copy())  # Renombra columnas de meses para display
 
     col_proveedor = _find_col(df_view, ["proveedor", "cliente / proveedor"])
     col_articulo = _find_col(df_view, ["articulo", "artículo"])
@@ -315,10 +337,16 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     else:
         df_view["__fecha_view__"] = pd.NaT
 
+    # FIX: Calcular __total_num__ correctamente para comparaciones
     if col_total:
         df_view["__total_num__"] = df_view[col_total].apply(_safe_to_float)
     else:
-        df_view["__total_num__"] = 0.0
+        numeric_cols = [c for c in df_view.columns if c != col_proveedor and pd.api.types.is_numeric_dtype(df_view[c])]
+        if numeric_cols:
+            # Para comparaciones: suma las columnas numéricas (ej: "2024-11" + "2025-11")
+            df_view["__total_num__"] = df_view[numeric_cols].sum(axis=1)
+        else:
+            df_view["__total_num__"] = 0.0
 
     # Contexto
     filas_total = int(len(df_view))
@@ -346,6 +374,10 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     # KPIs (sobre TODO el resultado, antes de filtros)
     tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
     tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
+    # FIX: Si no hay columna moneda (como en comparaciones), mostrar total general en UYU
+    if not col_moneda:
+        tot_uyu = float(df_view["__total_num__"].sum())
+        tot_usd = 0.0
 
     k1, k2, k3, k4 = st.columns(4)
     with k1:
@@ -353,7 +385,11 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     with k2:
         st.metric("Total USD", _fmt_compact_money(tot_usd, "USD"), help=f"Valor exacto: U$S {tot_usd:,.2f}".replace(",", "."))
     with k3:
-        st.metric("Facturas", f"{facturas}")
+        # FIX: Si no hay columna nro_factura (como en comparaciones), mostrar "Registros" en lugar de "Facturas"
+        if col_nro:
+            st.metric("Facturas", f"{facturas}")
+        else:
+            st.metric("Registros", f"{filas_total}")
     with k4:
         st.metric("Proveedores", f"{proveedores}")
 
@@ -506,7 +542,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -848,26 +884,16 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         _dbg_set_result(df)
         return df
 
-    # ===== COMPARATIVAS MULTI (NUEVO - TODOS LOS PROVEEDORES) =====
+    # AGREGADO: Comparación multi proveedores multi meses
     elif tipo == "comparar_proveedores_meses_multi":
-        proveedores = parametros.get("proveedores", [])
-        meses = parametros.get("meses", [])
-        
-        # Si proveedores está vacío, significa TODOS
-        if not proveedores:
-            proveedores = None
-        
-        print(f"🐛 DEBUG ejecutar_consulta: comparar_proveedores_meses_multi")
-        print(f"   Proveedores: {proveedores or 'TODOS'}")
-        print(f"   Meses: {meses}")
-        
-        df = sqlq_comparativas.comparar_compras(
-            meses=meses,
-            proveedores=proveedores
+        df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(
+            proveedores=parametros.get("proveedores", []),
+            meses=parametros.get("meses", [])
         )
         _dbg_set_result(df)
         return df
-    
+        
+    # ===== COMPARATIVAS MULTI (NUEVO - TODOS LOS PROVEEDORES) =====
     elif tipo == "comparar_proveedores_anios_multi":
         proveedores = parametros.get("proveedores", [])
         anios = parametros.get("anios", [])
@@ -880,9 +906,9 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         print(f"   Proveedores: {proveedores or 'TODOS'}")
         print(f"   Años: {anios}")
         
-        df = sqlq_comparativas.comparar_compras(
-            anios=anios,
-            proveedores=proveedores
+        df = sqlq_comparativas.get_comparacion_proveedores_anios_multi(
+            proveedores=proveedores,
+            anios=anios
         )
         _dbg_set_result(df)
         return df
