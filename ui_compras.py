@@ -513,13 +513,14 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             st.caption("Descarga la vista filtrada (sin columnas internas).")
 
     # ============================================================
-    # TABS (SIN GRAFICO/TABLA EN VISTA GENERAL)
+    # TABS
     # ============================================================
     tab_all, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
         ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
     )
 
     def _render_resumen_top_proveedores(df_tab: pd.DataFrame, etiqueta: str):
+        """Solo se usa cuando HAY columna de proveedor"""
         if df_tab is None or df_tab.empty:
             st.info(f"Sin resultados en {etiqueta}.")
             return
@@ -557,14 +558,49 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
         st.caption("Detalle completo solo en la pestaña **Tabla**.")
 
+    def _render_tabla_simple(df_tab: pd.DataFrame, etiqueta: str):
+        """Muestra tabla simple sin agrupar (para casos sin proveedor)"""
+        if df_tab is None or df_tab.empty:
+            st.info(f"Sin resultados en {etiqueta}.")
+            return
+
+        # Preparar columnas para mostrar
+        pref = []
+        for c in [col_moneda, col_total, _find_col(df_tab, ["anio", "año"]), _find_col(df_tab, ["total_facturas"])]:
+            if c and c in df_tab.columns:
+                pref.append(c)
+        resto = [c for c in df_tab.columns if c not in pref and not str(c).startswith("__")]
+        show_cols = pref + resto
+
+        df_show = df_tab[show_cols].copy()
+        
+        # Formato LATAM para columna de total
+        if col_total and col_total in df_show.columns:
+            df_show[col_total] = df_show[col_total].apply(
+                lambda x: f"{_safe_to_float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+
+        st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
+
     with tab_all:
-        _render_resumen_top_proveedores(df_f, "todas las monedas")
+        if col_proveedor:
+            _render_resumen_top_proveedores(df_f, "todas las monedas")
+        else:
+            _render_tabla_simple(df_f, "todas las monedas")
 
     with tab_uyu:
-        _render_resumen_top_proveedores(df_f[df_f["__moneda_view__"] == "UYU"], "UYU")
+        df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
+        if col_proveedor:
+            _render_resumen_top_proveedores(df_uyu, "UYU")
+        else:
+            _render_tabla_simple(df_uyu, "UYU")
 
     with tab_usd:
-        _render_resumen_top_proveedores(df_f[df_f["__moneda_view__"] == "USD"], "USD")
+        df_usd = df_f[df_f["__moneda_view__"] == "USD"]
+        if col_proveedor:
+            _render_resumen_top_proveedores(df_usd, "USD")
+        else:
+            _render_tabla_simple(df_usd, "USD")
 
     with tab_graf:
         if df_f is None or df_f.empty or not col_articulo:
