@@ -282,13 +282,13 @@ def _paginate(df_in: pd.DataFrame, page: int, page_size: int) -> pd.DataFrame:
 
 
 # Agregado: Mapeo de meses para display amigable
-MONTH_MAPPING = {
-    "2024-11": "Noviembre 2024",
-    "2025-11": "Noviembre 2025",
-    "2024-12": "Diciembre 2024",
-    "2025-12": "Diciembre 2025",
-    # Agrega más si es necesario
-}
+month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+month_num = {name: f"{i+1:02d}" for i, name in enumerate(month_names)}
+
+MONTH_MAPPING = {}
+for year in [2023, 2024, 2025, 2026]:
+    for month, num in month_num.items():
+        MONTH_MAPPING[f"{year}-{num}"] = f"{month} {year}"
 
 def code_to_display(code: str) -> str:
     return MONTH_MAPPING.get(code, code)
@@ -974,7 +974,7 @@ def Compras_IA():
     if "prov_anios" not in st.session_state:
         st.session_state["prov_anios"] = []
     if "anios_prov" not in st.session_state:
-        st.session_state["anios_prov"] = [2023, 2024, 2025, 2026]  # Actualizado a 2023-2026
+        st.session_state["anios_prov"] = [2023, 2024, 2025, 2026]
     if "art_anios" not in st.session_state:
         st.session_state["art_anios"] = []
 
@@ -1196,21 +1196,33 @@ def Compras_IA():
         # Proveedores
         if "Multi Meses" in tipo_comp:
             proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_multi", []) if x in prov_options], key="prov_multi")
-            meses_display = st.multiselect("Meses", options=month_display_options, default=[code_to_display(x) for x in st.session_state.get("meses_multi", ["2024-11", "2025-11"])], key="meses_multi_display")
-            meses = [display_to_code(m) for m in meses_display]  # Convierte a códigos para SQL
-            st.session_state["meses_multi"] = meses  # Guarda códigos
+            meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
+            anios_sel = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
+            # Generar combinaciones
+            meses = []
+            for a in anios_sel:
+                for m in meses_sel:
+                    code = f"{a}-{month_num[m]}"
+                    meses.append(code)
+            st.session_state["meses_multi"] = meses
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
             anios = []
         elif "Meses" in tipo_comp:
             proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_meses", []) if x in prov_options], key="prov_meses")
-            meses_display = st.multiselect("Meses", options=["Noviembre 2024", "Noviembre 2025"], default=[code_to_display(x) for x in st.session_state.get("meses_prov", ["2024-11", "2025-11"])], key="meses_prov_display")
-            meses = [display_to_code(m) for m in meses_display]
+            meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel_prov")
+            anios_sel = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel_prov")
+            # Generar combinaciones
+            meses = []
+            for a in anios_sel:
+                for m in meses_sel:
+                    code = f"{a}-{month_num[m]}"
+                    meses.append(code)
             st.session_state["meses_prov"] = meses
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_meses", []) if x in art_options], key="art_meses")
             anios = []
         else:  # Años
             proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_anios", []) if x in prov_options], key="prov_anios")
-            anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=st.session_state.get("anios_prov", [2023, 2024, 2025, 2026]), key="anios_prov")  # Actualizado a 2023-2026
+            anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=st.session_state.get("anios_prov", [2023, 2024, 2025, 2026]), key="anios_prov")
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_anios", []) if x in art_options], key="art_anios")
             meses = []
 
