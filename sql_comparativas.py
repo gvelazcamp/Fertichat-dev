@@ -17,12 +17,15 @@ from sql_core import (
 # COMPARACIONES POR MESES
 # =====================================================================
 
+# ... existing code ...
+
 def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
     """
-    Compatible con 2 firmas (para no romper nada):
+    Compatible con múltiples firmas (para no romper nada):
 
     A) Nueva (canónica):
        get_comparacion_proveedor_meses(proveedor, mes1, mes2, label1, label2)
+       - proveedor puede ser str (uno) o list (múltiples)
 
     B) Vieja (versión anterior):
        get_comparacion_proveedor_meses(mes1, mes2, label1, label2, proveedores=None)
@@ -38,16 +41,11 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
 
     # Caso kwargs (si alguien llama con nombres)
     if kwargs:
-        proveedor = kwargs.get("proveedor", None)
+        proveedor = kwargs.get("proveedor", None) or kwargs.get("proveedores", None)  # soporte para list
         mes1 = kwargs.get("mes1", None)
         mes2 = kwargs.get("mes2", None)
         label1 = kwargs.get("label1", None)
         label2 = kwargs.get("label2", None)
-
-        # compat vieja: proveedores=[...]
-        provs = kwargs.get("proveedores", None)
-        if (not proveedor) and isinstance(provs, (list, tuple)) and len(provs) > 0:
-            proveedor = provs[0]
 
     # Caso args posicionales
     if args and (mes1 is None and mes2 is None):
@@ -59,12 +57,12 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
             mes2 = args[1]
             label1 = args[2]
             label2 = args[3]
-            if len(args) >= 5 and isinstance(args[4], (list, tuple)) and len(args[4]) > 0:
-                proveedor = args[4][0]
+            if len(args) >= 5:
+                proveedor = args[4]  # puede ser list o str
         else:
             # Firma nueva: (proveedor, mes1, mes2, label1?, label2?)
             if len(args) >= 3:
-                proveedor = args[0]
+                proveedor = args[0]  # puede ser list o str
                 mes1 = args[1]
                 mes2 = args[2]
             if len(args) >= 4:
@@ -86,14 +84,21 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
     label2_sql = str(label2).replace('"', "").strip()
 
     total_expr = _sql_total_num_expr_general()
-    proveedor_norm = (proveedor or "").strip().lower()
 
-    # WHERE dinámico (con o sin proveedor)
+    # WHERE dinámico (con o sin proveedor/es)
     prov_where = ""
     prov_param = []
-    if proveedor_norm:
-        prov_where = 'AND LOWER(TRIM("Cliente / Proveedor")) LIKE %s'
-        prov_param = [f"%{proveedor_norm}%"]
+    if proveedor:
+        if isinstance(proveedor, (list, tuple)):
+            if len(proveedor) > 0:
+                prov_clauses = ['LOWER(TRIM("Cliente / Proveedor")) LIKE %s' for _ in proveedor]
+                prov_where = "AND (" + " OR ".join(prov_clauses) + ")"
+                prov_param = [f"%{p.strip().lower()}%" for p in proveedor if p.strip()]
+        else:
+            prov_norm = str(proveedor).strip().lower()
+            if prov_norm:
+                prov_where = 'AND LOWER(TRIM("Cliente / Proveedor")) LIKE %s'
+                prov_param = [f"%{prov_norm}%"]
 
     sql = f"""
         SELECT
