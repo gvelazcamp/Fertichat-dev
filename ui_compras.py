@@ -522,7 +522,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openhtmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -906,13 +906,13 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     # ===== TOTAL FACTURAS POR MONEDA AÑO =====
     elif tipo == "total_facturas_por_moneda_anio":
-        df = sqlq_compras.get_total_facturas_por_moneda_anio(parametros["anio"])
+        df = sqlq_facturas.get_total_facturas_por_moneda_anio(parametros["anio"])
         _dbg_set_result(df)
         return df
 
     # ===== TOTAL FACTURAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
     elif tipo == "total_facturas_por_moneda_generico":
-        df = sqlq_compras.get_total_facturas_por_moneda_todos_anios()
+        df = sqlq_facturas.get_total_facturas_por_moneda_todos_anios()
         _dbg_set_result(df)
         return df
 
@@ -938,19 +938,19 @@ def Compras_IA():
     if "tipo_comp" not in st.session_state:
         st.session_state["tipo_comp"] = "Multi Meses (ej: noviembre 2024-2025)"
     if "prov_multi" not in st.session_state:
-        st.session_state["prov_multi"] = ["roche", "tresul"]
+        st.session_state["prov_multi"] = []
     if "meses_multi" not in st.session_state:
         st.session_state["meses_multi"] = ["2024-11", "2025-11"]
     if "art_multi" not in st.session_state:
         st.session_state["art_multi"] = []
     if "prov_meses" not in st.session_state:
-        st.session_state["prov_meses"] = ["roche", "tresul"]
+        st.session_state["prov_meses"] = []
     if "meses_prov" not in st.session_state:
         st.session_state["meses_prov"] = ["2024-11", "2025-11"]
     if "art_meses" not in st.session_state:
         st.session_state["art_meses"] = []
     if "prov_anios" not in st.session_state:
-        st.session_state["prov_anios"] = ["roche", "tresul"]
+        st.session_state["prov_anios"] = []
     if "anios_prov" not in st.session_state:
         st.session_state["anios_prov"] = [2024, 2025]
     if "art_anios" not in st.session_state:
@@ -1170,19 +1170,19 @@ def Compras_IA():
 
         # Proveedores
         if "Multi Meses" in tipo_comp:
-            proveedores = st.multiselect("Proveedores", options=prov_options, default=st.session_state.get("prov_multi", ["roche", "tresul"]), key="prov_multi")
+            proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_multi", []) if x in prov_options], key="prov_multi")
             meses = st.multiselect("Meses", options=["2024-11", "2025-11", "2024-12", "2025-12"], default=st.session_state.get("meses_multi", ["2024-11", "2025-11"]), key="meses_multi")
-            articulos = st.multiselect("Artículos", options=art_options, default=st.session_state.get("art_multi", []), key="art_multi")
+            articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
             anios = []
         elif "Meses" in tipo_comp:
-            proveedores = st.multiselect("Proveedores", options=prov_options, default=st.session_state.get("prov_meses", ["roche", "tresul"]), key="prov_meses")
+            proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_meses", []) if x in prov_options], key="prov_meses")
             meses = st.multiselect("Meses", options=["2024-11", "2025-11"], default=st.session_state.get("meses_prov", ["2024-11", "2025-11"]), key="meses_prov")
-            articulos = st.multiselect("Artículos", options=art_options, default=st.session_state.get("art_meses", []), key="art_meses")
+            articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_meses", []) if x in art_options], key="art_meses")
             anios = []
         else:  # Años
-            proveedores = st.multiselect("Proveedores", options=prov_options, default=st.session_state.get("prov_anios", ["roche", "tresul"]), key="prov_anios")
+            proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_anios", []) if x in prov_options], key="prov_anios")
             anios = st.multiselect("Años", options=[2024, 2025], default=st.session_state.get("anios_prov", [2024, 2025]), key="anios_prov")
-            articulos = st.multiselect("Artículos", options=art_options, default=st.session_state.get("art_anios", []), key="art_anios")
+            articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_anios", []) if x in art_options], key="art_anios")
             meses = []
 
         # Botón comparar
