@@ -848,6 +848,15 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         _dbg_set_result(df)
         return df
 
+    # AGREGADO: Comparación multi proveedores multi meses
+    elif tipo == "comparar_proveedores_meses_multi":
+        df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(
+            proveedores=parametros.get("proveedores", []),
+            meses=parametros.get("meses", [])
+        )
+        _dbg_set_result(df)
+        return df
+        
     # ===== STOCK =====
     elif tipo == "stock_total":
         df = sqlq_compras.get_stock_total()  # Ajusta si es otro módulo
