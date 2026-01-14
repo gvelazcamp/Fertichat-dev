@@ -1,3 +1,6 @@
+#OBSERVACIÓN:
+TODO BLOQUE QUE DICE SQL FUNCIONA PERFECTO NO MODIFICAR SOLO AGREGAR ALGO SI SE SOLICITA YA QUE FUNCIONAN PERFECTOS
+
 # =========================
 # SQL COMPRAS - CONSULTAS TRANSACCIONALES
 # =========================
@@ -822,8 +825,7 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
 
 
 # =========================
-# =========================
-# TOTAL FACTURAS POR MONEDA AÑO - CORREGIDA
+# TOTAL FACTURAS POR MONEDA AÑO (FUNCIONA COORRECTAMENTE NO TOCAR SQL)
 # =========================
 def get_total_facturas_por_moneda_anio(anio: int) -> pd.DataFrame:
     """Total de facturas por moneda en un año específico."""
@@ -842,7 +844,7 @@ def get_total_facturas_por_moneda_anio(anio: int) -> pd.DataFrame:
     return ejecutar_consulta(sql, (anio,))
 
 # =========================
-# TOTAL FACTURAS POR MONEDA - GENÉRICO (TODOS LOS AÑOS, AGRUPADO POR AÑO)
+# TOTAL FACTURAS POR MONEDA - GENÉRICO (FUNCIONA COORRECTAMENTE NO TOCAR SQL)
 # =========================
 def get_total_facturas_por_moneda_todos_anios() -> pd.DataFrame:
     """Total de facturas por moneda y año, mostrando todos los años disponibles."""
@@ -898,7 +900,7 @@ def get_total_compras_por_moneda_anio(anio: int) -> pd.DataFrame:
 
 
 # =========================
-# FUNCIONES PARA DASHBOARD
+# FUNCIONES PARA DASHBOARD (FUNCIONA COORRECTAMENTE NO TOCAR SQL)
 # =========================
 
 def get_dashboard_totales(anio: int) -> dict:
