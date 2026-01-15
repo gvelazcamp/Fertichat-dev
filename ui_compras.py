@@ -28,7 +28,7 @@ def get_unique_proveedores():
         # ⚠️ SIN LIMIT - trae TODOS
         df = ejecutar_consulta(sql, ())
         if df is None or df.empty:
-            return [],
+            return []
         provs = df['prov'].tolist()
         print(f"🐛 DEBUG: Cargados {len(provs)} proveedores únicos")  # Debug
         return provs
@@ -338,72 +338,41 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         return
 
     # ==========================================
-    # BARRA DE ACCIONES SUPERIOR (CSV, Excel, Guardar Vista, Filtros) - SOLO PARA TABLAS
+    # CSS PARA BARRA DE ACCIONES VERTICAL
     # ==========================================
     if key_prefix:  # Solo en tablas, no en historial de chat
         st.markdown("""
         <style>
-            .action-bar {
+            .action-bar-vertical {
                 display: flex;
-                justify-content: space-between;
-                align-items: center;
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 12px 16px;
-                margin-bottom: 20px;
-                gap: 12px;
-            }
-            
-            .action-left {
-                display: flex;
-                align-items: center;
+                flex-direction: column;
                 gap: 8px;
+                padding: 16px 0;
             }
             
-            .action-right {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            
-            .btn-action {
+            .btn-action-vertical {
                 display: inline-flex;
                 align-items: center;
+                justify-content: center;
                 gap: 6px;
                 background: white;
                 border: 1px solid #d1d5db;
                 border-radius: 6px;
-                padding: 6px 12px;
+                padding: 8px 12px;
                 font-size: 0.85rem;
                 font-weight: 500;
                 color: #374151;
                 cursor: pointer;
                 transition: all 0.2s ease;
+                width: 100%;
             }
             
-            .btn-action:hover {
+            .btn-action-vertical:hover {
                 background: #f9fafb;
                 border-color: #9ca3af;
             }
         </style>
         """, unsafe_allow_html=True)
-        
-        # Barra de acciones
-        col_actions_left, col_actions_right = st.columns([3, 1])
-        with col_actions_left:
-            st.markdown("""
-            <div class="action-bar">
-                <div class="action-left">
-                    <button class="btn-action">📊 CSV</button>
-                    <button class="btn-action">📥 Excel</button>
-                    <button class="btn-action">💾 Guardar vista</button>
-                </div>
-                <div class="action-right">
-                    <button class="btn-action">🔍 Filtros</button>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
 
     # CSS MODERNO (header gradiente + tarjetas)
     st.markdown(
@@ -622,34 +591,35 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     """, unsafe_allow_html=True)
 
     # ============================================================
-    # FILTROS + ACCIONES - DESHABILITADO (simplificado)
-    # ============================================================
-    # Defaults
-    sel_prov = []
-    sel_art = []
-    sel_mon = "TODAS"
-    d_ini, d_fin = None, None
-    search_txt = ""
-    
-    # EXPANDER COMENTADO - USAR SI NECESITAS FILTROS AVANZADOS
-    # with st.expander("🔎 Filtros...", expanded=False):
-    #     ...
-
-    # ============================================================
     # SIN FILTROS (mostrar todo)
     # ============================================================
     df_f = df_view.copy()
 
     # ============================================================
-    # BOTONES DE EXPORTACIÓN MOVIDOS ARRIBA - ELIMINADOS DE TABS
+    # ESTRUCTURA DE COLUMNAS: BOTONES VERTICALES AL LADO IZQUIERDO DE LAS TABS
     # ============================================================
-
-    # ============================================================
-    # TABS
-    # ============================================================
-    tab_all, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
-        ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
-    )
+    if key_prefix:  # Solo mostrar botones en tablas
+        col_buttons, col_tabs = st.columns([1, 4])  # 1 parte para botones, 4 para tabs
+        
+        with col_buttons:
+            st.markdown("""
+            <div class="action-bar-vertical">
+                <button class="btn-action-vertical">📊 CSV</button>
+                <button class="btn-action-vertical">📥 Excel</button>
+                <button class="btn-action-vertical">💾 Guardar vista</button>
+                <button class="btn-action-vertical">🔍 Filtros</button>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col_tabs:
+            tabs = st.tabs(
+                ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
+            )
+    else:
+        # Si no es tabla (ej. chat), solo tabs sin botones
+        tabs = st.tabs(
+            ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
+        )
 
     def _render_resumen_top_proveedores(df_tab: pd.DataFrame, etiqueta: str):
         """Solo se usa cuando HAY columna de proveedor"""
@@ -714,21 +684,21 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
         st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
 
-    with tab_all:
+    with tabs[0]:
         # ✅ RESUMEN ELIMINADO - SOLO TABLA DIRECTA
         st.dataframe(df_f, use_container_width=True, height=400)
 
-    with tab_uyu:
+    with tabs[1]:
         # ✅ RESUMEN ELIMINADO - SOLO TABLA DIRECTA
         df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
         st.dataframe(df_uyu, use_container_width=True, height=400)
 
-    with tab_usd:
+    with tabs[2]:
         # ✅ RESUMEN ELIMINADO - SOLO TABLA DIRECTA
         df_usd = df_f[df_f["__moneda_view__"] == "USD"]
         st.dataframe(df_usd, use_container_width=True, height=400)
 
-    with tab_graf:
+    with tabs[3]:
         if df_f is None or df_f.empty or not col_articulo:
             st.info("Sin datos suficientes para gráfico.")
         else:
@@ -763,7 +733,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 except Exception:
                     pass
 
-    with tab_tabla:
+    with tabs[4]:
         if df_f is None or df_f.empty:
             st.info("Sin resultados para mostrar.")
         else:
