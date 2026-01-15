@@ -1761,43 +1761,7 @@ def Compras_IA():
     }
     
     .fc-meta-modern,
-    .dash-meta {   # =========================
-    # DISEÑO COMPACTO DEFINITIVO
-    # =========================
-    st.markdown("""
-    <style>
-    /* ========================================
-       DISEÑO COMPACTO Y PROFESIONAL
-       ======================================== */
-    
-    /* Contenedor principal */
-    .main .block-container {
-        max-width: 1600px !important;
-        padding: 1.5rem 3rem !important;
-    }
-    
-    /* Header del dashboard */
-    .fc-header-modern,
-    .dash-header {
-        padding: 16px 20px !important;  /* más pequeño */
-        margin-bottom: 20px !important;
-    }
-    
-    .fc-title-modern,
-    .dash-title {
-        font-size: 1.2rem !important;  /* más pequeño */
-        margin-bottom: 6px !important;
-    }
-    
-    .fc-badge-modern,
-    .dash-badge {
-        font-size: 0.8rem !important;  /* más pequeño */
-        padding: 4px 10px !important;
-    }
-    
-    .fc-meta-modern,
     .dash-meta {
-        font-size: 0.8rem !important;
         font-size: 0.8rem !important;
     }
     
