@@ -1727,78 +1727,153 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 def Compras_IA():
 
     # =========================
-    # HEADER COMPACTO (sin tocar tarjetas)
+    # DISEÑO MÁS COMPACTO Y VISIBLE
     # =========================
     st.markdown("""
     <style>
     /* ========================================
-       HEADER COMPACTO (sin tocar tarjetas)
+       HEADER MÁS COMPACTO
        ======================================== */
-
-    /* SOLO el header - más compacto */
     .fc-header-modern,
     .dash-header {
-        padding: 14px 20px !important;
-        margin-bottom: 20px !important;
-        border-radius: 12px !important;
+        padding: 12px 16px !important;  /* Más pequeño */
+        margin-bottom: 16px !important;
+        border-radius: 10px !important;
     }
-
+    
     .fc-title-modern,
     .dash-title {
-        font-size: 1.1rem !important;
-        margin-bottom: 6px !important;
+        font-size: 1rem !important;  /* Más pequeño */
+        margin-bottom: 4px !important;
         font-weight: 700 !important;
     }
-
+    
     .fc-badge-modern,
     .dash-badge {
-        font-size: 0.75rem !important;
-        padding: 4px 10px !important;
-        border-radius: 12px !important;
-        margin-bottom: 6px !important;
+        font-size: 0.7rem !important;  /* Más pequeño */
+        padding: 3px 8px !important;
+        border-radius: 10px !important;
+        margin-bottom: 4px !important;
     }
-
+    
     .fc-meta-modern,
     .dash-meta {
-        font-size: 0.75rem !important;
+        font-size: 0.7rem !important;  /* Más pequeño */
         margin: 0 !important;
-        line-height: 1.3 !important;
+        line-height: 1.2 !important;
     }
-
+    
     /* ========================================
-       TARJETAS MÉTRICAS - MANTENER NORMALES
+       TARJETAS MÉTRICAS MÁS CHICAS
        ======================================== */
-
     .fc-metrics-grid,
     .metrics-grid {
-        gap: 20px !important;
-        margin-bottom: 32px !important;
+        gap: 16px !important;  /* Más pequeño para más tarjetas visibles */
+        margin-bottom: 24px !important;
     }
-
+    
     .fc-metric-card,
     .metric-card {
-        padding: 16px 20px !important;
-        border-radius: 12px !important;
+        padding: 12px 16px !important;  /* Más pequeño */
+        border-radius: 10px !important;
     }
-
+    
     .fc-metric-label,
     .metric-label {
-        font-size: 0.8rem !important;
-        margin-bottom: 6px !important;
+        font-size: 0.75rem !important;  /* Más pequeño */
+        margin-bottom: 4px !important;
     }
-
+    
     .fc-metric-value,
     .metric-value {
-        font-size: 1.4rem !important;  /* Números normales */
+        font-size: 1.2rem !important;  /* Más pequeño pero legible */
         font-weight: 700 !important;
     }
-
+    
     .fc-metric-help {
-        font-size: 0.7rem !important;
+        font-size: 0.65rem !important;  /* Más pequeño */
+    }
+    
+    /* ========================================
+       CARDS DE RESUMEN MÁS CHICAS
+       ======================================== */
+    .resumen-card,
+    .provider-card {
+        padding: 8px 12px !important;  /* Más pequeño */
+        margin-bottom: 12px !important;  /* Más pequeño */
+        border-radius: 8px !important;
+    }
+    
+    .resumen-title,
+    .provider-name {
+        font-size: 0.75rem !important;  /* Más pequeño */
+    }
+    
+    .resumen-text,
+    .provider-subtitle {
+        font-size: 0.7rem !important;  /* Más pequeño */
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px !important;  /* Más pequeño */
+        margin-bottom: 16px !important;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        font-size: 0.8rem !important;  /* Más pequeño */
+        padding: 5px 10px !important;
+    }
+    
+    /* Total summary card */
+    .total-summary-card {
+        padding: 16px 14px !important;  /* Más pequeño */
+        margin-bottom: 16px !important;
+    }
+    
+    .total-summary-value {
+        font-size: 1.6rem !important;  /* Más pequeño */
+    }
+    
+    .total-summary-label {
+        font-size: 0.85rem !important;
+    }
+    
+    /* Provider card destacado */
+    .single-provider-card {
+        padding: 16px 14px !important;  /* Más pequeño */
+        margin-bottom: 16px !important;
+    }
+    
+    .single-provider-icon {
+        width: 40px !important;  /* Más pequeño */
+        height: 40px !important;
+        font-size: 1.3rem !important;
+    }
+    
+    .single-provider-name {
+        font-size: 1rem !important;
+    }
+    
+    /* Responsive - Mobile */
+    @media (max-width: 768px) {
+        .main .block-container {
+            padding: 0.5rem 1rem !important;
+        }
+        
+        .fc-metrics-grid,
+        .metrics-grid {
+            gap: 8px !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+        
+        .fc-metric-value,
+        .metric-value {
+            font-size: 1rem !important;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
-
     inicializar_historial()
 
     # ✅ INICIALIZAR FLAG PARA PAUSAR AUTOREFRESH
