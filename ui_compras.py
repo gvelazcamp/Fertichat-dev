@@ -1734,9 +1734,9 @@ def Compras_IA():
     @media (min-width: 800px) {
         /* Zoom general */
         div[data-testid="stAppViewContainer"] {
-            transform: scale(0.90);
+            transform: scale(0.80);
             transform-origin: top center;
-            width: 111%;
+            width: 100%;
         }
         
         /* ✅ FORZAR SEPARACIÓN DE TARJETAS (CRÍTICO) */
