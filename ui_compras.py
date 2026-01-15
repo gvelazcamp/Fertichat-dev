@@ -1731,7 +1731,7 @@ def Compras_IA():
     # =========================
     st.markdown("""
     <style>
-    @media (min-width: 901px) {
+    @media (min-width: 800px) {
         /* Zoom general */
         div[data-testid="stAppViewContainer"] {
             transform: scale(0.90);
