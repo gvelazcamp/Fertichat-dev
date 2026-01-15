@@ -302,6 +302,38 @@ header[data-testid="stHeader"] {
 """, unsafe_allow_html=True)
 
 # =========================
+# CSS PARA OCULTAR KEEPALIVE / AUTOREFRESH
+# =========================
+st.markdown("""
+<style>
+/* ====== OCULTAR KEEPALIVE / AUTOREFRESH ====== */
+
+/* Ocultar componente keepalive por su key única */
+div[class*="st-key-fc_keepalive"],
+div.st-key-fc_keepalive,
+[data-testid="stElementContainer"].st-key-fc_keepalive {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    visibility: hidden !important;
+}
+
+/* Ocultar cualquier iframe de autorefresh */
+iframe[src*="streamlit_autorefresh"] {
+    display: none !important;
+    height: 0 !important;
+}
+
+/* Ocultar contenedor padre del autorefresh */
+div.stElementContainer:has(iframe[src*="streamlit_autorefresh"]) {
+    display: none !important;
+    height: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =========================
 # FIX UI: BOTONES DEL SIDEBAR (evita texto vertical en "Cerrar sesión")
 # =========================
 CSS_SIDEBAR_BUTTON_FIX = """
