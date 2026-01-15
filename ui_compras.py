@@ -859,13 +859,31 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                         """, unsafe_allow_html=True)
 
     with tab_uyu:
-        df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
+        # Calcular total UYU
+        total_uyu_tab = df_f[df_f["__moneda_view__"] == "UYU"]["__total_num__"].sum()
+        
+        st.markdown(f"""
+        <div class="total-summary-card">
+            <p class="total-summary-value">{_fmt_compact_money(total_uyu_tab, "UYU")}</p>
+            <p class="total-summary-label">Total Pesos (UYU)</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
         st.dataframe(df_uyu, use_container_width=True, height=400)
 
     with tab_usd:
-        df_usd = df_f[df_f["__moneda_view__"] == "USD"]
+        # Calcular total USD
+        total_usd_tab = df_f[df_f["__moneda_view__"] == "USD"]["__total_num__"].sum()
+        
+        st.markdown(f"""
+        <div class="total-summary-card">
+            <p class="total-summary-value">{_fmt_compact_money(total_usd_tab, "USD")}</p>
+            <p class="total-summary-label">Total Dólares (USD)</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
         st.dataframe(df_usd, use_container_width=True, height=400)
-
+        
     with tab_graf:
         if df_f is None or df_f.empty or not col_articulo:
             st.info("Sin datos suficientes para gráfico.")
