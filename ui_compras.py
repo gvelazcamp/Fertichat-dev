@@ -655,7 +655,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
                 file_name="vista_general.xlsx",
-                mime="application/vnd_openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}xlsx_all",
                 type="secondary"
             )
@@ -675,7 +675,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
                 file_name="pesos_uyu.xlsx",
-                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}xlsx_uyu",
                 type="secondary"
             )
@@ -696,7 +696,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
                 file_name="dolares_usd.xlsx",
-                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}xlsx_usd",
                 type="secondary"
             )
@@ -754,7 +754,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     "📥 Excel",
                     data=_df_to_excel_bytes(df_export),
                     file_name="tabla_completa.xlsx",
-                    mime="application/vnd_openxmlformats-officedocument.spreadsheetml.sheet",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key=f"{key_prefix}xlsx_tabla",
                     type="secondary"
             )
@@ -1545,6 +1545,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     with tabs[4]:
         st.dataframe(df, use_container_width=True, height=600)
 
+
 # =========================
 # UI PRINCIPAL
 # =========================
@@ -1897,5 +1898,3 @@ def Compras_IA():
         #     """, 
         #     unsafe_allow_html=True
         # )
-
-# ... existing code ...
