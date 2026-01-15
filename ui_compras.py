@@ -1080,7 +1080,74 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     periodos = [c for c in cols_numericas if c.isdigit() or '-' in str(c)]
     num_periodos = len(periodos)
     
-    # CSS Moderno
+    # ==========================================
+    # BARRA DE ACCIONES SUPERIOR (CSV, Excel, Guardar Vista, Filtros)
+    # ==========================================
+    st.markdown("""
+    <style>
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            gap: 12px;
+        }
+        
+        .action-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .action-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-action:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Barra de acciones
+    col_actions_left, col_actions_right = st.columns([3, 1])
+    with col_actions_left:
+        st.markdown("""
+        <div class="action-bar">
+            <div class="action-left">
+                <button class="btn-action">📊 CSV</button>
+                <button class="btn-action">📥 Excel</button>
+                <button class="btn-action">💾 Guardar vista</button>
+            </div>
+            <div class="action-right">
+                <button class="btn-action">🔍 Filtros</button>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # CSS Moderno (restante)
     st.markdown("""
     <style>
         /* ==========================================
@@ -1157,6 +1224,44 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             font-size: 1.75rem;
             font-weight: 700;
             color: #111827;
+            margin: 0;
+        }
+        
+        /* ==========================================
+           CARD PROVEEDOR DESTACADO (para 1 proveedor)
+           ========================================== */
+        .single-provider-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 32px 28px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            text-align: center;
+        }
+        
+        .single-provider-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .single-provider-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }
+        
+        .single-provider-detail {
+            font-size: 0.9rem;
+            opacity: 0.9;
             margin: 0;
         }
         
@@ -1243,15 +1348,6 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         /* ==========================================
            TABS Y BOTONES
            ========================================== */
-        .action-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding: 12px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        
         .btn-export {
             display: inline-flex;
             align-items: center;
@@ -1297,6 +1393,15 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             
             .dash-title {
                 font-size: 1.2rem;
+            }
+            
+            .action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .action-left, .action-right {
+                justify-content: center;
             }
         }
     </style>
@@ -1359,8 +1464,25 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     </div>
     """, unsafe_allow_html=True)
     
-    # PROVEEDOR PRINCIPAL (si existe)
-    if 'Proveedor' in df.columns and not df.empty:
+    # ==========================================
+    # CARD DESTACADA PARA 1 PROVEEDOR
+    # ==========================================
+    if num_proveedores == 1 and 'Proveedor' in df.columns:
+        prov_name = df['Proveedor'].iloc[0]
+        iniciales = "".join([p[0] for p in prov_name.split()[:2]]).upper()
+        
+        st.markdown(f"""
+        <div class="single-provider-card">
+            <div class="single-provider-icon">{iniciales}</div>
+            <h3 class="single-provider-name">{prov_name}</h3>
+            <p class="single-provider-detail">
+                Comparación de {len(periodos)} períodos | Total: {total_uyu_fmt}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # PROVEEDOR PRINCIPAL (si hay más de 1)
+    elif num_proveedores > 1 and 'Proveedor' in df.columns and not df.empty:
         # Calcular proveedor con mayor monto
         df_prov = df.groupby('Proveedor').sum(numeric_only=True)
         top_prov = df_prov.sum(axis=1).idxmax()
@@ -1372,22 +1494,24 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         
         st.markdown(f"""
         <div class="provider-card">
-            <div class="provider-icon">{iniciales}</div>
-            <div class="provider-info">
-                <p class="provider-name">{top_prov}</p>
-            <p class="provider-subtitle">Principal Proveedor</p>
+            <div class="provider-header">
+                <div class="provider-icon">{iniciales}</div>
+                <div class="provider-info">
+                    <p class="provider-name">{top_prov}</p>
+                    <p class="provider-subtitle">Principal Proveedor</p>
+                </div>
+                <div>
+                    <p class="provider-amount">$ {top_monto:,.2f}</p>
+                    <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
+                </div>
             </div>
-            <div>
-                <p class="provider-amount">$ {top_monto:,.2f}</p>
-                <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {top_porc}%"></div>
             </div>
+            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+                Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
+            </p>
         </div>
-        <div class="progress-bar">
-            <div class="progress-fill" style="width: {top_porc}%"></div>
-        </div>
-        <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
-            Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
-        </p>
         """, unsafe_allow_html=True)
     
     # TABS CON DATOS
