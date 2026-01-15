@@ -51,8 +51,7 @@ def mostrar_inicio():
     - mostrar_inicio_desktop() para PC
     """
     
-    # FORZAR MOBILE PARA QUE CAMBIEN LOS MENÚS (quitar después de probar)
-    es_mobile = True
+    es_mobile = detectar_dispositivo()
     
     # DEBUG (opcional - descomentar para ver qué versión se está mostrando)
     # with st.sidebar:
