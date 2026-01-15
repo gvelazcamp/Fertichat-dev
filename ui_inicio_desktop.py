@@ -96,15 +96,15 @@ def mostrar_inicio_desktop():
         position: relative; /* el tile se posiciona dentro de la columna */
     }
 
-    /* Botón como tarjeta - TAMAÑOS DIFERENCIADOS */
+    /* Botón como tarjeta (TODAS IGUALES Y MÁS ALTAS) */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button{
         border:1px solid rgba(15,23,42,0.10);
         background:rgba(255,255,255,0.82);
         border-radius:20px;
 
-        /* tamaño base */
-        height: 160px;
-        min-height: 160px;
+        /* tamaño fijo MÁS ALTO PARA TODAS */
+        height: 200px;
+        min-height: 200px;
 
         /* espacio para el tile */
         padding:20px 20px 20px 90px;
@@ -127,32 +127,13 @@ def mostrar_inicio_desktop():
         margin:0;
     }
 
-    /* Variaciones de tamaño */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button.card-inteligencia{
-        height: 200px;
-        min-height: 200px;
-    }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button.card-operaciones{
-        height: 140px;
-        min-height: 140px;
-    }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button.card-control{
-        height: 140px;
-        min-height: 140px;
-    }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button.card-rapida{
-        height: 120px;
-        min-height: 120px;
-        padding:16px 16px 16px 80px;
-    }
-
-    /* Recomendado */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button.recomendado{
+    /* Recomendado (Compras IA) */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton:has(button[key="compras"]) > button {
         border:2px solid rgba(37,99,235,0.30);
         background:rgba(255,255,255,0.95);
         box-shadow:0 12px 28px rgba(37,99,235,0.10);
     }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button.recomendado:hover{
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton:has(button[key="compras"]) > button:hover {
         border-color:rgba(37,99,235,0.50);
         box-shadow:0 16px 38px rgba(37,99,235,0.15);
     }
@@ -181,7 +162,7 @@ def mostrar_inicio_desktop():
         box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
     }
 
-    /* Tile (ícono) -> MÁS GRANDE y ajustado */
+    /* Tile (ícono) -> AJUSTADO PARA 200px */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .fc-home-tile{
         width:60px;
         height:60px;
@@ -196,23 +177,13 @@ def mostrar_inicio_desktop():
 
         position:absolute;
         left: 16px;
-        top: calc(50% + 80px);          /* <-- AJUSTADO PARA BASE 160px */
+        top: calc(50% + 100px);          /* <-- AJUSTADO PARA 200px */
         transform: translateY(-50%);
         z-index: 5;
 
         pointer-events:none; /* no bloquea el click */
         box-shadow:0 10px 18px rgba(2,6,23,0.07);
         user-select:none;
-    }
-
-    /* Ajustes de tile por clase */
-    .card-inteligencia ~ .fc-home-tile { top: calc(50% + 100px); }
-    .card-operaciones ~ .fc-home-tile { top: calc(50% + 70px); }
-    .card-control ~ .fc-home-tile { top: calc(50% + 70px); }
-    .card-rapida ~ .fc-home-tile { 
-        width:50px; height:50px; font-size:26px; border-radius:14px;
-        top: calc(50% + 60px);
-        left: 14px;
     }
 
     /* Colores tiles */
@@ -225,21 +196,6 @@ def mostrar_inicio_desktop():
     .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
     .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
 
-    /* Badge recomendado */
-    .badge-recomendado {
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        background: rgba(37,99,235,0.90);
-        color: white;
-        font-size: 10px;
-        font-weight: 700;
-        padding: 2px 6px;
-        border-radius: 10px;
-        z-index: 10;
-        box-shadow: 0 2px 8px rgba(37,99,235,0.20);
-    }
-
     /* Responsive */
     @media (max-width: 900px){
         div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .fc-home-tile{
@@ -248,28 +204,15 @@ def mostrar_inicio_desktop():
             border-radius:14px;
             font-size:24px;
             left: 14px;
-            top: calc(50% + 56px);      /* <-- BASE MOBILE */
+            top: calc(50% + 60px);      /* <-- AJUSTADO PARA 120px MOBILE */
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button{
-            height: 112px;
-            min-height: 112px;
+            height: 120px;
+            min-height: 120px;
             padding:14px 14px 14px 78px;
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button::first-line{
             font-size:15px;
-        }
-        /* Ajustes mobile */
-        .card-inteligencia { height: 140px; min-height: 140px; }
-        .card-operaciones { height: 100px; min-height: 100px; }
-        .card-control { height: 100px; min-height: 100px; }
-        .card-rapida { height: 90px; min-height: 90px; padding:12px 12px 12px 70px; }
-        .card-inteligencia ~ .fc-home-tile { top: calc(50% + 70px); }
-        .card-operaciones ~ .fc-home-tile { top: calc(50% + 50px); }
-        .card-control ~ .fc-home-tile { top: calc(50% + 50px); }
-        .card-rapida ~ .fc-home-tile { 
-            width:42px; height:42px; font-size:22px; border-radius:12px;
-            top: calc(50% + 45px);
-            left: 12px;
         }
     }
 
@@ -325,17 +268,17 @@ def mostrar_inicio_desktop():
 
     col_rapida1, col_rapida2, col_rapida3 = st.columns(3)
     with col_rapida1:
-        st.markdown('<div class="fc-home-tile tile-compras"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
         if st.button("🔍 Consultar compras\nCompras IA", key="rapida_compras", help="Acceso directo a consultas inteligentes de compras"):
             st.query_params["go"] = "compras"
             st.rerun()
     with col_rapida2:
-        st.markdown('<div class="fc-home-tile tile-stock"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
         if st.button("📦 Consultar stock\nStock IA", key="rapida_stock", help="Acceso directo a consultas de inventario"):
             st.query_params["go"] = "stock"
             st.rerun()
     with col_rapida3:
-        st.markdown('<div class="fc-home-tile tile-dashboard"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
         if st.button("📊 Ver resumen\nDashboard", key="rapida_dashboard", help="Acceso directo a vista ejecutiva"):
             st.query_params["go"] = "dashboard"
             st.rerun()
@@ -351,7 +294,7 @@ def mostrar_inicio_desktop():
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown('<div class="fc-home-tile tile-compras"><div class="badge-recomendado">⭐ Recomendado</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
         if st.button("Compras IA\nConsultas inteligentes de compras y gastos", key="compras", help="Análisis avanzado de adquisiciones"):
             st.query_params["go"] = "compras"
             st.rerun()
