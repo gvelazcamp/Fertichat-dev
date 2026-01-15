@@ -1804,7 +1804,7 @@ def Compras_IA():
         border: 1px solid #e5e7eb;
         border-radius: 12px;
         padding: 14px 18px !important;
-        margin-bottom: 24px !important;
+        margin-bottom: 24px !important;  /* ← MÁS ESPACIO ENTRE CARDS (antes 12px) */
         min-height: 120px !important;  /* ← MÁS BAJA (antes 140px) */
         display: flex !important;
         flex-direction: column !important;
@@ -1833,7 +1833,7 @@ def Compras_IA():
         border: 1px solid #e5e7eb;
         border-radius: 12px;
         padding: 16px !important;
-        margin-bottom: 24px !important;
+        margin-bottom: 24px !important;  /* ← MÁS ESPACIO */
         min-height: 120px !important;  /* ← MÁS BAJA */
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         display: flex !important;
@@ -2138,7 +2138,7 @@ def Compras_IA():
                 df_guardado = st.session_state["compras_resultado"]
                 titulo_guardado = st.session_state.get("compras_titulo", "Compras")
                 
-                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado, hide_metrics=True)
+                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
                 
                 # Botón para limpiar
                 if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
@@ -2168,7 +2168,7 @@ def Compras_IA():
                         st.session_state["compras_resultado"] = df
                         st.session_state["compras_titulo"] = "Compras"
                         
-                        render_dashboard_compras_vendible(df, titulo="Compras", hide_metrics=True)
+                        render_dashboard_compras_vendible(df, titulo="Compras")
                     elif df is not None:
                         st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
                 except Exception as e:
