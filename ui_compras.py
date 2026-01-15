@@ -337,43 +337,6 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         st.warning("⚠️ No hay resultados para mostrar.")
         return
 
-    # ==========================================
-    # CSS PARA BARRA DE ACCIONES VERTICAL
-    # ==========================================
-    if key_prefix:  # Solo en tablas, no en historial de chat
-        st.markdown("""
-        <style>
-            .action-bar-vertical {
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-                padding: 16px 0;
-            }
-            
-            .btn-action-vertical {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-                background: white;
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-size: 0.85rem;
-                font-weight: 500;
-                color: #374151;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                width: 100%;
-            }
-            
-            .btn-action-vertical:hover {
-                background: #f9fafb;
-                border-color: #9ca3af;
-            }
-        </style>
-        """, unsafe_allow_html=True)
-
     # CSS MODERNO (header gradiente + tarjetas)
     st.markdown(
         """
@@ -596,30 +559,11 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     df_f = df_view.copy()
 
     # ============================================================
-    # ESTRUCTURA DE COLUMNAS: BOTONES VERTICALES AL LADO IZQUIERDO DE LAS TABS
+    # TABS
     # ============================================================
-    if key_prefix:  # Solo en tablas
-        col_buttons, col_tabs = st.columns([1, 4])  # 1 parte para botones, 4 para tabs
-        
-        with col_buttons:
-            st.markdown("""
-            <div class="action-bar-vertical">
-                <button class="btn-action-vertical">CSV</button>
-                <button class="btn-action-vertical">Excel</button>
-                <button class="btn-action-vertical">Guardar vista</button>
-                <button class="btn-action-vertical">Filtros</button>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col_tabs:
-            tabs = st.tabs(
-                ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
-            )
-    else:
-        # Si no es tabla (ej. chat), solo tabs sin botones
-        tabs = st.tabs(
-            ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
-        )
+    tab_all, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
+        ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
+    )
 
     def _render_resumen_top_proveedores(df_tab: pd.DataFrame, etiqueta: str):
         """Solo se usa cuando HAY columna de proveedor"""
@@ -684,18 +628,18 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
         st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
 
-    with tabs[0]:
+    with tab_all:
         st.dataframe(df_f, use_container_width=True, height=400)
 
-    with tabs[1]:
+    with tab_uyu:
         df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
         st.dataframe(df_uyu, use_container_width=True, height=400)
 
-    with tabs[2]:
+    with tab_usd:
         df_usd = df_f[df_f["__moneda_view__"] == "USD"]
         st.dataframe(df_usd, use_container_width=True, height=400)
 
-    with tabs[3]:
+    with tab_graf:
         if df_f is None or df_f.empty or not col_articulo:
             st.info("Sin datos suficientes para gráfico.")
         else:
@@ -730,7 +674,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 except Exception:
                     pass
 
-    with tabs[4]:
+    with tab_tabla:
         if df_f is None or df_f.empty:
             st.info("Sin resultados para mostrar.")
         else:
@@ -1051,7 +995,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     num_proveedores = df['Proveedor'].nunique() if 'Proveedor' in df.columns else 0
     num_registros = len(df)
     
-    # Identificar qué años/meses se están comparando
+    # Identificar qué a��os/meses se están comparando
     periodos = [c for c in cols_numericas if c.isdigit() or '-' in str(c)]
     num_periodos = len(periodos)
     
