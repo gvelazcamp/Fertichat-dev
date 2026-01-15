@@ -257,6 +257,11 @@ st.markdown("""
 <style>
 /* ====== ULTRA FUERZA padding TOP GLOBAL - TODOS LOS SELECTORES POSIBLES ====== */
 
+/* Ocultar el primer stVerticalBlock que contiene el padding basura */
+div[data-testid="stVerticalBlock"]:first-child {
+    display: none !important;
+}
+
 /* Root container */
 div[data-testid="stAppViewContainer"] {
     padding-top: 0rem !important;
@@ -275,8 +280,8 @@ section.main > div {
     margin-top: 0rem !important;
 }
 
-/* Vertical block */
-div[data-testid="stVerticalBlock"] {
+/* Vertical block (los demás, no el primero) */
+div[data-testid="stVerticalBlock"]:not(:first-child) {
     padding-top: 0rem !important;
     margin-top: 0rem !important;
 }
