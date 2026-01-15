@@ -854,7 +854,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     """, unsafe_allow_html=True)
                     
                     # Segunda tarjeta: Lista
-                    top_list = "<br>".join([f"{i+1}. {_shorten_text(art, 30)} - {_fmt_compact_money(tot, 'UYU')}" for i, (art, tot) in enumerate(top_art.items())])
+                    top_list = "<br>".join([f"<span class='numero-badge'>{i+1}</span> {_shorten_text(art, 30)} - {_fmt_compact_money(tot, 'UYU')}" for i, (art, tot) in enumerate(top_art.items())])
                     
                     st.markdown(f"""
                     <div class="resumen-card">
@@ -1825,6 +1825,22 @@ def Compras_IA():
         color: #6b7280;
         margin: 0 !important;
         line-height: 1.3 !important;  /* Menos interlineado */
+    }
+    
+    /* Badge para números en lista */
+    .numero-badge {
+        display: inline-block;
+        background: #667eea;  /* Violeta */
+        color: white;
+        border-radius: 50%;
+        padding: 1px 5px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        margin-right: 4px;
+        width: 18px;
+        height: 18px;
+        text-align: center;
+        line-height: 16px;
     }
     
     /* Provider card también con mismo alto */
