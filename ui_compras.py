@@ -1236,44 +1236,33 @@ def Compras_IA():
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
             # Botón comparar
-            if st.button("🔍 Comparar", key="btn_comparar"):
-                with st.spinner("Comparando..."):
-                    try:
-                        # 🐛 DEBUG: Mostrar qué se está pasando
-                        st.info(f"Comparando meses: {meses} | Proveedores: {proveedores if proveedores else 'TODOS'} | Artículos: {articulos if articulos else 'TODOS'}")
-                        
-                        df = sqlq_comparativas.comparar_compras(
-                            anios=anios if len(anios) >= 2 else None,
-                            meses=meses if len(meses) >= 2 else None,
-                            proveedores=proveedores if proveedores else None,
-                            articulos=articulos if articulos else None
-                        )
-                        
-                        # 🐛 DEBUG: Ver qué devuelve
-                        st.write(f"DataFrame recibido: {len(df) if df is not None else 'None'} filas")
-                        
-                        if df is not None and not df.empty:
-                            st.success(f"✅ Comparación lista - {len(df)} filas")
-                            
-                            # 🐛 DEBUG: Ver los datos crudos
-                            with st.expander("🔍 Ver primeras filas (debug)"):
-                                st.dataframe(df.head(20))
-                            
-                            st.markdown("---")
-                            render_dashboard_compras_vendible(
-                                df,
-                                titulo=f"Comparación de proveedores en {len(meses)} meses",
-                                key_prefix="tab_comp_meses_"
+            if st.button("🔍 Comparar", type="primary", key="btn_comparar_anios"):
+                if len(anios) < 2:
+                    st.error("Seleccioná al menos 2 años para comparar")
+                else:
+                    # ✅ PAUSAR auto-refresh
+                    st.session_state.comparativa_activa = True
+                    
+                    with st.spinner("Comparando..."):
+                        try:
+                            df = sqlq_comparativas.comparar_compras(
+                                anios=anios,
+                                proveedores=proveedores if proveedores else None
                             )
-                        else:
-                            st.warning("⚠️ No se encontraron resultados para esa comparación.")
-                            st.error("Causas posibles:")
-                            st.write("- No hay datos para esos meses en la BD")
-                            st.write("- Los proveedores no tienen compras en esos meses")
                             
-                    except Exception as e:
-                        st.error(f"❌ ERROR AL COMPARAR:")
-                        st.exception(e)
+                            if df is not None and not df.empty:
+                                st.success(f"✅ Comparación lista - {len(df)} filas")
+                                st.markdown("---")
+                                render_dashboard_compras_vendible(df, titulo="Resultado Comparativa", key_prefix="tab_comp_")
+                            else:
+                                st.warning("No se encontraron datos")
+                        except Exception as e:
+                            st.error(f"❌ Error: {e}")
+
+        # Al final del tab comparativas, agregar:
+        if st.button("🗑️ Limpiar resultados"):
+            st.session_state.comparativa_activa = False  # ✅ REACTIVAR auto-refresh
+            st.rerun()
 
         st.markdown(
             """
