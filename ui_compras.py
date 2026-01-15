@@ -1997,15 +1997,15 @@ def Compras_IA():
             border: 1px solid rgba(245, 158, 11, 0.30);
             border-left: 4px solid rgba(245, 158, 11, 0.75);
             border-radius: 12px;
-            padding: 12px 16px;  /* Más pequeño */
-            margin: 16px 0 12px 0;  /* Más pequeño */
+            padding: 12px 16px;
+            margin: 16px 0 12px 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         ">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <span style="font-size: 18px;">💡</span>  /* Más pequeño */
-                <span style="font-size: 14px; font-weight: 700; color: rgb(234, 88, 12);">Ejemplos de preguntas:</span>  /* Más pequeño */
+                <span style="font-size: 18px;">💡</span>
+                <span style="font-size: 14px; font-weight: 700; color: rgb(234, 88, 12);">Ejemplos de preguntas:</span>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; font-size: 12px; color: rgb(154, 52, 18);">  /* Más pequeño */
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; font-size: 12px; color: rgb(154, 52, 18);">
                 <div>• Compras roche 2024</div>
                 <div>• Facturas roche noviembre 2025</div>
                 <div>• Compras roche, tresul 2024 2025</div>
