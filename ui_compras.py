@@ -755,7 +755,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
 
     with tab_all:
-        # Resumen ejecutivo sin métricas duplicadas
+        # Resumen ejecutivo
         col_resumen, col_top = st.columns([2, 1])
         
         with col_resumen:
@@ -766,6 +766,33 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 <p class="resumen-text">{rango_txt if rango_txt else 'Sin datos de fecha'}</p>
             </div>
             """, unsafe_allow_html=True)
+            
+            # ACTIVIDAD EN EL TIEMPO
+            if col_fecha and not df_f.empty:
+                df_f['fecha_dt'] = pd.to_datetime(df_f[col_fecha], errors='coerce')
+                df_f['fecha_str'] = df_f['fecha_dt'].dt.strftime('%d/%m')
+                gasto_diario = df_f.groupby('fecha_str')['__total_num__'].sum()
+                facturas_diario = df_f.groupby('fecha_str').size()
+                
+                if not gasto_diario.empty:
+                    dia_mayor_gasto = gasto_diario.idxmax()
+                    mayor_gasto = gasto_diario.max()
+                    
+                    dia_mas_facturas = facturas_diario.idxmax()
+                    mas_facturas = facturas_diario.max()
+                    
+                    promedio_diario = gasto_diario.mean()
+                    
+                    st.markdown(f"""
+                    <div class="resumen-card">
+                        <h4 class="resumen-title">⏰ Actividad en el Tiempo</h4>
+                        <p class="resumen-text">
+                            Día con mayor gasto: {dia_mayor_gasto} — {_fmt_compact_money(mayor_gasto, "UYU")}<br>
+                            Día con más facturas: {dia_mas_facturas} — {mas_facturas} facturas<br>
+                            Promedio diario: {_fmt_compact_money(promedio_diario, "UYU")}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
             
             # PRINCIPAL PROVEEDOR (si hay más de 1)
             if proveedores > 1 and col_proveedor:
