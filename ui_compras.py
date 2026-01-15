@@ -2068,4 +2068,4 @@ def Compras_IA():
         #     <b>Siempre usa solo UN botón comparar.</b>
         #     """, 
         #     unsafe_allow_html=True
-        )
+        # )
