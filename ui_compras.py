@@ -561,7 +561,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd/openxmlformats-officedocument/spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument/spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -667,7 +667,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 index=0,
                 key=f"{key_prefix}g_mon"
             )
-            df_g = df_g.copy()
+            df_g = df_f.copy()
             if g_mon != "TODAS":
                 df_g = df_g[df_g["__moneda_view__"] == g_mon]
 
@@ -1224,7 +1224,25 @@ def Compras_IA():
             st.markdown("#### 📊 Comparativas")
             
             # Proveedores
-            proveedores = st.multiselect("Proveedores", options=prov_options, default=[x for x in st.session_state.get("prov_multi", []) if x in prov_options], key="prov_multi")
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                # ✅ NUEVO: Input de texto en vez de multiselect
+                proveedores_texto = st.text_input(
+                    "Proveedores (separados por coma)",
+                    placeholder="Ej: ROCHE, TRESUL (vacío = todos)",
+                    key="comparativas_proveedores_texto",
+                    help="Dejá vacío para comparar TODOS los proveedores"
+                )
+                
+                # Procesar el texto
+                if proveedores_texto.strip():
+                    proveedores = [p.strip().upper() for p in proveedores_texto.split(",") if p.strip()]
+                    st.caption(f"✅ {len(proveedores)} proveedor(es) seleccionado(s)")
+                else:
+                    proveedores = None
+                    st.caption("📊 Se compararán TODOS los proveedores")
+            
             meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
             anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
             # Generar combinaciones
@@ -1247,7 +1265,7 @@ def Compras_IA():
                         try:
                             df = sqlq_comparativas.comparar_compras(
                                 anios=anios,
-                                proveedores=proveedores if proveedores else None
+                                proveedores=proveedores
                             )
                             
                             if df is not None and not df.empty:
