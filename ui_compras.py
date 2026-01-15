@@ -561,7 +561,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument/spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -1275,7 +1275,7 @@ def Compras_IA():
                         st.error(f"❌ ERROR AL COMPARAR:")
                         st.exception(e)
 
-        st.info(
+        st.markdown(
             """
             Función **única** para todas las variantes:<br>
             • Comparar proveedores años [2024,2025]<br>
