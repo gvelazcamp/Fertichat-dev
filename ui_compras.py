@@ -1712,17 +1712,9 @@ def Compras_IA():
 
     inicializar_historial()
 
-    # ✅ AUTOREFFRESH CONDITION: Pausar si hay input o submenú comparativas
-    pregunta_actual = st.session_state.get("input_compras", "")
-    submenu_actual = st.session_state.get("tipo_consulta", "")
-    comparativa_activa = st.session_state.get("comparativa_activa", False)
-
-    if not pregunta_actual.strip() and submenu_actual != "Comparativas" and not comparativa_activa:
-        try:
-            from streamlit_autorefresh import st_autorefresh
-            tick = st_autorefresh(interval=5000, key="rotar_compras_5s") or 0
-        except Exception:
-            tick = 0
+    # ✅ INICIALIZAR FLAG PARA PAUSAR AUTOREFRESH
+    if "pause_autorefresh" not in st.session_state:
+        st.session_state["pause_autorefresh"] = False
 
     st.markdown("### 🤖 Asistente de Compras y Facturas")
 
@@ -1842,6 +1834,9 @@ def Compras_IA():
     pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
 
     if pregunta:
+        # ✅ PAUSAR AUTOREFRESH AL HACER UNA PREGUNTA
+        st.session_state["pause_autorefresh"] = True
+
         st.session_state["historial_compras"].append(
             {
                 "role": "user",
@@ -1948,6 +1943,9 @@ def Compras_IA():
             proveedor_compras = st.selectbox("Proveedor", options=["Todos"] + prov_options[:50], index=0, key="proveedor_compras")
             
             if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
+                # ✅ PAUSAR AUTOREFRESH AL PRESIONAR BOTÓN DE BÚSQUEDA
+                st.session_state["pause_autorefresh"] = True
+
                 try:
                     if mes_compras == "Todos":
                         if proveedor_compras == "Todos":
@@ -1969,6 +1967,9 @@ def Compras_IA():
                     st.error(f"❌ Error en búsqueda: {e}")
 
         elif tipo_consulta == "Comparativas":
+            # ✅ PAUSAR AUTOREFRESH EN COMPARATIVAS
+            st.session_state["pause_autorefresh"] = True
+
             st.markdown("#### 📊 Comparativas")
             
             # ✅ PROVEEDORES (ancho completo, sin columnas)
@@ -2001,7 +2002,7 @@ def Compras_IA():
                 if len(anios) < 2:
                     st.error("Seleccioná al menos 2 años para comparar")
                 else:
-                    # ✅ PAUSAR auto-refresh
+                    # ✅ PAUSAR AUTOREFRESH
                     st.session_state.comparativa_activa = True
                     
                     with st.spinner("Comparando..."):
@@ -2057,15 +2058,19 @@ def Compras_IA():
                     titulo=titulo_guardado
                 )
 
-        # Explicación técnica (comentada)
-        # st.markdown(
-        #     """
-        #     Función **única** para todas las variantes:<br>
-        #     • Comparar proveedores años [2024,2025]<br>
-        #     • Proveedores + meses<br>
-        #     • Por artículo<br>
-        #     • Prioriza meses si hay (meses+año); si no, años.<br>
-        #     <b>Siempre usa solo UN botón comparar.</b>
-        #     """, 
-        #     unsafe_allow_html=True
-        # )
+        # Botón para reanudar auto-refresh (opcional, si se pausa)
+        if st.session_state.get("pause_autorefresh", False):
+            st.markdown("---")
+            col1, col2 = st.columns([3, 1])
+            with col2:
+                if st.button("▶️ Reanudar auto-refresh", help="Reactivar auto-refresh automático"):
+                    st.session_state["pause_autorefresh"] = False
+                    st.rerun()
+
+    # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
+    if not st.session_state.get("pause_autorefresh", False):
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            st_autorefresh(interval=5000, key="fc_keepalive")
+        except Exception:
+            pass
