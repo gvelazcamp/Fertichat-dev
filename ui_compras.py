@@ -411,7 +411,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             font-size: 0.85rem;
             opacity: 0.9;
             margin: 4px 0 0 0;
-            color: rgba(255, 255 255, 0.9);
+            color: rgba(255,255,255,0.9);
         }
         
         /* Grid de métricas */
@@ -569,23 +569,23 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
     st.markdown(f"""
     <div class="fc-metrics-grid">
-        <div class="metric-card">
-            <p class="metric-label">Total UYU 💰</p>
-            <p class="metric-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">Total UYU 💰</p>
+            <p class="fc-metric-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
             <p class="fc-metric-help">Valor exacto: $ {tot_uyu:,.2f}</p>
         </div>
-        <div class="metric-card">
-            <p class="metric-label">Total USD 💵</p>
-            <p class="metric-value">{_fmt_compact_money(tot_usd, "USD")}</p>
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">Total USD 💵</p>
+            <p class="fc-metric-value">{_fmt_compact_money(tot_usd, "USD")}</p>
             <p class="fc-metric-help">Valor exacto: U$S {tot_usd:,.2f}</p>
         </div>
-        <div class="metric-card">
-            <p class="metric-label">{"Facturas 📄" if col_nro else "Registros 📄"}</p>
-            <p class="metric-value">{facturas if col_nro else filas_total}</p>
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">{"Facturas 📄" if col_nro else "Registros 📄"}</p>
+            <p class="fc-metric-value">{facturas if col_nro else filas_total}</p>
         </div>
-        <div class="metric-card">
-            <p class="metric-label">Proveedores 🏭</p>
-            <p class="metric-value">{proveedores}</p>
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">Proveedores 🏭</p>
+            <p class="fc-metric-value">{proveedores}</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -596,310 +596,233 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     df_f = df_view.copy()
 
     # ============================================================
-    # ESTRUCTURA DE COLUMNAS: BOTONES VERTICALES SOLO AL LADO DE "TABLA"
+    # ESTRUCTURA DE COLUMNAS: BOTONES VERTICALES AL LADO IZQUIERDO DE LAS TABS
     # ============================================================
     if key_prefix:  # Solo en tablas
-        tabs = st.tabs(
-            ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
-        )
+        col_buttons, col_tabs = st.columns([1, 4])  # 1 parte para botones, 4 para tabs
         
-        with tabs[0]:
-            st.dataframe(df_f, use_container_width=True, height=400)
+        with col_buttons:
+            st.markdown("""
+            <div class="action-bar-vertical">
+                <button class="btn-action-vertical">CSV</button>
+                <button class="btn-action-vertical">Excel</button>
+                <button class="btn-action-vertical">Guardar vista</button>
+                <button class="btn-action-vertical">Filtros</button>
+            </div>
+            """, unsafe_allow_html=True)
         
-        with tabs[1]:
-            df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
-            st.dataframe(df_uyu, use_container_width=True, height=400)
-        
-        with tabs[2]:
-            df_usd = df_f[df_f["__moneda_view__"] == "USD"]
-            st.dataframe(df_usd, use_container_width=True, height=400)
-        
-        with tabs[3]:
-            if df_f is None or df_f.empty or not col_articulo:
-                st.info("Sin datos suficientes para gráfico.")
-            else:
-                g_mon = st.selectbox(
-                    "Moneda del gráfico",
-                    options=["TODAS", "UYU", "USD"],
-                    index=0,
-                    key=f"{key_prefix}g_mon"
-                )
-                df_g = df_f.copy()
-                if g_mon != "TODAS":
-                    df_g = df_g[df_g["__moneda_view__"] == g_mon]
-
-                top_art = (
-                    df_g.groupby(col_articulo)["__total_num__"]
-                    .sum()
-                    .sort_values(ascending=False)
-                ).head(10)
-
-                if len(top_art) == 0:
-                    st.info("Sin resultados para ese filtro.")
-                else:
-                    df_top_art = top_art.reset_index()
-                    df_top_art.columns = [col_articulo, "Total"]
-                    df_top_art[col_articulo] = df_top_art[col_articulo].apply(lambda x: _shorten_text(x, 60))
-
-                    st.dataframe(df_top_art, use_container_width=True, hide_index=True, height=320)
-
-                    try:
-                        chart_df = df_top_art.set_index(col_articulo)["Total"]
-                        st.bar_chart(chart_df)
-                    except Exception:
-                        pass
-        
-        with tabs[4]:  # Solo en "Tabla"
-            col_buttons, col_table = st.columns([1, 4])
-            
-            with col_buttons:
-                st.markdown("""
-                <div class="action-bar-vertical">
-                    <button class="btn-action-vertical">CSV</button>
-                    <button class="btn-action-vertical">Excel</button>
-                    <button class="btn-action-vertical">Guardar vista</button>
-                    <button class="btn-action-vertical">Filtros</button>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col_table:
-                if df_f is None or df_f.empty:
-                    st.info("Sin resultados para mostrar.")
-                else:
-                    # Orden preferido (mantiene columnas originales)
-                    pref = []
-                    for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
-                        if c and c in df_f.columns:
-                            pref.append(c)
-                    resto = [c for c in df_f.columns if c not in pref and not str(c).startswith("__")]
-                    show_cols = pref + resto
-
-                    # Paginación
-                    t1, t2, t3 = st.columns([1.2, 1.0, 1.8])
-                    with t1:
-                        page_size = st.selectbox(
-                            "Filas por página",
-                            options=[25, 50, 100, 250],
-                            index=0,
-                            key=f"{key_prefix}page_size"
-                        )
-                    max_pages = max(1, int((len(df_f) + int(page_size) - 1) / int(page_size)))
-                    with t2:
-                        page = st.number_input(
-                            "Página",
-                            min_value=1,
-                            max_value=max_pages,
-                            value=min(st.session_state.get(f"{key_prefix}page", 1), max_pages),
-                            step=1,
-                            key=f"{key_prefix}page"
-                        )
-                    with t3:
-                        st.caption(f"Página {int(page)} de {max_pages} · Total filas: {len(df_f)}")
-
-                    df_page = _paginate(df_f[show_cols], int(page), int(page_size)).copy()
-
-                    # Recortar textos para vista limpia
-                    if col_proveedor and col_proveedor in df_page.columns:
-                        df_page[col_proveedor] = df_page[col_proveedor].apply(lambda x: _shorten_text(x, 60))
-                    if col_articulo and col_articulo in df_page.columns:
-                        df_page[col_articulo] = df_page[col_articulo].apply(lambda x: _shorten_text(x, 60))
-
-                    st.dataframe(df_page, use_container_width=True, height=460)
-
-                    # Drill-down por factura
-                    if col_nro and col_nro in df_f.columns:
-                        st.markdown("#### Detalle por factura")
-                        nros = [n for n in df_f[col_nro].dropna().astype(str).unique().tolist() if str(n).strip()]
-                        nros = sorted(nros)[:5000]
-
-                        det_col1, det_col2 = st.columns([1.2, 2.8])
-                        with det_col1:
-                            det_search = st.text_input(
-                                "Buscar nro factura",
-                                value="",
-                                key=f"{key_prefix}det_search",
-                                placeholder="Ej: A00060907"
-                            ).strip()
-
-                        nro_opts = nros
-                        if det_search:
-                            nro_opts = [n for n in nros if det_search.lower() in str(n).lower()]
-                            nro_opts = nro_opts[:200]
-
-                        with det_col2:
-                            nro_sel = st.selectbox(
-                                "Seleccionar factura",
-                                options=["(ninguna)"] + nro_opts,
-                                index=0,
-                                key=f"{key_prefix}det_nro_sel"
-                            )
-
-                        if nro_sel and nro_sel != "(ninguna)":
-                            df_fac = df_f[df_f[col_nro].astype(str) == str(nro_sel)].copy()
-
-                            tot_fac = float(df_fac["__total_num__"].sum())
-                            mon_fac = "USD" if (df_fac["__moneda_view__"] == "USD").any() and not (df_fac["__moneda_view__"] == "UYU").any() else "UYU"
-                            st.markdown(
-                                f"**Factura:** `{nro_sel}` · **Items:** {len(df_fac)} · **Total:** {_fmt_compact_money(tot_fac, mon_fac)}"
-                            )
-
-                            pref_fac = []
-                            for c in [col_articulo, col_cantidad, col_total, col_fecha, col_moneda]:
-                                if c and c in df_fac.columns:
-                                    pref_fac.append(c)
-                            resto_fac = [c for c in df_fac.columns if c not in pref_fac and not str(c).startswith("__")]
-                            show_cols_fac = pref_fac + resto_fac
-
-                            df_fac_disp = df_fac[show_cols_fac].copy()
-                            if col_articulo and col_articulo in df_fac_disp.columns:
-                                df_fac_disp[col_articulo] = df_fac_disp[col_articulo].apply(lambda x: _shorten_text(x, 70))
-
-                            st.dataframe(df_fac_disp, use_container_width=True, height=320)
+        with col_tabs:
+            tabs = st.tabs(
+                ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
+            )
     else:
         # Si no es tabla (ej. chat), solo tabs sin botones
         tabs = st.tabs(
             ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
         )
+
+    def _render_resumen_top_proveedores(df_tab: pd.DataFrame, etiqueta: str):
+        """Solo se usa cuando HAY columna de proveedor"""
+        if df_tab is None or df_tab.empty:
+            st.info(f"Sin resultados en {etiqueta}.")
+            return
+
+        if not col_proveedor:
+            st.caption("No hay columna de proveedor para resumir.")
+            return
+
+        # Top proveedores con total (tabla chica)
+        top = (
+            df_tab.groupby(col_proveedor)["__total_num__"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+
+        total_val = float(df_tab["__total_num__"].sum()) if "__total_num__" in df_tab.columns else 0.0
+
+        if len(top) > 0 and total_val:
+            prov_top = str(top.index[0])
+            share = float(top.iloc[0]) / total_val * 100.0
+            st.markdown(
+                f"**Resumen:** principal proveedor **{prov_top}** con **{share:.1f}%** del total en {etiqueta}."
+            )
+        else:
+            st.caption("No hay totales suficientes para generar resumen.")
+
+        df_top = top.head(10).reset_index()
+        df_top.columns = [col_proveedor, "Total"]
+
+        # Formato de Total para que se vea prolijo (LATAM)
+        df_top["Total"] = df_top["Total"].apply(
+            lambda x: f"{float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+
+        st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
+        st.caption("Detalle completo solo en la pestaña **Tabla**.")
+
+    def _render_tabla_simple(df_tab: pd.DataFrame, etiqueta: str):
+        """Muestra tabla simple sin agrupar (para casos sin proveedor)"""
+        if df_tab is None or df_tab.empty:
+            st.info(f"Sin resultados en {etiqueta}.")
+            return
+
+        # Preparar columnas para mostrar
+        pref = []
+        for c in [col_moneda, col_total, _find_col(df_tab, ["anio", "año"]), _find_col(df_tab, ["total_facturas"])]:
+            if c and c in df_tab.columns:
+                pref.append(c)
+        resto = [c for c in df_tab.columns if c not in pref and not str(c).startswith("__")]
+        show_cols = pref + resto
+
+        df_show = df_tab[show_cols].copy()
         
-        with tabs[0]:
-            st.dataframe(df_f, use_container_width=True, height=400)
-        
-        with tabs[1]:
-            df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
-            st.dataframe(df_uyu, use_container_width=True, height=400)
-        
-        with tabs[2]:
-            df_usd = df_f[df_f["__moneda_view__"] == "USD"]
-            st.dataframe(df_usd, use_container_width=True, height=400)
-        
-        with tabs[3]:
-            if df_f is None or df_f.empty or not col_articulo:
-                st.info("Sin datos suficientes para gráfico.")
+        # Formato LATAM para columna de total
+        if col_total and col_total in df_show.columns:
+            df_show[col_total] = df_show[col_total].apply(
+                lambda x: f"{_safe_to_float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+
+        st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
+
+    with tabs[0]:
+        st.dataframe(df_f, use_container_width=True, height=400)
+
+    with tabs[1]:
+        df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
+        st.dataframe(df_uyu, use_container_width=True, height=400)
+
+    with tabs[2]:
+        df_usd = df_f[df_f["__moneda_view__"] == "USD"]
+        st.dataframe(df_usd, use_container_width=True, height=400)
+
+    with tabs[3]:
+        if df_f is None or df_f.empty or not col_articulo:
+            st.info("Sin datos suficientes para gráfico.")
+        else:
+            g_mon = st.selectbox(
+                "Moneda del gráfico",
+                options=["TODAS", "UYU", "USD"],
+                index=0,
+                key=f"{key_prefix}g_mon"
+            )
+            df_g = df_f.copy()
+            if g_mon != "TODAS":
+                df_g = df_g[df_g["__moneda_view__"] == g_mon]
+
+            top_art = (
+                df_g.groupby(col_articulo)["__total_num__"]
+                .sum()
+                .sort_values(ascending=False)
+            ).head(10)
+
+            if len(top_art) == 0:
+                st.info("Sin resultados para ese filtro.")
             else:
-                g_mon = st.selectbox(
-                    "Moneda del gráfico",
-                    options=["TODAS", "UYU", "USD"],
+                df_top_art = top_art.reset_index()
+                df_top_art.columns = [col_articulo, "Total"]
+                df_top_art[col_articulo] = df_top_art[col_articulo].apply(lambda x: _shorten_text(x, 60))
+
+                st.dataframe(df_top_art, use_container_width=True, hide_index=True, height=320)
+
+                try:
+                    chart_df = df_top_art.set_index(col_articulo)["Total"]
+                    st.bar_chart(chart_df)
+                except Exception:
+                    pass
+
+    with tabs[4]:
+        if df_f is None or df_f.empty:
+            st.info("Sin resultados para mostrar.")
+        else:
+            # Orden preferido (mantiene columnas originales)
+            pref = []
+            for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
+                if c and c in df_f.columns:
+                    pref.append(c)
+            resto = [c for c in df_f.columns if c not in pref and not str(c).startswith("__")]
+            show_cols = pref + resto
+
+            # Paginación
+            t1, t2, t3 = st.columns([1.2, 1.0, 1.8])
+            with t1:
+                page_size = st.selectbox(
+                    "Filas por página",
+                    options=[25, 50, 100, 250],
                     index=0,
-                    key=f"{key_prefix}g_mon"
+                    key=f"{key_prefix}page_size"
                 )
-                df_g = df_f.copy()
-                if g_mon != "TODAS":
-                    df_g = df_g[df_g["__moneda_view__"] == g_mon]
+            max_pages = max(1, int((len(df_f) + int(page_size) - 1) / int(page_size)))
+            with t2:
+                page = st.number_input(
+                    "Página",
+                    min_value=1,
+                    max_value=max_pages,
+                    value=min(st.session_state.get(f"{key_prefix}page", 1), max_pages),
+                    step=1,
+                    key=f"{key_prefix}page"
+                )
+            with t3:
+                st.caption(f"Página {int(page)} de {max_pages} · Total filas: {len(df_f)}")
 
-                top_art = (
-                    df_g.groupby(col_articulo)["__total_num__"]
-                    .sum()
-                    .sort_values(ascending=False)
-                ).head(10)
+            df_page = _paginate(df_f[show_cols], int(page), int(page_size)).copy()
 
-                if len(top_art) == 0:
-                    st.info("Sin resultados para ese filtro.")
-                else:
-                    df_top_art = top_art.reset_index()
-                    df_top_art.columns = [col_articulo, "Total"]
-                    df_top_art[col_articulo] = df_top_art[col_articulo].apply(lambda x: _shorten_text(x, 60))
+            # Recortar textos para vista limpia
+            if col_proveedor and col_proveedor in df_page.columns:
+                df_page[col_proveedor] = df_page[col_proveedor].apply(lambda x: _shorten_text(x, 60))
+            if col_articulo and col_articulo in df_page.columns:
+                df_page[col_articulo] = df_page[col_articulo].apply(lambda x: _shorten_text(x, 60))
 
-                    st.dataframe(df_top_art, use_container_width=True, hide_index=True, height=320)
+            st.dataframe(df_page, use_container_width=True, height=460)
 
-                    try:
-                        chart_df = df_top_art.set_index(col_articulo)["Total"]
-                        st.bar_chart(chart_df)
-                    except Exception:
-                        pass
-        
-        with tabs[4]:
-            if df_f is None or df_f.empty:
-                st.info("Sin resultados para mostrar.")
-            else:
-                # Orden preferido (mantiene columnas originales)
-                pref = []
-                for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
-                    if c and c in df_f.columns:
-                        pref.append(c)
-                resto = [c for c in df_f.columns if c not in pref and not str(c).startswith("__")]
-                show_cols = pref + resto
+            # Drill-down por factura
+            if col_nro and col_nro in df_f.columns:
+                st.markdown("#### Detalle por factura")
+                nros = [n for n in df_f[col_nro].dropna().astype(str).unique().tolist() if str(n).strip()]
+                nros = sorted(nros)[:5000]
 
-                # Paginación
-                t1, t2, t3 = st.columns([1.2, 1.0, 1.8])
-                with t1:
-                    page_size = st.selectbox(
-                        "Filas por página",
-                        options=[25, 50, 100, 250],
+                det_col1, det_col2 = st.columns([1.2, 2.8])
+                with det_col1:
+                    det_search = st.text_input(
+                        "Buscar nro factura",
+                        value="",
+                        key=f"{key_prefix}det_search",
+                        placeholder="Ej: A00060907"
+                    ).strip()
+
+                nro_opts = nros
+                if det_search:
+                    nro_opts = [n for n in nros if det_search.lower() in str(n).lower()]
+                    nro_opts = nro_opts[:200]
+
+                with det_col2:
+                    nro_sel = st.selectbox(
+                        "Seleccionar factura",
+                        options=["(ninguna)"] + nro_opts,
                         index=0,
-                        key=f"{key_prefix}page_size"
+                        key=f"{key_prefix}det_nro_sel"
                     )
-                max_pages = max(1, int((len(df_f) + int(page_size) - 1) / int(page_size)))
-                with t2:
-                    page = st.number_input(
-                        "Página",
-                        min_value=1,
-                        max_value=max_pages,
-                        value=min(st.session_state.get(f"{key_prefix}page", 1), max_pages),
-                        step=1,
-                        key=f"{key_prefix}page"
+
+                if nro_sel and nro_sel != "(ninguna)":
+                    df_fac = df_f[df_f[col_nro].astype(str) == str(nro_sel)].copy()
+
+                    tot_fac = float(df_fac["__total_num__"].sum())
+                    mon_fac = "USD" if (df_fac["__moneda_view__"] == "USD").any() and not (df_fac["__moneda_view__"] == "UYU").any() else "UYU"
+                    st.markdown(
+                        f"**Factura:** `{nro_sel}` · **Items:** {len(df_fac)} · **Total:** {_fmt_compact_money(tot_fac, mon_fac)}"
                     )
-                with t3:
-                    st.caption(f"Página {int(page)} de {max_pages} · Total filas: {len(df_f)}")
 
-                df_page = _paginate(df_f[show_cols], int(page), int(page_size)).copy()
+                    pref_fac = []
+                    for c in [col_articulo, col_cantidad, col_total, col_fecha, col_moneda]:
+                        if c and c in df_fac.columns:
+                            pref_fac.append(c)
+                    resto_fac = [c for c in df_fac.columns if c not in pref_fac and not str(c).startswith("__")]
+                    show_cols_fac = pref_fac + resto_fac
 
-                # Recortar textos para vista limpia
-                if col_proveedor and col_proveedor in df_page.columns:
-                    df_page[col_proveedor] = df_page[col_proveedor].apply(lambda x: _shorten_text(x, 60))
-                if col_articulo and col_articulo in df_page.columns:
-                    df_page[col_articulo] = df_page[col_articulo].apply(lambda x: _shorten_text(x, 60))
+                    df_fac_disp = df_fac[show_cols_fac].copy()
+                    if col_articulo and col_articulo in df_fac_disp.columns:
+                        df_fac_disp[col_articulo] = df_fac_disp[col_articulo].apply(lambda x: _shorten_text(x, 70))
 
-                st.dataframe(df_page, use_container_width=True, height=460)
-
-                # Drill-down por factura
-                if col_nro and col_nro in df_f.columns:
-                    st.markdown("#### Detalle por factura")
-                    nros = [n for n in df_f[col_nro].dropna().astype(str).unique().tolist() if str(n).strip()]
-                    nros = sorted(nros)[:5000]
-
-                    det_col1, det_col2 = st.columns([1.2, 2.8])
-                    with det_col1:
-                        det_search = st.text_input(
-                            "Buscar nro factura",
-                            value="",
-                            key=f"{key_prefix}det_search",
-                            placeholder="Ej: A00060907"
-                        ).strip()
-
-                    nro_opts = nros
-                    if det_search:
-                        nro_opts = [n for n in nros if det_search.lower() in str(n).lower()]
-                        nro_opts = nro_opts[:200]
-
-                    with det_col2:
-                        nro_sel = st.selectbox(
-                            "Seleccionar factura",
-                            options=["(ninguna)"] + nro_opts,
-                            index=0,
-                            key=f"{key_prefix}det_nro_sel"
-                        )
-
-                    if nro_sel and nro_sel != "(ninguna)":
-                        df_fac = df_f[df_f[col_nro].astype(str) == str(nro_sel)].copy()
-
-                        tot_fac = float(df_fac["__total_num__"].sum())
-                        mon_fac = "USD" if (df_fac["__moneda_view__"] == "USD").any() and not (df_fac["__moneda_view__"] == "UYU").any() else "UYU"
-                        st.markdown(
-                            f"**Factura:** `{nro_sel}` · **Items:** {len(df_fac)} · **Total:** {_fmt_compact_money(tot_fac, mon_fac)}"
-                        )
-
-                        pref_fac = []
-                        for c in [col_articulo, col_cantidad, col_total, col_fecha, col_moneda]:
-                            if c and c in df_fac.columns:
-                                pref_fac.append(c)
-                        resto_fac = [c for c in df_fac.columns if c not in pref_fac and not str(c).startswith("__")]
-                        show_cols_fac = pref_fac + resto_fac
-
-                        df_fac_disp = df_fac[show_cols_fac].copy()
-                        if col_articulo and col_articulo in df_fac_disp.columns:
-                            df_fac_disp[col_articulo] = df_fac_disp[col_articulo].apply(lambda x: _shorten_text(x, 70))
-
-                        st.dataframe(df_fac_disp, use_container_width=True, height=320)
+                    st.dataframe(df_fac_disp, use_container_width=True, height=320)
 
 
 # =========================
