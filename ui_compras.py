@@ -1727,148 +1727,74 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 def Compras_IA():
 
     # =========================
-    # DISEÑO COMPACTO DEFINITIVO
+    # HEADER COMPACTO (sin tocar tarjetas)
     # =========================
     st.markdown("""
     <style>
     /* ========================================
-       DISEÑO COMPACTO Y PROFESIONAL
+       HEADER COMPACTO (sin tocar tarjetas)
        ======================================== */
-    
-    /* Contenedor principal */
-    .main .block-container {
-        max-width: 1600px !important;
-        padding: 1.5rem 3rem !important;
-    }
-    
-    /* Header del dashboard */
+
+    /* SOLO el header - más compacto */
     .fc-header-modern,
     .dash-header {
-        padding: 16px 20px !important;  /* más pequeño */
+        padding: 14px 20px !important;
         margin-bottom: 20px !important;
+        border-radius: 12px !important;
     }
-    
+
     .fc-title-modern,
     .dash-title {
-        font-size: 1.2rem !important;  /* más pequeño */
+        font-size: 1.1rem !important;
         margin-bottom: 6px !important;
-    }
-    
-    .fc-badge-modern,
-    .dash-badge {
-        font-size: 0.8rem !important;  /* más pequeño */
-        padding: 4px 10px !important;
-    }
-    
-    .fc-meta-modern,
-    .dash-meta {
-        font-size: 0.8rem !important;
-    }
-    
-    /* TARJETAS MÉTRICAS - MÁS CHICAS */
-    .fc-metrics-grid,
-    .metrics-grid {
-        gap: 16px !important;  /* más pequeño */
-        margin-bottom: 24px !important;
-    }
-    
-    .fc-metric-card,
-    .metric-card {
-        padding: 12px 16px !important;  /* más pequeño */
-        border-radius: 10px !important;
-    }
-    
-    .fc-metric-label,
-    .metric-label {
-        font-size: 0.75rem !important;  /* más pequeño */
-        margin-bottom: 4px !important;
-    }
-    
-    .fc-metric-value,
-    .metric-value {
-        font-size: 1.2rem !important;  /* más pequeño */
         font-weight: 700 !important;
     }
-    
+
+    .fc-badge-modern,
+    .dash-badge {
+        font-size: 0.75rem !important;
+        padding: 4px 10px !important;
+        border-radius: 12px !important;
+        margin-bottom: 6px !important;
+    }
+
+    .fc-meta-modern,
+    .dash-meta {
+        font-size: 0.75rem !important;
+        margin: 0 !important;
+        line-height: 1.3 !important;
+    }
+
+    /* ========================================
+       TARJETAS MÉTRICAS - MANTENER NORMALES
+       ======================================== */
+
+    .fc-metrics-grid,
+    .metrics-grid {
+        gap: 20px !important;
+        margin-bottom: 32px !important;
+    }
+
+    .fc-metric-card,
+    .metric-card {
+        padding: 16px 20px !important;
+        border-radius: 12px !important;
+    }
+
+    .fc-metric-label,
+    .metric-label {
+        font-size: 0.8rem !important;
+        margin-bottom: 6px !important;
+    }
+
+    .fc-metric-value,
+    .metric-value {
+        font-size: 1.4rem !important;  /* Números normales */
+        font-weight: 700 !important;
+    }
+
     .fc-metric-help {
-        font-size: 0.65rem !important;  /* más pequeño */
-    }
-    
-    /* Cards de resumen - MÁS CHICAS */
-    .resumen-card,
-    .provider-card {
-        padding: 10px 14px !important;  /* más pequeño */
-        margin-bottom: 16px !important;  /* más pequeño */
-        border-radius: 10px !important;
-    }
-    
-    .resumen-title,
-    .provider-name {
-        font-size: 0.8rem !important;  /* más pequeño */
-    }
-    
-    .resumen-text,
-    .provider-subtitle {
-        font-size: 0.75rem !important;  /* más pequeño */
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 12px !important;  /* más pequeño */
-        margin-bottom: 20px !important;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        font-size: 0.85rem !important;  /* más pequeño */
-        padding: 6px 12px !important;
-    }
-    
-    /* Total summary card */
-    .total-summary-card {
-        padding: 20px 16px !important;  /* más pequeño */
-        margin-bottom: 20px !important;
-    }
-    
-    .total-summary-value {
-        font-size: 1.8rem !important;  /* más pequeño */
-    }
-    
-    .total-summary-label {
-        font-size: 0.9rem !important;
-    }
-    
-    /* Provider card destacado */
-    .single-provider-card {
-        padding: 20px 16px !important;  /* más pequeño */
-        margin-bottom: 20px !important;
-    }
-    
-    .single-provider-icon {
-        width: 48px !important;  /* más pequeño */
-        height: 48px !important;
-        font-size: 1.5rem !important;
-    }
-    
-    .single-provider-name {
-        font-size: 1.1rem !important;
-    }
-    
-    /* Responsive - Mobile */
-    @media (max-width: 768px) {
-        .main .block-container {
-            padding: 1rem 1.5rem !important;
-        }
-        
-        .fc-metrics-grid,
-        .metrics-grid {
-            gap: 8px !important;
-            grid-template-columns: repeat(2, 1fr) !important;
-        }
-        
-        .fc-metric-value,
-        .metric-value {
-            font-size: 1rem !important;
-        }
+        font-size: 0.7rem !important;
     }
     </style>
     """, unsafe_allow_html=True)
