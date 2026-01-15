@@ -1738,6 +1738,33 @@ def Compras_IA():
     </style>
     """, unsafe_allow_html=True)
 
+    # ✅ AGREGAR CSS PARA TARJETAS
+    st.markdown("""
+    <style>
+    .resumen-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .resumen-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+        color: #374151;
+    }
+    
+    .resumen-text {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin: 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     inicializar_historial()
 
     # ✅ INICIALIZAR FLAG PARA PAUSAR AUTOREFRESH
