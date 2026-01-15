@@ -754,7 +754,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     "📥 Excel",
                     data=_df_to_excel_bytes(df_export),
                     file_name="tabla_completa.xlsx",
-                    mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key=f"{key_prefix}xlsx_tabla",
                     type="secondary"
             )
@@ -1042,11 +1042,38 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     Dashboard con diseño moderno tipo card (similar a la imagen)
     """
     
-    # Calcular métricas
-    total_uyu = df[df['Moneda'] == '$'].sum(numeric_only=True).sum() if 'Moneda' in df.columns else 0
-    total_usd = df[df['Moneda'].isin(['U$S', 'USD'])].sum(numeric_only=True).sum() if 'Moneda' in df.columns else 0
+    if df is None or df.empty:
+        st.warning("⚠️ No hay datos para mostrar")
+        return
+    
+    # ==========================================
+    # CALCULAR MÉTRICAS CORRECTAMENTE
+    # ==========================================
+    
+    # Identificar columnas numéricas (años/meses: 2024, 2025, 2024-11, etc)
+    # Excluir "Diferencia" para no contar doble
+    cols_numericas = [c for c in df.columns if c not in ['Proveedor', 'Moneda', 'Diferencia'] and pd.api.types.is_numeric_dtype(df[c])]
+    
+    # Calcular totales por moneda
+    if 'Moneda' in df.columns:
+        df_pesos = df[df['Moneda'] == '$']
+        df_usd = df[df['Moneda'].isin(['U$S', 'USD', 'U$$'])]
+        
+        # Sumar SOLO las columnas de años/meses (no la diferencia)
+        total_uyu = df_pesos[cols_numericas].sum().sum() if not df_pesos.empty else 0
+        total_usd = df_usd[cols_numericas].sum().sum() if not df_usd.empty else 0
+    else:
+        # Sin columna moneda: asumir todo UYU
+        total_uyu = df[cols_numericas].sum().sum()
+        total_usd = 0
+    
+    # Número de proveedores y registros
     num_proveedores = df['Proveedor'].nunique() if 'Proveedor' in df.columns else 0
-    num_facturas = len(df)
+    num_registros = len(df)
+    
+    # Identificar qué años/meses se están comparando
+    periodos = [c for c in cols_numericas if c.isdigit() or '-' in str(c)]
+    num_periodos = len(periodos)
     
     # CSS Moderno
     st.markdown("""
@@ -1290,23 +1317,39 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     """, unsafe_allow_html=True)
     
     # MÉTRICAS
+    # Formatear totales
+    total_uyu_fmt = f"$ {total_uyu/1_000_000:.2f}M" if total_uyu >= 1_000_000 else f"$ {total_uyu:,.0f}".replace(",", ".")
+    total_usd_fmt = f"U$S {total_usd/1_000:.0f}K" if total_usd >= 1_000 else f"U$S {total_usd:,.0f}"
+    
     st.markdown(f"""
     <div class="metrics-grid">
         <div class="metric-card">
             <p class="metric-label">Total UYU 💰</p>
-            <p class="metric-value">$ {total_uyu/1_000_000:.2f}M</p>
+            <p class="metric-value">{total_uyu_fmt}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Suma de {len(periodos)} período(s)
+            </p>
         </div>
         <div class="metric-card">
             <p class="metric-label">Total USD 💵</p>
-            <p class="metric-value">U$S {total_usd:,.0f}</p>
+            <p class="metric-value">{total_usd_fmt}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Suma de {len(periodos)} período(s)
+            </p>
         </div>
         <div class="metric-card">
-            <p class="metric-label">Facturas 📄</p>
-            <p class="metric-value">{num_facturas}</p>
+            <p class="metric-label">Registros 📄</p>
+            <p class="metric-value">{num_registros}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                {len(df[df['Moneda'] == '$'])} en pesos, {len(df[df['Moneda'].isin(['U$S', 'USD'])])} en USD
+            </p>
         </div>
         <div class="metric-card">
             <p class="metric-label">Proveedores 🏭</p>
             <p class="metric-value">{num_proveedores}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Comparando {', '.join(map(str, periodos[:3]))}{"..." if len(periodos) > 3 else ""}
+            </p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1328,20 +1371,19 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 <div class="provider-icon">{iniciales}</div>
                 <div class="provider-info">
                     <p class="provider-name">{top_prov}</p>
-                    <p class="provider-subtitle">Principal Proveedor</p>
-                </div>
-                <div>
-                    <p class="provider-amount">$ {top_monto:,.2f}</p>
-                    <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
-                </div>
+                <p class="provider-subtitle">Principal Proveedor</p>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: {top_porc}%"></div>
+            <div>
+                <p class="provider-amount">$ {top_monto:,.2f}</p>
+                <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
             </div>
-            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
-                Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
-            </p>
         </div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {top_porc}%"></div>
+        </div>
+        <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+            Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
+        </p>
         """, unsafe_allow_html=True)
     
     # TABS CON DATOS
@@ -1671,10 +1713,25 @@ def Compras_IA():
                             )
                             
                             if df is not None and not df.empty:
-                                # ✅ GUARDAR EN SESSION_STATE (esto lo hace persistente)
+                                # ✅ CONSTRUIR TÍTULO CON PROVEEDOR
+                                titulo_provs = ""
+                                if proveedores_sel:
+                                    if len(proveedores_sel) == 1:
+                                        # Un solo proveedor: mostrar nombre completo
+                                        titulo_provs = f"{proveedores_sel[0]} - "
+                                    elif len(proveedores_sel) <= 3:
+                                        # 2-3 proveedores: mostrar todos
+                                        titulo_provs = f"{', '.join(proveedores_sel)} - "
+                                    else:
+                                        # Más de 3: mostrar cantidad
+                                        titulo_provs = f"{len(proveedores_sel)} proveedores - "
+                                else:
+                                    titulo_provs = "Todos los proveedores - "
+                                
+                                # ✅ GUARDAR EN SESSION_STATE
                                 st.session_state["comparativa_resultado"] = df
-                                st.session_state["comparativa_titulo"] = f"Comparación {' vs '.join(map(str, anios))}"
-                                st.session_state["comparativa_activa"] = True  # Pausar auto-refresh
+                                st.session_state["comparativa_titulo"] = f"{titulo_provs}Comparación {' vs '.join(map(str, anios))}"
+                                st.session_state["comparativa_activa"] = True
                                 
                                 st.success(f"✅ Comparación lista - {len(df)} filas")
                             else:
