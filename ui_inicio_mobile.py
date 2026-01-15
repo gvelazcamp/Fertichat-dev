@@ -91,6 +91,17 @@ def mostrar_inicio_mobile():
         margin:0 0 8px 0;  /* Espacio entre tarjetas */
     }
 
+    /* Recomendado (Compras IA) - Señal visual sutil */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .stButton:has(button[key="compras"]) > button {
+        border:2px solid rgba(37,99,235,0.30);
+        background:rgba(255,255,255,0.95);
+        box-shadow:0 12px 28px rgba(37,99,235,0.10);
+    }
+    div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .stButton:has(button[key="compras"]) > button:hover {
+        border-color:rgba(37,99,235,0.50);
+        box-shadow:0 16px 38px rgba(37,99,235,0.15);
+    }
+
     /* Primera línea como título - más pequeño */
     div[data-testid="stAppViewContainer"]:has(#fc-home-mobile-marker) .stButton > button::first-line{
         font-size:14.5px;
@@ -216,54 +227,54 @@ def mostrar_inicio_mobile():
     # =========================
     # Secciones con botones - 2 COLUMNAS COMPACTAS
     # =========================
-    st.markdown("<div style='max-width:600px;margin:0 auto;'><div style='color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px 8px;display:flex;align-items:center;gap:6px;'>📌 Módulos principales</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:600px;margin:0 auto;'><div style='color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px 8px;display:flex;align-items:center;gap:6px;'>📌 Inteligencia y consulta</div></div>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2, gap="small")
     with col1:
         st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
-        if st.button("Compras IA\nConsultas inteligentes", key="compras"):
+        if st.button("Compras IA\nConsultas inteligentes de compras y gastos", key="compras"):
             st.query_params["go"] = "compras"
             st.rerun()
         
         st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
-        if st.button("Stock IA\nConsultar inventario", key="stock"):
+        if st.button("Stock IA\nConsultar inventario y vencimientos", key="stock"):
             st.query_params["go"] = "stock"
             st.rerun()
     
     with col2:
         st.markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
-        if st.button("Buscador IA\nBuscar facturas / lotes", key="buscador"):
+        if st.button("Buscador IA\nBuscar facturas, artículos y lotes", key="buscador"):
             st.query_params["go"] = "buscador"
             st.rerun()
         
         st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
-        if st.button("Dashboard\nVer estadísticas", key="dashboard"):
+        if st.button("Dashboard\nAnálisis y resúmenes ejecutivos", key="dashboard"):
             st.query_params["go"] = "dashboard"
             st.rerun()
 
     st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:600px;margin:0 auto;'><div style='color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px 8px;display:flex;align-items:center;gap:6px;'>📋 Gestión</div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:600px;margin:0 auto;'><div style='color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px 8px;display:flex;align-items:center;gap:6px;'>⚙️ Gestión operativa</div></div>", unsafe_allow_html=True)
 
     col3, col4 = st.columns(2, gap="small")
     with col3:
         st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
-        if st.button("Pedidos internos\nGestionar pedidos", key="pedidos"):
+        if st.button("Pedidos internos\nGestionar pedidos y solicitudes", key="pedidos"):
             st.query_params["go"] = "pedidos"
             st.rerun()
         
         st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
-        if st.button("Órdenes de compra\nCrear órdenes", key="ordenes"):
+        if st.button("Órdenes de compra\nGenerar órdenes de compra", key="ordenes"):
             st.query_params["go"] = "ordenes"
             st.rerun()
     
     with col4:
         st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
-        if st.button("Baja de stock\nRegistrar bajas", key="baja"):
+        if st.button("Baja de stock\nRegistrar consumo y bajas", key="baja"):
             st.query_params["go"] = "baja"
             st.rerun()
         
         st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
-        if st.button("Indicadores\nPower BI", key="indicadores"):
+        if st.button("Indicadores\nPower BI - Análisis avanzado", key="indicadores"):
             st.query_params["go"] = "indicadores"
             st.rerun()
 
