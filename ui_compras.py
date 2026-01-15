@@ -441,6 +441,13 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             display: none !important;
         }
         
+        /* ==========================================
+           OCULTAR LÍNEAS HORIZONTALES (hr) GENERADAS POR st.markdown("---")
+           ========================================== */
+        hr {
+            display: none !important;
+        }
+        
         /* Botón de exportación arriba */
         .fc-export-btn {
             text-align: right;
@@ -747,7 +754,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     "📥 Excel",
                     data=_df_to_excel_bytes(df_export),
                     file_name="tabla_completa.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                     key=f"{key_prefix}xlsx_tabla",
                     type="secondary"
             )
