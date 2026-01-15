@@ -1737,16 +1737,12 @@ def Compras_IA():
                 df_guardado = st.session_state["comparativa_resultado"]
                 titulo_guardado = st.session_state.get("comparativa_titulo", "Comparación")
                 
-                st.markdown("---")
-                
                 # Botón para limpiar
                 if st.button("🗑️ Limpiar resultados", key="btn_limpiar_comparativa"):
                     del st.session_state["comparativa_resultado"]
                     del st.session_state["comparativa_titulo"]
                     st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
                     st.rerun()
-                
-                st.markdown("---")
                 
                 # Mostrar dashboard con datos guardados
                 render_dashboard_comparativas_moderno(
