@@ -655,7 +655,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
                 file_name="vista_general.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd_openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}xlsx_all",
                 type="secondary"
             )
@@ -675,7 +675,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
                 file_name="pesos_uyu.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}xlsx_uyu",
                 type="secondary"
             )
@@ -696,7 +696,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
                 file_name="dolares_usd.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}xlsx_usd",
                 type="secondary"
             )
@@ -754,7 +754,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     "📥 Excel",
                     data=_df_to_excel_bytes(df_export),
                     file_name="tabla_completa.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    mime="application/vnd_openxmlformats-officedocument.spreadsheetml.sheet",
                     key=f"{key_prefix}xlsx_tabla",
                     type="secondary"
             )
@@ -1341,7 +1341,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             <p class="metric-label">Registros 📄</p>
             <p class="metric-value">{num_registros}</p>
             <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
-                {len(df[df['Moneda'] == '$'])} en pesos, {len(df[df['Moneda'].isin(['U$S', 'USD'])])} en USD
+                {len(df_pesos) if 'Moneda' in df.columns else 0} en pesos, {len(df_usd) if 'Moneda' in df.columns else 0} en USD
             </p>
         </div>
         <div class="metric-card">
@@ -1367,11 +1367,10 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         
         st.markdown(f"""
         <div class="provider-card">
-            <div class="provider-header">
-                <div class="provider-icon">{iniciales}</div>
-                <div class="provider-info">
-                    <p class="provider-name">{top_prov}</p>
-                <p class="provider-subtitle">Principal Proveedor</p>
+            <div class="provider-icon">{iniciales}</div>
+            <div class="provider-info">
+                <p class="provider-name">{top_prov}</p>
+            <p class="provider-subtitle">Principal Proveedor</p>
             </div>
             <div>
                 <p class="provider-amount">$ {top_monto:,.2f}</p>
