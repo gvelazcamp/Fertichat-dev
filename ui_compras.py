@@ -1736,7 +1736,7 @@ def Compras_IA():
         div[data-testid="stAppViewContainer"] {
             transform: scale(0.80);
             transform-origin: top center;
-            width: 100%;
+            width: 110%;
         }
         
         /* ✅ FORZAR SEPARACIÓN DE TARJETAS (CRÍTICO) */
