@@ -1726,52 +1726,38 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 # =========================
 def Compras_IA():
 
-    # =========================
-    # ZOOM 90% + ESPACIADOS FORZADOS
+ # =========================
+    # ANCHO COMPLETO SIN ZOOM (para evitar compresión de tarjetas)
     # =========================
     st.markdown("""
     <style>
-    @media (min-width: 800px) {
-        /* Zoom general */
-        div[data-testid="stAppViewContainer"] {
-            transform: scale(0.80);
-            transform-origin: top center;
-            width: 110%;
-        }
-        
-        /* ✅ FORZAR SEPARACIÓN DE TARJETAS (CRÍTICO) */
-        .fc-metrics-grid,
-        .metrics-grid,
-        div.fc-metrics-grid,
-        div.metrics-grid {
-            gap: 40px !important;  /* ← MUY IMPORTANTE: FORZAR CON !important */
-            margin-bottom: 32px !important;
-        }
-        
-        /* También forzar en las tarjetas individuales */
-        .fc-metric-card,
-        .metric-card {
-            margin: 0 !important;  /* quitar márgenes que puedan estar colapsando */
-            padding: 24px !important;
-        }
-        
-        /* Separación entre filas si hay wrap */
-        .fc-metrics-grid > *,
-        .metrics-grid > * {
-            margin-bottom: 0 !important;
-        }
-        
-        /* ✅ FORZAR INTERLINEADO VERTICAL ENTRE TARJETAS EN VISTA GENERAL */
-        .resumen-card {
-            margin-bottom: 32px !important;
-        }
-        
-        .provider-card {
-            margin-bottom: 32px !important;
-        }
+    /* ANCHO COMPLETO SIN ZOOM */
+    .main .block-container {
+        max-width: 95% !important;  /* Usar TODO el ancho disponible */
+        width: 95% !important;
+        padding-left: 3rem !important;
+        padding-right: 3rem !important;
+    }
+
+    /* ESPACIADOS */
+    .fc-metrics-grid,
+    .metrics-grid {
+        margin-bottom: 40px !important;
+        gap: 32px !important;
+    }
+    
+    /* Interlineado vertical entre tarjetas */
+    .resumen-card {
+        margin-bottom: 32px !important;
+    }
+    
+    .provider-card {
+        margin-bottom: 32px !important;
     }
     </style>
     """, unsafe_allow_html=True)
+
+# ... (el resto igual) ...
 
 
     inicializar_historial()
