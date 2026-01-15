@@ -281,8 +281,7 @@ def _save_view(view_name: str, data: dict):
     for v in st.session_state["FC_SAVED_VIEWS"]:
         if str(v.get("name", "")).strip().lower() == name.lower():
             continue
-        out.append(v)
-    out.append({"name": name, "data": data})
+        out.append({"name": name, "data": data})
     st.session_state["FC_SAVED_VIEWS"] = out
 
 
@@ -341,7 +340,9 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     st.markdown(
         """
         <style>
-        /* Header con gradiente */
+        /* ==========================================
+           HEADER CON TÍTULO Y METADATA
+           ========================================== */
         .fc-header-modern {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 16px;
@@ -377,7 +378,9 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             color: rgba(255,255,255,0.9);
         }
         
-        /* Grid de métricas */
+        /* ==========================================
+           TARJETAS DE MÉTRICAS (4 columnas)
+           ========================================== */
         .fc-metrics-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -419,7 +422,9 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             margin: 4px 0 0 0;
         }
         
-        /* Tarjeta total grande */
+        /* ==========================================
+           CARD TOTAL GRANDE
+           ========================================== */
         .total-summary-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 16px;
@@ -442,7 +447,9 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             margin: 0;
         }
         
-        /* Card de resumen ejecutivo */
+        /* ==========================================
+           CARD RESUMEN EJECUTIVO
+           ========================================== */
         .resumen-card {
             background: white;
             border: 1px solid #e5e7eb;
@@ -465,7 +472,9 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             margin: 0;
         }
         
-        /* Provider card */
+        /* ==========================================
+           PROVIDER CARD
+           ========================================== */
         .provider-card {
             background: white;
             border: 1px solid #e5e7eb;
@@ -541,7 +550,9 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             border-radius: 3px;
         }
         
-        /* Responsive */
+        /* ==========================================
+           RESPONSIVE (MOBILE)
+           ========================================== */
         @media (max-width: 768px) {
             .fc-metrics-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -829,34 +840,6 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
-        
-        with col_top:
-            # TOP 5 ARTÍCULOS
-            if col_articulo and not df_f.empty:
-                top_art = (
-                    df_f.groupby(col_articulo)["__total_num__"]
-                    .sum()
-                    .sort_values(ascending=False)
-                    .head(5)
-                )
-                
-                if len(top_art) > 0:
-                    st.markdown("""
-                    <div class="resumen-card">
-                        <h4 class="resumen-title">🏆 Top 5 Artículos</h4>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    for i, (art, monto) in enumerate(top_art.items(), 1):
-                        st.markdown(f"""
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="background: #667eea; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;">{i}</span>
-                                <span style="font-size: 0.9rem; color: #374151;">{_shorten_text(art, 30)}</span>
-                            </div>
-                            <span style="font-size: 0.9rem; font-weight: 600; color: #111827;">{_fmt_compact_money(monto, "UYU")}</span>
-                        </div>
-                        """, unsafe_allow_html=True)
 
     with tab_uyu:
         # Calcular total UYU
@@ -1011,191 +994,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
 
 # =========================
-# ROUTER SQL (ahora incluye compras, comparativas y stock)
-# =========================
-def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
-
-    _dbg_set_sql(
-        tag=tipo,
-        query=f"-- Ejecutando tipo: {tipo}\n-- (SQL real en sql_compras/sql_comparativas/sql_facturas)\n",
-        params=parametros,
-        df=None,
-    )
-
-    # ===== FACTURAS =====
-    if tipo == "detalle_factura":
-        df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "facturas_proveedor":
-        # ✅ Usa la función corregida de sql_facturas.py
-        df = sqlq_facturas.get_facturas_proveedor(
-            proveedores=parametros.get("proveedores", []),
-            meses=parametros.get("meses"),
-            anios=parametros.get("anios"),
-            desde=parametros.get("desde"),
-            hasta=parametros.get("hasta"),
-            articulo=parametros.get("articulo"),
-            moneda=parametros.get("moneda"),
-            limite=parametros.get("limite", 5000),
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "ultima_factura":
-        df = sqlq_facturas.get_ultima_factura_inteligente(parametros["patron"])
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "resumen_facturas":
-        df = sqlq_facturas.get_resumen_facturas_por_proveedor(
-            meses=parametros.get("meses"),
-            anios=parametros.get("anios"),
-            moneda=parametros.get("moneda"),
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "facturas_rango_monto":
-        df = sqlq_facturas.get_facturas_por_rango_monto(
-            monto_min=parametros.get("monto_min", 0),
-            monto_max=parametros.get("monto_max", 999999999),
-            proveedores=parametros.get("proveedores"),
-            meses=parametros.get("meses"),
-            anios=parametros.get("anios"),
-            moneda=parametros.get("moneda"),
-            limite=parametros.get("limite", 100),
-        )
-        _dbg_set_result(df)
-        return df
-
-    # ===== COMPRAS =====
-    elif tipo == "compras_anio":
-        df = sqlq_compras.get_compras_anio(parametros["anio"])
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "compras_mes":
-        df = sqlq_compras.get_compras_por_mes_excel(parametros["mes"])
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "compras_proveedor_mes":
-        df = sqlq_compras.get_detalle_compras_proveedor_mes(parametros["proveedor"], parametros["mes"])
-        _dbg_set_result(df)
-        return df
-
-    # AGREGADO: COMPRAS MÚLTIPLES
-    elif tipo == "compras_multiples":
-        df = sqlq_compras.get_compras_multiples(
-            proveedores=parametros.get("proveedores", []),
-            meses=parametros.get("meses", []),
-            anios=parametros.get("anios", []),
-            limite=parametros.get("limite", 5000)
-        )
-        _dbg_set_result(df)
-        return df
-
-    # ===== COMPARATIVAS =====
-    elif tipo == "comparar_proveedor_meses":
-        df = sqlq_comparativas.get_comparacion_proveedor_meses(
-            parametros["proveedor"], parametros["mes1"], parametros["mes2"], parametros["label1"], parametros["label2"]
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "comparar_proveedor_anios":
-        df = sqlq_comparativas.get_comparacion_proveedor_anios(
-            parametros["proveedor"], parametros["anios"], parametros["label1"], parametros["label2"]
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "comparar_proveedores_meses":
-        df = sqlq_comparativas.get_comparacion_proveedores_meses(
-            parametros["proveedores"], parametros["mes1"], parametros["mes2"], parametros["label1"], parametros["label2"]
-        )
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "comparar_proveedores_anios":
-        df = sqlq_comparativas.get_comparacion_proveedores_anios(
-            parametros["proveedores"], parametros["anios"], parametros["label1"], parametros["label2"]
-        )
-        _dbg_set_result(df)
-        return df
-
-    # AGREGADO: Comparación multi proveedores multi meses
-    elif tipo == "comparar_proveedores_meses_multi":
-        df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(
-            proveedores=parametros.get("proveedores", []),
-            meses=parametros.get("meses", []),
-            articulos=parametros.get("articulos", [])  # Agregado articulos
-        )
-        _dbg_set_result(df)
-        return df
-        
-    # ===== COMPARATIVAS MULTI (NUEVO - TODOS LOS PROVEEDORES) =====
-    elif tipo == "comparar_proveedores_anios_multi":
-        proveedores = parametros.get("proveedores", [])
-        anios = parametros.get("anios", [])
-        
-        # Si proveedores está vacío, significa TODOS
-        if not proveedores:
-            proveedores = None
-        
-        print(f"🐛 DEBUG ejecutar_consulta: comparar_proveedores_anios_multi")
-        print(f"   Proveedores: {proveedores or 'TODOS'}")
-        print(f"   Años: {anios}")
-        
-        df = sqlq_comparativas.get_comparacion_proveedores_anios_multi(
-            proveedores=proveedores,
-            anios=anios
-        )
-        _dbg_set_result(df)
-        return df
-
-    # ===== STOCK =====
-    elif tipo == "stock_total":
-        df = sqlq_compras.get_stock_total()  # Ajusta si es otro módulo
-        _dbg_set_result(df)
-        return df
-
-    elif tipo == "stock_articulo":
-        df = sqlq_compras.get_stock_articulo(parametros["articulo"])  # Ajusta si es otro módulo
-        _dbg_set_result(df)
-        return df
-
-    # ===== LISTADO FACTURAS AÑO =====
-    elif tipo == "listado_facturas_anio":
-        df = sqlq_compras.get_listado_facturas_por_anio(parametros["anio"])
-        _dbg_set_result(df)
-        return df
-
-    # ===== TOTAL FACTURAS POR MONEDA AÑO =====
-    elif tipo == "total_facturas_por_moneda_anio":
-        df = sqlq_compras.get_total_facturas_por_moneda_anio(parametros["anio"])
-        _dbg_set_result(df)
-        return df
-
-    # ===== TOTAL FACTURAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
-    elif tipo == "total_facturas_por_moneda_generico":
-        df = sqlq_facturas.get_total_facturas_por_moneda_todos_anios()
-        _dbg_set_result(df)
-        return df
-
-    # ===== TOTAL COMPRAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
-    elif tipo == "total_compras_por_moneda_generico":
-        df = sqlq_compras.get_total_compras_por_moneda_todos_anios()
-        _dbg_set_result(df)
-        return df
-
-    raise ValueError(f"Tipo '{tipo}' no implementado en ejecutar_consulta_por_tipo")
-
-
-# =========================
-# 🎨 DASHBOARD COMPARATIVAS MODERNO
+# DASHBOARD COMPARATIVAS MODERNO
 # =========================
 def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Comparativas"):
     """
@@ -1572,9 +1371,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     # HEADER
     st.markdown(f"""
     <div class="dash-header">
-        <h2 class="dash-title">
-            📊 {titulo}
-        </h2>
+        <h2 class="dash-title">📊 {titulo}</h2>
         <div class="dash-badge">
             ✅ Resultado: Se encontraron {len(df)} registros
         </div>
@@ -1705,9 +1502,217 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
 
 
 # =========================
+# ROUTER SQL (ahora incluye compras, comparativas y stock)
+# =========================
+def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
+
+    _dbg_set_sql(
+        tag=tipo,
+        query=f"-- Ejecutando tipo: {tipo}\n-- (SQL real en sql_compras/sql_comparativas/sql_facturas)\n",
+        params=parametros,
+        df=None,
+    )
+
+    # ===== FACTURAS =====
+    if tipo == "detalle_factura":
+        df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
+        _dbg_set_result(df)
+        return df
+
+    elif tipo == "facturas_proveedor":
+        # ✅ Usa la función corregida de sql_facturas.py
+        df = sqlq_facturas.get_facturas_proveedor(
+            proveedores=parametros.get("proveedores", []),
+            meses=parametros.get("meses"),
+            anios=parametros.get("anios"),
+            desde=parametros.get("desde"),
+            hasta=parametros.get("hasta"),
+            articulo=parametros.get("articulo"),
+            moneda=parametros.get("moneda"),
+            limite=parametros.get("limite", 5000),
+        )
+        _dbg_set_result(df)
+        return df
+
+    elif tipo == "ultima_factura":
+        df = sqlq_facturas.get_ultima_factura_inteligente(parametros["patron"])
+        _dbg_set_result(df)
+        return df
+
+    elif tipo == "resumen_facturas":
+        df = sqlq_facturas.get_resumen_facturas_por_proveedor(
+            meses=parametros.get("meses"),
+            anios=parametros.get("anios"),
+            moneda=parametros.get("moneda"),
+        )
+        _dbg_set_result(df)
+        return df
+
+    elif tipo == "facturas_rango_monto":
+        df = sqlq_facturas.get_facturas_por_rango_monto(
+            monto_min=parametros.get("monto_min", 0),
+            monto_max=parametros.get("monto_max", 999999999),
+            proveedores=parametros.get("proveedores"),
+            meses=parametros.get("meses"),
+            anios=parametros.get("anios"),
+            moneda=parametros.get("moneda"),
+            limite=parametros.get("limite", 100),
+        )
+        _dbg_set_result(df)
+        return df
+
+    # ===== COMPRAS =====
+    elif tipo == "compras_anio":
+        df = sqlq_compras.get_compras_anio(parametros["anio"])
+        _dbg_set_result(df)
+        return df
+
+    elif tipo == "compras_mes":
+        df = sqlq_compras.get_compras_por_mes_excel(parametros["mes"])
+        _dbg_set_result(df)
+        return df
+
+    elif tipo == "compras_proveedor_mes":
+        df = sqlq_compras.get_detalle_compras_proveedor_mes(parametros["proveedor"], parametros["mes"])
+        _dbg_set_result(df)
+        return df
+
+    # AGREGADO: COMPRAS MÚLTIPLES
+    elif tipo == "compras_multiples":
+        df = sqlq_compras.get_compras_multiples(
+            proveedores=parametros.get("proveedores", []),
+            meses=parametros.get("meses", []),
+            anios=parametros.get("anios", []),
+            limite=parametros.get("limite", 5000)
+        )
+        _dbg_set_result(df)
+        return df
+
+    # ===== COMPARATIVAS =====
+    elif tipo == "comparar_proveedor_meses":
+        df = sqlq_comparativas.get_comparacion_proveedor_meses(
+            parametros["proveedor"], parametros["mes1"], parametros["mes2"], parametros["label1"], parametros["label2"]
+        )
+        _dbg_set_result(df)
+        return df
+
+    elif tipo == "comparar_proveedor_anios":
+        df = sqlq_comparativas.get_comparacion_proveedor_anios(
+            parametros["proveedor"], parametros["anios"], parametros["label1"], parametros["label2"]
+        )
+        _dbg_set_result(df)
+        return df
+
+    elif tipo == "comparar_proveedores_meses":
+        df = sqlq_comparativas.get_comparacion_proveedores_meses(
+            parametros["proveedores"], parametros["mes1"], parametros["mes2"], parametros["label1"], parametros["label2"]
+        )
+        _dbg_set_result(df)
+        return df
+
+    elif tipo == "comparar_proveedores_anios":
+        df = sqlq_comparativas.get_comparacion_proveedores_anios(
+            parametros["proveedores"], parametros["anios"], parametros["label1"], parametros["label2"]
+        )
+        _dbg_set_result(df)
+        return df
+
+    # AGREGADO: Comparación multi proveedores multi meses
+    elif tipo == "comparar_proveedores_meses_multi":
+        df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(
+            proveedores=parametros.get("proveedores", []),
+            meses=parametros.get("meses", []),
+            articulos=parametros.get("articulos", [])  # Agregado articulos
+        )
+        _dbg_set_result(df)
+        return df
+        
+    # ===== COMPARATIVAS MULTI (NUEVO - TODOS LOS PROVEEDORES) =====
+    elif tipo == "comparar_proveedores_anios_multi":
+        proveedores = parametros.get("proveedores", [])
+        anios = parametros.get("anios", [])
+        
+        # Si proveedores está vacío, significa TODOS
+        if not proveedores:
+            proveedores = None
+        
+        print(f"🐛 DEBUG ejecutar_consulta: comparar_proveedores_anios_multi")
+        print(f"   Proveedores: {proveedores or 'TODOS'}")
+        print(f"   Años: {anios}")
+        
+        df = sqlq_comparativas.get_comparacion_proveedores_anios_multi(
+            proveedores=proveedores,
+            anios=anios
+        )
+        _dbg_set_result(df)
+        return df
+
+    # ===== STOCK =====
+    elif tipo == "stock_total":
+        df = sqlq_compras.get_stock_total()  # Ajusta si es otro módulo
+        _dbg_set_result(df)
+        return df
+
+    elif tipo == "stock_articulo":
+        df = sqlq_compras.get_stock_articulo(parametros["articulo"])  # Ajusta si es otro módulo
+        _dbg_set_result(df)
+        return df
+
+    # ===== LISTADO FACTURAS AÑO =====
+    elif tipo == "listado_facturas_anio":
+        df = sqlq_compras.get_listado_facturas_por_anio(parametros["anio"])
+        _dbg_set_result(df)
+        return df
+
+    # ===== TOTAL FACTURAS POR MONEDA AÑO =====
+    elif tipo == "total_facturas_por_moneda_anio":
+        df = sqlq_compras.get_total_facturas_por_moneda_anio(parametros["anio"])
+        _dbg_set_result(df)
+        return df
+
+    # ===== TOTAL FACTURAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
+    elif tipo == "total_facturas_por_moneda_generico":
+        df = sqlq_facturas.get_total_facturas_por_moneda_todos_anios()
+        _dbg_set_result(df)
+        return df
+
+    # ===== TOTAL COMPRAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
+    elif tipo == "total_compras_por_moneda_generico":
+        df = sqlq_compras.get_total_compras_por_moneda_todos_anios()
+        _dbg_set_result(df)
+        return df
+
+    raise ValueError(f"Tipo '{tipo}' no implementado en ejecutar_consulta_por_tipo")
+
+
+# =========================
 # UI PRINCIPAL
 # =========================
 def Compras_IA():
+
+    # =========================
+    # FORZAR ZOOM 75% EN PC (simula zoom out como te gusta)
+    # =========================
+    st.markdown("""
+    <style>
+    /* Aplicar solo en desktop (ancho > 900px) */
+    @media (min-width: 901px) {
+        div[data-testid="stAppViewContainer"] {
+            transform: scale(0.75);
+            transform-origin: top left;
+            width: 133.33%;  /* Compensar el scale para evitar scroll horizontal */
+            height: 133.33%; /* Compensar el scale para evitar scroll vertical */
+            margin: 0;       /* Ajustar márgenes si es necesario */
+        }
+        /* Ajustar sidebar si es necesario */
+        section[data-testid="stSidebar"] {
+            transform: scale(0.75);
+            transform-origin: top left;
+            width: 133.33%;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     inicializar_historial()
 
@@ -2055,4 +2060,4 @@ def Compras_IA():
         #     <b>Siempre usa solo UN botón comparar.</b>
         #     """, 
         #     unsafe_allow_html=True
-        # )
+        )
