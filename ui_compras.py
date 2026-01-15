@@ -1726,8 +1726,6 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 # =========================
 def Compras_IA():
 
-def Compras_IA():
-
     # =========================
     # SIN ZOOM - TODO MÁS GRANDE Y ESPACIOSO (simula zoom 80%)
     # =========================
