@@ -251,76 +251,53 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
 st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
 
 # =========================
-# CSS ULTRA FORZADO PARA ELIMINAR TODO PADDING SUPERIOR (más agresivo)
+# CSS PARA ELIMINAR TODO PADDING SUPERIOR (más específico)
 # =========================
 st.markdown("""
 <style>
-/* ====== ULTRA FUERZA padding TOP GLOBAL - TODOS LOS SELECTORES POSIBLES ====== */
+/* ====== ELIMINAR TODO PADDING SUPERIOR ====== */
 
-/* Root container */
+/* Contenedor principal de la app */
+.main > div:first-child {
+    padding-top: 0rem !important;
+}
+
+/* Bloque principal */
+.main .block-container {
+    padding-top: 0rem !important;
+    padding-bottom: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* Todos los bloques verticales (el que ves en violeta) */
+div.stVerticalBlock,
+div[data-testid="stVerticalBlock"],
+div[class*="stVerticalBlock"] {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+    gap: 0rem !important;
+}
+
+/* Contenedor de la vista */
 div[data-testid="stAppViewContainer"] {
     padding-top: 0rem !important;
-    margin-top: 0rem !important;
 }
 
-/* Main section */
-section.main {
-    padding-top: 0rem !important;
-    margin-top: 0rem !important;
-}
-
-/* Main section child */
-section.main > div {
-    padding-top: 0rem !important;
-    margin-top: 0rem !important;
-}
-
-/* Vertical block */
-div[data-testid="stVerticalBlock"] {
-    padding-top: 0rem !important;
-    margin-top: 0rem !important;
-}
-
-/* Block container */
-div.block-container {
-    padding-top: 0rem !important;
-    margin-top: 0rem !important;
-}
-
-/* First child of app container */
-div[data-testid="stAppViewContainer"] > div:first-child {
-    padding-top: 0rem !important;
-    margin-top: 0rem !important;
-}
-
-/* Any div with block-container class */
-div.block-container {
-    padding-top: 0rem !important;
-    margin-top: 0rem !important;
-}
-
-/* Sidebar content */
-section[data-testid="stSidebar"] div.block-container {
-    padding-top: 0rem !important;
-    margin-top: 0rem !important;
-}
-
-/* Force on all divs inside main */
-section.main div {
+/* Primer elemento de cada sección */
+.main > div:first-child > div:first-child {
     padding-top: 0rem !important;
 }
 
-/* Last resort - force on everything */
-* {
-    padding-top: 0rem !important;
-    margin-top: 0rem !important;
+/* Si tenés header fijo */
+header[data-testid="stHeader"] {
+    background-color: transparent;
+    height: 0rem;
 }
 
-/* But restore for content we want */
-div[data-testid="stAppViewContainer"] .block-container {
-    padding-top: 0.5rem !important; /* mínimo para evitar overlap */
+/* Ajuste fino - solo dejá un mínimo para que no se solape con el header del navegador */
+.main .block-container {
+    padding-top: 0.5rem !important;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
