@@ -379,7 +379,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         .fc-metrics-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
+            gap: 32px;  /* ← Aumentado de 16px a 32px para más separación */
             margin-bottom: 20px;
         }
         
@@ -1184,7 +1184,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
+            gap: 32px;  /* ← Aumentado de 16px a 32px para más separación */
             margin-bottom: 24px;
         }
         
