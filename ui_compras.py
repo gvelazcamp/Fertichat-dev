@@ -879,9 +879,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             <p class="total-summary-label">Total Dólares (USD)</p>
         </div>
         """, unsafe_allow_html=True)
-        
-        st.dataframe(df_usd, use_container_width=True, height=400)
-        
+
     with tab_graf:
         if df_f is None or df_f.empty or not col_articulo:
             st.info("Sin datos suficientes para gráfico.")
