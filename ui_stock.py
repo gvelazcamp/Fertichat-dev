@@ -333,6 +333,9 @@ def mostrar_resumen_stock_rotativo(dias_vencer: int = 365):  # ✅ CAMBIADO DEFA
 def mostrar_stock_ia():
     """Módulo Stock IA - Chat para consultas de stock"""
 
+    # Agregar espacio superior para compensar padding removido
+    st.markdown("<div style='margin-top: 2.5rem;'></div>", unsafe_allow_html=True)
+    
     st.title("📦 Stock IA")
     st.markdown("*Consultas de stock con lenguaje natural*")
 
@@ -475,7 +478,7 @@ def mostrar_stock_ia():
                     label="📥 Descargar Excel",
                     data=excel_data,
                     file_name="consulta_stock.xlsx",
-                    mime="application/vnd/openxmlformats-officedocument/spreadsheetml.sheet"
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
     if st.session_state.historial_stock:
