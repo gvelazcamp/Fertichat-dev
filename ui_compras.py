@@ -1804,8 +1804,8 @@ def Compras_IA():
         border: 1px solid #e5e7eb;
         border-radius: 12px;
         padding: 14px 18px !important;
-        margin-bottom: 24px !important;  /* ← MÁS ESPACIO ENTRE CARDS (antes 12px) */
-        min-height: 140px !important;  /* ← ALTURA MÍNIMA UNIFORME */
+        margin-bottom: 24px !important;
+        min-height: 120px !important;  /* ← MÁS BAJA (antes 140px) */
         display: flex !important;
         flex-direction: column !important;
         box-sizing: border-box !important;
@@ -1813,18 +1813,18 @@ def Compras_IA():
     
     /* Título de la card */
     .resumen-title {
-        font-size: 0.9rem !important;
+        font-size: 0.8rem !important;  /* Un poco más pequeño */
         font-weight: 700 !important;
-        margin: 0 0 8px 0 !important;
+        margin: 0 0 6px 0 !important;
         color: #374151;
     }
     
     /* Texto de la card */
     .resumen-text {
-        font-size: 0.75rem !important;  /* Más pequeño para la lista */
+        font-size: 0.7rem !important;  /* Un poco más pequeño */
         color: #6b7280;
         margin: 0 !important;
-        line-height: 1.4 !important;  /* Interlineado interno ajustado */
+        line-height: 1.3 !important;  /* Menos interlineado */
     }
     
     /* Provider card también con mismo alto */
@@ -1833,8 +1833,8 @@ def Compras_IA():
         border: 1px solid #e5e7eb;
         border-radius: 12px;
         padding: 16px !important;
-        margin-bottom: 24px !important;  /* ← MÁS ESPACIO */
-        min-height: 140px !important;  /* ← MISMO ALTO */
+        margin-bottom: 24px !important;
+        min-height: 120px !important;  /* ← MÁS BAJA */
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         display: flex !important;
         flex-direction: column !important;
