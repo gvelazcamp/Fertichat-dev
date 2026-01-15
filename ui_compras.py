@@ -1734,7 +1734,7 @@ def Compras_IA():
     @media (min-width: 901px) {
         /* Zoom general */
         div[data-testid="stAppViewContainer"] {
-            transform: scale(0.90);
+            transform: scale(0.75);
             transform-origin: top center;
             width: 111%;
         }
@@ -1760,9 +1760,19 @@ def Compras_IA():
         .metrics-grid > * {
             margin-bottom: 0 !important;
         }
+        
+        /* ✅ FORZAR INTERLINEADO VERTICAL ENTRE TARJETAS EN VISTA GENERAL */
+        .resumen-card {
+            margin-bottom: 32px !important;
+        }
+        
+        .provider-card {
+            margin-bottom: 32px !important;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
+
 
     inicializar_historial()
 
