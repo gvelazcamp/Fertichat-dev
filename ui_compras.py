@@ -19,10 +19,21 @@ from sql_core import get_unique_proveedores, get_unique_articulos  # Agregado
 def get_unique_proveedores():
     try:
         from sql_core import ejecutar_consulta
-        sql = 'SELECT DISTINCT TRIM("Cliente / Proveedor") AS prov FROM chatbot_raw WHERE TRIM("Cliente / Proveedor") != \'\' ORDER BY prov'
-        df = ejecutar_consulta(sql)
-        return df['prov'].tolist() if not df.empty else []
-    except:
+        sql = '''
+            SELECT DISTINCT TRIM("Cliente / Proveedor") AS prov 
+            FROM chatbot_raw 
+            WHERE TRIM("Cliente / Proveedor") != '' 
+            ORDER BY prov
+        '''
+        # ⚠️ SIN LIMIT - trae TODOS
+        df = ejecutar_consulta(sql, ())
+        if df is None or df.empty:
+            return []
+        provs = df['prov'].tolist()
+        print(f"🐛 DEBUG: Cargados {len(provs)} proveedores únicos")  # Debug
+        return provs
+    except Exception as e:
+        print(f"❌ Error cargando proveedores: {e}")
         return []
 
 def get_unique_articulos():
@@ -739,7 +750,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key=f"{key_prefix}xlsx_tabla",
                     type="secondary"
-                )
+            )
             
             # Orden preferido (mantiene columnas originales)
             pref = []
@@ -1375,8 +1386,10 @@ def Compras_IA():
     if "art_multi" not in st.session_state:
         st.session_state["art_multi"] = []
 
-    # Fetch opciones dinámicas
-    prov_options = get_unique_proveedores()[:100]  # Limitar para performance
+    # Fetch opciones dinámicas - TODOS sin límite
+    prov_options = get_unique_proveedores()  # ✅ Sin límite
+    print(f"🐛 Proveedores disponibles: {len(prov_options)}")  # Debug
+
     art_options = get_unique_articulos()[:100]
 
     # TABS PRINCIPALES: Chat IA + Comparativas
@@ -1573,7 +1586,7 @@ def Compras_IA():
         st.rerun()
 
     with tab_comparativas:
-        st.markdown("### 📊 Menú Comparativas Fáciles")
+        st.markdown("### ��� Menú Comparativas Fáciles")
         st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
         # Agregado: Submenús Compras y Comparativas
@@ -1610,26 +1623,22 @@ def Compras_IA():
         elif tipo_consulta == "Comparativas":
             st.markdown("#### 📊 Comparativas")
             
-            # Proveedores
-            col1, col2 = st.columns([1, 2])
+            # ✅ PROVEEDORES (ancho completo, sin columnas)
+            proveedores_disponibles = prov_options  # Ya tiene todos los proveedores
+            proveedores_sel = st.multiselect(
+                "Proveedores",
+                options=proveedores_disponibles,
+                default=[],
+                key="comparativas_proveedores_multi",
+                help="Dejá vacío para comparar TODOS. Escribí para filtrar y seleccioná con Enter."
+            )
             
-            with col1:
-                # ✅ Multiselect con TODOS los proveedores de la BD
-                proveedores_sel = st.multiselect(
-                    "Proveedores",
-                    options=prov_options,  # TODOS los proveedores de la BD (sin [:100])
-                    default=[],
-                    key="comparativas_proveedores_multi",
-                    help="Dejá vacío para comparar TODOS los proveedores. Escribí para filtrar."
-                )
-                
-                # Convertir a formato correcto
-                if proveedores_sel:
-                    proveedores = proveedores_sel
-                    st.caption(f"✅ {len(proveedores)} proveedor(es) seleccionado(s)")
-                else:
-                    proveedores = None
-                    st.caption("📊 Se compararán TODOS los proveedores")
+            if proveedores_sel:
+                proveedores = proveedores_sel
+                st.caption(f"✅ {len(proveedores)} proveedor(es) seleccionado(s)")
+            else:
+                proveedores = None
+                st.caption("📊 Se compararán TODOS los proveedores")
             
             meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
             anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
