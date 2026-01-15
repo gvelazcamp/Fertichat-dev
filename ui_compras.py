@@ -1726,32 +1726,109 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 # =========================
 def Compras_IA():
 
+def Compras_IA():
+
     # =========================
-    # SIN ZOOM - SOLO ANCHO COMPLETO Y ESPACIADOS
+    # SIN ZOOM - TODO MÁS GRANDE Y ESPACIOSO (simula zoom 80%)
     # =========================
     st.markdown("""
     <style>
-    /* Usar TODO el ancho disponible */
+    /* ========================================
+       DISEÑO ESPACIOSO (como zoom 80%)
+       ======================================== */
+    
+    /* Contenedor principal - más ancho */
     .main .block-container {
-        max-width: 1600px !important;  /* ajustá según tu pantalla */
-        padding: 2rem 3rem !important;
+        max-width: 1800px !important;  /* más ancho */
+        padding: 2.5rem 4rem !important;  /* más padding */
     }
     
-    /* Espaciados generosos */
-    .fc-metrics-grid,
-    .metrics-grid {
-        margin-bottom: 48px !important;
-        gap: 32px !important;
-    }
-    
+    /* Header del dashboard - más grande */
     .fc-header-modern,
     .dash-header {
+        padding: 36px 40px !important;
+        margin-bottom: 48px !important;
+        border-radius: 20px !important;
+    }
+    
+    .fc-title-modern,
+    .dash-title {
+        font-size: 2rem !important;  /* más grande */
+        margin-bottom: 16px !important;
+    }
+    
+    .fc-badge-modern,
+    .dash-badge {
+        font-size: 1.1rem !important;
+        padding: 10px 20px !important;
+    }
+    
+    /* Tarjetas métricas - más grandes y espaciadas */
+    .fc-metrics-grid,
+    .metrics-grid {
+        gap: 40px !important;  /* más separación horizontal */
+        margin-bottom: 56px !important;  /* más separación vertical */
+    }
+    
+    .fc-metric-card,
+    .metric-card {
+        padding: 28px 32px !important;  /* más padding interno */
+        border-radius: 16px !important;
+    }
+    
+    .fc-metric-label,
+    .metric-label {
+        font-size: 1rem !important;
+        margin-bottom: 10px !important;
+    }
+    
+    .fc-metric-value,
+    .metric-value {
+        font-size: 2.2rem !important;  /* números más grandes */
+    }
+    
+    /* Cards de resumen - más espaciadas */
+    .resumen-card,
+    .provider-card,
+    .total-summary-card {
+        padding: 24px 28px !important;
+        margin-bottom: 40px !important;
+        border-radius: 16px !important;
+    }
+    
+    /* Tabs - más espacio */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px !important;
         margin-bottom: 40px !important;
     }
     
-    .resumen-card,
-    .provider-card {
+    .stTabs [data-baseweb="tab"] {
+        font-size: 1.05rem !important;
+        padding: 12px 24px !important;
+    }
+    
+    /* Columnas - más espacio entre ellas */
+    div[data-testid="column"] {
+        padding: 0 20px !important;
+    }
+    
+    /* Separación general entre secciones */
+    .block-container > div {
         margin-bottom: 32px !important;
+    }
+    
+    /* ========================================
+       RESPONSIVE - En mobile mantener normal
+       ======================================== */
+    @media (max-width: 900px) {
+        .main .block-container {
+            padding: 1rem 1.5rem !important;
+        }
+        
+        .fc-metrics-grid,
+        .metrics-grid {
+            gap: 16px !important;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
