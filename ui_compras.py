@@ -28,7 +28,7 @@ def get_unique_proveedores():
         # ⚠️ SIN LIMIT - trae TODOS
         df = ejecutar_consulta(sql, ())
         if df is None or df.empty:
-            return []
+            return [],
         provs = df['prov'].tolist()
         print(f"🐛 DEBUG: Cargados {len(provs)} proveedores únicos")  # Debug
         return provs
@@ -337,6 +337,74 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         st.warning("⚠️ No hay resultados para mostrar.")
         return
 
+    # ==========================================
+    # BARRA DE ACCIONES SUPERIOR (CSV, Excel, Guardar Vista, Filtros) - SOLO PARA TABLAS
+    # ==========================================
+    if key_prefix:  # Solo en tablas, no en historial de chat
+        st.markdown("""
+        <style>
+            .action-bar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 12px 16px;
+                margin-bottom: 20px;
+                gap: 12px;
+            }
+            
+            .action-left {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .action-right {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .btn-action {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: white;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-size: 0.85rem;
+                font-weight: 500;
+                color: #374151;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+            
+            .btn-action:hover {
+                background: #f9fafb;
+                border-color: #9ca3af;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Barra de acciones
+        col_actions_left, col_actions_right = st.columns([3, 1])
+        with col_actions_left:
+            st.markdown("""
+            <div class="action-bar">
+                <div class="action-left">
+                    <button class="btn-action">📊 CSV</button>
+                    <button class="btn-action">📥 Excel</button>
+                    <button class="btn-action">💾 Guardar vista</button>
+                </div>
+                <div class="action-right">
+                    <button class="btn-action">🔍 Filtros</button>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
     # CSS MODERNO (header gradiente + tarjetas)
     st.markdown(
         """
@@ -573,7 +641,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     df_f = df_view.copy()
 
     # ============================================================
-    # BOTONES DE EXPORTACIÓN MOVIDOS ABAJO (ver tabs)
+    # BOTONES DE EXPORTACIÓN MOVIDOS ARRIBA - ELIMINADOS DE TABS
     # ============================================================
 
     # ============================================================
@@ -647,65 +715,18 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
 
     with tab_all:
-        # ✅ Botón Excel arriba a la derecha
-        col_space, col_export = st.columns([5, 1])
-        with col_export:
-            df_export = _df_export_clean(df_f)
-            st.download_button(
-                "📥 Excel",
-                data=_df_to_excel_bytes(df_export),
-                file_name="vista_general.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"{key_prefix}xlsx_all",
-                type="secondary"
-            )
-        
-        if col_proveedor:
-            _render_resumen_top_proveedores(df_f, "todas las monedas")
-        else:
-            _render_tabla_simple(df_f, "todas las monedas")
+        # ✅ RESUMEN ELIMINADO - SOLO TABLA DIRECTA
+        st.dataframe(df_f, use_container_width=True, height=400)
 
     with tab_uyu:
-        # ✅ Botón Excel arriba
-        col_space, col_export = st.columns([5, 1])
-        with col_export:
-            df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
-            df_export = _df_export_clean(df_uyu)
-            st.download_button(
-                "📥 Excel",
-                data=_df_to_excel_bytes(df_export),
-                file_name="pesos_uyu.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"{key_prefix}xlsx_uyu",
-                type="secondary"
-            )
-        
+        # ✅ RESUMEN ELIMINADO - SOLO TABLA DIRECTA
         df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
-        if col_proveedor:
-            _render_resumen_top_proveedores(df_uyu, "UYU")
-        else:
-            _render_tabla_simple(df_uyu, "UYU")
+        st.dataframe(df_uyu, use_container_width=True, height=400)
 
     with tab_usd:
-        # ✅ Botón Excel arriba
-        col_space, col_export = st.columns([5, 1])
-        with col_export:
-            df_usd = df_f[df_f["__moneda_view__"] == "USD"]
-            df_export = _df_export_clean(df_usd)
-            st.download_button(
-                "📥 Excel",
-                data=_df_to_excel_bytes(df_export),
-                file_name="dolares_usd.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"{key_prefix}xlsx_usd",
-                type="secondary"
-            )
-        
+        # ✅ RESUMEN ELIMINADO - SOLO TABLA DIRECTA
         df_usd = df_f[df_f["__moneda_view__"] == "USD"]
-        if col_proveedor:
-            _render_resumen_top_proveedores(df_usd, "USD")
-        else:
-            _render_tabla_simple(df_usd, "USD")
+        st.dataframe(df_usd, use_container_width=True, height=400)
 
     with tab_graf:
         if df_f is None or df_f.empty or not col_articulo:
@@ -746,19 +767,6 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         if df_f is None or df_f.empty:
             st.info("Sin resultados para mostrar.")
         else:
-            # ✅ Botón Excel arriba a la derecha
-            col_space, col_export = st.columns([5, 1])
-            with col_export:
-                df_export = _df_export_clean(df_f)
-                st.download_button(
-                    "📥 Excel",
-                    data=_df_to_excel_bytes(df_export),
-                    file_name="tabla_completa.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key=f"{key_prefix}xlsx_tabla",
-                    type="secondary"
-            )
-            
             # Orden preferido (mantiene columnas originales)
             pref = []
             for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
