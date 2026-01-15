@@ -561,7 +561,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "⬇️ Excel (vista)",
                 data=_df_to_excel_bytes(df_export),
                 file_name="compras_vista.xlsx",
-                mime="application/vnd.openxmlformats-officedocument/spreadsheetml.sheet",
+                mime="application/vnd/openxmlformats-officedocument/spreadsheetml.sheet",
                 key=f"{key_prefix}dl_xlsx"
             )
         with d3:
@@ -667,7 +667,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 index=0,
                 key=f"{key_prefix}g_mon"
             )
-            df_g = df_f.copy()
+            df_g = df_g.copy()
             if g_mon != "TODAS":
                 df_g = df_g[df_g["__moneda_view__"] == g_mon]
 
@@ -1251,18 +1251,40 @@ def Compras_IA():
                             )
                             
                             if df is not None and not df.empty:
+                                # ✅ GUARDAR EN SESSION_STATE (esto lo hace persistente)
+                                st.session_state["comparativa_resultado"] = df
+                                st.session_state["comparativa_titulo"] = f"Comparación {' vs '.join(map(str, anios))}"
+                                st.session_state["comparativa_activa"] = True  # Pausar auto-refresh
+                                
                                 st.success(f"✅ Comparación lista - {len(df)} filas")
-                                st.markdown("---")
-                                render_dashboard_compras_vendible(df, titulo="Resultado Comparativa", key_prefix="tab_comp_")
                             else:
                                 st.warning("No se encontraron datos")
                         except Exception as e:
                             st.error(f"❌ Error: {e}")
-
-        # Al final del tab comparativas, agregar:
-        if st.button("🗑️ Limpiar resultados"):
-            st.session_state.comparativa_activa = False  # ✅ REACTIVAR auto-refresh
-            st.rerun()
+                            st.exception(e)
+            
+            # ✅ MOSTRAR RESULTADO GUARDADO (persiste entre refreshes)
+            if "comparativa_resultado" in st.session_state:
+                df_guardado = st.session_state["comparativa_resultado"]
+                titulo_guardado = st.session_state.get("comparativa_titulo", "Comparación")
+                
+                st.markdown("---")
+                
+                # Botón para limpiar
+                if st.button("🗑️ Limpiar resultados", key="btn_limpiar_comparativa"):
+                    del st.session_state["comparativa_resultado"]
+                    del st.session_state["comparativa_titulo"]
+                    st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
+                    st.rerun()
+                
+                st.markdown("---")
+                
+                # Mostrar dashboard con datos guardados
+                render_dashboard_compras_vendible(
+                    df_guardado,
+                    titulo=titulo_guardado,
+                    key_prefix="tab_comp_anios_guardado_"
+                )
 
         st.markdown(
             """
