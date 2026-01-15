@@ -1727,105 +1727,147 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 def Compras_IA():
 
     # =========================
-    # SIN ZOOM - TODO MÁS GRANDE Y ESPACIOSO (simula zoom 80%)
+    # DISEÑO COMPACTO DEFINITIVO
     # =========================
     st.markdown("""
     <style>
     /* ========================================
-       DISEÑO ESPACIOSO (como zoom 80%)
+       DISEÑO COMPACTO Y PROFESIONAL
        ======================================== */
     
-    /* Contenedor principal - más ancho */
+    /* Contenedor principal */
     .main .block-container {
-        max-width: 1800px !important;  /* más ancho */
-        padding: 2.5rem 4rem !important;  /* más padding */
+        max-width: 1600px !important;
+        padding: 1.5rem 3rem !important;
     }
     
-    /* Header del dashboard - más grande */
+    /* Header del dashboard */
     .fc-header-modern,
     .dash-header {
-        padding: 36px 40px !important;
-        margin-bottom: 48px !important;
-        border-radius: 20px !important;
+        padding: 20px 24px !important;
+        margin-bottom: 24px !important;
     }
     
     .fc-title-modern,
     .dash-title {
-        font-size: 2rem !important;  /* más grande */
-        margin-bottom: 16px !important;
+        font-size: 1.3rem !important;
+        margin-bottom: 8px !important;
     }
     
     .fc-badge-modern,
     .dash-badge {
-        font-size: 1.1rem !important;
-        padding: 10px 20px !important;
+        font-size: 0.85rem !important;
+        padding: 6px 14px !important;
     }
     
-    /* Tarjetas métricas - más grandes y espaciadas */
+    .fc-meta-modern,
+    .dash-meta {
+        font-size: 0.85rem !important;
+    }
+    
+    /* TARJETAS MÉTRICAS - COMPACTAS */
     .fc-metrics-grid,
     .metrics-grid {
-        gap: 40px !important;  /* más separación horizontal */
-        margin-bottom: 56px !important;  /* más separación vertical */
+        gap: 20px !important;
+        margin-bottom: 32px !important;
     }
     
     .fc-metric-card,
     .metric-card {
-        padding: 28px 32px !important;  /* más padding interno */
-        border-radius: 16px !important;
+        padding: 16px 20px !important;
+        border-radius: 12px !important;
     }
     
     .fc-metric-label,
     .metric-label {
-        font-size: 1rem !important;
-        margin-bottom: 10px !important;
+        font-size: 0.8rem !important;
+        margin-bottom: 6px !important;
     }
     
     .fc-metric-value,
     .metric-value {
-        font-size: 2.2rem !important;  /* números más grandes */
+        font-size: 1.4rem !important;
+        font-weight: 700 !important;
     }
     
-    /* Cards de resumen - más espaciadas */
+    .fc-metric-help {
+        font-size: 0.7rem !important;
+    }
+    
+    /* Cards de resumen */
     .resumen-card,
-    .provider-card,
-    .total-summary-card {
-        padding: 24px 28px !important;
-        margin-bottom: 40px !important;
-        border-radius: 16px !important;
+    .provider-card {
+        padding: 14px 18px !important;
+        margin-bottom: 20px !important;
+        border-radius: 12px !important;
     }
     
-    /* Tabs - más espacio */
+    .resumen-title,
+    .provider-name {
+        font-size: 0.9rem !important;
+    }
+    
+    .resumen-text,
+    .provider-subtitle {
+        font-size: 0.85rem !important;
+    }
+    
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 24px !important;
-        margin-bottom: 40px !important;
+        gap: 16px !important;
+        margin-bottom: 24px !important;
     }
     
     .stTabs [data-baseweb="tab"] {
-        font-size: 1.05rem !important;
-        padding: 12px 24px !important;
+        font-size: 0.9rem !important;
+        padding: 8px 16px !important;
     }
     
-    /* Columnas - más espacio entre ellas */
-    div[data-testid="column"] {
-        padding: 0 20px !important;
+    /* Total summary card */
+    .total-summary-card {
+        padding: 24px 20px !important;
+        margin-bottom: 24px !important;
     }
     
-    /* Separación general entre secciones */
-    .block-container > div {
-        margin-bottom: 32px !important;
+    .total-summary-value {
+        font-size: 2rem !important;
     }
     
-    /* ========================================
-       RESPONSIVE - En mobile mantener normal
-       ======================================== */
-    @media (max-width: 900px) {
+    .total-summary-label {
+        font-size: 1rem !important;
+    }
+    
+    /* Provider card destacado */
+    .single-provider-card {
+        padding: 24px 20px !important;
+        margin-bottom: 24px !important;
+    }
+    
+    .single-provider-icon {
+        width: 56px !important;
+        height: 56px !important;
+        font-size: 1.8rem !important;
+    }
+    
+    .single-provider-name {
+        font-size: 1.3rem !important;
+    }
+    
+    /* Responsive - Mobile */
+    @media (max-width: 768px) {
         .main .block-container {
             padding: 1rem 1.5rem !important;
         }
         
         .fc-metrics-grid,
         .metrics-grid {
-            gap: 16px !important;
+            gap: 12px !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+        
+        .fc-metric-value,
+        .metric-value {
+            font-size: 1.2rem !important;
         }
     }
     </style>
