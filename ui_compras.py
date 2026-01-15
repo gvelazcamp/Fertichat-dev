@@ -837,7 +837,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 """, unsafe_allow_html=True)
         
         with col_top:
-            # ✅ TOP 5 ARTÍCULOS EN FORMATO TARJETA
+            # ✅ TOP 5 ARTÍCULOS EN DOS TARJETAS SEPARADAS
             if col_articulo and not df_f.empty:
                 top_art = (
                     df_f.groupby(col_articulo)["__total_num__"]
@@ -846,11 +846,18 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 ).head(5)
                 
                 if len(top_art) > 0:
+                    # Primera tarjeta: Título
+                    st.markdown("""
+                    <div class="resumen-card">
+                        <h4 class="resumen-title">🏆 Top 5 Artículos</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Segunda tarjeta: Lista
                     top_list = "<br>".join([f"{i+1}. {_shorten_text(art, 30)} - {_fmt_compact_money(tot, 'UYU')}" for i, (art, tot) in enumerate(top_art.items())])
                     
                     st.markdown(f"""
                     <div class="resumen-card">
-                        <h4 class="resumen-title">🏆 Top 5 Artículos</h4>
                         <p class="resumen-text">
                             {top_list}
                         </p>
