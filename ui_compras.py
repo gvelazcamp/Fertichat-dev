@@ -648,7 +648,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
                 file_name="vista_general.xlsx",
-                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}xlsx_all",
                 type="secondary"
             )
@@ -689,7 +689,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
                 file_name="dolares_usd.xlsx",
-                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}xlsx_usd",
                 type="secondary"
             )
@@ -747,7 +747,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     "📥 Excel",
                     data=_df_to_excel_bytes(df_export),
                     file_name="tabla_completa.xlsx",
-                    mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key=f"{key_prefix}xlsx_tabla",
                     type="secondary"
             )
@@ -1403,7 +1403,7 @@ def Compras_IA():
             _dbg_set_sql(None, "", [], None)
             st.rerun()
 
-        st.markdown("---")
+        # st.markdown("---")  # ← COMENTADA - ocupaba espacio al pedo
 
         # Mostrar historial
         for idx, msg in enumerate(st.session_state["historial_compras"]):
@@ -1586,7 +1586,7 @@ def Compras_IA():
         st.rerun()
 
     with tab_comparativas:
-        st.markdown("### ��� Menú Comparativas Fáciles")
+        st.markdown("### 📊 Menú Comparativas Fáciles")
         st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
         # Agregado: Submenús Compras y Comparativas
