@@ -127,7 +127,7 @@ def mostrar_inicio_desktop():
         margin:0;
     }
 
-    /* Recomendado (Compras IA) */
+    /* Recomendado (Compras IA) - Señal visual sutil */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton:has(button[key="compras"]) > button {
         border:2px solid rgba(37,99,235,0.30);
         background:rgba(255,255,255,0.95);
@@ -264,7 +264,7 @@ def mostrar_inicio_desktop():
     # Secciones con botones - NO MODIFICAR TAMAÑOS O BOTON ESTO FUNCIONA CORRECTAMENTE
     # =========================
     st.markdown("<div style='max-width:1100px;margin:140px auto 0 auto;'>", unsafe_allow_html=True)
-    st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 36px 6px;display:flex;align-items:center;gap:8px;'>📌 Módulos principales</div>", unsafe_allow_html=True)
+    st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 36px 6px;display:flex;align-items:center;gap:8px;'>📌 Inteligencia y consulta</div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -292,7 +292,7 @@ def mostrar_inicio_desktop():
 
     st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
     st.markdown("<div style='max-width:1100px;margin:0 auto 0 auto;'>", unsafe_allow_html=True)
-    st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 36px 6px;display:flex;align-items:center;gap:8px;'>📋 Gestión operativa</div>", unsafe_allow_html=True)
+    st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 36px 6px;display:flex;align-items:center;gap:8px;'>⚙️ Gestión operativa</div>", unsafe_allow_html=True)
 
     col5, col6, col7, col8 = st.columns(4)
     with col5:
@@ -322,7 +322,7 @@ def mostrar_inicio_desktop():
     # TIP DEL DÍA
     # =========================
     tips = [
-        "💡 Escribí 'compras roche 2025' para ver todas las compras a Roche este año",
+        "��� Escribí 'compras roche 2025' para ver todas las compras a Roche este año",
         "💡 Usá 'lotes por vencer' en Stock IA para ver vencimientos próximos",
         "💡 Probá 'comparar roche 2024 2025' para ver la evolución de compras",
         "💡 En el Buscador podés filtrar por proveedor, artículo y fechas",
