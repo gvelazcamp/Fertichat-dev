@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from typing import Optional
-import plotly.express as px  # Added for graphs
 
 from ia_interpretador import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
@@ -1485,40 +1484,22 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     with tabs[3]:
         # Gráfico de barras por proveedor
         if 'Proveedor' in df.columns:
-            fig = px.bar(
-                df.groupby('Proveedor').sum(numeric_only=True).reset_index(),
-                x='Proveedor',
-                y=df.select_dtypes(include='number').columns[0],
-                title="Distribución por Proveedor"
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            try:
+                import plotly.express as px
+                fig = px.bar(
+                    df.groupby('Proveedor').sum(numeric_only=True).reset_index(),
+                    x='Proveedor',
+                    y=df.select_dtypes(include='number').columns[0],
+                    title="Distribución por Proveedor"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            except ImportError:
+                st.info("Plotly no disponible")
+            except Exception:
+                st.info("No se pudo generar el gráfico")
     
     with tabs[4]:
         st.dataframe(df, use_container_width=True, height=600)
-
-
-# =========================
-# RESUMEN COMPRAS ROTATIVO (con autorefresh condicional)
-# =========================
-def mostrar_resumen_compras_rotativo():
-    """Resumen rotativo de compras con autorefresh solo cuando no hay actividad"""
-
-    # ✅ PAUSAR autorefresh si hay input activo o submenú comparativas
-    pregunta_actual = st.session_state.get("input_compras", "")
-    submenu_actual = st.session_state.get("tipo_consulta", "")
-    comparativa_activa = st.session_state.get("comparativa_activa", False)
-
-    tick = 0
-    if not pregunta_actual.strip() and submenu_actual != "Comparativas" and not comparativa_activa:
-        try:
-            from streamlit_autorefresh import st_autorefresh
-            tick = st_autorefresh(interval=5000, key="rotar_compras_5s") or 0
-        except Exception:
-            tick = 0
-
-    # Tu código de resumen rotativo aquí...
-    st.markdown("### 📊 Resumen de Compras (Rotativo)")
-    # ... (agrega tu lógica de rotación de datos)
 
 
 # =========================
@@ -1730,6 +1711,18 @@ def Compras_IA():
     """, unsafe_allow_html=True)
 
     inicializar_historial()
+
+    # ✅ AUTOREFFRESH CONDITION: Pausar si hay input o submenú comparativas
+    pregunta_actual = st.session_state.get("input_compras", "")
+    submenu_actual = st.session_state.get("tipo_consulta", "")
+    comparativa_activa = st.session_state.get("comparativa_activa", False)
+
+    if not pregunta_actual.strip() and submenu_actual != "Comparativas" and not comparativa_activa:
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            tick = st_autorefresh(interval=5000, key="rotar_compras_5s") or 0
+        except Exception:
+            tick = 0
 
     st.markdown("### 🤖 Asistente de Compras y Facturas")
 
@@ -2004,7 +1997,7 @@ def Compras_IA():
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
             # Botón comparar
-            if st.button("🔍 Comparar", type="primary", key="btn_comparar_anios"):
+            if st.button("🔍 Comparar", key="btn_comparar_anios"):
                 if len(anios) < 2:
                     st.error("Seleccioná al menos 2 años para comparar")
                 else:
