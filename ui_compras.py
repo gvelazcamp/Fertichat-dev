@@ -648,7 +648,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
                 file_name="vista_general.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}xlsx_all",
                 type="secondary"
             )
@@ -689,7 +689,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
                 file_name="dolares_usd.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                 key=f"{key_prefix}xlsx_usd",
                 type="secondary"
             )
@@ -747,7 +747,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                     "📥 Excel",
                     data=_df_to_excel_bytes(df_export),
                     file_name="tabla_completa.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    mime="application/vnd/openxmlformats-officedocument.spreadsheetml.sheet",
                     key=f"{key_prefix}xlsx_tabla",
                     type="secondary"
             )
@@ -1635,10 +1635,8 @@ def Compras_IA():
             
             if proveedores_sel:
                 proveedores = proveedores_sel
-                st.caption(f"✅ {len(proveedores)} proveedor(es) seleccionado(s)")
             else:
                 proveedores = None
-                st.caption("📊 Se compararán TODOS los proveedores")
             
             meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
             anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
@@ -1696,16 +1694,17 @@ def Compras_IA():
                     titulo=titulo_guardado
                 )
 
-        st.markdown(
-            """
-            Función **única** para todas las variantes:<br>
-            • Comparar proveedores años [2024,2025]<br>
-            • Proveedores + meses<br>
-            • Por artículo<br>
-            • Prioriza meses si hay (meses+año); si no, años.<br>
-            <b>Siempre usa solo UN botón comparar.</b>
-            """, 
-            unsafe_allow_html=True
-        )
+        # Explicación técnica (comentada)
+        # st.markdown(
+        #     """
+        #     Función **única** para todas las variantes:<br>
+        #     • Comparar proveedores años [2024,2025]<br>
+        #     • Proveedores + meses<br>
+        #     • Por artículo<br>
+        #     • Prioriza meses si hay (meses+año); si no, años.<br>
+        #     <b>Siempre usa solo UN botón comparar.</b>
+        #     """, 
+        #     unsafe_allow_html=True
+        # )
 
 # ... existing code ...
