@@ -1727,47 +1727,39 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 def Compras_IA():
 
     # =========================
-    # FORZAR ZOOM 90% EN PC (zoom más suave para no apretar tarjetas)
+    # ZOOM 90% + ESPACIADOS FORZADOS
     # =========================
     st.markdown("""
     <style>
-    /* Aplicar solo en desktop (ancho > 900px) */
     @media (min-width: 901px) {
+        /* Zoom general */
         div[data-testid="stAppViewContainer"] {
             transform: scale(0.90);
             transform-origin: top center;
-            width: 111%;  /* Compensar el scale para evitar scroll horizontal */
-            height: 111%; /* Compensar el scale para evitar scroll vertical */
-            margin: 0;    /* Ajustar márgenes si es necesario */
+            width: 111%;
         }
-        /* Sidebar queda normal */
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # ✅ AGREGAR CSS PARA TARJETAS
-    st.markdown("""
-    <style>
-    .resumen-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    }
-    
-    .resumen-title {
-        font-size: 1rem;
-        font-weight: 700;
-        margin: 0 0 8px 0;
-        color: #374151;
-    }
-    
-    .resumen-text {
-        font-size: 0.9rem;
-        color: #6b7280;
-        margin: 0;
+        
+        /* ✅ FORZAR SEPARACIÓN DE TARJETAS (CRÍTICO) */
+        .fc-metrics-grid,
+        .metrics-grid,
+        div.fc-metrics-grid,
+        div.metrics-grid {
+            gap: 40px !important;  /* ← MUY IMPORTANTE: FORZAR CON !important */
+            margin-bottom: 32px !important;
+        }
+        
+        /* También forzar en las tarjetas individuales */
+        .fc-metric-card,
+        .metric-card {
+            margin: 0 !important;  /* quitar márgenes que puedan estar colapsando */
+            padding: 24px !important;
+        }
+        
+        /* Separación entre filas si hay wrap */
+        .fc-metrics-grid > *,
+        .metrics-grid > * {
+            margin-bottom: 0 !important;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
