@@ -421,6 +421,19 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         /* Legacy (mantener compatibilidad) */
         .fc-subtle { color: rgba(49,51,63,0.65); font-size: 0.9rem; }
         .fc-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px 0; }
+        
+        /* ==========================================
+           OCULTAR BOTÓN NATIVO DE STREAMLIT
+           ========================================== */
+        [data-testid="stDataFrameToolbar"] {
+            display: none !important;
+        }
+        
+        /* Botón de exportación arriba */
+        .fc-export-btn {
+            text-align: right;
+            margin-bottom: 8px;
+        }
         </style>
         """,
         unsafe_allow_html=True
@@ -615,35 +628,39 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
 
     with tab_all:
+        # ✅ Botón Excel arriba a la derecha
+        col_space, col_export = st.columns([5, 1])
+        with col_export:
+            df_export = _df_export_clean(df_f)
+            st.download_button(
+                "📥 Excel",
+                data=_df_to_excel_bytes(df_export),
+                file_name="vista_general.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key=f"{key_prefix}xlsx_all",
+                type="secondary"
+            )
+        
         if col_proveedor:
             _render_resumen_top_proveedores(df_f, "todas las monedas")
         else:
             _render_tabla_simple(df_f, "todas las monedas")
-        
-        # ✅ BOTONES DE EXPORTACIÓN (pequeños, abajo)
-        st.markdown("---")
-        df_export = _df_export_clean(df_f)
-        col_exp1, col_exp2, col_exp3 = st.columns([1, 1, 4])
-        with col_exp1:
-            st.download_button(
-                "📥 CSV",
-                data=_df_to_csv_bytes(df_export),
-                file_name="datos.csv",
-                mime="text/csv",
-                key=f"{key_prefix}csv_all",
-                use_container_width=True
-            )
-        with col_exp2:
+
+    with tab_uyu:
+        # ✅ Botón Excel arriba
+        col_space, col_export = st.columns([5, 1])
+        with col_export:
+            df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
+            df_export = _df_export_clean(df_uyu)
             st.download_button(
                 "📥 Excel",
                 data=_df_to_excel_bytes(df_export),
-                file_name="datos.xlsx",
+                file_name="pesos_uyu.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"{key_prefix}xlsx_all",
-                use_container_width=True
+                key=f"{key_prefix}xlsx_uyu",
+                type="secondary"
             )
-
-    with tab_uyu:
+        
         df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
         if col_proveedor:
             _render_resumen_top_proveedores(df_uyu, "UYU")
@@ -651,6 +668,20 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             _render_tabla_simple(df_uyu, "UYU")
 
     with tab_usd:
+        # ✅ Botón Excel arriba
+        col_space, col_export = st.columns([5, 1])
+        with col_export:
+            df_usd = df_f[df_f["__moneda_view__"] == "USD"]
+            df_export = _df_export_clean(df_usd)
+            st.download_button(
+                "📥 Excel",
+                data=_df_to_excel_bytes(df_export),
+                file_name="dolares_usd.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key=f"{key_prefix}xlsx_usd",
+                type="secondary"
+            )
+        
         df_usd = df_f[df_f["__moneda_view__"] == "USD"]
         if col_proveedor:
             _render_resumen_top_proveedores(df_usd, "USD")
@@ -696,6 +727,19 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         if df_f is None or df_f.empty:
             st.info("Sin resultados para mostrar.")
         else:
+            # ✅ Botón Excel arriba a la derecha
+            col_space, col_export = st.columns([5, 1])
+            with col_export:
+                df_export = _df_export_clean(df_f)
+                st.download_button(
+                    "📥 Excel",
+                    data=_df_to_excel_bytes(df_export),
+                    file_name="tabla_completa.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"{key_prefix}xlsx_tabla",
+                    type="secondary"
+                )
+            
             # Orden preferido (mantiene columnas originales)
             pref = []
             for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
@@ -736,29 +780,6 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
             st.dataframe(df_page, use_container_width=True, height=460)
 
-            # ✅ BOTONES DE EXPORTACIÓN (pequeños, abajo)
-            st.markdown("---")
-            df_export = _df_export_clean(df_f)
-            col_exp1, col_exp2, col_exp3 = st.columns([1, 1, 4])
-            with col_exp1:
-                st.download_button(
-                    "📥 CSV",
-                    data=_df_to_csv_bytes(df_export),
-                    file_name="tabla_completa.csv",
-                    mime="text/csv",
-                    key=f"{key_prefix}csv_tabla",
-                    use_container_width=True
-                )
-            with col_exp2:
-                st.download_button(
-                    "📥 Excel",
-                    data=_df_to_excel_bytes(df_export),
-                    file_name="tabla_completa.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key=f"{key_prefix}xlsx_tabla",
-                    use_container_width=True
-                )
-            
             # Drill-down por factura
             if col_nro and col_nro in df_f.columns:
                 st.markdown("#### Detalle por factura")
@@ -1280,7 +1301,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         top_porc = (top_monto / df.sum(numeric_only=True).sum()) * 100
         
         # Iniciales para el ícono
-        iniciales = "".join([p[0] for p in top_prov.split()[:2]]).upper()
+        iniciales = "".join([p[0] for p in top_prov.split()[:2]).upper()
         
         st.markdown(f"""
         <div class="provider-card">
