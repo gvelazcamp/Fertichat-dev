@@ -1067,7 +1067,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     # ===== TOTAL FACTURAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
     elif tipo == "total_facturas_por_moneda_generico":
-        df = sqlq_compras.get_total_facturas_por_moneda_todos_anios()
+        df = sqlq_facturas.get_total_facturas_por_moneda_todos_anios()
         _dbg_set_result(df)
         return df
 
@@ -1678,17 +1678,18 @@ def Compras_IA():
             col1, col2 = st.columns([1, 2])
             
             with col1:
-                # ✅ NUEVO: Input de texto en vez de multiselect
-                proveedores_texto = st.text_input(
-                    "Proveedores (separados por coma)",
-                    placeholder="Ej: ROCHE, TRESUL (vacío = todos)",
-                    key="comparativas_proveedores_texto",
-                    help="Dejá vacío para comparar TODOS los proveedores"
+                # ✅ Multiselect con TODOS los proveedores de la BD
+                proveedores_sel = st.multiselect(
+                    "Proveedores",
+                    options=prov_options,  # TODOS los proveedores de la BD (sin [:100])
+                    default=[],
+                    key="comparativas_proveedores_multi",
+                    help="Dejá vacío para comparar TODOS los proveedores. Escribí para filtrar."
                 )
                 
-                # Procesar el texto
-                if proveedores_texto.strip():
-                    proveedores = [p.strip().upper() for p in proveedores_texto.split(",") if p.strip()]
+                # Convertir a formato correcto
+                if proveedores_sel:
+                    proveedores = proveedores_sel
                     st.caption(f"✅ {len(proveedores)} proveedor(es) seleccionado(s)")
                 else:
                     proveedores = None
