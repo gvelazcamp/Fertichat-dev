@@ -1704,12 +1704,7 @@ def Compras_IA():
             height: 133.33%; /* Compensar el scale para evitar scroll vertical */
             margin: 0;       /* Ajustar márgenes si es necesario */
         }
-        /* Ajustar sidebar si es necesario */
-        section[data-testid="stSidebar"] {
-            transform: scale(0.75);
-            transform-origin: top left;
-            width: 133.33%;
-        }
+        /* Sidebar queda normal */
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1881,7 +1876,7 @@ def Compras_IA():
                         elif tipo.startswith("facturas_"):
                             respuesta_content = f"✅ Encontré **{len(resultado_sql)}** facturas"
                         elif tipo.startswith("compras_"):
-                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** compras"
+                            respuesta_content = f"��� Encontré **{len(resultado_sql)}** compras"
                         elif tipo.startswith("comparar_"):
                             respuesta_content = f"✅ Comparación lista - {len(resultado_sql)} filas"
                         elif tipo.startswith("stock_"):
