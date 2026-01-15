@@ -251,14 +251,76 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
 st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
 
 # =========================
-# CSS PARA OCULTAR SOLO EL PADDING SUPERIOR (versión mínima)
+# CSS ULTRA FORZADO PARA ELIMINAR TODO PADDING SUPERIOR (más agresivo)
 # =========================
 st.markdown("""
 <style>
-/* Ocultar el primer stVerticalBlock que contiene el padding basura */
-div[data-testid="stVerticalBlock"]:first-child {
-    display: none !important;
+/* ====== ULTRA FUERZA padding TOP GLOBAL - TODOS LOS SELECTORES POSIBLES ====== */
+
+/* Root container */
+div[data-testid="stAppViewContainer"] {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
 }
+
+/* Main section */
+section.main {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* Main section child */
+section.main > div {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* Vertical block */
+div[data-testid="stVerticalBlock"] {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* Block container */
+div.block-container {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* First child of app container */
+div[data-testid="stAppViewContainer"] > div:first-child {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* Any div with block-container class */
+div.block-container {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* Sidebar content */
+section[data-testid="stSidebar"] div.block-container {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* Force on all divs inside main */
+section.main div {
+    padding-top: 0rem !important;
+}
+
+/* Last resort - force on everything */
+* {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* But restore for content we want */
+div[data-testid="stAppViewContainer"] .block-container {
+    padding-top: 0.5rem !important; /* mínimo para evitar overlap */
+}
+
 </style>
 """, unsafe_allow_html=True)
 
