@@ -141,6 +141,13 @@ def comparar_compras(
 
     group_by_col = "Articulo" if articulos else "Proveedor"
     select_col = f'TRIM("Articulo")' if articulos else 'TRIM("Cliente / Proveedor")'
+
+    # ===== DETERMINAR LÍMITE =====
+    if proveedores is None or len(proveedores) == 0:
+        limite = 5000  # Todos los proveedores
+    else:
+        limite = 1000  # Proveedores específicos
+
     sql = f"""
         SELECT
             {select_col} AS {group_by_col},
@@ -153,7 +160,7 @@ def comparar_compras(
           {art_where}
         GROUP BY {select_col}, TRIM("Moneda")
         ORDER BY {group_by_col}, Moneda
-        LIMIT 500
+        LIMIT {limite}
     """
 
     print(f"🐛 DEBUG comparar_compras: Ejecutando con {len(params)} params")
@@ -349,8 +356,8 @@ def get_comparacion_proveedor_anios(*args, **kwargs) -> pd.DataFrame:
     elif len(args) == 4:
         prov1, prov2, anio1, anio2 = args
         if isinstance(prov1, str) and isinstance(prov2, str):
-            proveedores = [prov1, prov2]
             try:
+                proveedores = [prov1, prov2]
                 anios = [int(anio1), int(anio2)]
             except ValueError:
                 return pd.DataFrame()
