@@ -251,19 +251,30 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
 st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
 
 # =========================
-# CSS PARA QUITAR PADDING SUPERIOR EN HOME (sin romper nada)
+# CSS FORZADO PARA QUITAR PADDING SUPERIOR (probado)
 # =========================
 st.markdown("""
 <style>
-/* Quitar padding superior del contenedor principal */
+/* ====== FUERZA padding TOP GLOBAL ====== */
+section.main > div {
+    padding-top: 0rem !important;
+}
+
+/* Contenedor vertical principal */
 div[data-testid="stVerticalBlock"] {
     padding-top: 0rem !important;
     margin-top: 0rem !important;
 }
 
-/* Opcional: reducir espacio antes del primer título */
-h1, h2, h3 {
-    margin-top: 0.2rem !important;
+/* El bloque que Streamlit agrega arriba */
+div[data-testid="stAppViewContainer"] > div:first-child {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* Evitar espacio fantasma antes del primer elemento */
+div.block-container {
+    padding-top: 1rem !important; /* podés probar 0.5rem o 0 */
 }
 </style>
 """, unsafe_allow_html=True)
