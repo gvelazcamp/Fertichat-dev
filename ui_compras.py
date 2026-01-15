@@ -816,25 +816,39 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 
                 st.markdown(f"""
                 <div class="provider-card">
-                    <div class="provider-header">
-                        <div class="provider-icon">{iniciales}</div>
-                        <div class="provider-info">
-                            <p class="provider-name">{top_prov}</p>
-                            <p class="provider-subtitle">Principal Proveedor</p>
-                        </div>
-                        <div>
-                            <p class="provider-amount">$ {top_monto:,.2f}</p>
-                            <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
-                        </div>
+                    <div class="provider-icon">{iniciales}</div>
+                    <div class="provider-info">
+                        <p class="provider-name">{top_prov}</p>
+                        <p class="provider-subtitle">Principal Proveedor</p>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: {top_porc}%"></div>
+                    <div>
+                        <p class="provider-amount">$ {top_monto:,.2f}</p>
+                        <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
                     </div>
-                    <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
-                        {top_porc:.1f}% del total
-                    </p>
                 </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {top_porc}%"></div>
+                </div>
+                <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+                    {top_porc:.1f}% del total
+                </p>
                 """, unsafe_allow_html=True)
+        
+        with col_top:
+            # ✅ AGREGADO: TOP 5 ARTÍCULOS
+            if col_articulo and not df_f.empty:
+                top_art = (
+                    df_f.groupby(col_articulo)["__total_num__"]
+                    .sum()
+                    .sort_values(ascending=False)
+                ).head(5)
+                
+                if len(top_art) > 0:
+                    st.markdown("**🏆 Top 5 Artículos**")
+                    for i, (art, tot) in enumerate(top_art.items()):
+                        st.markdown(f"{i+1}. {_shorten_text(art, 30)} - {_fmt_compact_money(tot, 'UYU')}")
+                else:
+                    st.caption("Sin artículos para mostrar.")
 
     with tab_uyu:
         # Calcular total UYU
@@ -1979,7 +1993,7 @@ def Compras_IA():
                         
                         render_dashboard_compras_vendible(df, titulo="Compras", hide_metrics=True)
                     elif df is not None:
-                        st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
+                        st.warning("⚠️ No se encontraron resultados para esa b��squeda.")
                 except Exception as e:
                     st.error(f"❌ Error en búsqueda: {e}")
 
