@@ -972,6 +972,348 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
 
 # =========================
+# 🎨 DASHBOARD COMPARATIVAS MODERNO
+# =========================
+def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Comparativas"):
+    """
+    Dashboard con diseño moderno tipo card (similar a la imagen)
+    """
+    
+    # Calcular métricas
+    total_uyu = df[df['Moneda'] == '$'].sum(numeric_only=True).sum() if 'Moneda' in df.columns else 0
+    total_usd = df[df['Moneda'].isin(['U$S', 'USD'])].sum(numeric_only=True).sum() if 'Moneda' in df.columns else 0
+    num_proveedores = df['Proveedor'].nunique() if 'Proveedor' in df.columns else 0
+    num_facturas = len(df)
+    
+    # CSS Moderno
+    st.markdown("""
+    <style>
+        /* ==========================================
+           HEADER CON TÍTULO Y METADATA
+           ========================================== */
+        .dash-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+        
+        .dash-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .dash-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        
+        .dash-meta {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin: 0;
+        }
+        
+        /* ==========================================
+           TARJETAS DE MÉTRICAS (4 columnas)
+           ========================================== */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .metric-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+        
+        .metric-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        .metric-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin: 0 0 8px 0;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 0;
+        }
+        
+        /* ==========================================
+           CARD PROVEEDOR PRINCIPAL
+           ========================================== */
+        .provider-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .provider-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .provider-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            font-weight: 700;
+        }
+        
+        .provider-info {
+            flex: 1;
+        }
+        
+        .provider-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 0 0 4px 0;
+        }
+        
+        .provider-subtitle {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin: 0;
+        }
+        
+        .provider-amount {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111827;
+            text-align: right;
+        }
+        
+        .provider-amount-sub {
+            font-size: 0.85rem;
+            color: #6b7280;
+            text-align: right;
+            margin-top: 4px;
+        }
+        
+        /* Barra de progreso */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        /* ==========================================
+           TABS Y BOTONES
+           ========================================== */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .btn-export {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-export:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+        
+        /* ==========================================
+           RESPONSIVE (MOBILE)
+           ========================================== */
+        @media (max-width: 768px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            
+            .metric-value {
+                font-size: 1.4rem;
+            }
+            
+            .provider-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .provider-amount {
+                text-align: left;
+                margin-top: 8px;
+            }
+            
+            .dash-title {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # ==========================================
+    # HTML ESTRUCTURA
+    # ==========================================
+    
+    # HEADER
+    st.markdown(f"""
+    <div class="dash-header">
+        <h2 class="dash-title">
+            📊 {titulo}
+        </h2>
+        <div class="dash-badge">
+            ✅ Resultado: Se encontraron {len(df)} registros
+        </div>
+        <p class="dash-meta">
+            📅 Última actualización: {datetime.now().strftime("%d/%m/%Y %H:%M")}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # MÉTRICAS
+    st.markdown(f"""
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <p class="metric-label">Total UYU 💰</p>
+            <p class="metric-value">$ {total_uyu/1_000_000:.2f}M</p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Total USD 💵</p>
+            <p class="metric-value">U$S {total_usd:,.0f}</p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Facturas 📄</p>
+            <p class="metric-value">{num_facturas}</p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Proveedores 🏭</p>
+            <p class="metric-value">{num_proveedores}</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # PROVEEDOR PRINCIPAL (si existe)
+    if 'Proveedor' in df.columns and not df.empty:
+        # Calcular proveedor con mayor monto
+        df_prov = df.groupby('Proveedor').sum(numeric_only=True)
+        top_prov = df_prov.sum(axis=1).idxmax()
+        top_monto = df_prov.sum(axis=1).max()
+        top_porc = (top_monto / df.sum(numeric_only=True).sum()) * 100
+        
+        # Iniciales para el ícono
+        iniciales = "".join([p[0] for p in top_prov.split()[:2]]).upper()
+        
+        st.markdown(f"""
+        <div class="provider-card">
+            <div class="provider-header">
+                <div class="provider-icon">{iniciales}</div>
+                <div class="provider-info">
+                    <p class="provider-name">{top_prov}</p>
+                    <p class="provider-subtitle">Principal Proveedor</p>
+                </div>
+                <div>
+                    <p class="provider-amount">$ {top_monto:,.2f}</p>
+                    <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {top_porc}%"></div>
+            </div>
+            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+                Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # TABS CON DATOS
+    tabs = st.tabs(["📊 Vista General", "💵 Pesos (UYU)", "💰 Dólares (USD)", "📈 Gráfico", "📋 Tabla"])
+    
+    with tabs[0]:
+        st.dataframe(df, use_container_width=True, height=400)
+    
+    with tabs[1]:
+        df_pesos = df[df['Moneda'] == '$'] if 'Moneda' in df.columns else df
+        st.dataframe(df_pesos, use_container_width=True, height=400)
+    
+    with tabs[2]:
+        df_usd = df[df['Moneda'].isin(['U$S', 'USD'])] if 'Moneda' in df.columns else pd.DataFrame()
+        if not df_usd.empty:
+            st.dataframe(df_usd, use_container_width=True, height=400)
+        else:
+            st.info("No hay datos en dólares")
+    
+    with tabs[3]:
+        # Gráfico de barras por proveedor
+        if 'Proveedor' in df.columns:
+            fig = px.bar(
+                df.groupby('Proveedor').sum(numeric_only=True).reset_index(),
+                x='Proveedor',
+                y=df.select_dtypes(include='number').columns[0],
+                title="Distribución por Proveedor"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with tabs[4]:
+        st.dataframe(df, use_container_width=True, height=600)
+
+
+# =========================
 # UI PRINCIPAL
 # =========================
 def Compras_IA():
@@ -1298,10 +1640,9 @@ def Compras_IA():
                 st.markdown("---")
                 
                 # Mostrar dashboard con datos guardados
-                render_dashboard_compras_vendible(
+                render_dashboard_comparativas_moderno(
                     df_guardado,
-                    titulo=titulo_guardado,
-                    key_prefix="tab_comp_anios_guardado_"
+                    titulo=titulo_guardado
                 )
 
         st.markdown(
