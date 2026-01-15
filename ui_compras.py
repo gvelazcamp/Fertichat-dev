@@ -1231,8 +1231,7 @@ def Compras_IA():
             meses = []
             for a in anios:
                 for m in meses_sel:
-                    code = f"{a}-{month_num[m]}"
-                    meses.append(code)
+                    meses.append(f"{a}-{month_num[m]}")
             st.session_state["meses_multi"] = meses
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
@@ -1243,7 +1242,12 @@ def Compras_IA():
                         # 🐛 DEBUG: Mostrar qué se está pasando
                         st.info(f"Comparando meses: {meses} | Proveedores: {proveedores if proveedores else 'TODOS'} | Artículos: {articulos if articulos else 'TODOS'}")
                         
-                        df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(proveedores=proveedores, meses=meses, articulos=articulos)
+                        df = sqlq_comparativas.comparar_compras(
+                            anios=anios if len(anios) >= 2 else None,
+                            meses=meses if len(meses) >= 2 else None,
+                            proveedores=proveedores if proveedores else None,
+                            articulos=articulos if articulos else None
+                        )
                         
                         # 🐛 DEBUG: Ver qué devuelve
                         st.write(f"DataFrame recibido: {len(df) if df is not None else 'None'} filas")
@@ -1270,5 +1274,17 @@ def Compras_IA():
                     except Exception as e:
                         st.error(f"❌ ERROR AL COMPARAR:")
                         st.exception(e)
+
+        st.info(
+            """
+            Función **única** para todas las variantes:<br>
+            • Comparar proveedores años [2024,2025]<br>
+            • Proveedores + meses<br>
+            • Por artículo<br>
+            • Prioriza meses si hay (meses+año); si no, años.<br>
+            <b>Siempre usa solo UN botón comparar.</b>
+            """, 
+            unsafe_allow_html=True
+        )
 
 # ... existing code ...
