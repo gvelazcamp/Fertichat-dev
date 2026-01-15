@@ -772,7 +772,10 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                 df_f['fecha_dt'] = pd.to_datetime(df_f[col_fecha], errors='coerce')
                 df_f['fecha_str'] = df_f['fecha_dt'].dt.strftime('%d/%m')
                 gasto_diario = df_f.groupby('fecha_str')['__total_num__'].sum()
-                facturas_diario = df_f.groupby('fecha_str').size()
+                if col_nro:
+                    facturas_diario = df_f.groupby('fecha_str')[col_nro].nunique()
+                else:
+                    facturas_diario = df_f.groupby('fecha_str').size()
                 
                 if not gasto_diario.empty:
                     dia_mayor_gasto = gasto_diario.idxmax()
