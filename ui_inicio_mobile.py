@@ -232,7 +232,7 @@ def mostrar_inicio_mobile():
     col1, col2 = st.columns(2, gap="small")
     with col1:
         st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
-        if st.button("Compras IA\nConsultas inteligentes de compras y gastos", key="compras"):
+        if st.button("Compras IA\nConsultas inteligentes de compras y gastos completas", key="compras"):
             st.query_params["go"] = "compras"
             st.rerun()
         
@@ -248,7 +248,7 @@ def mostrar_inicio_mobile():
             st.rerun()
         
         st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
-        if st.button("Dashboard\nAnálisis y resúmenes ejecutivos avanzados", key="dashboard"):
+        if st.button("Dashboard\nAnálisis y resúmenes ejecutivos avanzados completos", key="dashboard"):
             st.query_params["go"] = "dashboard"
             st.rerun()
 
@@ -258,23 +258,23 @@ def mostrar_inicio_mobile():
     col3, col4 = st.columns(2, gap="small")
     with col3:
         st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
-        if st.button("Pedidos internos\nGestionar pedidos y solicitudes completas", key="pedidos"):
+        if st.button("Pedidos internos\nGestionar pedidos y solicitudes completas detalladas", key="pedidos"):
             st.query_params["go"] = "pedidos"
             st.rerun()
         
         st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
-        if st.button("Órdenes de compra\nGenerar órdenes de compra detalladas", key="ordenes"):
+        if st.button("Órdenes de compra\nGenerar órdenes de compra detalladas completas", key="ordenes"):
             st.query_params["go"] = "ordenes"
             st.rerun()
     
     with col4:
         st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
-        if st.button("Baja de stock\nRegistrar consumo y bajas completas", key="baja"):
+        if st.button("Baja de stock\nRegistrar consumo y bajas completas detalladas", key="baja"):
             st.query_params["go"] = "baja"
             st.rerun()
         
         st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
-        if st.button("Indicadores\nPower BI - Análisis avanzado completo", key="indicadores"):
+        if st.button("Indicadores\nPower BI - Análisis avanzado completo detallado", key="indicadores"):
             st.query_params["go"] = "indicadores"
             st.rerun()
 
