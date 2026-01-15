@@ -11,6 +11,9 @@ import textwrap
 def mostrar_inicio_desktop():
     """Pantalla de inicio con accesos rápidos a los módulos (look corporativo para PC)"""
 
+    # FORZAR DETECCIÓN DESKTOP (para que el router sepa que es PC)
+    st.session_state["is_mobile"] = False
+    
     # =========================
     # Datos usuario / saludo
     # =========================
