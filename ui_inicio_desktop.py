@@ -322,7 +322,7 @@ def mostrar_inicio_desktop():
     # TIP DEL DÍA
     # =========================
     tips = [
-        "��� Escribí 'compras roche 2025' para ver todas las compras a Roche este año",
+        "💡 Escribí 'compras roche 2025' para ver todas las compras a Roche este año",
         "💡 Usá 'lotes por vencer' en Stock IA para ver vencimientos próximos",
         "💡 Probá 'comparar roche 2024 2025' para ver la evolución de compras",
         "💡 En el Buscador podés filtrar por proveedor, artículo y fechas",
