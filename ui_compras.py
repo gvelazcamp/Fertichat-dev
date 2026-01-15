@@ -1942,6 +1942,19 @@ def Compras_IA():
             mes_compras = st.selectbox("Mes", options=month_names + ["Todos"], index=len(month_names), key="mes_compras")
             proveedor_compras = st.selectbox("Proveedor", options=["Todos"] + prov_options[:50], index=0, key="proveedor_compras")
             
+            # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
+            if "compras_resultado" in st.session_state:
+                df_guardado = st.session_state["compras_resultado"]
+                titulo_guardado = st.session_state.get("compras_titulo", "Compras")
+                
+                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado, hide_metrics=True)
+                
+                # Botón para limpiar
+                if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
+                    del st.session_state["compras_resultado"]
+                    del st.session_state["compras_titulo"]
+                    st.rerun()
+            
             if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
                 # ✅ PAUSAR AUTOREFRESH AL PRESIONAR BOTÓN DE BÚSQUEDA
                 st.session_state["pause_autorefresh"] = True
@@ -1960,6 +1973,10 @@ def Compras_IA():
                             df = sqlq_compras.get_detalle_compras_proveedor_mes(proveedor_compras, mes_code)
                     
                     if df is not None and not df.empty:
+                        # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
+                        st.session_state["compras_resultado"] = df
+                        st.session_state["compras_titulo"] = "Compras"
+                        
                         render_dashboard_compras_vendible(df, titulo="Compras", hide_metrics=True)
                     elif df is not None:
                         st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
