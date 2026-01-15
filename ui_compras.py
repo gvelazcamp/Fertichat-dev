@@ -325,10 +325,100 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         st.warning("⚠️ No hay resultados para mostrar.")
         return
 
-    # CSS liviano (no pisa el resto)
+    # CSS MODERNO (header gradiente + tarjetas)
     st.markdown(
         """
         <style>
+        /* Header con gradiente */
+        .fc-header-modern {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+        
+        .fc-title-modern {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: white;
+        }
+        
+        .fc-badge-modern {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: white;
+        }
+        
+        .fc-meta-modern {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin: 4px 0 0 0;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        /* Grid de métricas */
+        .fc-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .fc-metric-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+        
+        .fc-metric-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        .fc-metric-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin: 0 0 6px 0;
+            font-weight: 500;
+        }
+        
+        .fc-metric-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 0;
+        }
+        
+        .fc-metric-help {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin: 4px 0 0 0;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .fc-metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            .fc-metric-value {
+                font-size: 1.3rem;
+            }
+        }
+        
+        /* Legacy (mantener compatibilidad) */
         .fc-subtle { color: rgba(49,51,63,0.65); font-size: 0.9rem; }
         .fc-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px 0; }
         </style>
@@ -383,14 +473,24 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         except Exception:
             rango_txt = ""
 
-    st.markdown(f"<div class='fc-title'>{titulo}</div>", unsafe_allow_html=True)
-    st.markdown(
-        f"<div class='fc-subtle'>Filas: <b>{filas_total}</b> · Facturas: <b>{facturas}</b> · Proveedores: <b>{proveedores}</b> · Artículos: <b>{articulos}</b>{rango_txt}</div>",
-        unsafe_allow_html=True
-    )
-    st.write("")
+    # ==========================================
+    # HEADER MODERNO CON GRADIENTE
+    # ==========================================
+    st.markdown(f"""
+    <div class="fc-header-modern">
+        <h2 class="fc-title-modern">📊 {titulo}</h2>
+        <div class="fc-badge-modern">
+            ✅ {filas_total} registros encontrados
+        </div>
+        <p class="fc-meta-modern">
+            Facturas: {facturas} · Proveedores: {proveedores} · Artículos: {articulos}{rango_txt}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # KPIs (sobre TODO el resultado, antes de filtros)
+    # ==========================================
+    # MÉTRICAS CON TARJETAS MODERNAS
+    # ==========================================
     tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
     tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
     # FIX: Si no hay columna moneda (como en comparaciones), mostrar total general en UYU
@@ -398,19 +498,28 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         tot_uyu = float(df_view["__total_num__"].sum())
         tot_usd = 0.0
 
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        st.metric("Total UYU", _fmt_compact_money(tot_uyu, "UYU"), help=f"Valor exacto: $ {tot_uyu:,.2f}".replace(",", "."))
-    with k2:
-        st.metric("Total USD", _fmt_compact_money(tot_usd, "USD"), help=f"Valor exacto: U$S {tot_usd:,.2f}".replace(",", "."))
-    with k3:
-        # FIX: Si no hay columna nro_factura (como en comparaciones), mostrar "Registros" en lugar de "Facturas"
-        if col_nro:
-            st.metric("Facturas", f"{facturas}")
-        else:
-            st.metric("Registros", f"{filas_total}")
-    with k4:
-        st.metric("Proveedores", f"{proveedores}")
+    st.markdown(f"""
+    <div class="fc-metrics-grid">
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">Total UYU 💰</p>
+            <p class="fc-metric-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
+            <p class="fc-metric-help">Valor exacto: $ {tot_uyu:,.2f}</p>
+        </div>
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">Total USD 💵</p>
+            <p class="fc-metric-value">{_fmt_compact_money(tot_usd, "USD")}</p>
+            <p class="fc-metric-help">Valor exacto: U$S {tot_usd:,.2f}</p>
+        </div>
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">{"Facturas 📄" if col_nro else "Registros 📄"}</p>
+            <p class="fc-metric-value">{facturas if col_nro else filas_total}</p>
+        </div>
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">Proveedores 🏭</p>
+            <p class="fc-metric-value">{proveedores}</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # ============================================================
     # FILTROS + ACCIONES (solo afectan la vista)
