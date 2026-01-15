@@ -1734,7 +1734,7 @@ def Compras_IA():
     @media (min-width: 901px) {
         /* Zoom general */
         div[data-testid="stAppViewContainer"] {
-            transform: scale(0.75);
+            transform: scale(0.90);
             transform-origin: top center;
             width: 111%;
         }
