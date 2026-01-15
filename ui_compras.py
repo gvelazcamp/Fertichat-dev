@@ -1795,23 +1795,49 @@ def Compras_IA():
     }
     
     /* ========================================
-       CARDS DE RESUMEN MÁS CHICAS
+       CARDS DE RESUMEN CON MISMO ALTO + MÁS ESPACIO
        ======================================== */
-    .resumen-card,
+    
+    /* Todas las cards de resumen con altura uniforme */
+    .resumen-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 14px 18px !important;
+        margin-bottom: 24px !important;  /* ← MÁS ESPACIO ENTRE CARDS (antes 12px) */
+        min-height: 140px !important;  /* ← ALTURA MÍNIMA UNIFORME */
+        display: flex !important;
+        flex-direction: column !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Título de la card */
+    .resumen-title {
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        margin: 0 0 8px 0 !important;
+        color: #374151;
+    }
+    
+    /* Texto de la card */
+    .resumen-text {
+        font-size: 0.85rem !important;
+        color: #6b7280;
+        margin: 0 !important;
+        line-height: 1.5 !important;  /* Interlineado interno */
+    }
+    
+    /* Provider card también con mismo alto */
     .provider-card {
-        padding: 8px 12px !important;  /* Más pequeño */
-        margin-bottom: 12px !important;  /* Más pequeño */
-        border-radius: 8px !important;
-    }
-    
-    .resumen-title,
-    .provider-name {
-        font-size: 0.75rem !important;  /* Más pequeño */
-    }
-    
-    .resumen-text,
-    .provider-subtitle {
-        font-size: 0.7rem !important;  /* Más pequeño */
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px !important;
+        margin-bottom: 24px !important;  /* ← MÁS ESPACIO */
+        min-height: 140px !important;  /* ← MISMO ALTO */
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        display: flex !important;
+        flex-direction: column !important;
     }
     
     /* Tabs */
@@ -1874,6 +1900,7 @@ def Compras_IA():
     }
     </style>
     """, unsafe_allow_html=True)
+
     inicializar_historial()
 
     # ✅ INICIALIZAR FLAG PARA PAUSAR AUTOREFRESH
