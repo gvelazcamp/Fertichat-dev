@@ -1734,7 +1734,7 @@ def Compras_IA():
     /* Aplicar solo en desktop (ancho > 900px) */
     @media (min-width: 901px) {
         div[data-testid="stAppViewContainer"] {
-            transform: scale(0.80);
+            transform: scale(0.90);
             transform-origin: top center;
             width: 111%;  /* Compensar el scale para evitar scroll horizontal */
             height: 111%; /* Compensar el scale para evitar scroll vertical */
