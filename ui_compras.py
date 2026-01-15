@@ -1821,10 +1821,10 @@ def Compras_IA():
     
     /* Texto de la card */
     .resumen-text {
-        font-size: 0.85rem !important;
+        font-size: 0.75rem !important;  /* Más pequeño para la lista */
         color: #6b7280;
         margin: 0 !important;
-        line-height: 1.5 !important;  /* Interlineado interno */
+        line-height: 1.4 !important;  /* Interlineado interno ajustado */
     }
     
     /* Provider card también con mismo alto */
