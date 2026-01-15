@@ -442,6 +442,105 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             margin: 0;
         }
         
+        /* Card de resumen ejecutivo */
+        .resumen-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .resumen-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: #374151;
+        }
+        
+        .resumen-text {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin: 0;
+        }
+        
+        /* Provider card */
+        .provider-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .provider-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .provider-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            font-weight: 700;
+        }
+        
+        .provider-info {
+            flex: 1;
+        }
+        
+        .provider-name {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 0 0 2px 0;
+        }
+        
+        .provider-subtitle {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin: 0;
+        }
+        
+        .provider-amount {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #111827;
+            text-align: right;
+        }
+        
+        .provider-amount-sub {
+            font-size: 0.8rem;
+            color: #6b7280;
+            text-align: right;
+            margin-top: 2px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .fc-metrics-grid {
@@ -654,36 +753,111 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
         st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
 
-    # Calcular total general para Vista General
-    total_general = float(df_view["__total_num__"].sum())
-    total_fmt = f"$ {total_general:,.2f}" if total_general < 1_000_000 else f"$ {total_general/1_000_000:.2f}M"
-
     with tab_all:
-        # Tarjeta grande con total sumado
-        st.markdown(f"""
-        <div class="total-summary-card">
-            <p class="total-summary-value">{total_fmt}</p>
-            <p class="total-summary-label">Total Importe General</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Resumen ejecutivo
+        col_resumen, col_top = st.columns([2, 1])
+        
+        with col_resumen:
+            # MÉTRICAS PRINCIPALES
+            st.markdown(f"""
+            <div class="fc-metrics-grid" style="margin-bottom: 20px;">
+                <div class="fc-metric-card">
+                    <p class="fc-metric-label">Total UYU 💰</p>
+                    <p class="fc-metric-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
+                    <p class="fc-metric-help">Valor exacto: $ {tot_uyu:,.2f}</p>
+                </div>
+                <div class="fc-metric-card">
+                    <p class="fc-metric-label">Total USD 💵</p>
+                    <p class="fc-metric-value">{_fmt_compact_money(tot_usd, "USD")}</p>
+                    <p class="fc-metric-help">Valor exacto: U$S {tot_usd:,.2f}</p>
+                </div>
+                <div class="fc-metric-card">
+                    <p class="fc-metric-label">{"Facturas 📄" if col_nro else "Registros 📄"}</p>
+                    <p class="fc-metric-value">{facturas if col_nro else filas_total}</p>
+                </div>
+                <div class="fc-metric-card">
+                    <p class="fc-metric-label">Proveedores 🏭</p>
+                    <p class="fc-metric-value">{proveedores}</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # PERÍODO
+            st.markdown(f"""
+            <div class="resumen-card">
+                <h4 class="resumen-title">📅 Período Analizado</h4>
+                <p class="resumen-text">{rango_txt if rango_txt else 'Sin datos de fecha'}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # PRINCIPAL PROVEEDOR (si hay más de 1)
+            if proveedores > 1 and col_proveedor:
+                # Calcular proveedor con mayor monto
+                df_prov = df_view.groupby(col_proveedor)["__total_num__"].sum().sort_values(ascending=False)
+                top_prov = df_prov.index[0]
+                top_monto = df_prov.iloc[0]
+                top_porc = (top_monto / df_view["__total_num__"].sum()) * 100
+                
+                # Iniciales para el ícono
+                iniciales = "".join([p[0] for p in top_prov.split()[:2]]).upper()
+                
+                st.markdown(f"""
+                <div class="provider-card">
+                    <div class="provider-header">
+                        <div class="provider-icon">{iniciales}</div>
+                        <div class="provider-info">
+                            <p class="provider-name">{top_prov}</p>
+                            <p class="provider-subtitle">Principal Proveedor</p>
+                        </div>
+                        <div>
+                            <p class="provider-amount">$ {top_monto:,.2f}</p>
+                            <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {top_porc}%"></div>
+                    </div>
+                    <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+                        {top_porc:.1f}% del total
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col_top:
+            # TOP 5 ARTÍCULOS
+            if col_articulo and not df_f.empty:
+                top_art = (
+                    df_f.groupby(col_articulo)["__total_num__"]
+                    .sum()
+                    .sort_values(ascending=False)
+                    .head(5)
+                )
+                
+                if len(top_art) > 0:
+                    st.markdown("""
+                    <div class="resumen-card">
+                        <h4 class="resumen-title">🏆 Top 5 Artículos</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    for i, (art, monto) in enumerate(top_art.items(), 1):
+                        st.markdown(f"""
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="background: #667eea; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;">{i}</span>
+                                <span style="font-size: 0.9rem; color: #374151;">{_shorten_text(art, 30)}</span>
+                            </div>
+                            <span style="font-size: 0.9rem; font-weight: 600; color: #111827;">{_fmt_compact_money(monto, "UYU")}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
 
     with tab_uyu:
-        # Tarjeta con total UYU
-        st.markdown(f"""
-        <div class="total-summary-card">
-            <p class="total-summary-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
-            <p class="total-summary-label">Total Pesos (UYU)</p>
-        </div>
-        """, unsafe_allow_html=True)
+        df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
+        st.dataframe(df_uyu, use_container_width=True, height=400)
 
     with tab_usd:
-        # Tarjeta con total USD
-        st.markdown(f"""
-        <div class="total-summary-card">
-            <p class="total-summary-value">{_fmt_compact_money(tot_usd, "USD")}</p>
-            <p class="total-summary-label">Total Dólares (USD)</p>
-        </div>
-        """, unsafe_allow_html=True)
+        df_usd = df_f[df_f["__moneda_view__"] == "USD"]
+        st.dataframe(df_usd, use_container_width=True, height=400)
 
     with tab_graf:
         if df_f is None or df_f.empty or not col_articulo:
@@ -1237,27 +1411,27 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 24px;
+            padding: 16px;
+            margin-bottom: 16px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
         
         .provider-header {
             display: flex;
             align-items: center;
-            gap: 16px;
-            margin-bottom: 16px;
+            gap: 12px;
+            margin-bottom: 12px;
         }
         
         .provider-icon {
-            width: 48px;
-            height: 48px;
+            width: 40px;
+            height: 40px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             color: white;
             font-weight: 700;
         }
@@ -1267,47 +1441,45 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         }
         
         .provider-name {
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             font-weight: 700;
             color: #111827;
-            margin: 0 0 4px 0;
+            margin: 0 0 2px 0;
         }
         
         .provider-subtitle {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #6b7280;
             margin: 0;
         }
         
         .provider-amount {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             font-weight: 700;
             color: #111827;
             text-align: right;
         }
         
         .provider-amount-sub {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #6b7280;
             text-align: right;
-            margin-top: 4px;
+            margin-top: 2px;
         }
         
-        /* Barra de progreso */
         .progress-bar {
             width: 100%;
-            height: 8px;
+            height: 6px;
             background: #e5e7eb;
-            border-radius: 4px;
+            border-radius: 3px;
             overflow: hidden;
-            margin: 12px 0;
+            margin: 8px 0;
         }
         
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            border-radius: 4px;
-            transition: width 0.3s ease;
+            border-radius: 3px;
         }
         
         /* ==========================================
@@ -1463,19 +1635,20 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 <div class="provider-icon">{iniciales}</div>
                 <div class="provider-info">
                     <p class="provider-name">{top_prov}</p>
-                <p class="provider-subtitle">Principal Proveedor</p>
+                    <p class="provider-subtitle">Principal Proveedor</p>
+                </div>
+                <div>
+                    <p class="provider-amount">$ {top_monto:,.2f}</p>
+                    <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
+                </div>
             </div>
-            <div>
-                <p class="provider-amount">$ {top_monto:,.2f}</p>
-                <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {top_porc}%"></div>
             </div>
+            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+                Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
+            </p>
         </div>
-        <div class="progress-bar">
-            <div class="progress-fill" style="width: {top_porc}%"></div>
-        </div>
-        <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
-            Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
-        </p>
         """, unsafe_allow_html=True)
     
     # TABS CON DATOS
