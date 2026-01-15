@@ -419,6 +419,29 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             margin: 4px 0 0 0;
         }
         
+        /* Tarjeta total grande */
+        .total-summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 40px 32px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            text-align: center;
+        }
+        
+        .total-summary-value {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }
+        
+        .total-summary-label {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin: 0;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .fc-metrics-grid {
@@ -427,6 +450,9 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             }
             .fc-metric-value {
                 font-size: 1.3rem;
+            }
+            .total-summary-value {
+                font-size: 2.5rem;
             }
         }
         
@@ -628,8 +654,18 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
         st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
 
+    # Calcular total general para Vista General
+    total_general = float(df_view["__total_num__"].sum())
+    total_fmt = f"$ {total_general:,.2f}" if total_general < 1_000_000 else f"$ {total_general/1_000_000:.2f}M"
+
     with tab_all:
-        st.dataframe(df_f, use_container_width=True, height=400)
+        # Tarjeta grande con total sumado
+        st.markdown(f"""
+        <div class="total-summary-card">
+            <p class="total-summary-value">{total_fmt}</p>
+            <p class="total-summary-label">Total Importe General</p>
+        </div>
+        """, unsafe_allow_html=True)
 
     with tab_uyu:
         df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
@@ -995,7 +1031,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     num_proveedores = df['Proveedor'].nunique() if 'Proveedor' in df.columns else 0
     num_registros = len(df)
     
-    # Identificar qué a��os/meses se están comparando
+    # Identificar qué años/meses se están comparando
     periodos = [c for c in cols_numericas if c.isdigit() or '-' in str(c)]
     num_periodos = len(periodos)
     
