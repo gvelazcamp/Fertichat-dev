@@ -251,6 +251,24 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
 st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
 
 # =========================
+# CSS PARA QUITAR PADDING SUPERIOR EN HOME (sin romper nada)
+# =========================
+st.markdown("""
+<style>
+/* Quitar padding superior del contenedor principal */
+div[data-testid="stVerticalBlock"] {
+    padding-top: 0rem !important;
+    margin-top: 0rem !important;
+}
+
+/* Opcional: reducir espacio antes del primer título */
+h1, h2, h3 {
+    margin-top: 0.2rem !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =========================
 # FIX UI: BOTONES DEL SIDEBAR (evita texto vertical en "Cerrar sesión")
 # =========================
 CSS_SIDEBAR_BUTTON_FIX = """
@@ -577,7 +595,6 @@ elif menu_actual == "🛒 Compras IA":
 
             st.subheader("SQL ejecutado")
             st.write("Origen:", st.session_state.get("DBG_SQL_LAST_TAG"))
-            st.code(st.session_state.get("DBG_SQL_LAST_QUERY", ""), language="sql")
             st.write("Params:", st.session_state.get("DBG_SQL_LAST_PARAMS", []))
 
             st.subheader("Resultado")
