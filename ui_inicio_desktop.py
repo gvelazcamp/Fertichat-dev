@@ -1,4 +1,70 @@
 # =========================
+# UI_INICIO.PY - ROUTER AUTOMÁTICO (DETECTA DESKTOP/MOBILE)
+# =========================
+
+import streamlit as st
+from ui_inicio_desktop import mostrar_inicio_desktop
+from ui_inicio_mobile import mostrar_inicio_mobile
+
+
+def detectar_dispositivo():
+    """
+    Detecta si el usuario está en mobile o desktop.
+    
+    Métodos de detección (en orden de prioridad):
+    1. Selector manual del sidebar (si el usuario lo cambió)
+    2. Session_state si ya lo detectaste antes
+    3. Viewport_width si lo tenés guardado
+    4. Por defecto: desktop
+    
+    Returns:
+        bool: True si es mobile, False si es desktop
+    """
+    
+    # Método 1: Si el usuario eligió manualmente en el sidebar
+    if "selector_dispositivo_manual" in st.session_state:
+        return st.session_state.get("is_mobile", False)
+    
+    # Método 2: Si ya detectaste antes (guardado en session_state)
+    if "is_mobile" in st.session_state:
+        return st.session_state["is_mobile"]
+    
+    # Método 3: Si tenés el ancho de viewport guardado
+    if "viewport_width" in st.session_state:
+        ancho = st.session_state["viewport_width"]
+        return ancho < 768  # True si es mobile (< 768px)
+    
+    # Método 4: Default a desktop
+    return False
+
+
+def mostrar_inicio():
+    """
+    Función principal que decide qué versión mostrar.
+    
+    Esta es la función que se llama desde main.py cuando el usuario
+    selecciona "🏠 Inicio" en el menú.
+    
+    Detecta automáticamente si el usuario está en mobile o desktop
+    y llama a la versión correspondiente:
+    - mostrar_inicio_mobile() para celulares
+    - mostrar_inicio_desktop() para PC
+    """
+    
+    es_mobile = detectar_dispositivo()
+    
+    # DEBUG (opcional - descomentar para ver qué versión se está mostrando)
+    # with st.sidebar:
+    #     st.caption(f"🔍 Versión: {'📱 Mobile' if es_mobile else '🖥️ Desktop'}")
+    
+    if es_mobile:
+        # Mostrar versión mobile
+        mostrar_inicio_mobile()
+    else:
+        # Mostrar versión desktop
+        mostrar_inicio_desktop()
+
+# =========================
 # UI_INICIO_DESKTOP.PY - PANTALLA DE INICIO PARA PC (CORPORATIVO)
 # =========================
 
@@ -103,8 +169,8 @@ def mostrar_inicio_desktop():
         border-radius:20px;
 
         /* tamaño fijo MUCHO MÁS ALTO */
-        height: 140px;
-        min-height: 140px;
+        height: 180px;
+        min-height: 180px;
 
         /* espacio para el tile */
         padding:20px 20px 20px 90px;
@@ -166,7 +232,7 @@ def mostrar_inicio_desktop():
 
         position:absolute;
         left: 16px;
-        top: calc(50% + 70px);          /* <-- AJUSTADO PARA 140px */
+        top: calc(50% + 90px);          /* <-- AJUSTADO PARA 180px */
         transform: translateY(-50%);
         z-index: 5;
 
@@ -193,11 +259,11 @@ def mostrar_inicio_desktop():
             border-radius:14px;
             font-size:24px;
             left: 14px;
-            top: calc(50% + 44px);      /* <-- BAJADO ~0.5cm MÁS MOBILE */
+            top: calc(50% + 56px);      /* <-- AJUSTADO PARA 112px */
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button{
-            height: 92px;
-            min-height: 92px;
+            height: 112px;
+            min-height: 112px;
             padding:14px 14px 14px 78px;
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button::first-line{
