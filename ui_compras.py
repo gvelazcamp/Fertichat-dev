@@ -522,159 +522,27 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     """, unsafe_allow_html=True)
 
     # ============================================================
-    # FILTROS + ACCIONES (solo afectan la vista)
+    # FILTROS + ACCIONES - DESHABILITADO (simplificado)
     # ============================================================
-    # Defaults fecha
-    d_ini_default, d_fin_default = None, None
-    if df_view["__fecha_view__"].notna().any():
-        d_ini_default = df_view["__fecha_view__"].min().date()
-        d_fin_default = df_view["__fecha_view__"].max().date()
-
-    with st.expander("🔎 Filtros (vista) / Exportar / Guardar vista", expanded=False):
-        f1, f2, f3, f4 = st.columns([2, 2, 1.2, 1.6])
-
-        sel_prov = []
-        if col_proveedor:
-            provs = sorted([p for p in df_view[col_proveedor].dropna().astype(str).unique().tolist() if p.strip()])
-            provs = provs[:3000]
-            with f1:
-                sel_prov = st.multiselect("Proveedor", options=provs, default=st.session_state.get(f"{key_prefix}f_prov", []), key=f"{key_prefix}f_prov")
-
-        sel_art = []
-        if col_articulo:
-            arts = sorted([a for a in df_view[col_articulo].dropna().astype(str).unique().tolist() if a.strip()])
-            arts = arts[:2000]
-            with f2:
-                sel_art = st.multiselect("Artículo", options=arts, default=st.session_state.get(f"{key_prefix}f_art", []), key=f"{key_prefix}f_art")
-
-        with f3:
-            sel_mon = st.selectbox("Moneda", options=["TODAS", "UYU", "USD", "OTRA"], index=0, key=f"{key_prefix}f_mon")
-
-        d_ini, d_fin = None, None
-        with f4:
-            if d_ini_default and d_fin_default:
-                rango = st.date_input(
-                    "Rango fecha",
-                    value=st.session_state.get(f"{key_prefix}f_date", (d_ini_default, d_fin_default)),
-                    min_value=d_ini_default,
-                    max_value=d_fin_default,
-                    key=f"{key_prefix}f_date"
-                )
-                if isinstance(rango, tuple) and len(rango) == 2:
-                    d_ini, d_fin = rango[0], rango[1]
-                else:
-                    d_ini, d_fin = d_ini_default, d_fin_default
-
-        # Búsqueda simple
-        search_txt = st.text_input(
-            "Buscar (proveedor / artículo / nro)",
-            value=st.session_state.get(f"{key_prefix}f_search", ""),
-            key=f"{key_prefix}f_search",
-            placeholder="Ej: roche / VITEK / A00060907"
-        ).strip()
-
-        # Guardar / cargar vista
-        _init_saved_views()
-        vcol1, vcol2, vcol3 = st.columns([1.4, 1.4, 1.2])
-
-        with vcol1:
-            view_name = st.text_input("Nombre de vista", value="", key=f"{key_prefix}view_name", placeholder="Ej: Roche Nov 2025")
-
-        with vcol2:
-            view_pick = st.selectbox(
-                "Vistas guardadas",
-                options=["(ninguna)"] + _get_saved_view_names(),
-                index=0,
-                key=f"{key_prefix}view_pick"
-            )
-
-        with vcol3:
-            b1 = st.button("💾 Guardar", key=f"{key_prefix}btn_save_view")
-            b2 = st.button("↩️ Aplicar", key=f"{key_prefix}btn_load_view")
-
-        if b1:
-            _save_view(
-                view_name,
-                {
-                    "sel_prov": sel_prov,
-                    "sel_art": sel_art,
-                    "sel_mon": sel_mon,
-                    "d_ini": d_ini,
-                    "d_fin": d_fin,
-                    "search_txt": search_txt,
-                }
-            )
-            st.success("Vista guardada.")
-
-        if b2 and view_pick and view_pick != "(ninguna)":
-            vdata = _load_view(view_pick) or {}
-            try:
-                st.session_state[f"{key_prefix}f_prov"] = vdata.get("sel_prov", [])
-                st.session_state[f"{key_prefix}f_art"] = vdata.get("sel_art", [])
-                st.session_state[f"{key_prefix}f_mon"] = vdata.get("sel_mon", "TODAS")
-                if vdata.get("d_ini") and vdata.get("d_fin"):
-                    st.session_state[f"{key_prefix}f_date"] = (vdata.get("d_ini"), vdata.get("d_fin"))
-                st.session_state[f"{key_prefix}f_search"] = vdata.get("search_txt", "")
-                st.rerun()
-            except Exception:
-                pass
+    # Defaults
+    sel_prov = []
+    sel_art = []
+    sel_mon = "TODAS"
+    d_ini, d_fin = None, None
+    search_txt = ""
+    
+    # EXPANDER COMENTADO - USAR SI NECESITAS FILTROS AVANZADOS
+    # with st.expander("🔎 Filtros...", expanded=False):
+    #     ...
 
     # ============================================================
-    # APLICAR FILTROS
+    # SIN FILTROS (mostrar todo)
     # ============================================================
     df_f = df_view.copy()
 
-    if sel_prov and col_proveedor:
-        df_f = df_f[df_f[col_proveedor].astype(str).isin(sel_prov)]
-
-    if sel_art and col_articulo:
-        df_f = df_f[df_f[col_articulo].astype(str).isin(sel_art)]
-
-    if sel_mon != "TODAS":
-        df_f = df_f[df_f["__moneda_view__"] == sel_mon]
-
-    if d_ini and d_fin:
-        df_f = df_f[
-            (df_f["__fecha_view__"].dt.date >= d_ini) &
-            (df_f["__fecha_view__"].dt.date <= d_fin)
-        ]
-
-    if search_txt:
-        mask = pd.Series([False] * len(df_f), index=df_f.index)
-        for c in [col_proveedor, col_articulo, col_nro]:
-            if c and c in df_f.columns:
-                try:
-                    mask = mask | df_f[c].astype(str).str.contains(search_txt, case=False, na=False)
-                except Exception:
-                    pass
-        df_f = df_f[mask]
-
-    st.caption(f"Resultados en vista: {len(df_f)}")
-
     # ============================================================
-    # ACCIONES: DESCARGAS (vista filtrada)
+    # BOTONES DE EXPORTACIÓN MOVIDOS ABAJO (ver tabs)
     # ============================================================
-    df_export = _df_export_clean(df_f)
-    if len(df_export) > 0:
-        d1, d2, d3 = st.columns([1, 1, 2])
-        with d1:
-            st.download_button(
-                "⬇️ CSV (vista)",
-                data=_df_to_csv_bytes(df_export),
-                file_name="compras_vista.csv",
-                mime="text/csv",
-                key=f"{key_prefix}dl_csv"
-            )
-        with d2:
-            st.download_button(
-                "⬇️ Excel (vista)",
-                data=_df_to_excel_bytes(df_export),
-                file_name="compras_vista.xlsx",
-                mime="application/vnd.openxmlformats-officedocument/spreadsheetml.sheet",
-                key=f"{key_prefix}dl_xlsx"
-            )
-        with d3:
-            st.caption("Descarga la vista filtrada (sin columnas internas).")
 
     # ============================================================
     # TABS
@@ -751,6 +619,29 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             _render_resumen_top_proveedores(df_f, "todas las monedas")
         else:
             _render_tabla_simple(df_f, "todas las monedas")
+        
+        # ✅ BOTONES DE EXPORTACIÓN (pequeños, abajo)
+        st.markdown("---")
+        df_export = _df_export_clean(df_f)
+        col_exp1, col_exp2, col_exp3 = st.columns([1, 1, 4])
+        with col_exp1:
+            st.download_button(
+                "📥 CSV",
+                data=_df_to_csv_bytes(df_export),
+                file_name="datos.csv",
+                mime="text/csv",
+                key=f"{key_prefix}csv_all",
+                use_container_width=True
+            )
+        with col_exp2:
+            st.download_button(
+                "📥 Excel",
+                data=_df_to_excel_bytes(df_export),
+                file_name="datos.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key=f"{key_prefix}xlsx_all",
+                use_container_width=True
+            )
 
     with tab_uyu:
         df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
@@ -845,6 +736,29 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
             st.dataframe(df_page, use_container_width=True, height=460)
 
+            # ✅ BOTONES DE EXPORTACIÓN (pequeños, abajo)
+            st.markdown("---")
+            df_export = _df_export_clean(df_f)
+            col_exp1, col_exp2, col_exp3 = st.columns([1, 1, 4])
+            with col_exp1:
+                st.download_button(
+                    "📥 CSV",
+                    data=_df_to_csv_bytes(df_export),
+                    file_name="tabla_completa.csv",
+                    mime="text/csv",
+                    key=f"{key_prefix}csv_tabla",
+                    use_container_width=True
+                )
+            with col_exp2:
+                st.download_button(
+                    "📥 Excel",
+                    data=_df_to_excel_bytes(df_export),
+                    file_name="tabla_completa.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"{key_prefix}xlsx_tabla",
+                    use_container_width=True
+                )
+            
             # Drill-down por factura
             if col_nro and col_nro in df_f.columns:
                 st.markdown("#### Detalle por factura")
