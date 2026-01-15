@@ -1726,39 +1726,35 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 # =========================
 def Compras_IA():
 
- # =========================
-    # ANCHO COMPLETO SIN ZOOM (para evitar compresión de tarjetas)
+    # =========================
+    # SIN ZOOM - SOLO ANCHO COMPLETO Y ESPACIADOS
     # =========================
     st.markdown("""
     <style>
-    /* ANCHO COMPLETO SIN ZOOM */
+    /* Usar TODO el ancho disponible */
     .main .block-container {
-        max-width: 95% !important;  /* Usar TODO el ancho disponible */
-        width: 95% !important;
-        padding-left: 3rem !important;
-        padding-right: 3rem !important;
+        max-width: 1600px !important;  /* ajustá según tu pantalla */
+        padding: 2rem 3rem !important;
     }
-
-    /* ESPACIADOS */
+    
+    /* Espaciados generosos */
     .fc-metrics-grid,
     .metrics-grid {
-        margin-bottom: 40px !important;
+        margin-bottom: 48px !important;
         gap: 32px !important;
     }
     
-    /* Interlineado vertical entre tarjetas */
-    .resumen-card {
-        margin-bottom: 32px !important;
+    .fc-header-modern,
+    .dash-header {
+        margin-bottom: 40px !important;
     }
     
+    .resumen-card,
     .provider-card {
         margin-bottom: 32px !important;
     }
     </style>
     """, unsafe_allow_html=True)
-
-# ... (el resto igual) ...
-
 
     inicializar_historial()
 
