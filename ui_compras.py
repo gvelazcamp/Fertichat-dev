@@ -6,6 +6,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from typing import Optional
+import plotly.express as px  # Added for graphs
 
 from ia_interpretador import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
@@ -1301,7 +1302,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         top_porc = (top_monto / df.sum(numeric_only=True).sum()) * 100
         
         # Iniciales para el ícono
-        iniciales = "".join([p[0] for p in top_prov.split()[:2]).upper()
+        iniciales = "".join([p[0] for p in top_prov.split()[:2]]).upper()
         
         st.markdown(f"""
         <div class="provider-card">
