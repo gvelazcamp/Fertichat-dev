@@ -668,12 +668,22 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         """, unsafe_allow_html=True)
 
     with tab_uyu:
-        df_uyu = df_f[df_f["__moneda_view__"] == "UYU"]
-        st.dataframe(df_uyu, use_container_width=True, height=400)
+        # Tarjeta con total UYU
+        st.markdown(f"""
+        <div class="total-summary-card">
+            <p class="total-summary-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
+            <p class="total-summary-label">Total Pesos (UYU)</p>
+        </div>
+        """, unsafe_allow_html=True)
 
     with tab_usd:
-        df_usd = df_f[df_f["__moneda_view__"] == "USD"]
-        st.dataframe(df_usd, use_container_width=True, height=400)
+        # Tarjeta con total USD
+        st.markdown(f"""
+        <div class="total-summary-card">
+            <p class="total-summary-value">{_fmt_compact_money(tot_usd, "USD")}</p>
+            <p class="total-summary-label">Total Dólares (USD)</p>
+        </div>
+        """, unsafe_allow_html=True)
 
     with tab_graf:
         if df_f is None or df_f.empty or not col_articulo:
@@ -1453,20 +1463,19 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 <div class="provider-icon">{iniciales}</div>
                 <div class="provider-info">
                     <p class="provider-name">{top_prov}</p>
-                    <p class="provider-subtitle">Principal Proveedor</p>
-                </div>
-                <div>
-                    <p class="provider-amount">$ {top_monto:,.2f}</p>
-                    <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
-                </div>
+                <p class="provider-subtitle">Principal Proveedor</p>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: {top_porc}%"></div>
+            <div>
+                <p class="provider-amount">$ {top_monto:,.2f}</p>
+                <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
             </div>
-            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
-                Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
-            </p>
         </div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {top_porc}%"></div>
+        </div>
+        <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+            Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
+        </p>
         """, unsafe_allow_html=True)
     
     # TABS CON DATOS
