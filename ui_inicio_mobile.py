@@ -11,6 +11,9 @@ import textwrap
 def mostrar_inicio_mobile():
     """Pantalla de inicio con accesos rápidos a los módulos (look corporativo para celular)"""
 
+    # FORZAR DETECCIÓN MOBILE (para que el router sepa que es móvil)
+    st.session_state["is_mobile"] = True
+    
     # =========================
     # Datos usuario / saludo
     # =========================
