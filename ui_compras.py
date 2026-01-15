@@ -1727,18 +1727,18 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 def Compras_IA():
 
     # =========================
-    # FORZAR ZOOM 75% EN PC (simula zoom out como te gusta)
+    # FORZAR ZOOM 90% EN PC (zoom más suave para no apretar tarjetas)
     # =========================
     st.markdown("""
     <style>
     /* Aplicar solo en desktop (ancho > 900px) */
     @media (min-width: 901px) {
         div[data-testid="stAppViewContainer"] {
-            transform: scale(0.75);
-            transform-origin: top left;
-            width: 133.33%;  /* Compensar el scale para evitar scroll horizontal */
-            height: 133.33%; /* Compensar el scale para evitar scroll vertical */
-            margin: 0;       /* Ajustar márgenes si es necesario */
+            transform: scale(0.90);
+            transform-origin: top center;
+            width: 111%;  /* Compensar el scale para evitar scroll horizontal */
+            height: 111%; /* Compensar el scale para evitar scroll vertical */
+            margin: 0;    /* Ajustar márgenes si es necesario */
         }
         /* Sidebar queda normal */
     }
