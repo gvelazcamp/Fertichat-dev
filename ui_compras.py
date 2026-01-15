@@ -1,7 +1,3 @@
-# =========================
-# UI_COMPRAS.PY - COMPRAS Y FACTURAS INTEGRADAS
-# =========================
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -374,7 +370,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         .fc-meta-modern {
             font-size: 0.85rem;
             opacity: 0.9;
-            margin: 4px 0 0 0;
+            margin: 0;
             color: rgba(255,255,255,0.9);
         }
         
@@ -1502,6 +1498,30 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
 
 
 # =========================
+# RESUMEN COMPRAS ROTATIVO (con autorefresh condicional)
+# =========================
+def mostrar_resumen_compras_rotativo():
+    """Resumen rotativo de compras con autorefresh solo cuando no hay actividad"""
+
+    # ✅ PAUSAR autorefresh si hay input activo o submenú comparativas
+    pregunta_actual = st.session_state.get("input_compras", "")
+    submenu_actual = st.session_state.get("tipo_consulta", "")
+    comparativa_activa = st.session_state.get("comparativa_activa", False)
+
+    tick = 0
+    if not pregunta_actual.strip() and submenu_actual != "Comparativas" and not comparativa_activa:
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            tick = st_autorefresh(interval=5000, key="rotar_compras_5s") or 0
+        except Exception:
+            tick = 0
+
+    # Tu código de resumen rotativo aquí...
+    st.markdown("### 📊 Resumen de Compras (Rotativo)")
+    # ... (agrega tu lógica de rotación de datos)
+
+
+# =========================
 # ROUTER SQL (ahora incluye compras, comparativas y stock)
 # =========================
 def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
@@ -1807,9 +1827,9 @@ def Compras_IA():
         ">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
                 <span style="font-size: 22px;">💡</span>
-                <span style="font-size: 16px; font-weight: 700; color: #78350f;">Ejemplos de preguntas:</span>
+                <span style="font-size: 16px; font-weight: 700; color: rgb(234, 88, 12);">Ejemplos de preguntas:</span>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 14px; color: #451a03;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 14px; color: rgb(154, 52, 18);">
                 <div>• Compras roche 2024</div>
                 <div>• Facturas roche noviembre 2025</div>
                 <div>• Compras roche, tresul 2024 2025</div>
@@ -1876,7 +1896,7 @@ def Compras_IA():
                         elif tipo.startswith("facturas_"):
                             respuesta_content = f"✅ Encontré **{len(resultado_sql)}** facturas"
                         elif tipo.startswith("compras_"):
-                            respuesta_content = f"��� Encontré **{len(resultado_sql)}** compras"
+                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** compras"
                         elif tipo.startswith("comparar_"):
                             respuesta_content = f"✅ Comparación lista - {len(resultado_sql)} filas"
                         elif tipo.startswith("stock_"):
@@ -2055,4 +2075,4 @@ def Compras_IA():
         #     <b>Siempre usa solo UN botón comparar.</b>
         #     """, 
         #     unsafe_allow_html=True
-        # )
+        )
