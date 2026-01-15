@@ -396,13 +396,22 @@ def _get_top_proveedores_anio(anio: int, top_n: int = 20) -> pd.DataFrame:
 # 🧾 RESUMEN COMPRAS (ROTATIVO) - RESPONSIVE Z FLIP 5
 # =========================
 def mostrar_resumen_compras_rotativo():
-    # 🔄 re-ejecuta cada 5 segundos
+    """
+    Resumen rotativo que se detiene cuando hay una comparativa activa.
+    """
+    # ✅ NUEVO: Solo auto-refresh si NO hay comparativa activa
+    if "comparativa_activa" not in st.session_state:
+        st.session_state.comparativa_activa = False
+    
     tick = 0
-    try:
-        from streamlit_autorefresh import st_autorefresh
-        tick = st_autorefresh(interval=5000, key="__rotar_proveedor_5s__") or 0
-    except Exception:
-        tick = 0
+    
+    # Solo hacer auto-refresh si NO hay comparativa mostrándose
+    if not st.session_state.comparativa_activa:
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            tick = st_autorefresh(interval=5000, key="__rotar_proveedor_5s__") or 0
+        except Exception:
+            tick = 0
     
     # Usar 2025 ya que 2026 no tiene datos todavía
     anio = 2025
