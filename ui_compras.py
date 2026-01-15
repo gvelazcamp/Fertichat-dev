@@ -1062,6 +1062,11 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         # Sumar SOLO las columnas de años/meses (no la diferencia)
         total_uyu = df_pesos[cols_numericas].sum().sum() if not df_pesos.empty else 0
         total_usd = df_usd[cols_numericas].sum().sum() if not df_usd.empty else 0
+        
+        # ✅ FIX: Si no hay separación por moneda, sumar todo como UYU
+        if total_uyu == 0 and total_usd == 0:
+            total_uyu = df[cols_numericas].sum().sum()
+            total_usd = 0
     else:
         # Sin columna moneda: asumir todo UYU
         total_uyu = df[cols_numericas].sum().sum()
@@ -1341,7 +1346,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             <p class="metric-label">Registros 📄</p>
             <p class="metric-value">{num_registros}</p>
             <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
-                {len(df_pesos) if 'Moneda' in df.columns else 0} en pesos, {len(df_usd) if 'Moneda' in df.columns else 0} en USD
+                {len(df_pesos) if 'Moneda' in df.columns and not df_pesos.empty else 0} en pesos, {len(df_usd) if 'Moneda' in df.columns and not df_usd.empty else 0} en USD
             </p>
         </div>
         <div class="metric-card">
@@ -1415,7 +1420,6 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     
     with tabs[4]:
         st.dataframe(df, use_container_width=True, height=600)
-
 
 # =========================
 # UI PRINCIPAL
