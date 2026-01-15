@@ -1,3 +1,337 @@
+# =========================
+# UI_COMPRAS.PY - COMPRAS Y FACTURAS INTEGRADAS
+# =========================
+
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+from typing import Optional
+import plotly.express as px  # Added for graphs
+
+from ia_interpretador import interpretar_pregunta, obtener_info_tipo
+from utils_openai import responder_con_openai
+import sql_compras as sqlq_compras
+import sql_comparativas as sqlq_comparativas
+import sql_facturas as sqlq_facturas
+from sql_core import get_unique_proveedores, get_unique_articulos  # Agregado
+
+# Temporary fix for get_unique functions
+def get_unique_proveedores():
+    try:
+        from sql_core import ejecutar_consulta
+        sql = '''
+            SELECT DISTINCT TRIM("Cliente / Proveedor") AS prov 
+            FROM chatbot_raw 
+            WHERE TRIM("Cliente / Proveedor") != '' 
+            ORDER BY prov
+        '''
+        # ⚠️ SIN LIMIT - trae TODOS
+        df = ejecutar_consulta(sql, ())
+        if df is None or df.empty:
+            return []
+        provs = df['prov'].tolist()
+        print(f"🐛 DEBUG: Cargados {len(provs)} proveedores únicos")  # Debug
+        return provs
+    except Exception as e:
+        print(f"❌ Error cargando proveedores: {e}")
+        return []
+
+def get_unique_articulos():
+    try:
+        from sql_core import ejecutar_consulta
+        sql = 'SELECT DISTINCT TRIM("Articulo") AS art FROM chatbot_raw WHERE TRIM("Articulo") != \'\' ORDER BY art'
+        df = ejecutar_consulta(sql)
+        return df['art'].tolist() if not df.empty else []
+    except:
+        return []
+
+# =========================
+# CONVERSIÓN DE MESES A NOMBRES
+# =========================
+def convertir_mes_a_nombre(mes_str):
+    if not mes_str or '-' not in mes_str:
+        return mes_str
+    try:
+        year, month = mes_str.split('-')
+        month_num = int(month)
+        meses = {
+            1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril', 5: 'mayo', 6: 'junio',
+            7: 'julio', 8: 'agosto', 9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
+        }
+        return f"{meses.get(month_num, 'desconocido')} {year}"
+    except:
+        return mes_str
+
+
+# =========================
+# DEBUG HELPERS
+# =========================
+def _dbg_set_interpretacion(obj: dict):
+    try:
+        st.session_state["DBG_INT_LAST"] = obj or {}
+    except Exception:
+        pass
+
+
+def _dbg_set_sql(tag: Optional[str], query: str, params, df: Optional[pd.DataFrame] = None):
+    try:
+        st.session_state["DBG_SQL_LAST_TAG"] = tag
+        st.session_state["DBG_SQL_LAST_QUERY"] = query or ""
+        st.session_state["DBG_SQL_LAST_PARAMS"] = params if params is not None else []
+        if isinstance(df, pd.DataFrame):
+            st.session_state["DBG_SQL_ROWS"] = int(len(df))
+            st.session_state["DBG_SQL_COLS"] = list(df.columns)
+        else:
+            st.session_state["DBG_SQL_ROWS"] = None
+            st.session_state["DBG_SQL_COLS"] = []
+    except Exception:
+        pass
+
+
+def _dbg_set_result(df: Optional[pd.DataFrame]):
+    try:
+        if isinstance(df, pd.DataFrame):
+            st.session_state["DBG_SQL_ROWS"] = int(len(df))
+            st.session_state["DBG_SQL_COLS"] = list(df.columns)
+    except Exception:
+        pass
+
+
+# =========================
+# HISTORIAL
+# =========================
+def inicializar_historial():
+    if "historial_compras" not in st.session_state:
+        st.session_state["historial_compras"] = []
+
+
+# =========================
+# TOTALES
+# =========================
+def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
+    """
+    Devuelve totales por moneda (para las cards):
+    - Pesos: UYU / $ / pesos / ARS (pero excluye USD/U$S)
+    - USD: USD / U$S / US$
+    """
+    if df is None or len(df) == 0:
+        return {"Pesos": 0, "USD": 0}
+
+    col_moneda = None
+    for col in df.columns:
+        if col.lower() in ["moneda", "currency"]:
+            col_moneda = col
+            break
+
+    col_total = None
+    for col in df.columns:
+        if col.lower() in ["total", "monto", "importe", "valor", "monto_neto"]:
+            col_total = col
+            break
+
+    if not col_moneda or not col_total:
+        return None
+
+    try:
+        df_calc = df.copy()
+
+        df_calc[col_total] = (
+            df_calc[col_total]
+            .astype(str)
+            .str.replace(".", "", regex=False)
+            .str.replace(",", ".", regex=False)
+            .str.replace("$", "", regex=False)
+            .str.strip()
+        )
+        df_calc[col_total] = pd.to_numeric(df_calc[col_total], errors="coerce").fillna(0)
+
+        mon = df_calc[col_moneda].astype(str)
+
+        # USD (incluye U$S)
+        usd_mask = mon.str.contains(r"USD|U\$S|US\$|U\$|dolar|dólar", case=False, na=False)
+
+        # Pesos (UYU/$/pesos) pero excluyendo USD (porque U$S contiene $)
+        pesos_mask = mon.str.contains(r"UYU|\$|peso|ARS", case=False, na=False) & (~usd_mask)
+
+        totales = {}
+        totales["Pesos"] = df_calc.loc[pesos_mask, col_total].sum()
+        totales["USD"] = df_calc.loc[usd_mask, col_total].sum()
+
+        return totales
+
+    except Exception as e:
+        print(f"Error calculando totales: {e}")
+        return None
+
+
+# =========================
+# DASHBOARD VENDIBLE (UI) - NUEVO
+# (NO TOCA SQL / NO ROMPE LO EXISTENTE)
+# =========================
+import io
+
+
+def _find_col(df: pd.DataFrame, candidates_lower: list) -> Optional[str]:
+    for c in df.columns:
+        if str(c).lower() in candidates_lower:
+            return c
+    return None
+
+
+def _norm_moneda_view(x: str) -> str:
+    s = ("" if x is None else str(x)).strip().upper()
+    if not s:
+        return "OTRA"
+    if "U$S" in s or "USD" in s or "US$" in s or s == "U$" or "DOLAR" in s or "DÓLAR" in s:
+        return "USD"
+    if s == "$" or "UYU" in s or "PESO" in s:
+        return "UYU"
+    return s
+
+
+def _safe_to_float(v) -> float:
+    try:
+        if v is None:
+            return 0.0
+        if isinstance(v, (int, float)):
+            return float(v)
+        s = str(v).strip()
+        if not s:
+            return 0.0
+        s = s.replace(" ", "")
+        # soporta "1.234,56" (LATAM) y "1,234.56" (EN) de forma básica
+        if "," in s and "." in s:
+            s = s.replace(".", "").replace(",", ".")
+        else:
+            if "," in s and "." not in s:
+                s = s.replace(",", ".")
+        return float(s)
+    except Exception:
+        return 0.0
+
+
+def _fmt_compact_money(v: float, moneda: str) -> str:
+    try:
+        v = float(v or 0.0)
+    except Exception:
+        v = 0.0
+
+    sign = "-" if v < 0 else ""
+    a = abs(v)
+
+    if moneda == "USD":
+        prefix = "U$S "
+        decimals = 2
+    else:
+        prefix = "$ "
+        decimals = 0 if a >= 1000 else 2
+
+    if a >= 1_000_000_000:
+        return f"{sign}{prefix}{a/1_000_000_000:,.2f}B".replace(",", ".")
+    if a >= 1_000_000:
+        return f"{sign}{prefix}{a/1_000_000:,.2f}M".replace(",", ".")
+    if a >= 1_000:
+        return f"{sign}{prefix}{a/1_000:,.2f}K".replace(",", ".")
+    return f"{sign}{prefix}{a:,.{decimals}f}".replace(",", ".")
+
+
+def _shorten_text(x, max_len: int = 52) -> str:
+    s = "" if x is None else str(x)
+    s = s.strip()
+    if len(s) <= max_len:
+        return s
+    return s[: max_len - 1] + "…"
+
+
+def _df_export_clean(df: pd.DataFrame) -> pd.DataFrame:
+    # No exportar columnas internas __*
+    cols = [c for c in df.columns if not str(c).startswith("__")]
+    return df[cols].copy() if cols else df.copy()
+
+
+def _df_to_csv_bytes(df: pd.DataFrame) -> bytes:
+    try:
+        return df.to_csv(index=False).encode("utf-8")
+    except Exception:
+        return b""
+
+
+def _df_to_excel_bytes(df: pd.DataFrame) -> bytes:
+    try:
+        buff = io.BytesIO()
+        with pd.ExcelWriter(buff, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="datos")
+        return buff.getvalue()
+    except Exception:
+        return b""
+
+
+def _init_saved_views():
+    if "FC_SAVED_VIEWS" not in st.session_state:
+        st.session_state["FC_SAVED_VIEWS"] = []
+
+
+def _save_view(view_name: str, data: dict):
+    _init_saved_views()
+    name = (view_name or "").strip()
+    if not name:
+        return
+    # Reemplaza si existe
+    out = []
+    for v in st.session_state["FC_SAVED_VIEWS"]:
+        if str(v.get("name", "")).strip().lower() == name.lower():
+            continue
+        out.append(v)
+    out.append({"name": name, "data": data})
+    st.session_state["FC_SAVED_VIEWS"] = out
+
+
+def _get_saved_view_names() -> list:
+    _init_saved_views()
+    names = [v.get("name") for v in st.session_state.get("FC_SAVED_VIEWS", []) if v.get("name")]
+    return sorted(names, key=lambda s: str(s).lower())
+
+
+def _load_view(name: str) -> Optional[dict]:
+    _init_saved_views()
+    for v in st.session_state.get("FC_SAVED_VIEWS", []):
+        if str(v.get("name", "")).strip().lower() == str(name or "").strip().lower():
+            return v.get("data") or {}
+    return None
+
+
+def _paginate(df_in: pd.DataFrame, page: int, page_size: int) -> pd.DataFrame:
+    if df_in is None or df_in.empty:
+        return df_in
+    page_size = max(1, int(page_size or 25))
+    page = max(1, int(page or 1))
+    start = (page - 1) * page_size
+    end = start + page_size
+    return df_in.iloc[start:end]
+
+
+# Agregado: Mapeo de meses para display amigable
+month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+month_num = {name: f"{i+1:02d}" for i, name in enumerate(month_names)}
+
+MONTH_MAPPING = {}
+for year in [2023, 2024, 2025, 2026]:
+    for month, num in month_num.items():
+        MONTH_MAPPING[f"{year}-{num}"] = f"{month} {year}"
+
+def code_to_display(code: str) -> str:
+    return MONTH_MAPPING.get(code, code)
+
+def display_to_code(display: str) -> str:
+    reverse_mapping = {v: k for k, v in MONTH_MAPPING.items()}
+    return reverse_mapping.get(display, display)
+
+def rename_month_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df_renamed = df.copy()
+    df_renamed.rename(columns=MONTH_MAPPING, inplace=True)
+    return df_renamed
+
+
 def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado", key_prefix: str = "", hide_metrics: bool = False):
     if df is None or df.empty:
         st.warning("⚠️ No hay resultados para mostrar.")
@@ -250,7 +584,6 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         unsafe_allow_html=True
     )
 
-    # Código restante igual...
     df_view = rename_month_columns(df.copy())  # Renombra columnas de meses para display
 
     col_proveedor = _find_col(df_view, ["proveedor", "cliente / proveedor"])
