@@ -868,8 +868,6 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             <p class="total-summary-label">Total Pesos (UYU)</p>
         </div>
         """, unsafe_allow_html=True)
-        
-        st.dataframe(df_uyu, use_container_width=True, height=400)
 
     with tab_usd:
         # Calcular total USD
