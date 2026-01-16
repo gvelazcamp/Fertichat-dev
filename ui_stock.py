@@ -447,11 +447,15 @@ def mostrar_stock_ia():
             print(f"⚠️ Error en alertas de vencimiento: {e}")
             pass  # Si falla la alerta, no afecta el resto
 
-    pregunta = st.text_input(
-        "Escribe tu consulta de stock:",
-        placeholder="Ej: stock vitek / lotes por vencer / stock bajo",
-        key="input_stock"
-    )
+    # ✅ Crear un contenedor para el input (se limpia después de procesar)
+    col_input = st.container()
+    with col_input:
+        pregunta = st.text_input(
+            "Escribe tu consulta de stock:",
+            placeholder="Ej: stock vitek / lotes por vencer / stock bajo",
+            key="input_stock",
+            value=""  # ✅ Asegurar que siempre esté vacío después de enviar
+        )
 
     if pregunta:
         # ✅ PAUSAR AUTOREFRESH AL HACER PREGUNTA
@@ -459,17 +463,15 @@ def mostrar_stock_ia():
         
         with st.spinner("🔍 Consultando stock."):
             respuesta, df = procesar_pregunta_stock(pregunta)
-
+            
             st.session_state.historial_stock.append({
                 'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'pregunta': pregunta,
                 'respuesta': respuesta,
-                'df': df,
+                'df': df,  # ✅ Agregar DataFrame
                 'tiene_datos': df is not None and not df.empty
             })
 
-            # Limpiar input
-            st.session_state["input_stock"] = ""
             st.rerun()
 
     # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO
