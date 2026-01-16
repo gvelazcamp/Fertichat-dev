@@ -185,6 +185,8 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
     
     # 4. Responder según tipo
     respuesta = ""
+    mostrar_tabla = True  # ✅ NUEVO: Flag para decidir si mostrar tabla
+    
     if tipo_pregunta == "vencimiento":
         if not df_stock.empty and 'Dias_Para_Vencer' in df_stock.columns:
             proximo = df_stock.nsmallest(1, 'Dias_Para_Vencer')
@@ -196,6 +198,7 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
             respuesta = "No hay información de vencimientos"
     
     elif tipo_pregunta == "ultima_compra":
+        mostrar_tabla = False  # ❌ No mostrar tabla para compras
         if not df_compras.empty:
             # Asume columna FECHA_COMPRA
             ultima = df_compras.nlargest(1, 'FECHA_COMPRA') if 'FECHA_COMPRA' in df_compras.columns else pd.DataFrame()
@@ -211,6 +214,7 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
             respuesta = f"🏢 Depósitos: {', '.join(depositos)}"
         else:
             respuesta = "No hay información de depósitos"
+            mostrar_tabla = False  # Si no hay stock, no mostrar tabla
     
     elif tipo_pregunta == "lote_antiguo":
         if not df_stock.empty and 'VENCIMIENTO' in df_stock.columns:
@@ -227,20 +231,22 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
     
     elif tipo_pregunta == "comparacion_temporal":
         respuesta = "📈 Análisis temporal: [Implementar comparación histórica]"
+        mostrar_tabla = False
     
     else:
         respuesta = "No entendí la pregunta específica"
+        mostrar_tabla = False
     
-    # 5. Mostrar header + tabla + respuesta
-    total_stock = df_stock['STOCK'].sum() if not df_stock.empty and 'STOCK' in df_stock.columns else 0
-    render_stock_header(codigo_articulo, int(total_stock))
+    # 5. Mostrar respuesta
+    st.success(respuesta)
     
-    if not df_stock.empty:
+    # 6. Mostrar tabla SOLO si es relevante (stock actual)
+    if mostrar_tabla and not df_stock.empty:
+        total_stock = df_stock['STOCK'].sum() if 'STOCK' in df_stock.columns else 0
+        render_stock_header(codigo_articulo, int(total_stock))
         render_stock_table(df_stock)
         render_stock_alerts(df_stock)
         render_download_button(df_stock, f"stock_{codigo_articulo[:20]}", "contextual")
-    
-    st.success(respuesta)
 
 # =====================================================================
 # MÓDULO STOCK IA (CHATBOT)
