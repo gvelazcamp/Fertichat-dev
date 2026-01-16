@@ -163,12 +163,6 @@ def render_stock_alerts(df: pd.DataFrame):
     else:
         st.success("✅ No hay lotes próximos a vencer")
 
-def render_chat_compacto(codigo_articulo: str = "general", df_stock: pd.DataFrame = None):
-    if df_stock is None:
-        return
-    # ... resto igual, pero si codigo_articulo == "general", no mostrar "Preguntar" o algo
-
-# Pero para simplificar, quitar "Preguntar" cuando codigo_articulo == "general"
 def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame):
     """Chat compacto simplificado: botón al lado de descargar, input aparece al clickear"""
     
@@ -226,6 +220,7 @@ def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame):
                     st.info(f"💡 {respuesta}")
                 else:
                     st.warning("Escribe una pregunta primero")
+
 # =====================================================================
 # NUEVA FUNCIÓN: CONSULTA CONTEXTUAL
 # =====================================================================
@@ -348,8 +343,6 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
         render_stock_header(codigo_articulo, int(total_stock))
         render_stock_table(df_stock)
         render_stock_alerts(df_stock)
-        render_download_button(df_stock, f"stock_{codigo_articulo[:20]}", "contextual")
-        # ✅ NUEVO: Agregar chat compacto
         render_chat_compacto(codigo_articulo, df_stock)
 
 # =====================================================================
@@ -560,7 +553,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         lote = intencion.get('lote', '')
         df = get_stock_lote_especifico(lote)
         if df is not None and not df.empty:
-            df = _clean_stock_df(df)  # ✅ LimPIAR stock 0
+            df = _clean_stock_df(df)  # ✅ LIMPIAR stock 0
             return f"🔍 Información del lote {lote}:", df
         return f"No encontré el lote {lote}.", None
 
@@ -785,8 +778,6 @@ def mostrar_stock_ia():
             render_stock_header(descripcion_articulo, int(total_stock))
             render_stock_table(df_art)
             render_stock_alerts(df_art)
-            render_download_button(df_art, f"stock_{articulo_seleccionado[:20]}", "select")
-            # ✅ NUEVO: Agregar chat compacto
             render_chat_compacto(articulo_seleccionado, df_art)
         else:
             st.warning(f"No hay stock para '{articulo_seleccionado}'.")
@@ -949,12 +940,10 @@ def mostrar_stock_ia():
                         import re
                         match = re.search(r"📦 Stock de '(.+?)':", item['respuesta'])
                         descripcion_articulo = match.group(1) if match else "Artículo"
-                        total_stock = df['STOCK'].sum() if 'STOCK' in df.columns else 0
+                        total_stock = df['STOCK'].sum() if 'STOCK' in df_stock.columns else 0
                         render_stock_header(descripcion_articulo, int(total_stock))
                         render_stock_table(df)
                         render_stock_alerts(df)
-                        render_download_button(df, f"stock_{descripcion_articulo[:20]}", idx)
-                        # ✅ NUEVO: Agregar chat compacto
                         render_chat_compacto(descripcion_articulo, df)
                     
                     elif "📉 Artículos con stock bajo" in item['respuesta']:
@@ -972,9 +961,8 @@ def mostrar_stock_ia():
                             col3.metric("Vencimiento", str(first_row.get('VENCIMIENTO', '-'))[:10])
                             col4.metric("Stock", first_row.get('STOCK', 0))
                             st.divider()
-                            # ✅ NUEVO: Agregar chat compacto para cada artículo
                             render_chat_compacto(articulo, group)
-                        render_download_button(df, "stock_bajo", idx)
+                        render_chat_compacto("stock_bajo", df)
                     
                     else:
                         # Otras consultas: header genérico + tabla + descarga
@@ -984,7 +972,7 @@ def mostrar_stock_ia():
                         render_stock_table(df)
                         if "lotes" in item['respuesta'].lower():
                             render_stock_alerts(df)
-                        render_download_button(df, descripcion.replace(" ", "_").lower()[:20], idx)
+                        render_chat_compacto(descripcion.replace(" ", "_").lower()[:20], df)
 
     # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
     if not st.session_state.get("pause_autorefresh_stock", False):
