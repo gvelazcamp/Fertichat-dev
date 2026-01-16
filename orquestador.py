@@ -3,6 +3,7 @@ import pandas as pd
 import re
 from typing import Tuple, Optional
 import json
+from interpretador_stock import interpretar_pregunta_stock
 
 # =========================
 # AGENTIC AI (fallback seguro)
