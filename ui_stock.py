@@ -5,6 +5,7 @@ from typing import Tuple, Optional
 import time
 
 from utils_format import formatear_dataframe, df_to_excel
+from ui_compras import render_dashboard_compras_vendible
 from sql_stock import (
     get_stock_total,
     get_stock_por_familia,
@@ -443,49 +444,35 @@ def mostrar_stock_ia():
     if pregunta:
         with st.spinner("🔍 Consultando stock."):
             respuesta, df = procesar_pregunta_stock(pregunta)
-
+            
             st.session_state.historial_stock.append({
                 'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'pregunta': pregunta,
                 'respuesta': respuesta,
+                'df': df,  # ✅ Guardar el DataFrame
                 'tiene_datos': df is not None and not df.empty
             })
+            
+            st.rerun()  # ✅ Forzar refresco para mostrar en historial
 
-            st.markdown(f"**{respuesta}**")
-
-            if df is not None and not df.empty:
-                if 'STOCK' in df.columns:
-                    try:
-                        total_stock = df['STOCK'].apply(lambda x: float(
-                            str(x).replace(',', '.').replace(' ', '')
-                        ) if pd.notna(x) else 0).sum()
-                        st.info(f"📦 **Total stock:** {total_stock:,.0f} unidades".replace(',', '.'))
-                    except Exception:
-                        pass
-
-                if 'Dias_Para_Vencer' in df.columns:
-                    try:
-                        criticos = len(df[df['Dias_Para_Vencer'] <= 30])
-                        if criticos > 0:
-                            st.warning(f"⚠️ **{criticos}** lotes vencen en menos de 30 días")
-                    except Exception:
-                        pass
-
-                st.dataframe(df, use_container_width=True, hide_index=True)
-
-                excel_data = df_to_excel(df)
-                st.download_button(
-                    label="📥 Descargar Excel",
-                    data=excel_data,
-                    file_name="consulta_stock.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
+    # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO
     if st.session_state.historial_stock:
         st.markdown("---")
-        st.subheader("📜 Historial")
-
-        for i, item in enumerate(reversed(st.session_state.historial_stock[-5:])):
-            with st.expander(f"🕐 {item['timestamp']} - {item['pregunta'][:40]}."):
-                st.markdown(f"**Pregunta:** {item['pregunta']}")
-                st.markdown(f"**Respuesta:** {item['respuesta']}")
+        
+        for idx, item in enumerate(st.session_state.historial_stock):
+            with st.chat_message("user"):
+                st.markdown(item['pregunta'])
+            
+            with st.chat_message("assistant"):
+                st.markdown(item['respuesta'])
+                
+                if 'df' in item and item['df'] is not None and not item['df'].empty:
+                    df = item['df']
+                    
+                    # ✅ USAR EL DASHBOARD MODERNO DE COMPRAS
+                    render_dashboard_compras_vendible(
+                        df,
+                        titulo="Stock",
+                        key_prefix=f"stock_hist_{idx}_",
+                        hide_metrics=True  # ✅ Ocultar tarjetas UYU/USD (no aplica a stock)
+                    )
