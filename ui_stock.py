@@ -100,6 +100,9 @@ def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
     # ✅ FILTRAR ARTÍCULOS (INACTIVO) ANTES DE PROCESAR
     df = df[~df['ARTICULO'].str.lower().str.contains('(inactivo)', na=False)]
     
+    if df.empty:
+        return df
+    
     grouped = df.groupby('ARTICULO')
     cleaned_rows = []
     
@@ -110,11 +113,11 @@ def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
             cleaned_rows.extend(stock_positive.to_dict('records'))
         else:
             # ✅ Si todos =0, mostrar 1 fila genérica para pedir
-            row = group.iloc[0].copy()
-            row['LOTE'] = '-'
-            row['VENCIMIENTO'] = None
-            row['Dias_Para_Vencer'] = None
-            cleaned_rows.append(row)
+            row_dict = group.iloc[0].to_dict()
+            row_dict['LOTE'] = '-'
+            row_dict['VENCIMIENTO'] = None
+            row_dict['Dias_Para_Vencer'] = None
+            cleaned_rows.append(row_dict)
     
     return pd.DataFrame(cleaned_rows)
 
