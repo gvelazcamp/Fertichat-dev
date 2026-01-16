@@ -91,7 +91,7 @@ def detectar_intencion_stock(texto: str) -> dict:
 
 
 def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Limpia el DataFrame de stock: consolida lotes con STOCK=0 en fila genérica, muestra lotes con >0 normalmente."""
+    """Limpia el DataFrame de stock: si hay stock >0, mostrar solo esos; si todo =0, mostrar 1 fila genérica."""
     if df is None or df.empty:
         return df
     
@@ -102,17 +102,13 @@ def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
     cleaned_rows = []
     
     for articulo, group in grouped:
-        # Separar filas con stock >0 y =0
         stock_positive = group[group['STOCK'] > 0]
-        stock_zero = group[group['STOCK'] == 0]
-        
         if not stock_positive.empty:
-            # ✅ Mostrar lotes con stock >0 normalmente
+            # ✅ Si hay lotes con stock >0, mostrar SOLO esos (sin filas genéricas de 0)
             cleaned_rows.extend(stock_positive.to_dict('records'))
-        
-        if not stock_zero.empty:
-            # ✅ Consolidar lotes con stock =0 en 1 fila genérica
-            row = stock_zero.iloc[0].copy()
+        else:
+            # ✅ Si todos =0, mostrar 1 fila genérica para pedir
+            row = group.iloc[0].copy()
             row['LOTE'] = '-'
             row['VENCIMIENTO'] = None
             row['Dias_Para_Vencer'] = None
