@@ -97,7 +97,96 @@ def _extraer_nro_factura_fallback(texto: str) -> Optional[str]:
 
 
 # =========================
-# NUEVO: INTERPRETACIÓN DE PREGUNTAS DE STOCK CON OPENAI
+# NUEVO SISTEMA DE INTENTS PARA STOCK
+# =========================
+
+INTENTS_STOCK = [
+    # Específicos primero (orden importa)
+    {
+        "intent": "stock_familia_especifica",
+        "patterns": [
+            r"(?:cual|cuales|que|qué)\s+es\s+el\s+stock\s+de\s+(id|fb|g|tr|xx|hm|mi)\b",
+            r"stock\s+(?:de\s+)?familia\s+(id|fb|g|tr|xx|hm|mi)\b",
+            r"(?:cual|cuales)\s+(?:es|son)\s+(?:el|los)\s+stock\s+de\s+(id|fb|g|tr|xx|hm|mi)\b"
+        ],
+        "funcion": "obtener_stock_familia",
+        "descripcion": "Stock de una familia específica"
+    },
+    {
+        "intent": "stock_por_familia_resumen",
+        "patterns": [
+            r"(?:qué|que|cual|cuales|cuánto|cuanto)\s+(?:stock|hay|tiene|tienen)\s+por\s+familia",
+            r"(?:stock|familias)\s+(?:por|de)\s+(?:cada\s+)?familia",
+            r"(?:qué|que)\s+familias\s+tienen\s+(?:más|mas|mayor)\s+stock",
+            r"cuántos?\s+(?:artículos|unidades)\s+(?:hay\s+)?por\s+familia"
+        ],
+        "funcion": "obtener_stock_por_familia_resumen",
+        "descripcion": "Resumen de stock por todas las familias"
+    },
+    {
+        "intent": "stock_por_deposito_resumen",
+        "patterns": [
+            r"(?:qué|que|cual|cuales|cuánto|cuanto)\s+(?:stock|hay|tiene|tienen)\s+por\s+depósito",
+            r"(?:stock|depósitos)\s+(?:por|de)\s+(?:cada\s+)?depósito",
+            r"(?:qué|que)\s+depósitos?\s+tienen?\s+(?:más|mas|mayor)\s+stock"
+        ],
+        "funcion": "obtener_stock_por_deposito_resumen",
+        "descripcion": "Resumen de stock por todos los depósitos"
+    },
+    {
+        "intent": "stock_total_general",
+        "patterns": [
+            r"(?:cuánto|cuanto|qué|que)\s+stock\s+(?:tengo|hay|total)",
+            r"stock\s+total",
+            r"cuántos?\s+(?:artículos|lotes|unidades)\s+(?:hay|tengo|diferentes)"
+        ],
+        "funcion": "obtener_stock_total_general",
+        "descripcion": "Totales generales de stock"
+    },
+    {
+        "intent": "stock_articulo",
+        "patterns": [
+            r"stock\s+(?:de\s+)?(.+)",
+            r"(?:cuánto|cuanto)\s+(?:hay|queda|tengo)\s+de\s+(.+)",
+            r"(?:qué|que)\s+stock\s+(?:hay|tiene)\s+(.+)"
+        ],
+        "funcion": "obtener_stock_articulo",
+        "descripcion": "Stock de un artículo específico"
+    }
+]
+
+
+def detectar_intencion_stock_regex(texto: str) -> dict:
+    """Detecta intención usando regex patterns"""
+    texto_lower = texto.lower().strip()
+    
+    for intent in INTENTS_STOCK:
+        for pattern in intent["patterns"]:
+            match = re.search(pattern, texto_lower, re.IGNORECASE)
+            if match:
+                # Extraer parámetros del match
+                params = {}
+                if intent["intent"] == "stock_familia_especifica":
+                    params["familia"] = match.group(1).upper()
+                elif intent["intent"] == "stock_articulo":
+                    params["articulo"] = match.group(1).strip()
+                
+                return {
+                    "tipo": intent["intent"],
+                    "parametros": params,
+                    "debug": intent["descripcion"]
+                }
+    
+    # Si no matchea nada, búsqueda general
+    return {
+        "tipo": "busqueda_libre",
+        "parametros": {"texto": texto},
+        "debug": f"Búsqueda general: {texto}"
+    }
+
+
+# =========================
+# INTERPRETACIÓN DE PREGUNTAS DE STOCK CON OPENAI (fallback)
 # =========================
 import os
 from openai import OpenAI
@@ -159,129 +248,57 @@ Si un parámetro no aplica, déjalo en null.
         return {"tipo": "busqueda_libre", "parametros": {"texto": pregunta}}
 
 
-def detectar_intencion_stock(texto: str) -> dict:
-    """Detecta la intención para consultas de stock"""
-    texto_lower = texto.lower().strip()
-
-    # ✅ PRIORIZAR STOCK TOTAL ANTES DE ARTÍCULO ESPECÍFICO
-    if 'total' in texto_lower and 'stock' in texto_lower:
-        return {'tipo': 'stock_total', 'debug': 'Stock total'}
-    
-    # ✅ NUEVO: Artículos totales
-    if 'artículos' in texto_lower or 'articulos' in texto_lower:
-        return {'tipo': 'stock_total', 'debug': 'Artículos totales'}
-    
-    # ✅ NUEVO: Lotes totales
-    if 'lotes' in texto_lower and ('registrados' in texto_lower or 'tengo' in texto_lower):
-        return {'tipo': 'stock_total', 'debug': 'Lotes totales'}
-
-    # ✅ DETECTAR FAMILIAS CONOCIDAS (antes de artículos)
-    familias_conocidas = ['id', 'fb', 'g', 'tr', 'xx', 'hm', 'mi']
-    for fam in familias_conocidas:
-        if fam in texto_lower.split():
-            return {'tipo': 'stock_familia_especifica', 'familia': fam.upper(), 'debug': f'Stock familia {fam.upper()}'}
-
-    # ✅ MOVER ANTES DE ARTÍCULO: Stock por familia general
-    if 'por familia' in texto_lower or 'familias' in texto_lower or 'familia' in texto_lower:
-        # Si no específica, stock por familia general
-        if 'por familia' in texto_lower or 'familias' in texto_lower:
-            return {'tipo': 'stock_por_familia', 'debug': 'Stock por familia general'}
-
-    # ✅ MOVER STOCK_ARTICULO ANTES DE VENCIMIENTOS PARA PRIORIZAR ARTÍCULO ESPECÍFICO
-    # Stock de artículo específico (casos 1 y 4)
-    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
-        # Extraer nombre del artículo
-        palabras_excluir = ['stock', 'cuanto', 'cuánto', 'hay', 'de', 'del', 'tenemos', 'disponible', 'el', 'la', 'los', 'las', 'que', 'es', 'un', 'una', 'cual']
-        palabras = [p for p in texto_lower.split() if p not in palabras_excluir and len(p) > 2]
-        if palabras:
-            articulo = ' '.join(palabras)
-            return {'tipo': 'stock_articulo', 'articulo': articulo, 'debug': f'Stock de artículo: {articulo}'}
-
-    # Vencimientos
-    if any(k in texto_lower for k in ['vencer', 'vencen', 'vencimiento', 'vence', 'por vencer']):
-        if 'vencido' in texto_lower or 'ya vencio' in texto_lower:
-            return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
-        # Extraer días si se menciona
-        import re
-        match = re.search(r'(\d+)\s*(dias|día|dia|días)', texto_lower)
-        dias = int(match.group(1)) if match else 90
-        return {'tipo': 'lotes_por_vencer', 'dias': dias, 'debug': f'Lotes por vencer en {dias} días'}
-
-    # Vencidos
-    if any(k in texto_lower for k in ['vencido', 'vencidos', 'ya vencio', 'caducado']):
-        return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
-
-    # Stock bajo
-    if any(k in texto_lower for k in ['stock bajo', 'poco stock', 'bajo stock', 'quedan pocos', 'se acaba', 'reponer']):
-        return {'tipo': 'stock_bajo', 'debug': 'Stock bajo'}
-
-    # Lote específico
-    if any(k in texto_lower for k in ['lote', 'nro lote', 'numero de lote']):
-        # Buscar patrón de lote (alfanumérico)
-        import re
-        match = re.search(r'lote\s+(\w+)', texto_lower)
-        if match:
-            return {'tipo': 'lote_especifico', 'lote': match.group(1), 'debug': f'Lote específico: {match.group(1)}'}
-
-    # Stock por familia (ya cubierto arriba, pero dejar por si acaso)
-    if any(k in texto_lower for k in ['familia', 'familias', 'por familia', 'seccion', 'secciones']):
-        return {'tipo': 'stock_por_familia', 'debug': 'Stock por familias'}
-
-    # ✅ NUEVO: Lista de artículos
-    if any(k in texto_lower for k in ['listado', 'lista', 'todos los artículos', 'artículos disponibles', 'qué artículos hay']):
-        return {'tipo': 'lista_articulos', 'debug': 'Lista de artículos'}
-
-    # ✅ NUEVO: Preguntas comparativas
-    if any(k in texto_lower for k in ['qué artículo tiene más stock', 'cuál tiene más stock', 'artículo con más stock']):
-        return {'tipo': 'stock_comparativo', 'subtipo': 'mas_stock', 'debug': 'Artículo con más stock'}
-    if any(k in texto_lower for k in ['qué artículo tiene menos stock', 'cuál tiene menos stock', 'artículo con menos stock']):
-        return {'tipo': 'stock_comparativo', 'subtipo': 'menos_stock', 'debug': 'Artículo con menos stock'}
-    if any(k in texto_lower for k in ['qué artículos están bajos', 'artículos bajos de stock']):
-        return {'tipo': 'stock_bajo', 'debug': 'Artículos bajos de stock'}
-
-    # Stock por depósito
-    if any(k in texto_lower for k in ['deposito', 'depósito', 'depositos', 'depósitos', 'almacen']):
-        return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
-
-    # Al final, por defecto buscar artículo
-    return {'tipo': 'stock_articulo', 'articulo': texto, 'debug': f'Búsqueda general: {texto}'}
-
-
 def responder_pregunta_stock(pregunta: str) -> tuple:
     """
     Orquestador principal que interpreta y ejecuta consultas de stock
     Devuelve: (mensaje, df) donde df puede ser None
     """
     # 1. Interpretar la pregunta
-    intencion = detectar_intencion_stock(pregunta)  # ✅ USAR LA FUNCIÓN LOCAL EN LUGAR DE OPENAI
+    intencion = detectar_intencion_stock_regex(pregunta)  # ✅ USAR REGEX PRIMERO
     tipo = intencion["tipo"]
-    params = intencion.get("parametros", {})  # ✅ AGREGAR .get() POR SI NO HAY PARAMETROS
+    params = intencion["parametros"]
     
-    # 2. Ejecutar la función SQL correcta según el tipo
-    if tipo == "stock_total":
-        df = get_stock_total()
-        if df is not None and not df.empty:
-            mensaje = f"""
-            📊 Stock total:
-            - Registros: {int(df['registros'].iloc[0]):,}
-            - Artículos: {int(df['articulos'].iloc[0]):,}
-            - Lotes: {int(df['lotes'].iloc[0]):,}
-            - Stock total: {int(df['stock_total'].iloc[0]):,} unidades
-            """
-            return mensaje.strip(), None  # No tabla, solo mensaje
-        return "⚠️ No se pudo obtener el resumen de stock.", None
+    # 2. Ejecutar la función correspondiente
+    if tipo == "stock_familia_especifica":
+        familia = params.get("familia")
+        if familia:
+            df = get_stock_familia(familia)
+            if df is None or df.empty:
+                return f"❌ No se encontró stock de la familia '{familia}' en Casa Central", None
+            else:
+                return f"📦 Stock de familia {familia.upper()} (Casa Central, {len(df)} registros):", df
+        return "❌ Indicá la familia.", None
     
-    elif tipo == "stock_por_familia":
+    elif tipo == "stock_por_familia_resumen":
         df = get_stock_por_familia()
         if df is not None and not df.empty:
-            return "📊 Stock por familia:", df  # Devuelve tabla
+            # Crear respuesta con métricas
+            mensaje = f"📊 Stock por familia ({len(df)} familias):\n\n"
+            for _, row in df.head(5).iterrows():
+                mensaje += f"- {row['familia']}: {int(row['stock_total']):,} unidades ({int(row['articulos'])} artículos)\n"
+            return mensaje.strip(), df
         return "⚠️ No se pudo obtener el stock por familia.", None
     
-    elif tipo == "stock_por_deposito":
+    elif tipo == "stock_por_deposito_resumen":
         df = get_stock_por_deposito()
         if df is not None and not df.empty:
-            return "🏢 Stock por depósito:", df  # Devuelve tabla
+            mensaje = f"🏢 Stock por depósito ({len(df)} depósitos):\n\n"
+            for _, row in df.head(5).iterrows():
+                mensaje += f"- {row['deposito']}: {int(row['stock_total']):,} unidades ({int(row['articulos'])} artículos)\n"
+            return mensaje.strip(), df
         return "⚠️ No se pudo obtener el stock por depósito.", None
+    
+    elif tipo == "stock_total_general":
+        df = get_stock_total()
+        if df is not None and not df.empty:
+            row = df.iloc[0]
+            mensaje = f"📊 Stock total general:\n"
+            mensaje += f"- Registros: {int(row['registros']):,}\n"
+            mensaje += f"- Artículos: {int(row['articulos']):,}\n"
+            mensaje += f"- Lotes: {int(row['lotes']):,}\n"
+            mensaje += f"- Stock total: {int(row['stock_total']):,} unidades"
+            return mensaje, None  # No tabla, solo mensaje
+        return "⚠️ No se pudo obtener el resumen de stock.", None
     
     elif tipo == "stock_articulo":
         articulo = params.get("articulo")
@@ -290,56 +307,8 @@ def responder_pregunta_stock(pregunta: str) -> tuple:
             if df is None or df.empty:
                 return f"❌ No se encontró stock para '{articulo}'", None
             else:
-                return f"📦 {articulo}: {int(df['STOCK'].sum())} unidades en {df['LOTE'].nunique()} lote(s)", df  # Devuelve tabla
+                return f"📦 {articulo}: {int(df['STOCK'].sum())} unidades en {df['LOTE'].nunique()} lote(s)", df
         return "❌ Indicá el artículo.", None
-    
-    elif tipo == "stock_familia_especifica":
-        familia = params.get("familia")
-        if familia:
-            df = get_stock_familia(familia)
-            if df is None or df.empty:
-                return f"❌ No se encontró stock de la familia '{familia}' en Casa Central", None
-            else:
-                return f"📦 Stock de familia {familia.upper()} (Casa Central, {len(df)} registros):", df  # Devuelve tabla
-        return "❌ Indicá la familia.", None
-    
-    elif tipo == "stock_lote":
-        lote = params.get("lote")
-        if lote:
-            df = get_stock_lote_especifico(lote)
-            if df is None or df.empty:
-                return f"❌ No se encontró el lote '{lote}'", None
-            else:
-                r = df.iloc[0]
-                mensaje = f"📦 Lote {lote}:\n- Artículo: {r['ARTICULO']}\n- Depósito: {r['DEPOSITO']}\n- Stock: {int(r['STOCK'])} unidades\n- Vence: {r['VENCIMIENTO']}"
-                return mensaje, df  # Devuelve tabla
-        return "❌ Indicá el lote.", None
-    
-    elif tipo == "vencimientos":
-        dias = params.get("dias", 90)
-        df = get_lotes_por_vencer(dias=dias)
-        if df is None or df.empty:
-            return f"✅ No hay lotes que venzan en los próximos {dias} días", None
-        else:
-            return f"⚠️ Hay {len(df)} lote(s) que vencen en los próximos {dias} días", df  # Devuelve tabla
-    
-    elif tipo == "vencidos":
-        df = get_lotes_vencidos()
-        if df is None or df.empty:
-            return "✅ No hay lotes vencidos con stock", None
-        else:
-            return f"⚠️ Hay {len(df)} lote(s) vencido(s) con stock", df  # Devuelve tabla
-    
-    elif tipo == "stock_bajo":
-        df = get_stock_bajo(minimo=10)
-        if df is None or df.empty:
-            return "✅ No hay artículos con stock bajo", None
-        else:
-            articulos = df.groupby('ARTICULO')['STOCK'].sum().sort_values().head(10)
-            mensaje = "⚠️ Artículos con stock bajo:\n\n"
-            for art, stock in articulos.items():
-                mensaje += f"- {art}: {int(stock)} unidades\n"
-            return mensaje.strip(), df  # Devuelve tabla
     
     elif tipo == "busqueda_libre":
         texto = params.get("texto")
@@ -348,7 +317,7 @@ def responder_pregunta_stock(pregunta: str) -> tuple:
             if df is None or df.empty:
                 return f"❌ No se encontraron resultados para '{texto}'", None
             else:
-                return f"✅ Encontré {len(df)} registro(s) relacionados con '{texto}'", df  # Devuelve tabla
+                return f"✅ Encontré {len(df)} registro(s) relacionados con '{texto}'", df
         return "❌ Indicá qué buscar.", None
     
     return "❌ No pude interpretar la pregunta", None
