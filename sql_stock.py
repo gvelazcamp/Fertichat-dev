@@ -346,6 +346,13 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
         if df is None or df.empty:
             return pd.DataFrame()
         
+        # ✅ FILTRAR INACTIVOS EN PYTHON (DESPUÉS DE LA QUERY)
+        df = df[~df['ARTICULO'].str.contains('(INACTIVO)', case=False, na=False)]
+        df = df[~df['ARTICULO'].str.contains('INACTIVO', case=False, na=False)]
+        
+        if df.empty:
+            return pd.DataFrame()
+        
         # 2. LÓGICA DE LIMPIEZA
         df['STOCK'] = df['STOCK'].fillna(0).astype(float)
         
@@ -378,7 +385,6 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
     except Exception as e:
         print(f"Error en get_stock_familia: {e}")
         return pd.DataFrame()
-
 
 # =====================================================================
 # RESÚMENES Y AGREGACIONES
