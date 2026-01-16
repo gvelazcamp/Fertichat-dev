@@ -55,6 +55,9 @@ def clasificar_pregunta_stock(pregunta: str) -> Dict[str, Any]:
     - lotes_por_vencer_30: qué lotes vencen en los próximos 30 días
     - lotes_por_vencer_90: qué lotes vencen en los próximos 90 días
     - lotes_vencidos: hay lotes ya vencidos, lotes vencidos
+    - stock_cero: qué artículos están en stock cero, artículos sin stock
+    - stock_unidad: qué artículos tienen solo 1 unidad, artículos con stock 1
+    - necesito_pedir: necesito pedir algo, artículos para pedir, stock crítico
     - comparacion_temporal: evolución en el tiempo, cómo cambió, estamos comprando más
     
     Responde SOLO con JSON:
@@ -447,6 +450,46 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
             respuesta = "✅ No hay lotes vencidos con stock"
             mostrar_tabla = False
     
+    elif tipo_pregunta == "stock_cero":
+        df_temp = get_stock_bajo(0)
+        df_temp = df_temp[df_temp['STOCK'] == 0]
+        if not df_temp.empty:
+            articulos = df_temp['ARTICULO'].unique().tolist()
+            respuesta = f"⚠️ Artículos sin stock: {', '.join(articulos)}"
+            df_stock = df_temp
+            mostrar_tabla = True
+        else:
+            respuesta = "No hay artículos sin stock"
+            mostrar_tabla = False
+
+    elif tipo_pregunta == "stock_unidad":
+        alertas = get_alertas_stock_1(10)
+        if alertas:
+            articulos = [a['ARTICULO'] for a in alertas]
+            respuesta = f"⚠️ Artículos con 1 unidad: {', '.join(articulos)}"
+            df_stock = pd.DataFrame(alertas)
+            mostrar_tabla = True
+        else:
+            respuesta = "No hay artículos con stock = 1"
+            mostrar_tabla = False
+
+    elif tipo_pregunta == "necesito_pedir":
+        df_temp = get_stock_bajo(5)
+        if not df_temp.empty:
+            stock_por_articulo = df_temp.groupby('ARTICULO')['STOCK'].sum()
+            articulos_criticos = stock_por_articulo[stock_por_articulo <= 5]
+            if not articulos_criticos.empty:
+                lista = [f"{art} ({int(stock)})" for art, stock in articulos_criticos.items()]
+                respuesta = f"📦 Artículos para pedir: {', '.join(lista[:10])}"
+                df_stock = df_temp
+                mostrar_tabla = True
+            else:
+                respuesta = "No hay artículos con stock crítico"
+                mostrar_tabla = False
+        else:
+            respuesta = "No pude obtener datos"
+            mostrar_tabla = False
+    
     else:
         respuesta = "No entendí la pregunta específica"
         mostrar_tabla = False
@@ -734,6 +777,39 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         if df is not None and not df.empty:
             return "🚨 Lotes ya vencidos:", df
         return "No hay lotes vencidos registrados.", None
+
+    # ✅ NUEVO: Stock cero
+    if tipo == 'stock_cero':
+        df = get_stock_bajo(0)
+        if df is not None and not df.empty:
+            df_cero = df[df['STOCK'] == 0]
+            if not df_cero.empty:
+                articulos = df_cero['ARTICULO'].unique().tolist()
+                return f"⚠️ Artículos sin stock: {', '.join(articulos)}", df_cero
+            else:
+                return "No hay artículos sin stock.", None
+        return "No pude obtener datos de stock.", None
+
+    # ✅ NUEVO: Stock unidad
+    if tipo == 'stock_unidad':
+        alertas = get_alertas_stock_1(20)
+        if alertas:
+            articulos = [a['ARTICULO'] for a in alertas]
+            return f"⚠️ Artículos con 1 unidad: {', '.join(articulos)}", pd.DataFrame(alertas)
+        return "No hay artículos con stock = 1.", None
+
+    # ✅ NUEVO: Necesito pedir
+    if tipo == 'necesito_pedir':
+        df = get_stock_bajo(5)
+        if df is not None and not df.empty:
+            stock_por_articulo = df.groupby('ARTICULO')['STOCK'].sum()
+            articulos_criticos = stock_por_articulo[stock_por_articulo <= 5]
+            if not articulos_criticos.empty:
+                lista = [f"{art} ({int(stock)} unidades)" for art, stock in articulos_criticos.items()]
+                return f"📦 Artículos para pedir: {', '.join(lista[:10])}", df
+            else:
+                return "No hay artículos con stock crítico.", None
+        return "No pude obtener datos de stock.", None
 
     return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo', 'listado de artículos'.", None
 
