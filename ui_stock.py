@@ -16,6 +16,7 @@ from sql_stock import (
     get_stock_bajo,
     get_stock_lote_especifico,
     get_alertas_vencimiento_multiple,
+    get_lista_articulos_stock,  # ✅ AGREGAR ESTA IMPORTACIÓN
 )
 
 # =====================================================================
@@ -60,6 +61,10 @@ def detectar_intencion_stock(texto: str) -> dict:
             if fam in texto_lower.split():
                 return {'tipo': 'stock_familia', 'familia': fam.upper(), 'debug': f'Stock familia {fam.upper()}'}
         return {'tipo': 'stock_por_familia', 'debug': 'Stock por familias'}
+
+    # ✅ NUEVO: Lista de artículos
+    if any(k in texto_lower for k in ['listado', 'lista', 'todos los artículos', 'artículos disponibles', 'qué artículos hay']):
+        return {'tipo': 'lista_articulos', 'debug': 'Lista de artículos'}
 
     # ✅ NUEVO: Detectar familias cortas ANTES de buscar artículos
     familias_conocidas = ['id', 'fb', 'g', 'tr', 'xx', 'hm', 'mi']
@@ -121,6 +126,7 @@ def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
     
     return pd.DataFrame(cleaned_rows)
 
+
 def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     """Procesa una pregunta sobre stock"""
 
@@ -129,6 +135,14 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
 
     print(f"🔍 STOCK IA - Intención: {tipo}")
     print(f"📋 Debug: {intencion.get('debug')}")
+
+    # ✅ NUEVO: Lista de artículos
+    if tipo == 'lista_articulos':
+        lista = get_lista_articulos_stock()
+        if lista and len(lista) > 1:
+            df_lista = pd.DataFrame({'Artículo': lista[1:]})  # Excluye "Todos"
+            return "📋 Lista de artículos disponibles:", df_lista
+        return "No encontré artículos.", None
 
     # Stock total
     if tipo == 'stock_total':
@@ -203,7 +217,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
             return f"📦 Stock de '{articulo}':", df
         return f"No encontré stock para '{articulo}'.", None
 
-    return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo'.", None
+    return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo', 'listado de artículos'.", None
 
 
 # =========================
@@ -399,6 +413,7 @@ def mostrar_stock_ia():
         - "stock total"
         - "stock por familia"
         - "stock por depósito"
+        - "listado de artículos"
 
         🔍 **Búsquedas específicas:**
         - "stock vitek"
