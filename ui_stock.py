@@ -464,8 +464,6 @@ def mostrar_stock_ia():
                 'tiene_datos': df is not None and not df.empty
             })
 
-            # ✅ LIMPIAR EL INPUT DESPUÉS DE PROCESAR
-            st.session_state["input_stock"] = ""
             st.rerun()
 
     # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO
