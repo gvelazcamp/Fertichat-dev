@@ -510,6 +510,10 @@ def mostrar_resumen_stock_rotativo(dias_vencer: int = 365):  # ✅ CAMBIADO DEFA
     except Exception:
         pregunta_actual = ""
 
+    # ✅ AGREGAR CONDICIÓN PARA PAUSAR AUTOREFFRESH GLOBAL
+    if st.session_state.get("pause_autorefresh_stock", False):
+        return  # No mostrar ni refrescar si está pausado
+
     tick = 0
     if not pregunta_actual.strip():
         try:
