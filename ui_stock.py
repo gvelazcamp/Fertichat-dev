@@ -727,29 +727,23 @@ def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
     
     return df_positive
     
-        # Agrupar por artículo
-        grouped = df.groupby('ARTICULO')
-        cleaned_rows = []
-        
-        for articulo, group in grouped:
-            stock_positive = group[group['STOCK'] > 0]
-            if not stock_positive.empty:
-                # ✅ Si hay lotes con stock >0, mostrar SOLO esos (sin filas genéricas de 0)
-                cleaned_rows.extend(stock_positive.to_dict('records'))
-            else:
-                # ✅ Si todos =0, mostrar 1 fila genérica para pedir
-                row_dict = group.iloc[0].to_dict()
-                row_dict['LOTE'] = '-'
-                row_dict['VENCIMIENTO'] = None
-                row_dict['Dias_Para_Vencer'] = None
-                row_dict['STOCK'] = 0
-                cleaned_rows.append(row_dict)
-        
-        df_cleaned = pd.DataFrame(cleaned_rows)
-        
-        # Ordenar alfabéticamente
-        if not df_cleaned.empty:
-            df_cleaned = df_cleaned.sort_values('ARTICULO', ascending=True)
+    grouped = df.groupby('ARTICULO')
+    cleaned_rows = []
+    
+    for articulo, group in grouped:
+        stock_positive = group[group['STOCK'] > 0]
+        if not stock_positive.empty:
+            # ✅ Si hay lotes con stock >0, mostrar SOLO esos (sin filas genéricas de 0)
+            cleaned_rows.extend(stock_positive.to_dict('records'))
+        else:
+            # ✅ Si todos =0, mostrar 1 fila genérica para pedir
+            row_dict = group.iloc[0].to_dict()
+            row_dict['LOTE'] = '-'
+            row_dict['VENCIMIENTO'] = None
+            row_dict['Dias_Para_Vencer'] = None
+            cleaned_rows.append(row_dict)
+    
+    return pd.DataFrame(cleaned_rows)
 
 
 def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
@@ -970,7 +964,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
     # ✅ NUEVO: Familias con más stock
     if tipo == 'familias_con_mas_stock':
         df = get_stock_por_familia()
-        if not df.empty:
+        if df is not None and not df.empty:
             top_1 = df.iloc[0]
             respuesta = f"🏆 La familia con más stock es {top_1['familia']} con {int(top_1['stock_total']):,} unidades ({int(top_1['articulos'])} artículos)"
             return respuesta, df
