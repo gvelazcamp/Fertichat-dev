@@ -137,7 +137,7 @@ def render_download_button(df: pd.DataFrame, filename: str, idx: int):
             label="📥 Descargar Excel",
             data=excel_data,
             file_name=f"{filename}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            mime="application/vnd.openxmlformats-officedocument/spreadsheetml.sheet",
             use_container_width=True,
             key=f"download_{idx}"
         )
@@ -665,6 +665,7 @@ def mostrar_stock_ia():
     )
     if articulo_seleccionado and articulo_seleccionado != "Ninguno" and articulo_seleccionado != "Todos":
         st.session_state["articulo_contexto"] = articulo_seleccionado
+        st.session_state["pause_autorefresh_stock"] = True  # ✅ PAUSAR AUTOREFFRESH CUANDO HAY CONTEXTO
         # Mostrar stock del artículo seleccionado
         df_art = get_stock_articulo(articulo_seleccionado)
         if df_art is not None and not df_art.empty:
@@ -679,6 +680,7 @@ def mostrar_stock_ia():
             st.warning(f"No hay stock para '{articulo_seleccionado}'.")
     else:
         st.session_state["articulo_contexto"] = None
+        st.session_state["pause_autorefresh_stock"] = False  # ✅ REACTIVAR AUTOREFFRESH CUANDO NO HAY CONTEXTO
 
     st.markdown("---")
 
@@ -720,7 +722,7 @@ def mostrar_stock_ia():
 
         if st.button("🗑️ Limpiar historial", key="limpiar_stock", use_container_width=True):
             st.session_state.historial_stock = []
-            st.session_state["pause_autorefresh_stock"] = False  # ✅ REACTIVAR AUTOREFRESH
+            st.session_state["pause_autorefresh_stock"] = False  # ✅ REACTIVAR AUTOREFFRESH
             st.rerun()
 
     # ✅ ALERTAS ARRIBA DEL INPUT (SOLO SI NO HAY HISTORIAL Y NO ESTÁ PAUSADO)
