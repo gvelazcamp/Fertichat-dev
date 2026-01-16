@@ -45,7 +45,10 @@ def clasificar_pregunta_stock(pregunta: str) -> Dict[str, Any]:
     - ultima_compra: cuándo compramos, última vez que entró, cuándo fue la última compra
     - deposito: dónde está, en qué depósito, dónde hay stock
     - lote_antiguo: lote más viejo, lote más antiguo
-    - stock_total: cuánto hay, stock actual
+    - stock_total: cuánto hay, stock actual, cuánto stock hay
+    - lotes_disponibles: qué lotes hay disponibles, cuáles son los lotes
+    - lote_proximo: cuál es el lote más próximo a vencer, lote que vence primero
+    - lotes_sin_vencimiento: hay lotes sin vencimiento, lotes sin fecha de vencimiento
     - comparacion_temporal: evolución en el tiempo, cómo cambió, estamos comprando más
     
     Responde SOLO con JSON:
