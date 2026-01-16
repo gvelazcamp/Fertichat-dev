@@ -62,6 +62,8 @@ def clasificar_pregunta_stock(pregunta: str) -> Dict[str, Any]:
     - que_hay_en_deposito: qué hay en el depósito, qué stock hay en el depósito
     - en_que_deposito_esta: en qué depósito está el artículo
     - deposito_con_mas_stock: qué depósito tiene más stock
+    - familias_con_mas_stock: qué familias tienen más stock
+    - articulos_por_familia: cuántos artículos hay por familia
     - comparacion_temporal: evolución en el tiempo, cómo cambió, estamos comprando más
     
     Responde SOLO con JSON:
@@ -543,6 +545,29 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
             respuesta = "No pude obtener datos de depósitos"
             mostrar_tabla = False
     
+    elif tipo_pregunta == "familias_con_mas_stock":
+        df_temp = get_stock_por_familia()
+        if not df_temp.empty:
+            top_1 = df_temp.iloc[0]
+            respuesta = f"🏆 La familia con más stock es {top_1['familia']} con {int(top_1['stock_total']):,} unidades"
+            df_stock = df_temp
+            mostrar_tabla = True
+        else:
+            respuesta = "No pude obtener datos"
+            mostrar_tabla = False
+
+    elif tipo_pregunta == "articulos_por_familia":
+        df_temp = get_stock_por_familia()
+        if not df_temp.empty:
+            respuesta = "Artículos por familia:\n"
+            for _, row in df_temp.iterrows():
+                respuesta += f"- {row['familia']}: {int(row['articulos'])} artículos\n"
+            df_stock = df_temp
+            mostrar_tabla = True
+        else:
+            respuesta = "No pude obtener datos"
+            mostrar_tabla = False
+    
     else:
         respuesta = "No entendí la pregunta específica"
         mostrar_tabla = False
@@ -896,6 +921,25 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
             return respuesta, df
         return "No pude obtener datos de depósitos.", None
 
+    # ✅ NUEVO: Familias con más stock
+    if tipo == 'familias_con_mas_stock':
+        df = get_stock_por_familia()
+        if df is not None and not df.empty:
+            top_1 = df.iloc[0]
+            respuesta = f"🏆 La familia con más stock es {top_1['familia']} con {int(top_1['stock_total']):,} unidades ({int(top_1['articulos'])} artículos)"
+            return respuesta, df
+        return "No pude obtener datos de familias.", None
+
+    # ✅ NUEVO: Artículos por familia
+    if tipo == 'articulos_por_familia':
+        df = get_stock_por_familia()
+        if df is not None and not df.empty:
+            respuesta = "Artículos por familia:\n"
+            for _, row in df.iterrows():
+                respuesta += f"- {row['familia']}: {int(row['articulos'])} artículos ({int(row['stock_total'])} unidades)\n"
+            return respuesta, df
+        return "No pude obtener datos de familias.", None
+
     return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo', 'listado de artículos'.", None
 
 
@@ -1248,7 +1292,7 @@ def mostrar_stock_ia():
             with st.spinner("🔍 Consultando stock."):
                 respuesta, df = procesar_pregunta_stock(pregunta)
                 
-                st.session_state.historial_stock.append({
+                st_session_state.historial_stock.append({
                     'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     'pregunta': pregunta,
                     'respuesta': respuesta,
