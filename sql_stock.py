@@ -325,20 +325,30 @@ def get_stock_lote_especifico(lote: str) -> pd.DataFrame:
     except Exception:
         return pd.DataFrame()
 
-def get_stock_familia(familia: str) -> pd.DataFrame: 
+def get_stock_familia(familia: str) -> pd.DataFrame:
     try:
         base, _, _ = _stock_base_subquery()
         
-        # 1. Obtener todos los datos
+        # ✅ SUBCONSULTA: 1 PROVEEDOR POR ARTÍCULO (el más reciente)
         sql = f"""
+            WITH proveedor_unico AS (
+                SELECT DISTINCT ON ("Articulo")
+                    "Articulo",
+                    "Cliente / Proveedor" AS "Proveedor"
+                FROM public.chatbot_raw
+                WHERE "Articulo" IS NOT NULL AND "Cliente / Proveedor" IS NOT NULL
+                ORDER BY "Articulo", "Fecha" DESC NULLS LAST  -- El más reciente
+            )
             SELECT
-                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+                s."CODIGO", s."ARTICULO", s."FAMILIA", s."DEPOSITO", s."LOTE", s."VENCIMIENTO", s."Dias_Para_Vencer", s."STOCK",
+                p."Proveedor"
             FROM ({base}) s
-            WHERE UPPER(TRIM(COALESCE("FAMILIA", ''))) = %s
+            LEFT JOIN proveedor_unico p ON s."ARTICULO" = p."Articulo"
+            WHERE UPPER(TRIM(COALESCE(s."FAMILIA", ''))) = %s
             ORDER BY 
-                "ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
-                CASE WHEN "VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
-                "VENCIMIENTO" ASC NULLS LAST
+                s."ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
+                CASE WHEN s."VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
+                s."VENCIMIENTO" ASC NULLS LAST
         """
         df = ejecutar_consulta(sql, (familia.upper().strip(),))
         
@@ -371,6 +381,8 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
                 row_dict['VENCIMIENTO'] = None
                 row_dict['Dias_Para_Vencer'] = None
                 row_dict['STOCK'] = 0
+                # ✅ AGREGAR PROVEEDOR ÚNICO
+                row_dict['Proveedor'] = group['Proveedor'].iloc[0] if 'Proveedor' in group.columns and not group['Proveedor'].isna().all() else None
                 cleaned_rows.append(row_dict)
         
         df_cleaned = pd.DataFrame(cleaned_rows)
