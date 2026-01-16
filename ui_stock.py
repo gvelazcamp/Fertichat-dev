@@ -208,11 +208,14 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
         else:
             # ✅ FALLBACK: Usar el lote con fecha de vencimiento más reciente (asumiendo que es el último comprado)
             if not df_stock.empty and 'VENCIMIENTO' in df_stock.columns:
-                ultimo_lote = df_stock.nlargest(1, 'VENCIMIENTO')  # Más reciente vencimiento = último lote
+                # Asegurar que VENCIMIENTO sea datetime
+                df_stock_copy = df_stock.copy()
+                df_stock_copy['VENCIMIENTO'] = pd.to_datetime(df_stock_copy['VENCIMIENTO'], errors='coerce')
+                ultimo_lote = df_stock_copy.sort_values('VENCIMIENTO', ascending=False).head(1)  # Más reciente primero
                 lote = ultimo_lote['LOTE'].iloc[0] if not ultimo_lote.empty else '-'
                 venc = ultimo_lote['VENCIMIENTO'].iloc[0] if not ultimo_lote.empty else '-'
                 stock = ultimo_lote['STOCK'].iloc[0] if not ultimo_lote.empty else 0
-                respuesta = f"🛒 Último lote (asumiendo compra reciente): {lote} - Vence: {venc} - Stock: {stock}"
+                respuesta = f"🛒 Último lote (asumiendo compra reciente): {lote} - Vence: {venc.strftime('%Y-%m-%d') if pd.notna(venc) else '-'} - Stock: {stock}"
             else:
                 respuesta = "No hay información de lotes para inferir última compra"
     
