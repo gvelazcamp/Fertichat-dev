@@ -372,14 +372,14 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
         
         df_cleaned = pd.DataFrame(cleaned_rows)
         
-        # 3. ✅ Traer proveedores con normalización de espacios
+        # 3. ✅ Traer proveedores con normalización
         sql_prov = """
             SELECT DISTINCT ON (normalized_articulo)
                 normalized_articulo AS "Articulo_Norm",
                 "Cliente / Proveedor" AS "Proveedor"
             FROM (
                 SELECT 
-                    REGEXP_REPLACE(UPPER(TRIM("Articulo")), '\s+', ' ', 'g') AS normalized_articulo,
+                    REGEXP_REPLACE(UPPER(TRIM("Articulo")), '\\s+', ' ', 'g') AS normalized_articulo,
                     "Cliente / Proveedor",
                     "Fecha"
                 FROM public.chatbot_raw
@@ -389,10 +389,15 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
         df_prov = ejecutar_consulta(sql_prov)
         
         if df_prov is not None and not df_prov.empty:
-            # Normalizar también en df_cleaned (quitar espacios múltiples)
-            df_cleaned['ARTICULO_NORM'] = df_cleaned['ARTICULO'].str.upper().str.strip().str.replace(r'\s+', ' ', regex=True)
+            # ✅ Normalizar EXACTAMENTE IGUAL que en SQL
+            df_cleaned['ARTICULO_NORM'] = (
+                df_cleaned['ARTICULO']
+                .str.upper()
+                .str.strip()                        # Quita espacios extremos
+                .str.replace(r'\s+', ' ', regex=True)  # Normaliza espacios múltiples
+            )
             
-            # Merge por nombre normalizado
+            # Merge
             df_cleaned = df_cleaned.merge(
                 df_prov, 
                 left_on='ARTICULO_NORM', 
