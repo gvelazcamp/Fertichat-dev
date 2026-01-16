@@ -940,7 +940,7 @@ def mostrar_stock_ia():
                         import re
                         match = re.search(r"📦 Stock de '(.+?)':", item['respuesta'])
                         descripcion_articulo = match.group(1) if match else "Artículo"
-                        total_stock = df['STOCK'].sum() if 'STOCK' in df_stock.columns else 0
+                        total_stock = df['STOCK'].sum() if 'STOCK' in df.columns else 0
                         render_stock_header(descripcion_articulo, int(total_stock))
                         render_stock_table(df)
                         render_stock_alerts(df)
