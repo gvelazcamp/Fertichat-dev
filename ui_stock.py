@@ -727,7 +727,7 @@ def detectar_intencion_stock(texto: str) -> dict:
     return {'tipo': 'stock_articulo', 'articulo': texto, 'debug': f'Búsqueda general: {texto}'}
 
 def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Limpia el DataFrame de stock: filtra (INACTIVO), si hay stock >0 mostrar solo esos; si todo =0 mostrar 1 fila genérica."""
+    """Limpia el DataFrame de stock: filtra (INACTIVO), solo muestra lotes con stock >0."""
     if df is None or df.empty:
         return df
     
@@ -739,6 +739,11 @@ def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
     
     if df.empty:
         return df
+    
+    # ✅ SOLO MOSTRAR LOTES CON STOCK > 0, NADA DE FILAS GENÉRICAS CON STOCK = 0
+    df_positive = df[df['STOCK'] > 0]
+    
+    return df_positive
     
     grouped = df.groupby('ARTICULO')
     cleaned_rows = []
