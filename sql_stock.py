@@ -1,7 +1,3 @@
-# =========================
-# SQL STOCK - INVENTARIO Y LOTES
-# =========================
-
 import os
 import pandas as pd
 import streamlit as st
@@ -336,18 +332,52 @@ def get_stock_lote_especifico(lote: str) -> pd.DataFrame:
 def get_stock_familia(familia: str) -> pd.DataFrame:
     try:
         base, _, _ = _stock_base_subquery()
+        
+        # 1. Obtener todos los datos
         sql = f"""
             SELECT
                 "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
             FROM ({base}) s
             WHERE UPPER(TRIM(COALESCE("FAMILIA", ''))) = %s
-              AND UPPER(TRIM(COALESCE("DEPOSITO", ''))) = 'CASA CENTRAL'
             ORDER BY 
+                "ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
                 CASE WHEN "VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
-                "VENCIMIENTO" ASC NULLS LAST,
-                "ARTICULO" ASC
+                "VENCIMIENTO" ASC NULLS LAST
         """
-        return ejecutar_consulta(sql, (familia.upper().strip(),))
+        df = ejecutar_consulta(sql, (familia.upper().strip(),))
+        
+        if df is None or df.empty:
+            return pd.DataFrame()
+        
+        # 2. LÓGICA DE LIMPIEZA
+        df['STOCK'] = df['STOCK'].fillna(0).astype(float)
+        
+        # Agrupar por artículo
+        grouped = df.groupby('ARTICULO')
+        cleaned_rows = []
+        
+        for articulo, group in grouped:
+            stock_positive = group[group['STOCK'] > 0]
+            if not stock_positive.empty:
+                # ✅ Si hay lotes con stock >0, mostrar SOLO esos
+                cleaned_rows.extend(stock_positive.to_dict('records'))
+            else:
+                # ✅ Si todos =0, mostrar 1 fila genérica para pedir
+                row_dict = group.iloc[0].to_dict()
+                row_dict['LOTE'] = None
+                row_dict['VENCIMIENTO'] = None
+                row_dict['Dias_Para_Vencer'] = None
+                row_dict['STOCK'] = 0
+                cleaned_rows.append(row_dict)
+        
+        df_cleaned = pd.DataFrame(cleaned_rows)
+        
+        # 3. ORDENAR ALFABÉTICAMENTE
+        if not df_cleaned.empty:
+            df_cleaned = df_cleaned.sort_values('ARTICULO', ascending=True)
+        
+        return df_cleaned
+        
     except Exception as e:
         print(f"Error en get_stock_familia: {e}")
         return pd.DataFrame()
