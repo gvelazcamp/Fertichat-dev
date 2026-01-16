@@ -164,48 +164,53 @@ def render_stock_alerts(df: pd.DataFrame):
         st.success("✅ No hay lotes próximos a vencer")
 
 def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame):
-    """Chat compacto para preguntas sobre la tabla específica"""
-    # Botón para mostrar/ocultar chat
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.success("✅ Tabla cargada. ¿Preguntas sobre este artículo?")
-    with col2:
-        if st.button("💬 Preguntar", use_container_width=True, key=f"chat_btn_{codigo_articulo}"):
-            st.session_state[f'mostrar_chat_tabla_{codigo_articulo}'] = True
+    """Chat compacto simplificado: botón al lado de descargar, input aparece al clickear"""
     
-    # Chat compacto
-    if st.session_state.get(f'mostrar_chat_tabla_{codigo_articulo}', False):
-        with st.container():
-            st.markdown("""
-            <div style='background: #f8f9fa; 
-                        padding: 1rem; 
-                        border-radius: 8px; 
-                        border-left: 4px solid #667eea;'>
-                <small>💬 <strong>Pregunta sobre este artículo</strong></small>
-            </div>
-            """, unsafe_allow_html=True)
-            
+    # ─── Botones: Descargar + Preguntar ───
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        excel_data = df_to_excel(df_stock)
+        st.download_button(
+            label="📥 Descargar Excel",
+            data=excel_data,
+            file_name=f"stock_{codigo_articulo}.xlsx",
+            mime="application/vnd.ms-excel",
+            use_container_width=True,
+            key=f"download_chat_{codigo_articulo}"
+        )
+    
+    with col2:
+        if st.button("💬 Preguntar", key=f"btn_preguntar_{codigo_articulo}", use_container_width=True):
+            st.session_state[f'mostrar_input_{codigo_articulo}'] = True
+    
+    # ─── Input de pregunta (solo si clickearon "Preguntar") ───
+    if st.session_state.get(f'mostrar_input_{codigo_articulo}', False):
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        col_input, col_enviar = st.columns([5, 1])
+        
+        with col_input:
             pregunta = st.text_input(
-                "Pregunta:",
-                placeholder="Ej: ¿cuándo fue la última compra? ¿en qué depósito hay más?",
-                key=f"chat_tabla_{codigo_articulo}",
-                label_visibility="collapsed"
+                "input_pregunta",
+                placeholder="Ej: ¿cuándo se compró? ¿última entrada? ¿dónde está?",
+                label_visibility="collapsed",
+                key=f"input_{codigo_articulo}"
             )
-            
-            col_enviar, col_cerrar = st.columns([4, 1])
-            with col_enviar:
-                if st.button("🚀 Enviar", use_container_width=True, key=f"enviar_{codigo_articulo}"):
-                    if pregunta.strip():
-                        respuesta = procesar_pregunta_sobre_tabla(pregunta, codigo_articulo, df_stock)
-                        st.info(f"🤖 {respuesta}")
-                    else:
-                        st.warning("Escribe una pregunta")
-            
-            with col_cerrar:
-                if st.button("✖️", use_container_width=True, key=f"cerrar_{codigo_articulo}"):
-                    st.session_state[f'mostrar_chat_tabla_{codigo_articulo}'] = False
-                    st.rerun()
-
+        
+        with col_enviar:
+            if st.button("🚀", key=f"enviar_{codigo_articulo}", use_container_width=True):
+                if pregunta.strip():
+                    with st.spinner("🔍"):
+                        respuesta = procesar_pregunta_sobre_tabla(
+                            pregunta=pregunta,
+                            codigo_articulo=codigo_articulo,
+                            df_stock=df_stock
+                        )
+                    st.info(f"💡 {respuesta}")
+                else:
+                    st.warning("Escribe una pregunta primero")
+                    
 def render_download_button(df: pd.DataFrame, filename: str, idx: int):
     """Botón de descarga centrado"""
     col1, col2, col3 = st.columns([1, 1, 1])
