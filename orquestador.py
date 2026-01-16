@@ -100,15 +100,18 @@ def _extraer_nro_factura_fallback(texto: str) -> Optional[str]:
 # VERSIÓN SIMPLIFICADA: EXTRAER PARÁMETROS CON OPENAI
 # =========================
 
-OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
-
 def extraer_parametros_con_openai(pregunta: str) -> dict:
     """
     Usa OpenAI para extraer parámetros de la pregunta de stock
     """
-    if not client:
+    # Obtener API key (funciona en runtime, no en import)
+    api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+    if not api_key:
         return {}
+    
+    from openai import OpenAI
+    import os
+    client = OpenAI(api_key=api_key)
     
     prompt = f"""
 Analiza esta pregunta sobre stock: "{pregunta}"
