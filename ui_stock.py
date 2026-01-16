@@ -897,6 +897,8 @@ def mostrar_stock_ia():
         # ✅ NUEVO: SI HAY CONTEXTO DE ARTÍCULO, USAR CONSULTA CONTEXTUAL
         articulo_contexto = st.session_state.get("articulo_contexto")
         if articulo_contexto and articulo_contexto != "Ninguno":
+            # ✅ PAUSAR AUTOREFRESH TAMBIÉN PARA CONSULTAS CONTEXTUALES
+            st.session_state["pause_autorefresh_stock"] = True
             # Procesar pregunta contextual sobre el artículo seleccionado
             with st.spinner("🔍 Consultando stock contextual..."):
                 procesar_consulta_stock_contextual(pregunta, articulo_contexto)
@@ -919,7 +921,7 @@ def mostrar_stock_ia():
                 # ✅ Incrementar contador para crear nuevo input (esto limpia el campo)
                 st.session_state["stock_input_counter"] += 1
             st.rerun()
-
+            
     # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO ESTANDARIZADO
     if st.session_state.historial_stock:
         st.markdown("---")
