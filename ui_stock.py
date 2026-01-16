@@ -1230,6 +1230,7 @@ def mostrar_stock_ia():
         )
     
     # ✅ LÓGICA PARA APLICAR FILTROS
+    # ✅ LÓGICA PARA APLICAR FILTROS
     if familia_seleccionada != "Ninguna":
         # Prioridad a familia
         st.session_state["articulo_contexto"] = None
@@ -1238,11 +1239,11 @@ def mostrar_stock_ia():
         # Obtener stock de la familia
         df = get_stock_familia(familia_seleccionada)
         
-        # Aplicar filtro de vencimiento después de obtener datos
+        # Aplicar filtro de vencimiento después de obtener datos (PRÓXIMOS, no vencidos)
         if vencimiento_filter == "<30 días":
-            df = df[df['Dias_Para_Vencer'] <= 30]
+            df = df[(df['Dias_Para_Vencer'] >= 0) & (df['Dias_Para_Vencer'] <= 30)]
         elif vencimiento_filter == "<15 días":
-            df = df[df['Dias_Para_Vencer'] <= 15]
+            df = df[(df['Dias_Para_Vencer'] >= 0) & (df['Dias_Para_Vencer'] <= 15)]
         
         descripcion_articulo = f"Familia {familia_seleccionada}"
         if vencimiento_filter != "Ninguno":
@@ -1271,13 +1272,13 @@ def mostrar_stock_ia():
             df = get_stock_articulo(articulo_seleccionado)
             descripcion_articulo = articulo_seleccionado
             
-            # Aplicar filtro de vencimiento si se seleccionó
+            # Aplicar filtro de vencimiento si se seleccionó (PRÓXIMOS, no vencidos)
             if vencimiento_filter != "Ninguno":
                 if 'Dias_Para_Vencer' in df.columns:
                     if vencimiento_filter == "<30 días":
-                        df = df[df['Dias_Para_Vencer'] <= 30]
+                        df = df[(df['Dias_Para_Vencer'] >= 0) & (df['Dias_Para_Vencer'] <= 30)]
                     elif vencimiento_filter == "<15 días":
-                        df = df[df['Dias_Para_Vencer'] <= 15]
+                        df = df[(df['Dias_Para_Vencer'] >= 0) & (df['Dias_Para_Vencer'] <= 15)]
                     descripcion_articulo += f" ({vencimiento_filter})"
             
             df = _clean_stock_df(df)
