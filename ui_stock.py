@@ -55,12 +55,18 @@ def detectar_intencion_stock(texto: str) -> dict:
 
     # Stock por familia
     if any(k in texto_lower for k in ['familia', 'familias', 'por familia', 'seccion', 'secciones']):
-        # Ver si menciona una familia específica
         familias_conocidas = ['id', 'fb', 'g', 'tr', 'xx', 'hm', 'mi']
         for fam in familias_conocidas:
             if fam in texto_lower.split():
                 return {'tipo': 'stock_familia', 'familia': fam.upper(), 'debug': f'Stock familia {fam.upper()}'}
         return {'tipo': 'stock_por_familia', 'debug': 'Stock por familias'}
+
+    # ✅ NUEVO: Detectar familias cortas ANTES de buscar artículos
+    familias_conocidas = ['id', 'fb', 'g', 'tr', 'xx', 'hm', 'mi']
+    palabras = texto_lower.split()
+    for fam in familias_conocidas:
+        if fam in palabras:
+            return {'tipo': 'stock_familia', 'familia': fam.upper(), 'debug': f'Stock familia {fam.upper()}'}
 
     # Stock por depósito
     if any(k in texto_lower for k in ['deposito', 'depósito', 'depositos', 'depósitos', 'almacen']):
@@ -449,30 +455,44 @@ def mostrar_stock_ia():
                 'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'pregunta': pregunta,
                 'respuesta': respuesta,
-                'df': df,  # ✅ Guardar el DataFrame
                 'tiene_datos': df is not None and not df.empty
             })
-            
-            st.rerun()  # ✅ Forzar refresco para mostrar en historial
 
-    # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO
+            st.markdown(f"**{respuesta}**")
+
+            if df is not None and not df.empty:
+                if 'STOCK' in df.columns:
+                    try:
+                        total_stock = df['STOCK'].apply(lambda x: float(
+                            str(x).replace(',', '.').replace(' ', '')
+                        ) if pd.notna(x) else 0).sum()
+                        st.info(f"📦 **Total stock:** {total_stock:,.0f} unidades".replace(',', '.'))
+                    except Exception:
+                        pass
+
+                if 'Dias_Para_Vencer' in df.columns:
+                    try:
+                        criticos = len(df[df['Dias_Para_Vencer'] <= 30])
+                        if criticos > 0:
+                            st.warning(f"⚠️ **{criticos}** lotes vencen en menos de 30 días")
+                    except Exception:
+                        pass
+
+                st.dataframe(df, use_container_width=True, hide_index=True)
+
+                excel_data = df_to_excel(df)
+                st.download_button(
+                    label="📥 Descargar Excel",
+                    data=excel_data,
+                    file_name="consulta_stock.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
     if st.session_state.historial_stock:
         st.markdown("---")
-        
-        for idx, item in enumerate(st.session_state.historial_stock):
-            with st.chat_message("user"):
-                st.markdown(item['pregunta'])
-            
-            with st.chat_message("assistant"):
-                st.markdown(item['respuesta'])
-                
-                if 'df' in item and item['df'] is not None and not item['df'].empty:
-                    df = item['df']
-                    
-                    # ✅ USAR EL DASHBOARD MODERNO DE COMPRAS
-                    render_dashboard_compras_vendible(
-                        df,
-                        titulo="Stock",
-                        key_prefix=f"stock_hist_{idx}_",
-                        hide_metrics=True  # ✅ Ocultar tarjetas UYU/USD (no aplica a stock)
-                    )
+        st.subheader("📜 Historial")
+
+        for i, item in enumerate(reversed(st.session_state.historial_stock[-5:])):
+            with st.expander(f"🕐 {item['timestamp']} - {item['pregunta'][:40]}."):
+                st.markdown(f"**Pregunta:** {item['pregunta']}")
+                st.markdown(f"**Respuesta:** {item['respuesta']}")
