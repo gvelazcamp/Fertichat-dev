@@ -115,7 +115,6 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
                 "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
             FROM ({base}) s
             WHERE UPPER(TRIM(COALESCE("FAMILIA", ''))) = %s
-              AND UPPER(TRIM(COALESCE("DEPOSITO", ''))) = 'CASA CENTRAL'
             ORDER BY 
                 "ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
                 CASE WHEN "VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
@@ -245,22 +244,17 @@ def get_lotes_vencidos() -> pd.DataFrame:
         return pd.DataFrame()
 
 def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
-    """Obtiene artículos con stock bajo o igual a mínimo"""
+    """Obtiene artículos con stock bajo o igual a mínimo (POR LOTE, no por artículo)"""
     try:
         base, _, _ = _stock_base_subquery()
         
-        # Agrupar por artículo y sumar stock
+        # ✅ CAMBIADO: Mostrar LOTES con stock <= mínimo, no artículos con suma <= mínimo
         sql = f"""
             SELECT
                 "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
             FROM ({base}) s
-            WHERE "ARTICULO" IN (
-                SELECT sub."ARTICULO"
-                FROM ({base}) sub
-                GROUP BY sub."ARTICULO"
-                HAVING SUM(sub."STOCK") <= %s
-            )
-            ORDER BY "ARTICULO" ASC, "STOCK" DESC
+            WHERE "STOCK" <= %s
+            ORDER BY "STOCK" ASC, "ARTICULO" ASC
         """
         
         df = ejecutar_consulta(sql, (minimo,))
@@ -319,6 +313,10 @@ def get_alertas_stock_1(maximo: int = 20) -> list:
     except Exception as e:
         print(f"Error en get_alertas_stock_1: {e}")
         return []
+
+def get_alertas_combinadas(dias_urgente: int = 30) -> list:
+    """Alias para get_alertas_vencimiento_multiple"""
+    return get_alertas_vencimiento_multiple(dias_urgente)
 
 def get_lista_articulos_stock() -> list:
     """Obtiene lista de artículos disponibles"""
@@ -432,9 +430,3 @@ def buscar_stock_por_lote(texto_busqueda: str = None, deposito: str = None, arti
     except Exception as e:
         print(f"Error en buscar_stock_por_lote: {e}")
         return pd.DataFrame()
-        
-# Agregar al final de sql_stock.py, antes del último return o después de get_alertas_stock_1
-
-def get_alertas_combinadas(dias_urgente: int = 30) -> list:
-    """Alias para get_alertas_vencimiento_multiple"""
-    return get_alertas_vencimiento_multiple(dias_urgente)
