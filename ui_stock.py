@@ -49,6 +49,7 @@ def clasificar_pregunta_stock(pregunta: str) -> Dict[str, Any]:
     - lotes_disponibles: qué lotes hay disponibles, cuáles son los lotes
     - lote_proximo: cuál es el lote más próximo a vencer, lote que vence primero
     - lotes_sin_vencimiento: hay lotes sin vencimiento, lotes sin fecha de vencimiento
+    - articulo_lote: qué artículo pertenece al lote, a qué artículo corresponde el lote
     - comparacion_temporal: evolución en el tiempo, cómo cambió, estamos comprando más
     
     Responde SOLO con JSON:
@@ -238,29 +239,44 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
     - "stock de vitek cuando vence" → Extrae artículo + pregunta
     - "¿cuándo fue la última compra?" → Usa artículo del contexto (selectbox)
     """
-    # 1. Identificar artículo (del contexto o de la pregunta)
-    if not codigo_articulo:
-        # Extraer de la pregunta
-        tokens = pregunta.lower().split()
-        # Buscar en lista de artículos
-        lista_art = get_lista_articulos_stock()[1:]  # Sin "Todos"
-        for art in lista_art:
-            art_lower = art.lower()
-            if any(word in art_lower for word in tokens):
-                codigo_articulo = art
-                break
-    
-    if not codigo_articulo:
-        st.error("No pude identificar el artículo. Selecciona uno del selectbox o mencionalo en la pregunta.")
+    import re
+
+    # 1. Identificar artículo o lote
+    lote = None
+    lote_match = re.search(r'lote\s+(\w+)', pregunta.lower())
+    if lote_match:
+        lote = lote_match.group(1)
+        # Si es pregunta sobre lote, usar get_stock_lote_especifico
+    else:
+        # Extraer artículo de la pregunta si no hay lote
+        if not codigo_articulo:
+            tokens = pregunta.lower().split()
+            # Buscar en lista de artículos
+            lista_art = get_lista_articulos_stock()[1:]  # Sin "Todos"
+            for art in lista_art:
+                art_lower = art.lower()
+                if any(word in art_lower for word in tokens):
+                    codigo_articulo = art
+                    break
+
+    if not codigo_articulo and not lote:
+        st.error("No pude identificar el artículo o lote. Selecciona uno del selectbox o mencionalo en la pregunta.")
         return
-    
+
     # 2. Obtener datos
-    df_stock = get_stock_articulo(codigo_articulo)
+    if lote:
+        df_stock = get_stock_lote_especifico(lote)
+        # Para contexto, usar el artículo del lote si existe
+        if not df_stock.empty:
+            codigo_articulo = df_stock['ARTICULO'].iloc[0]
+    else:
+        df_stock = get_stock_articulo(codigo_articulo)
+    
     # df_compras = get_compras_articulo(codigo_articulo)  # REMOVIDO PARA EVITAR IMPORTERROR
     df_compras = pd.DataFrame()  # Placeholder vacío
     
     if df_stock.empty and df_compras.empty:
-        st.warning(f"No hay datos para '{codigo_articulo}'.")
+        st.warning(f"No hay datos para '{codigo_articulo or lote}'.")
         return
     
     # 3. Clasificar pregunta con OpenAI
@@ -274,10 +290,10 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
     if tipo_pregunta == "vencimiento":
         if not df_stock.empty and 'Dias_Para_Vencer' in df_stock.columns:
             proximo = df_stock.nsmallest(1, 'Dias_Para_Vencer')
-            lote = proximo['LOTE'].iloc[0] if not proximo.empty else '-'
+            lote_resp = proximo['LOTE'].iloc[0] if not proximo.empty else (lote or '-')
             venc = proximo['VENCIMIENTO'].iloc[0] if not proximo.empty else '-'
             dias = proximo['Dias_Para_Vencer'].iloc[0] if not proximo.empty else 0
-            respuesta = f"📅 El lote {lote} vence el {venc} ({dias} días)"
+            respuesta = f"📅 El lote {lote_resp} vence el {venc} ({dias} días)"
         else:
             respuesta = "No hay información de vencimientos"
     
@@ -297,10 +313,10 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
                 df_stock_copy = df_stock.copy()
                 df_stock_copy['VENCIMIENTO'] = pd.to_datetime(df_stock_copy['VENCIMIENTO'], errors='coerce')
                 ultimo_lote = df_stock_copy.sort_values('VENCIMIENTO', ascending=False).head(1)  # Más reciente primero
-                lote = ultimo_lote['LOTE'].iloc[0] if not ultimo_lote.empty else '-'
+                lote_resp = ultimo_lote['LOTE'].iloc[0] if not ultimo_lote.empty else (lote or '-')
                 venc = ultimo_lote['VENCIMIENTO'].iloc[0] if not ultimo_lote.empty else '-'
                 stock = ultimo_lote['STOCK'].iloc[0] if not ultimo_lote.empty else 0
-                respuesta = f"🛒 Último lote disponible: {lote} - Vence: {venc.strftime('%Y-%m-%d') if pd.notna(venc) else '-'} - Stock: {stock}"
+                respuesta = f"🛒 Último lote disponible: {lote_resp} - Vence: {venc.strftime('%Y-%m-%d') if pd.notna(venc) else '-'} - Stock: {stock}"
                 # Filtrar df_stock para mostrar solo este lote
                 df_stock = ultimo_lote  # Mostrar solo el último lote
             else:
@@ -310,7 +326,8 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
     elif tipo_pregunta == "deposito":
         if not df_stock.empty:
             depositos = df_stock['DEPOSITO'].unique()
-            respuesta = f"🏢 Depósitos: {', '.join(depositos)}"
+            lote_resp = lote or df_stock['LOTE'].iloc[0] if not df_stock.empty else '-'
+            respuesta = f"🏢 El lote {lote_resp} está en: {', '.join(depositos)}"
         else:
             respuesta = "No hay información de depósitos"
             mostrar_tabla = False  # Si no hay stock, no mostrar tabla
@@ -321,39 +338,25 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
             df_stock_copy = df_stock.copy()
             df_stock_copy['VENCIMIENTO'] = pd.to_datetime(df_stock_copy['VENCIMIENTO'], errors='coerce')
             antiguo = df_stock_copy.nsmallest(1, 'VENCIMIENTO')
-            lote = antiguo['LOTE'].iloc[0] if not antiguo.empty else '-'
+            lote_resp = antiguo['LOTE'].iloc[0] if not antiguo.empty else (lote or '-')
             venc = antiguo['VENCIMIENTO'].iloc[0] if not antiguo.empty else '-'
-            respuesta = f"📦 Lote más antiguo: {lote} (vence {venc.strftime('%Y-%m-%d') if pd.notna(venc) else '-'})"
+            respuesta = f"📦 Lote más antiguo: {lote_resp} (vence {venc.strftime('%Y-%m-%d') if pd.notna(venc) else '-'})"
         else:
             respuesta = "No hay información de lotes"
     
     elif tipo_pregunta == "stock_total":
         total = df_stock['STOCK'].sum() if not df_stock.empty and 'STOCK' in df_stock.columns else 0
-        respuesta = f"📊 Stock total: {total} unidades"
+        lote_resp = lote or "el artículo"
+        respuesta = f"📊 {lote_resp} tiene {total} unidades en stock"
     
     elif tipo_pregunta == "comparacion_temporal":
         respuesta = "📈 Análisis temporal: [Implementar comparación histórica]"
         mostrar_tabla = False
     
-    else:
-        respuesta = "No entendí la pregunta específica"
-        mostrar_tabla = False
-    
-    # 5. Mostrar respuesta
-    st.success(respuesta)
-    
-    # 6. Mostrar tabla SOLO si es relevante (stock actual)
-    if mostrar_tabla and not df_stock.empty:
-        total_stock = df_stock['STOCK'].sum() if 'STOCK' in df_stock.columns else 0
-        render_stock_header(codigo_articulo, int(total_stock))
-        render_stock_table(df_stock)
-        render_stock_alerts(df_stock)
-        render_chat_compacto(codigo_articulo, df_stock, unique_id="contextual")
-
     elif tipo_pregunta == "lotes_disponibles":
         if not df_stock.empty:
-            lotes = df_stock['LOTE'].dropna().unique().tolist()
-            respuesta = f"📦 Lotes disponibles: {', '.join(lotes)}"
+            lotes_list = df_stock['LOTE'].dropna().unique().tolist()
+            respuesta = f"📦 Lotes disponibles: {', '.join(lotes_list)}"
         else:
             respuesta = "No hay lotes disponibles"
 
@@ -376,6 +379,30 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
                 respuesta = "No, todos los lotes tienen vencimiento registrado"
         else:
             respuesta = "No hay datos disponibles"
+    
+    elif tipo_pregunta == "articulo_lote":
+        if not df_stock.empty:
+            articulo = df_stock['ARTICULO'].iloc[0]
+            lote_resp = lote or df_stock['LOTE'].iloc[0]
+            respuesta = f"El lote {lote_resp} pertenece a: {articulo}"
+        else:
+            respuesta = "No encontré información del lote"
+    
+    else:
+        respuesta = "No entendí la pregunta específica"
+        mostrar_tabla = False
+    
+    # 5. Mostrar respuesta
+    st.success(respuesta)
+    
+    # 6. Mostrar tabla SOLO si es relevante (stock actual)
+    if mostrar_tabla and not df_stock.empty:
+        total_stock = df_stock['STOCK'].sum() if 'STOCK' in df_stock.columns else 0
+        render_stock_header(codigo_articulo or lote, int(total_stock))
+        render_stock_table(df_stock)
+        render_stock_alerts(df_stock)
+        render_chat_compacto(codigo_articulo or lote, df_stock, unique_id="contextual")
+
 # =====================================================================
 # MÓDULO STOCK IA (CHATBOT)
 # =====================================================================
