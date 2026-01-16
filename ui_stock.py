@@ -766,14 +766,23 @@ def mostrar_stock_ia():
         index=0,
         key="select_articulo_stock"
     )
-    if articulo_seleccionado and articulo_seleccionado != "Ninguno" and articulo_seleccionado != "Todos":
+    if articulo_seleccionado and articulo_seleccionado != "Ninguno":
         st.session_state["articulo_contexto"] = articulo_seleccionado
         st.session_state["pause_autorefresh_stock"] = True  # ✅ PAUSAR AUTOREFFRESH CUANDO HAY CONTEXTO
-        # Mostrar stock del artículo seleccionado
-        df_art = get_stock_articulo(articulo_seleccionado)
-        if df_art is not None and not df_art.empty:
-            df_art = _clean_stock_df(df_art)
+        
+        if articulo_seleccionado == "Todos":
+            # ✅ MOSTRAR STOCK TOTAL, MISMA LÓGICA QUE "stock total"
+            df_art = get_stock_total()
+            descripcion_articulo = "Stock Total"
+        else:
+            # Mostrar stock del artículo seleccionado
+            df_art = get_stock_articulo(articulo_seleccionado)
             descripcion_articulo = articulo_seleccionado
+        
+        if df_art is not None and not df_art.empty:
+            # Para "Todos", no limpiar stock 0, mostrar como total
+            if articulo_seleccionado != "Todos":
+                df_art = _clean_stock_df(df_art)
             total_stock = df_art['STOCK'].sum() if 'STOCK' in df_art.columns else 0
             render_stock_header(descripcion_articulo, int(total_stock))
             render_stock_table(df_art)
@@ -784,7 +793,6 @@ def mostrar_stock_ia():
     else:
         st.session_state["articulo_contexto"] = None
         st.session_state["pause_autorefresh_stock"] = False  # ✅ REACTIVAR AUTOREFFRESH CUANDO NO HAY CONTEXTO
-
     st.markdown("---")
 
     if 'historial_stock' not in st.session_state:
