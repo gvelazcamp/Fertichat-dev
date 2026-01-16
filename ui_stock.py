@@ -727,21 +727,23 @@ def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
     
     return df_positive
     
-    grouped = df.groupby('ARTICULO')
-    cleaned_rows = []
-    
-    for articulo, group in grouped:
-        stock_positive = group[group['STOCK'] > 0]
-        if not stock_positive.empty:
-            # ✅ Si hay lotes con stock >0, mostrar SOLO esos (sin filas genéricas de 0)
-            cleaned_rows.extend(stock_positive.to_dict('records'))
-        else:
-            # ✅ Si todos =0, mostrar 1 fila genérica para pedir
-            row_dict = group.iloc[0].to_dict()
-            row_dict['LOTE'] = '-'
-            row_dict['VENCIMIENTO'] = None
-            row_dict['Dias_Para_Vencer'] = None
-            cleaned_rows.append(row_dict)
+        # Agrupar por artículo
+        grouped = df.groupby('ARTICULO')
+        cleaned_rows = []
+        
+        for articulo, group in grouped:
+            stock_positive = group[group['STOCK'] > 0]
+            if not stock_positive.empty:
+                # ✅ Si hay lotes con stock >0, mostrar SOLO esos (sin filas genéricas de 0)
+                cleaned_rows.extend(stock_positive.to_dict('records'))
+            else:
+                # ✅ Si todos =0, mostrar 1 fila genérica para pedir
+                row_dict = group.iloc[0].to_dict()
+                row_dict['LOTE'] = None
+                row_dict['VENCIMIENTO'] = None
+                row_dict['Dias_Para_Vencer'] = None
+                row_dict['STOCK'] = 0
+                cleaned_rows.append(row_dict)
     
     return pd.DataFrame(cleaned_rows)
 
