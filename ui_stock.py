@@ -981,10 +981,10 @@ def mostrar_stock_ia():
                             render_stock_alerts(df)
                         render_chat_compacto(descripcion.replace(" ", "_").lower()[:20], df)
 
-    # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
-    if not st.session_state.get("pause_autorefresh_stock", False):
-        try:
-            from streamlit_autorefresh import st_autorefresh
-            st_autorefresh(interval=5000, key="stock_keepalive")
-        except Exception:
-            pass
+    # ✅ AUTOREFRESH QUITADO COMPLETAMENTE - SE PAUSA CUANDO HAY ACTIVIDAD
+    # if not st.session_state.get("pause_autorefresh_stock", False):
+    #     try:
+    #         from streamlit_autorefresh import st_autorefresh
+    #         st_autorefresh(interval=5000, key="stock_keepalive")
+    #     except Exception:
+    #         pass
