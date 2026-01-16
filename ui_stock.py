@@ -50,6 +50,11 @@ def clasificar_pregunta_stock(pregunta: str) -> Dict[str, Any]:
     - lote_proximo: cuál es el lote más próximo a vencer, lote que vence primero
     - lotes_sin_vencimiento: hay lotes sin vencimiento, lotes sin fecha de vencimiento
     - articulo_lote: qué artículo pertenece al lote, a qué artículo corresponde el lote
+    - articulos_proximos: qué artículos están próximos a vencer, artículos que vencen pronto
+    - dias_para_vencer_articulo: cuántos días faltan para que venza el artículo
+    - lotes_por_vencer_30: qué lotes vencen en los próximos 30 días
+    - lotes_por_vencer_90: qué lotes vencen en los próximos 90 días
+    - lotes_vencidos: hay lotes ya vencidos, lotes vencidos
     - comparacion_temporal: evolución en el tiempo, cómo cambió, estamos comprando más
     
     Responde SOLO con JSON:
@@ -116,7 +121,7 @@ def render_stock_header(descripcion_articulo: str, total_stock: int):
                 border-radius: 12px; 
                 margin: 1rem 0;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
-        <h2 style='color: white; margin: 0; display: flex; align-items: center;'>
+        <h2 style='color: white; margin: 0; display: flex: align-items: center;'>
             📦 {descripcion_articulo}
         </h2>
         <div style='color: rgba(255,255,255,0.95); 
@@ -388,6 +393,60 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
         else:
             respuesta = "No encontré información del lote"
     
+    elif tipo_pregunta == "articulos_proximos":
+        df_temp = get_lotes_por_vencer(90)
+        if not df_temp.empty:
+            articulos = df_temp['ARTICULO'].unique().tolist()
+            respuesta = f"📋 Artículos próximos a vencer: {', '.join(articulos)}"
+            mostrar_tabla = True
+        else:
+            respuesta = "No hay artículos próximos a vencer"
+            mostrar_tabla = False
+    
+    elif tipo_pregunta == "dias_para_vencer_articulo":
+        # Usar artículo del contexto o extraer de pregunta
+        if not df_stock.empty and 'Dias_Para_Vencer' in df_stock.columns:
+            proximo = df_stock[df_stock['VENCIMIENTO'].notna()].nsmallest(1, 'Dias_Para_Vencer')
+            if not proximo.empty:
+                lote_resp = proximo['LOTE'].iloc[0]
+                dias = proximo['Dias_Para_Vencer'].iloc[0]
+                venc = proximo['VENCIMIENTO'].iloc[0]
+                respuesta = f"📅 El lote {lote_resp} vence en {dias} días ({venc})"
+            else:
+                respuesta = "No hay lotes con vencimiento registrado"
+        else:
+            respuesta = "No hay información de vencimientos"
+    
+    elif tipo_pregunta == "lotes_por_vencer_30":
+        df_temp = get_lotes_por_vencer(30)
+        if not df_temp.empty:
+            respuesta = f"⚠️ Hay {len(df_temp)} lote(s) que vencen en los próximos 30 días"
+            df_stock = df_temp  # Para mostrar tabla
+            mostrar_tabla = True
+        else:
+            respuesta = "No hay lotes que venzan en los próximos 30 días"
+            mostrar_tabla = False
+    
+    elif tipo_pregunta == "lotes_por_vencer_90":
+        df_temp = get_lotes_por_vencer(90)
+        if not df_temp.empty:
+            respuesta = f"⚠️ Hay {len(df_temp)} lote(s) que vencen en los próximos 90 días"
+            df_stock = df_temp
+            mostrar_tabla = True
+        else:
+            respuesta = "No hay lotes que venzan en los próximos 90 días"
+            mostrar_tabla = False
+    
+    elif tipo_pregunta == "lotes_vencidos":
+        df_temp = get_lotes_vencidos()
+        if not df_temp.empty:
+            respuesta = f"🚨 Hay {len(df_temp)} lote(s) vencido(s) con stock"
+            df_stock = df_temp
+            mostrar_tabla = True
+        else:
+            respuesta = "✅ No hay lotes vencidos con stock"
+            mostrar_tabla = False
+    
     else:
         respuesta = "No entendí la pregunta específica"
         mostrar_tabla = False
@@ -603,7 +662,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
     if tipo == 'lotes_vencidos':
         df = get_lotes_vencidos()
         if df is not None and not df.empty:
-            df = _clean_stock_df(df)  # ✅ Limpiar stock 0
+            df = _clean_stock_df(df)  # ✅ LIMPIAR stock 0
             return "🚨 Lotes ya vencidos:", df
         return "No hay lotes vencidos registrados.", None
 
@@ -632,6 +691,49 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
             df = _clean_stock_df(df)  # ✅ Limpiar stock 0
             return f"📦 Stock de '{articulo}':", df
         return f"No encontré stock para '{articulo}'.", None
+
+    # ✅ NUEVO: Artículos próximos a vencer
+    if tipo == 'articulos_proximos':
+        df = get_lotes_por_vencer(90)
+        if df is not None and not df.empty:
+            articulos = df['ARTICULO'].unique().tolist()
+            return f"📋 Artículos próximos a vencer: {', '.join(articulos)}", df
+        return "No hay artículos próximos a vencer.", None
+
+    # ✅ NUEVO: Días para vencer artículo
+    if tipo == 'dias_para_vencer_articulo':
+        articulo = intencion.get('articulo', pregunta)
+        df = get_stock_articulo(articulo)
+        if df is not None and not df.empty:
+            df = _clean_stock_df(df)
+            proximo = df[df['VENCIMIENTO'].notna()].nsmallest(1, 'Dias_Para_Vencer')
+            if not proximo.empty:
+                lote = proximo['LOTE'].iloc[0]
+                dias = proximo['Dias_Para_Vencer'].iloc[0]
+                venc = proximo['VENCIMIENTO'].iloc[0]
+                return f"📅 El lote {lote} de '{articulo}' vence en {dias} días ({venc})", df
+        return f"No encontré información de vencimiento para '{articulo}'.", None
+
+    # ✅ NUEVO: Lotes por vencer en 30 días
+    if tipo == 'lotes_por_vencer_30':
+        df = get_lotes_por_vencer(30)
+        if df is not None and not df.empty:
+            return f"⚠️ Lotes que vencen en los próximos 30 días:", df
+        return "No hay lotes que venzan en los próximos 30 días.", None
+
+    # ✅ NUEVO: Lotes por vencer en 90 días
+    if tipo == 'lotes_por_vencer_90':
+        df = get_lotes_por_vencer(90)
+        if df is not None and not df.empty:
+            return f"⚠️ Lotes que vencen en los próximos 90 días:", df
+        return "No hay lotes que venzan en los próximos 90 días.", None
+
+    # ✅ NUEVO: Lotes vencidos
+    if tipo == 'lotes_vencidos':
+        df = get_lotes_vencidos()
+        if df is not None and not df.empty:
+            return "🚨 Lotes ya vencidos:", df
+        return "No hay lotes vencidos registrados.", None
 
     return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo', 'listado de artículos'.", None
 
