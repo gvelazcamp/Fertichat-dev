@@ -350,6 +350,32 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
         render_stock_alerts(df_stock)
         render_chat_compacto(codigo_articulo, df_stock, unique_id="contextual")
 
+    elif tipo_pregunta == "lotes_disponibles":
+        if not df_stock.empty:
+            lotes = df_stock['LOTE'].dropna().unique().tolist()
+            respuesta = f"📦 Lotes disponibles: {', '.join(lotes)}"
+        else:
+            respuesta = "No hay lotes disponibles"
+
+    elif tipo_pregunta == "lote_proximo":
+        if not df_stock.empty and 'Dias_Para_Vencer' in df_stock.columns:
+            proximo = df_stock[df_stock['VENCIMIENTO'].notna()].sort_values('Dias_Para_Vencer').iloc[0] if not df_stock[df_stock['VENCIMIENTO'].notna()].empty else None
+            if proximo is not None:
+                respuesta = f"📅 Lote {proximo['LOTE']} vence en {proximo['Dias_Para_Vencer']} días ({proximo['VENCIMIENTO']})"
+            else:
+                respuesta = "No hay lotes con vencimiento registrado"
+        else:
+            respuesta = "No hay información de vencimientos"
+
+    elif tipo_pregunta == "lotes_sin_vencimiento":
+        if not df_stock.empty:
+            sin_venc = df_stock[df_stock['VENCIMIENTO'].isna()]
+            if not sin_venc.empty:
+                respuesta = f"📋 Sí, hay {len(sin_venc)} lote(s) sin vencimiento"
+            else:
+                respuesta = "No, todos los lotes tienen vencimiento registrado"
+        else:
+            respuesta = "No hay datos disponibles"
 # =====================================================================
 # MÓDULO STOCK IA (CHATBOT)
 # =====================================================================
