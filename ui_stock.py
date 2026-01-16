@@ -163,7 +163,7 @@ def render_stock_alerts(df: pd.DataFrame):
     else:
         st.success("✅ No hay lotes próximos a vencer")
 
-def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame):
+def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame, unique_id: str = None):
     """Chat compacto simplificado: botón al lado de descargar, input aparece al clickear"""
     
     # ─── Botones: Descargar + Preguntar (solo si hay artículo específico) ───
@@ -171,31 +171,33 @@ def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame):
         col1, col2 = st.columns(2)
         with col1:
             excel_data = df_to_excel(df_stock)
+            key = unique_id or f"download_chat_{codigo_articulo}"
             st.download_button(
                 label="📥 Descargar Excel",
                 data=excel_data,
                 file_name=f"stock_{codigo_articulo}.xlsx",
                 mime="application/vnd.ms-excel",
                 use_container_width=True,
-                key=f"download_chat_{codigo_articulo}"
+                key=key
             )
         with col2:
-            if st.button("💬 Preguntar", key=f"btn_preguntar_{codigo_articulo}", use_container_width=True):
-                st.session_state[f'mostrar_input_{codigo_articulo}'] = True
+            if st.button("💬 Preguntar", key=f"btn_preguntar_{codigo_articulo}_{unique_id}", use_container_width=True):
+                st.session_state[f'mostrar_input_{codigo_articulo}_{unique_id}'] = True
     else:
         # Solo descargar para casos generales
         excel_data = df_to_excel(df_stock)
+        key = unique_id or "download_general"
         st.download_button(
             label="📥 Descargar Excel",
             data=excel_data,
             file_name=f"consulta_stock.xlsx",
             mime="application/vnd.ms-excel",
             use_container_width=True,
-            key=f"download_general"
+            key=key
         )
     
     # ─── Input de pregunta (solo si clickearon "Preguntar" y hay artículo) ───
-    if codigo_articulo != "general" and st.session_state.get(f'mostrar_input_{codigo_articulo}', False):
+    if codigo_articulo != "general" and st.session_state.get(f'mostrar_input_{codigo_articulo}_{unique_id}', False):
         st.markdown("<br>", unsafe_allow_html=True)
         
         col_input, col_enviar = st.columns([5, 1])
@@ -205,11 +207,11 @@ def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame):
                 "input_pregunta",
                 placeholder="Ej: ¿cuándo se compró? ¿última entrada? ¿dónde está?",
                 label_visibility="collapsed",
-                key=f"input_{codigo_articulo}"
+                key=f"input_{codigo_articulo}_{unique_id}"
             )
         
         with col_enviar:
-            if st.button("🚀", key=f"enviar_{codigo_articulo}", use_container_width=True):
+            if st.button("🚀", key=f"enviar_{codigo_articulo}_{unique_id}", use_container_width=True):
                 if pregunta.strip():
                     with st.spinner("🔍"):
                         respuesta = procesar_pregunta_sobre_tabla(
