@@ -269,21 +269,16 @@ def buscar_stock_por_lote(
 
         if texto_busqueda:
             t = texto_busqueda.lower().strip()
-            # Si el texto de búsqueda es corto (<=10 chars, sin espacios), buscar primero por CODIGO exacto
-            if len(t) <= 10 and ' ' not in t:
-                where.append("UPPER(TRIM(\"CODIGO\")) = %s")
-                params.append(t.upper())
-            else:
-                where.append("""
-                    (
-                      LOWER(COALESCE("ARTICULO", '')) LIKE %s OR
-                      LOWER(COALESCE("LOTE", '')) LIKE %s OR
-                      LOWER(COALESCE("CODIGO", '')) LIKE %s OR
-                      LOWER(COALESCE("FAMILIA", '')) LIKE %s OR
-                      LOWER(COALESCE("DEPOSITO", '')) LIKE %s
-                    )
-                """)
-                params.extend([f"%{t}%"] * 5)
+            where.append("""
+                (
+                  LOWER(COALESCE("ARTICULO", '')) LIKE %s OR
+                  LOWER(COALESCE("LOTE", '')) LIKE %s OR
+                  LOWER(COALESCE("CODIGO", '')) LIKE %s OR
+                  LOWER(COALESCE("FAMILIA", '')) LIKE %s OR
+                  LOWER(COALESCE("DEPOSITO", '')) LIKE %s
+                )
+            """)
+            params.extend([f"%{t}%"] * 5)
 
         where_sql = "WHERE " + " AND ".join(where) if where else ""
 
@@ -311,27 +306,14 @@ def buscar_stock_por_lote(
 def get_stock_articulo(articulo: str) -> pd.DataFrame:
     try:
         base, _, _ = _stock_base_subquery()
-        articulo = articulo.strip()
-        # Si el artículo es corto (<=10 chars, sin espacios), buscar por CODIGO exacto
-        if len(articulo) <= 10 and ' ' not in articulo:
-            sql = f"""
-                SELECT
-                    "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
-                FROM ({base}) s
-                WHERE UPPER(TRIM("CODIGO")) = %s
-                ORDER BY "VENCIMIENTO" ASC NULLS LAST, "LOTE" ASC
-            """
-            return ejecutar_consulta(sql, (articulo.upper(),))
-        else:
-            # Búsqueda normal por ARTICULO
-            sql = f"""
-                SELECT
-                    "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
-                FROM ({base}) s
-                WHERE LOWER(COALESCE("ARTICULO", '')) LIKE %s
-                ORDER BY "VENCIMIENTO" ASC NULLS LAST, "LOTE" ASC
-            """
-            return ejecutar_consulta(sql, (f"%{articulo.lower()}%",))
+        sql = f"""
+            SELECT
+                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+            FROM ({base}) s
+            WHERE LOWER(COALESCE("ARTICULO", '')) LIKE %s
+            ORDER BY "VENCIMIENTO" ASC NULLS LAST, "LOTE" ASC
+        """
+        return ejecutar_consulta(sql, (f"%{articulo.lower().strip()}%",))
     except Exception:
         return pd.DataFrame()
 
@@ -358,11 +340,16 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
             SELECT
                 "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
             FROM ({base}) s
-            WHERE LOWER(COALESCE("FAMILIA", '')) LIKE %s
-            ORDER BY "ARTICULO" ASC, "VENCIMIENTO" ASC NULLS LAST
+            WHERE UPPER(TRIM(COALESCE("FAMILIA", ''))) = %s
+              AND UPPER(TRIM(COALESCE("DEPOSITO", ''))) = 'CASA CENTRAL'
+            ORDER BY 
+                CASE WHEN "VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
+                "VENCIMIENTO" ASC NULLS LAST,
+                "ARTICULO" ASC
         """
-        return ejecutar_consulta(sql, (f"%{familia.lower().strip()}%",))
-    except Exception:
+        return ejecutar_consulta(sql, (familia.upper().strip(),))
+    except Exception as e:
+        print(f"Error en get_stock_familia: {e}")
         return pd.DataFrame()
 
 
@@ -467,7 +454,7 @@ def get_lotes_vencidos() -> pd.DataFrame:
 
 
 def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
-    """Devuelve registros con stock <= minimo (por defecto 10)."""
+    """Devuelve registros con stock <= minimo (incluyendo 0)."""
     try:
         base, _, _ = _stock_base_subquery()
         sql = f"""
@@ -475,8 +462,7 @@ def get_stock_bajo(minimo: int = 10) -> pd.DataFrame:
                 "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
             FROM ({base}) s
             WHERE "STOCK" IS NOT NULL
-              AND "STOCK" <= %s
-              AND "STOCK" > 0
+              AND "STOCK" <= %s  -- ✅ INCLUYE STOCK = 0
             ORDER BY "STOCK" ASC NULLS LAST, "ARTICULO" ASC
         """
         df = ejecutar_consulta(sql, (int(minimo),))
