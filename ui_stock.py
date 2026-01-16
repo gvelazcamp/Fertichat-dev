@@ -172,9 +172,7 @@ def render_stock_header(descripcion_articulo: str, total_stock: int):
     """Header estándar para todas las consultas de stock"""
     st.markdown(f"""
     <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                padding: 1.5rem; 
-                border-radius: 12px; 
-                margin: 1rem 0;
+                padding: 1.5rem; border-radius: 12px; margin: 1rem 0;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
         <h2 style='color: white; margin: 0; display: flex: align-items: center;'>
             📦 {descripcion_articulo}
@@ -269,7 +267,7 @@ def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame, unique_id
         with col_input:
             pregunta = st.text_input(
                 "input_pregunta",
-                placeholder="Ej: ¿cuándo se compró? ¿última entrada? ¿dónde está?",
+                placeholder="Ej: ¿cuándo vence? ¿última entrada? ¿dónde está?",
                 label_visibility="collapsed",
                 key=f"input_{codigo_articulo}_{unique_id}"
             )
@@ -515,7 +513,7 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
             mostrar_tabla = False
 
     elif tipo_pregunta == "stock_unidad":
-        alertas = get_alertas_stock_1(10)
+        alertas = get_alertas_stock_1(20)
         if alertas:
             articulos = [a['ARTICULO'] for a in alertas]
             respuesta = f"⚠️ Artículos con 1 unidad: {', '.join(articulos)}"
@@ -586,7 +584,7 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
         df_temp = get_stock_por_familia()
         if not df_temp.empty:
             top_1 = df_temp.iloc[0]
-            respuesta = f"🏆 La familia con más stock es {top_1['familia']} con {int(top_1['stock_total']):,} unidades"
+            respuesta = f"🏆 La familia con más stock es {top_1['familia']} con {int(top_1['stock_total']):,} unidades ({int(top_1['articulos'])} artículos)"
             df_stock = df_temp
             mostrar_tabla = True
         else:
@@ -636,94 +634,61 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
 # =====================================================================
 
 def detectar_intencion_stock(texto: str) -> dict:
-    """Detecta la intención para consultas de stock"""
-    texto_lower = texto.lower().strip()
-
-    # ✅ PRIORIZAR STOCK TOTAL ANTES DE ARTÍCULO ESPECÍFICO
-    if 'total' in texto_lower and 'stock' in texto_lower:
+    """
+    Detecta la intención para consultas de stock
+    ✅ VERSIÓN MEJORADA: Usa el nuevo interpretador_stock
+    """
+    from interpretador_stock import interpretar_pregunta_stock
+    
+    # Usar el interpretador nuevo
+    resultado = interpretar_pregunta_stock(texto)
+    
+    # Convertir formato del interpretador al formato legacy esperado
+    tipo_nuevo = resultado.get("tipo")
+    params = resultado.get("parametros", {})
+    
+    # Mapeo de tipos nuevos a tipos legacy
+    if tipo_nuevo == "familia_especifica":
+        return {
+            'tipo': 'stock_familia',
+            'familia': params.get('familia', ''),
+            'debug': f'Stock familia {params.get("familia")}'
+        }
+    
+    elif tipo_nuevo == "por_familia":
+        return {'tipo': 'stock_por_familia', 'debug': 'Stock por familia general'}
+    
+    elif tipo_nuevo == "por_deposito":
+        return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
+    
+    elif tipo_nuevo == "total":
         return {'tipo': 'stock_total', 'debug': 'Stock total'}
     
-    # ✅ NUEVO: Artículos totales
-    if 'artículos' in texto_lower or 'articulos' in texto_lower:
-        return {'tipo': 'stock_total', 'debug': 'Artículos totales'}
-    
-    # ✅ NUEVO: Lotes totales
-    if 'lotes' in texto_lower and ('registrados' in texto_lower or 'tengo' in texto_lower):
-        return {'tipo': 'stock_total', 'debug': 'Lotes totales'}
-
-    # ✅ AGREGAR: Stock por familia general
-    if 'por familia' in texto_lower or 'familias' in texto_lower:
-        return {'tipo': 'stock_por_familia', 'debug': 'Stock por familia general'}
-
-    # ✅ MOVER STOCK_ARTICULO ANTES DE VENCIMIENTOS PARA PRIORIZAR ARTÍCULO ESPECÍFICO
-    # Stock de artículo específico (casos 1 y 4)
-    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
-        # Extraer nombre del artículo
-        palabras_excluir = ['stock', 'cuanto', 'cuánto', 'hay', 'de', 'del', 'tenemos', 'disponible', 'el', 'la', 'los', 'las', 'que']
-        palabras = [p for p in texto_lower.split() if p not in palabras_excluir and len(p) > 2]
-        if palabras:
-            articulo = ' '.join(palabras)
-            return {'tipo': 'stock_articulo', 'articulo': articulo, 'debug': f'Stock de artículo: {articulo}'}
-
-    # Vencimientos
-    if any(k in texto_lower for k in ['vencer', 'vencen', 'vencimiento', 'vence', 'por vencer']):
-        if 'vencido' in texto_lower or 'ya vencio' in texto_lower:
-            return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
-        # Extraer días si se menciona
-        import re
-        match = re.search(r'(\d+)\s*(dias|día|dia|días)', texto_lower)
-        dias = int(match.group(1)) if match else 90
+    elif tipo_nuevo == "vencimientos":
+        dias = params.get('dias', 90)
         return {'tipo': 'lotes_por_vencer', 'dias': dias, 'debug': f'Lotes por vencer en {dias} días'}
-
-    # Vencidos
-    if any(k in texto_lower for k in ['vencido', 'vencidos', 'ya vencio', 'caducado']):
+    
+    elif tipo_nuevo == "vencidos":
         return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
-
-    # Stock bajo
-    if any(k in texto_lower for k in ['stock bajo', 'poco stock', 'bajo stock', 'quedan pocos', 'se acaba', 'reponer']):
+    
+    elif tipo_nuevo == "stock_bajo":
         return {'tipo': 'stock_bajo', 'debug': 'Stock bajo'}
-
-    # Lote específico
-    if any(k in texto_lower for k in ['lote', 'nro lote', 'numero de lote']):
-        # Buscar patrón de lote (alfanumérico)
-        import re
-        match = re.search(r'lote\s+(\w+)', texto_lower)
-        if match:
-            return {'tipo': 'lote_especifico', 'lote': match.group(1), 'debug': f'Lote específico: {match.group(1)}'}
-
-    # Stock por familia
-    if any(k in texto_lower for k in ['familia', 'familias', 'por familia', 'seccion', 'secciones']):
-        # Ver si menciona una familia específica
-        familias_conocidas = ['id', 'fb', 'g', 'tr', 'xx', 'hm', 'mi']
-        for fam in familias_conocidas:
-            if fam in texto_lower.split():
-                return {'tipo': 'stock_familia', 'familia': fam.upper(), 'debug': f'Stock familia {fam.upper()}'}
-        return {'tipo': 'stock_por_familia', 'debug': 'Stock por familias'}
-
-    # ✅ NUEVO: Lista de artículos
-    if any(k in texto_lower for k in ['listado', 'lista', 'todos los artículos', 'artículos disponibles', 'qué artículos hay']):
-        return {'tipo': 'lista_articulos', 'debug': 'Lista de artículos'}
-
-    # ✅ NUEVO: Preguntas comparativas
-    if any(k in texto_lower for k in ['qué artículo tiene más stock', 'cuál tiene más stock', 'artículo con más stock']):
-        return {'tipo': 'stock_comparativo', 'subtipo': 'mas_stock', 'debug': 'Artículo con más stock'}
-    if any(k in texto_lower for k in ['qué artículo tiene menos stock', 'cuál tiene menos stock', 'artículo con menos stock']):
-        return {'tipo': 'stock_comparativo', 'subtipo': 'menos_stock', 'debug': 'Artículo con menos stock'}
-    if any(k in texto_lower for k in ['qué artículos están bajos', 'artículos bajos de stock']):
-        return {'tipo': 'stock_bajo', 'debug': 'Artículos bajos de stock'}
-
-    # ✅ NUEVO: Detectar familias cortas ANTES de buscar artículos
-    familias_conocidas = ['id', 'fb', 'g', 'tr', 'xx', 'hm', 'mi']
-    palabras = texto_lower.split()
-    for fam in familias_conocidas:
-        if fam in palabras:
-            return {'tipo': 'stock_familia', 'familia': fam.upper(), 'debug': f'Stock familia {fam.upper()}'}
-
-    # Stock por depósito
-    if any(k in texto_lower for k in ['deposito', 'depósito', 'depositos', 'depósitos', 'almacen']):
-        return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
-
-    # Al final, por defecto buscar artículo
+    
+    elif tipo_nuevo == "lote":
+        return {
+            'tipo': 'lote_especifico',
+            'lote': params.get('lote', ''),
+            'debug': f'Lote específico: {params.get("lote")}'
+        }
+    
+    elif tipo_nuevo == "articulo":
+        return {
+            'tipo': 'stock_articulo',
+            'articulo': params.get('articulo', texto),
+            'debug': f'Stock de artículo: {params.get("articulo", texto)}'
+        }
+    
+    # Fallback: búsqueda general
     return {'tipo': 'stock_articulo', 'articulo': texto, 'debug': f'Búsqueda general: {texto}'}
 
 def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -889,6 +854,8 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
                 dias = proximo['Dias_Para_Vencer'].iloc[0]
                 venc = proximo['VENCIMIENTO'].iloc[0]
                 return f"📅 El lote {lote} de '{articulo}' vence en {dias} días ({venc})", df
+            else:
+                respuesta = "No hay lotes con vencimiento registrado"
         return f"No encontré información de vencimiento para '{articulo}'.", None
 
     # ✅ NUEVO: Lotes por vencer en 30 días
@@ -1266,7 +1233,7 @@ def mostrar_stock_ia():
         💡 **Preguntas contextuales (con artículo seleccionado):**
         - "¿cuándo vence?"
         - "¿última compra?"
-        - "¿en qué depósito está?"
+        - "¿dónde está?"
         """)
 
         st.markdown("---")
@@ -1424,7 +1391,7 @@ def mostrar_stock_ia():
                             render_stock_alerts(df)
                         render_chat_compacto(descripcion.replace(" ", "_").lower()[:20], df, unique_id=f"hist_{idx}")
 
-    # ✅ AUTOREFRESH QUITADO COMPLETAMENTE - SE PAUSA CUANDO HAY ACTIVIDAD
+    # ✅ AUTOREFRESH QUITADO COMPLETAMENTE - SE PAUSABA CUANDO HAY ACTIVIDAD
     # if not st.session_state.get("pause_autorefresh_stock", False):
     #     try:
     #         from streamlit_autorefresh import st_autorefresh
