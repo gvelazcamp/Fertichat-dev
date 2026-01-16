@@ -209,7 +209,7 @@ def mostrar_resumen_stock_rotativo(dias_vencer: int = 365):  # ✅ CAMBIADO DEFA
     # ✅ No auto-refresh mientras el usuario está escribiendo en el input del Stock
     pregunta_actual = ""
     try:
-        pregunta_actual = str(st.session_state.get("input_stock", "") or "")
+        pregunta_actual = str(st.session_state.get(f"input_stock_{st.session_state.get('stock_input_counter', 0)}", "") or "")
     except Exception:
         pregunta_actual = ""
 
@@ -345,6 +345,10 @@ def mostrar_stock_ia():
     if "pause_autorefresh_stock" not in st.session_state:
         st.session_state["pause_autorefresh_stock"] = False
 
+    # ✅ Inicializar contador para forzar reset del input
+    if "stock_input_counter" not in st.session_state:
+        st.session_state["stock_input_counter"] = 0
+
     # Agregar espacio superior para compensar padding removido
     st.markdown("<div style='margin-top: 2.5rem;'></div>", unsafe_allow_html=True)
     
@@ -453,11 +457,10 @@ def mostrar_stock_ia():
         pregunta = st.text_input(
             "Escribe tu consulta de stock:",
             placeholder="Ej: stock vitek / lotes por vencer / stock bajo",
-            key="input_stock",
-            value=""  # ✅ Asegurar que siempre esté vacío después de enviar
+            key=f"input_stock_{st.session_state['stock_input_counter']}"  # ✅ Key dinámica
         )
 
-    if pregunta:
+    if pregunta and pregunta.strip():
         # ✅ PAUSAR AUTOREFRESH AL HACER PREGUNTA
         st.session_state["pause_autorefresh_stock"] = True
         
@@ -472,6 +475,8 @@ def mostrar_stock_ia():
                 'tiene_datos': df is not None and not df.empty
             })
 
+            # ✅ Incrementar contador para crear nuevo input (esto limpia el campo)
+            st.session_state["stock_input_counter"] += 1
             st.rerun()
 
     # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO
