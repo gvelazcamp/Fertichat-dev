@@ -372,26 +372,39 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
         
         df_cleaned = pd.DataFrame(cleaned_rows)
         
-        # 3. ✅ AHORA SÍ: Traer proveedores (1 por artículo)
+        # 3. ✅ Traer proveedores con normalización de espacios
         sql_prov = """
-            SELECT DISTINCT ON ("Articulo")
-                "Articulo",
+            SELECT DISTINCT ON (normalized_articulo)
+                normalized_articulo AS "Articulo_Norm",
                 "Cliente / Proveedor" AS "Proveedor"
-            FROM public.chatbot_raw
-            ORDER BY "Articulo", "Fecha" DESC NULLS LAST
+            FROM (
+                SELECT 
+                    REGEXP_REPLACE(UPPER(TRIM("Articulo")), '\s+', ' ', 'g') AS normalized_articulo,
+                    "Cliente / Proveedor",
+                    "Fecha"
+                FROM public.chatbot_raw
+            ) AS normalized
+            ORDER BY normalized_articulo, "Fecha" DESC NULLS LAST
         """
         df_prov = ejecutar_consulta(sql_prov)
         
         if df_prov is not None and not df_prov.empty:
-            # Merge por ARTICULO
+            # Normalizar también en df_cleaned (quitar espacios múltiples)
+            df_cleaned['ARTICULO_NORM'] = df_cleaned['ARTICULO'].str.upper().str.strip().str.replace(r'\s+', ' ', regex=True)
+            
+            # Merge por nombre normalizado
             df_cleaned = df_cleaned.merge(
                 df_prov, 
-                left_on='ARTICULO', 
-                right_on='Articulo', 
+                left_on='ARTICULO_NORM', 
+                right_on='Articulo_Norm', 
                 how='left'
-            ).drop(columns=['Articulo'], errors='ignore')
+            ).drop(columns=['ARTICULO_NORM', 'Articulo_Norm'], errors='ignore')
         else:
             df_cleaned['Proveedor'] = None
+        
+        # Reemplazar nan por vacío
+        if 'Proveedor' in df_cleaned.columns:
+            df_cleaned['Proveedor'] = df_cleaned['Proveedor'].fillna('')
         
         # 4. Ordenar alfabéticamente
         if not df_cleaned.empty:
