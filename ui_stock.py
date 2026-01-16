@@ -797,7 +797,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         familia = intencion.get('familia', '')
         df = get_stock_familia(familia)
         if df is not None and not df.empty:
-            df = _clean_stock_df(df)  # ✅ Limpiar stock 0
+            # ✅ QUITADO: df = _clean_stock_df(df) ← Esto eliminaba filas con STOCK = 0
             return f"📦 Stock de familia {familia}:", df
         return f"No encontré stock para la familia {familia}.", None
 
@@ -964,7 +964,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
     # ✅ NUEVO: Familias con más stock
     if tipo == 'familias_con_mas_stock':
         df = get_stock_por_familia()
-        if df is not None and not df.empty:
+        if not df.empty:
             top_1 = df.iloc[0]
             respuesta = f"🏆 La familia con más stock es {top_1['familia']} con {int(top_1['stock_total']):,} unidades ({int(top_1['articulos'])} artículos)"
             return respuesta, df
