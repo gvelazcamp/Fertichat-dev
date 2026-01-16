@@ -262,27 +262,218 @@ def responder_pregunta_stock(pregunta: str) -> tuple:
     return "❌ No pude interpretar la pregunta", None
 
 def procesar_pregunta_v2(pregunta: str):
-    # FORZAR PARA "comparar compras roche, tresul 2024 2025"
-    if pregunta.lower().strip() == "comparar compras roche, tresul 2024 2025":
-        print("🐛 FORZANDO SQL DIRECTO PARA LA CONSULTA")
-        from sql_comparativas import get_comparacion_proveedores_anios_multi
-        df = get_comparacion_proveedores_anios_multi(['roche', 'tresul'], [2024, 2025])
-        print(f"🐛 FORZANDO: df filas={len(df) if df is not None and not df.empty else 0}")
-        if df is not None and not df.empty:
-            return (
-                f"📊 Comparación forzada de compras entre ROCHE y TRESUL en 2024-2025:",
-                formatear_dataframe(df),
-                None,
-            )
-        else:
-            return "⚠️ Forzado: No se encontraron resultados.", None, None
-
     print(f"🐛 DEBUG ORQUESTADOR: Procesando pregunta: '{pregunta}'")
     _init_orquestador_state()
 
     print(f"\n{'=' * 60}")
     print(f"📝 PREGUNTA: {pregunta}")
     print(f"{'=' * 60}")
+
+    # =========================
+    # MARCA EN LOG: QUÉ "CEREBRO" SE ESTÁ USANDO
+    # =========================
+    print(f"[ORQUESTADOR] AGENTIC_SOURCE = {_AGENTIC_SOURCE}")
+
+    # =========================
+    # NUEVO: BYPASS PARA COMPARACIONES MULTI PROVEEDORES AÑOS/MESES CON MONEDA
+    # =========================
+    print(f"🐛 DEBUG ORQUESTADOR: Verificando bypass para 'comparar compras'")
+    if "comparar" in pregunta.lower() and "compras" in pregunta.lower():
+        from sql_comparativas import get_comparacion_multi_proveedores_tiempo_monedas
+        
+        parts = [p.lower().strip().replace(',', '') for p in pregunta.split() if p.strip()]
+        
+        proveedores = []
+        months_list = []
+        years_list = []
+        
+        month_names = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+        
+        for p in parts:
+            if p in month_names:
+                months_list.append(p)
+            elif p.isdigit() and len(p) == 4:
+                years_list.append(int(p))
+            elif p not in ["comparar", "compras"]:
+                proveedores.append(p)
+        
+        proveedores = list(set(proveedores))  # Eliminar duplicados
+        anios = []
+        meses = []
+        
+        if months_list:
+            if len(months_list) == len(years_list):
+                for m, y in zip(months_list, years_list):
+                    mes_num = month_names.index(m) + 1
+                    mes_str = f"{y:04d}-{mes_num:02d}"
+                    meses.append(mes_str)
+                    anios.append(y)
+            else:
+                # Si no coinciden, usar solo años
+                anios = years_list
+        else:
+            anios = years_list
+        
+        anios = sorted(list(set(anios)))
+        meses = sorted(list(set(meses)))
+        
+        if proveedores and (anios or meses):
+            df = get_comparacion_multi_proveedores_tiempo_monedas(proveedores, anios=anios if not meses else None, meses=meses if meses else None)
+            if df is not None and not df.empty:
+                tiempo_str = ", ".join(meses) if meses else ", ".join(map(str, anios))
+                mensaje = f"📊 Comparación de compras para {', '.join(proveedores).upper()} en {tiempo_str} (agrupado por moneda)."
+                return mensaje, formatear_dataframe(df), None
+            else:
+                return "⚠️ No se encontraron resultados para la comparación.", None, None
+        else:
+            # Si no parsea, seguir con agentic
+            pass
+
+    # =========================
+    # AGENTIC AI: decisión (tipo + parametros), no ejecuta SQL
+    # =========================
+    interpretacion = _agentic_decidir(pregunta)
+
+    tipo = interpretacion.get("tipo", "no_entendido")
+    params = interpretacion.get("parametros", {})
+    debug = interpretacion.get("debug", "")
+
+    print("\n[ORQUESTADOR] DECISIÓN")
+    print(f"  Tipo   : {tipo}")
+    print(f"  Params : {params}")
+    print(f"  Debug  : {debug}")
+
+    try:
+        if st.session_state.get("DEBUG_SQL", False):
+            st.session_state["DBG_INT_LAST"] = {
+                "pregunta": pregunta,
+                "tipo": tipo,
+                "parametros": params,
+                "debug": debug,
+                "agentic_source": _AGENTIC_SOURCE,
+            }
+    except Exception:
+        pass
+
+    if tipo == "conversacion":
+        respuesta = responder_con_openai(pregunta, "conversacion")
+        return f"💬 {respuesta}", None, None
+
+    if tipo == "conocimiento":
+        respuesta = responder_con_openai(pregunta, "conocimiento")
+        return f"📚 {respuesta}", None, None
+
+    if tipo == "no_entendido":
+        nro_fb = _extraer_nro_factura_fallback(pregunta)
+        if nro_fb:
+            # Aquí podrías derivar a detalle_factura_numero si quieres
+            pass
+
+    if tipo == "no_entendido":
+        # NUEVO: INTENTAR INTERPRETAR COMO PREGUNTA DE STOCK
+        if any(word in pregunta.lower() for word in ["stock", "artículo", "articulo", "lote", "familia", "depósito", "deposito", "vence", "vencimiento"]):
+            respuesta, df_extra = responder_pregunta_stock(pregunta)
+            return respuesta, formatear_dataframe(df_extra) if df_extra is not None else None, None
+        
+        sugerencia = interpretacion.get("sugerencia", "No entendí tu pregunta.")
+        alternativas = interpretacion.get("alternativas", [])
+        return (
+            f"🤔 {sugerencia}",
+            None,
+            {
+                "sugerencia": sugerencia,
+                "alternativas": alternativas,
+                "pregunta_original": pregunta,
+            },
+        )
+
+    # =========================
+    # NUEVO: CONSULTAS DE STOCK
+    # =========================
+    if tipo == "stock_busqueda":
+        texto = params.get("texto", "")
+        articulo = params.get("articulo", "")
+        lote = params.get("lote", "")
+        familia = params.get("familia", "")
+        deposito = params.get("deposito", "")
+        
+        df = buscar_stock_por_lote(
+            articulo=articulo or None,
+            lote=lote or None,
+            familia=familia or None,
+            deposito=deposito or None,
+            texto_busqueda=texto or None
+        )
+        if df is None or df.empty:
+            return "⚠️ No se encontraron registros de stock.", None, None
+        return f"📦 Stock encontrado ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_articulo":
+        articulo = params.get("articulo", "").strip()
+        if not articulo:
+            return "❌ Indicá el artículo. Ej: stock de balsamo canada", None, None
+        df = get_stock_articulo(articulo)
+        if df is None or df.empty:
+            return f"⚠️ No se encontró stock para '{articulo}'.", None, None
+        return f"📦 Stock de {articulo.upper()} ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_lote":
+        lote = params.get("lote", "").strip()
+        if not lote:
+            return "❌ Indicá el lote. Ej: stock lote HX29015161", None, None
+        df = get_stock_lote_especifico(lote)
+        if df is None or df.empty:
+            return f"⚠️ No se encontró stock para lote '{lote}'.", None, None
+        return f"📦 Stock del lote {lote.upper()} ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_familia":
+        familia = params.get("familia", "").strip()
+        if not familia:
+            return "❌ Indicá la familia. Ej: stock familia AF", None, None
+        df = get_stock_familia(familia)
+        if df is None or df.empty:
+            return f"⚠️ No se encontró stock para familia '{familia}'.", None, None
+        return f"📦 Stock de familia {familia.upper()} ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_total":
+        df = get_stock_total()
+        if df is None or df.empty:
+            return "⚠️ No se pudo obtener el resumen de stock.", None, None
+        return "📊 Resumen total de stock:", formatear_dataframe(df), None
+
+    if tipo == "stock_por_familia":
+        df = get_stock_por_familia()
+        if df is None or df.empty:
+            return "⚠️ No se pudo obtener el stock por familia.", None, None
+        return "📊 Stock por familia:", formatear_dataframe(df), None
+
+    if tipo == "stock_por_deposito":
+        df = get_stock_por_deposito()
+        if df is None or df.empty:
+            return "⚠️ No se pudo obtener el stock por depósito.", None, None
+        return "📊 Stock por depósito:", formatear_dataframe(df), None
+
+    if tipo == "stock_vencidos":
+        df = get_lotes_vencidos()
+        if df is None or df.empty:
+            return "✅ No hay lotes vencidos.", None, None
+        return f"⚠️ Lotes vencidos ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_por_vencer":
+        dias = params.get("dias", 30)
+        df = get_lotes_por_vencer(dias)
+        if df is None or df.empty:
+            return f"✅ No hay lotes por vencer en {dias} días.", None, None
+        return f"⏰ Lotes por vencer en {dias} días ({len(df)} registros):", formatear_dataframe(df), None
+
+    if tipo == "stock_bajo":
+        minimo = params.get("minimo", 10)
+        df = get_stock_bajo(minimo)
+        if df is None or df.empty:
+            return f"✅ No hay stock bajo (menos de {minimo} unidades).", None, None
+        return f"📉 Stock bajo (< {minimo} unidades, {len(df)} registros):", formatear_dataframe(df), None
+
+    return _ejecutar_consulta(tipo, params, pregunta)
 
     # =========================
     # MARCA EN LOG: QUÉ "CEREBRO" SE ESTÁ USANDO
