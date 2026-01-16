@@ -90,12 +90,15 @@ def detectar_intencion_stock(texto: str) -> dict:
 
 
 def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Limpia el DataFrame de stock: si hay stock >0, mostrar solo esos; si todo =0, mostrar 1 fila genérica."""
+    """Limpia el DataFrame de stock: filtra (INACTIVO), si hay stock >0 mostrar solo esos; si todo =0 mostrar 1 fila genérica."""
     if df is None or df.empty:
         return df
     
     df = df.copy()
     df['STOCK'] = df['STOCK'].apply(lambda x: float(str(x).replace(',', '.').replace(' ', '')) if pd.notna(x) else 0)
+    
+    # ✅ FILTRAR ARTÍCULOS (INACTIVO) ANTES DE PROCESAR
+    df = df[~df['ARTICULO'].str.lower().str.contains('(inactivo)', na=False)]
     
     grouped = df.groupby('ARTICULO')
     cleaned_rows = []
@@ -114,7 +117,6 @@ def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
             cleaned_rows.append(row)
     
     return pd.DataFrame(cleaned_rows)
-
 
 def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     """Procesa una pregunta sobre stock"""
