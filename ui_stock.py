@@ -22,6 +22,20 @@ from sql_stock import (
 )
 # from sql_compras import get_compras_articulo  # REMOVIDO PARA EVITAR IMPORTERROR
 
+# NUEVO IMPORT PARA FAMILIAS
+from sql_core import ejecutar_consulta
+
+def get_lista_familias():
+    """Obtiene lista de familias desde BD"""
+    query = """
+    SELECT DISTINCT TRIM("FAMILIA") AS familia
+    FROM public.stock
+    WHERE "FAMILIA" IS NOT NULL AND TRIM("FAMILIA") <> '' AND UPPER(TRIM("FAMILIA")) <> 'SIN FAMILIA'
+    ORDER BY familia
+    """
+    df = ejecutar_consulta(query, ())
+    return df['familia'].tolist() if df is not None and not df.empty else []
+
 # =====================================================================
 # OPENAI PARA CLASIFICACIÓN DE PREGUNTAS
 # =====================================================================
@@ -596,7 +610,7 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
         if not df_temp.empty:
             respuesta = "Artículos por familia:\n"
             for _, row in df_temp.iterrows():
-                respuesta += f"- {row['familia']}: {int(row['articulos'])} artículos\n"
+                respuesta += f"- {row['familia']}: {int(row['articulos'])} artículos ({int(row['stock_total'])} unidades)\n"
             df_stock = df_temp
             mostrar_tabla = True
         else:
@@ -923,11 +937,11 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
             stock_por_articulo = df.groupby('ARTICULO')['STOCK'].sum()
             articulos_criticos = stock_por_articulo[stock_por_articulo <= 5]
             if not articulos_criticos.empty:
-                lista = [f"{art} ({int(stock)} unidades)" for art, stock in articulos_criticos.items()]
+                lista = [f"{art} ({int(stock)})" for art, stock in articulos_criticos.items()]
                 return f"📦 Artículos para pedir: {', '.join(lista[:10])}", df
             else:
                 return "No hay artículos con stock crítico.", None
-        return "No pude obtener datos de stock.", None
+        return "No pude obtener datos.", None
 
     # ✅ NUEVO: Qué hay en depósito
     if tipo == 'que_hay_en_deposito':
@@ -957,7 +971,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         df = get_stock_por_deposito()
         if df is not None and not df.empty:
             top_1 = df.iloc[0]
-            respuesta = f"🏆 {top_1['deposito']} tiene el mayor stock con {int(top_1['stock_total']):,} unidades ({int(top_1['articulos'])} artículos)"
+            respuesta = f"🏆 {top_1['deposito']} tiene el mayor stock con {int(top_1['stock_total']):,} unidades"
             return respuesta, df
         return "No pude obtener datos de depósitos.", None
 
@@ -968,7 +982,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
             top_1 = df.iloc[0]
             respuesta = f"🏆 La familia con más stock es {top_1['familia']} con {int(top_1['stock_total']):,} unidades ({int(top_1['articulos'])} artículos)"
             return respuesta, df
-        return "No pude obtener datos de familias.", None
+        return "No pude obtener datos.", None
 
     # ✅ NUEVO: Artículos por familia
     if tipo == 'articulos_por_familia':
@@ -978,13 +992,13 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
             for _, row in df.iterrows():
                 respuesta += f"- {row['familia']}: {int(row['articulos'])} artículos ({int(row['stock_total'])} unidades)\n"
             return respuesta, df
-        return "No pude obtener datos de familias.", None
+        return "No pude obtener datos.", None
 
     # ✅ NUEVO: Búsqueda combinada
     if tipo == 'busqueda_combinada':
         params = interpretar_busqueda(pregunta)
         df = buscar_stock_por_lote(**params)
-        if df is not None and not df.empty:
+        if not df.empty:
             respuesta = f"Encontré {len(df)} registro(s) que coinciden con tu búsqueda."
             return respuesta, df
         else:
@@ -1283,6 +1297,7 @@ def mostrar_stock_ia():
         st.info("Selecciona una familia, artículo o ambos para ver el stock. También puedes aplicar filtros de vencimiento.")
 
     st.markdown("---")
+
     if 'historial_stock' not in st.session_state:
         st.session_state.historial_stock = []
 
