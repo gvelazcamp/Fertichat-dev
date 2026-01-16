@@ -326,7 +326,7 @@ def get_stock_lote_especifico(lote: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def get_stock_familia(familia: str) -> pd.DataFrame:
+def get_stock_familia(familia: str) -> pd.DataFrame: (NO TOCAR CODIGO FUNCIONA CORRECTAMENTE)
     try:
         base, _, _ = _stock_base_subquery()
         
