@@ -386,6 +386,7 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
         print(f"Error en get_stock_familia: {e}")
         return pd.DataFrame()
 
+
 # =====================================================================
 # RESÚMENES Y AGREGACIONES
 # =====================================================================
