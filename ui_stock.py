@@ -19,6 +19,83 @@ from sql_stock import (
     get_lista_articulos_stock,  # ✅ IMPORTAR PARA LISTA DE ARTÍCULOS
 )
 
+# =========================
+# HELPERS DE UI PARA STOCK
+# =========================
+
+def render_stock_header(descripcion_articulo: str, total_stock: int):
+    """Header estándar para todas las consultas de stock"""
+    st.markdown(f"""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 1.5rem; 
+                border-radius: 12px; 
+                margin: 1rem 0;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+        <h2 style='color: white; margin: 0; display: flex; align-items: center;'>
+            📦 {descripcion_articulo}
+        </h2>
+        <div style='color: rgba(255,255,255,0.95); 
+                    font-size: 1.1rem; 
+                    margin-top: 0.5rem;
+                    font-weight: 500;'>
+            Stock total: <strong>{total_stock:,.0f}</strong> unidades
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def render_stock_table(df: pd.DataFrame, height: int = 400):
+    """Tabla estandarizada con coloreado por vencimiento"""
+    df_display = df.copy()
+    
+    # Agregar columna Días para vencer si no existe y hay fecha
+    if 'Dias_Para_Vencer' not in df_display.columns and 'VENCIMIENTO' in df_display.columns:
+        df_display['Dias_Para_Vencer'] = (
+            pd.to_datetime(df_display['VENCIMIENTO'], errors='coerce') - datetime.now()
+        ).dt.days.fillna(-1).astype(int)
+    
+    # Función para colorear filas
+    def highlight_vencimiento(row):
+        if 'Dias_Para_Vencer' in row.index:
+            dias = row['Dias_Para_Vencer']
+            if pd.notna(dias) and dias >= 0:
+                if dias < 30:
+                    return ['background-color: #fee2e2'] * len(row)  # Rojo claro
+                elif dias < 90:
+                    return ['background-color: #fef3c7'] * len(row)  # Amarillo claro
+        return [''] * len(row)
+    
+    st.dataframe(
+        df_display.style.apply(highlight_vencimiento, axis=1),
+        use_container_width=True,
+        hide_index=True,
+        height=min(height, len(df_display) * 35 + 50)
+    )
+
+def render_stock_alerts(df: pd.DataFrame):
+    """Alerta compacta para vencimientos"""
+    if 'Dias_Para_Vencer' not in df.columns:
+        return
+    
+    proximos_vencer = df[(df['Dias_Para_Vencer'] >= 0) & (df['Dias_Para_Vencer'] <= 90)]
+    if not proximos_vencer.empty:
+        st.warning(f"⚠️ {len(proximos_vencer)} lote(s) vence(n) en los próximos 90 días")
+    else:
+        st.success("✅ No hay lotes próximos a vencer")
+
+def render_download_button(df: pd.DataFrame, filename: str, idx: int):
+    """Botón de descarga centrado"""
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        excel_data = df_to_excel(df)
+        st.download_button(
+            label="📥 Descargar Excel",
+            data=excel_data,
+            file_name=f"{filename}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            key=f"download_{idx}"
+        )
+
 # =====================================================================
 # MÓDULO STOCK IA (CHATBOT)
 # =====================================================================
@@ -437,8 +514,12 @@ def mostrar_stock_ia():
         df_art = get_stock_articulo(articulo_seleccionado)
         if df_art is not None and not df_art.empty:
             df_art = _clean_stock_df(df_art)
-            st.subheader(f"📦 Stock de '{articulo_seleccionado}'")
-            st.dataframe(df_art, use_container_width=True, hide_index=True)
+            descripcion_articulo = articulo_seleccionado
+            total_stock = df_art['STOCK'].sum() if 'STOCK' in df_art.columns else 0
+            render_stock_header(descripcion_articulo, int(total_stock))
+            render_stock_table(df_art)
+            render_stock_alerts(df_art)
+            render_download_button(df_art, f"stock_{articulo_seleccionado[:20]}", "select")
         else:
             st.warning(f"No hay stock para '{articulo_seleccionado}'.")
 
@@ -564,7 +645,7 @@ def mostrar_stock_ia():
             st.session_state["stock_input_counter"] += 1
             st.rerun()
 
-    # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO
+    # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO ESTANDARIZADO
     if st.session_state.historial_stock:
         st.markdown("---")
         
@@ -578,85 +659,44 @@ def mostrar_stock_ia():
                 if 'df' in item and item['df'] is not None and not item['df'].empty:
                     df = item['df']
                     
-                    # ✅ NUEVO: REDISEÑO COMPACTO PARA STOCK DE ARTÍCULO
+                    # ✅ NUEVO: FORMATO ESTANDARIZADO PARA TODAS LAS CONSULTAS
                     if "📦 Stock de" in item['respuesta']:
-                        # Extraer nombre del artículo de la respuesta
+                        # Stock de artículo específico
                         import re
                         match = re.search(r"📦 Stock de '(.+?)':", item['respuesta'])
                         descripcion_articulo = match.group(1) if match else "Artículo"
-                        
-                        # Calcular total stock
-                        total_stock = 0
-                        if 'STOCK' in df.columns:
-                            total_stock = df['STOCK'].apply(lambda x: float(str(x).replace(',', '.').replace(' ', '')) if pd.notna(x) else 0).sum()
-                        
-                        # Header limpio con gradiente
-                        st.markdown(f"""
-                        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                                    padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem;'>
-                            <h3 style='color: white; margin: 0;'>📦 {descripcion_articulo}</h3>
-                            <div style='color: rgba(255,255,255,0.9); font-size: 0.9rem; margin-top: 0.3rem;'>
-                                Stock total: <strong>{total_stock:,.0f} unidades</strong>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Preparar df para display: agregar columna Días para vencer si no existe
-                        df_display = df.copy()
-                        if 'Dias_Para_Vencer' not in df_display.columns and 'VENCIMIENTO' in df_display.columns:
-                            df_display['Dias_Para_Vencer'] = (
-                                pd.to_datetime(df_display['VENCIMIENTO'], errors='coerce') - datetime.now()
-                            ).dt.days.fillna(-1).astype(int)
-                        
-                        # Función para colorear filas
-                        def highlight_vencimiento(row):
-                            if 'Dias_Para_Vencer' in row.index:
-                                dias = row['Dias_Para_Vencer']
-                                if pd.notna(dias) and dias >= 0:
-                                    if dias < 30:
-                                        return ['background-color: #fee2e2'] * len(row)  # Rojo claro
-                                    elif dias < 90:
-                                        return ['background-color: #fef3c7'] * len(row)  # Amarillo claro
-                            return [''] * len(row)
-                        
-                        # Tabla coloreada
-                        st.dataframe(
-                            df_display.style.apply(highlight_vencimiento, axis=1),
-                            use_container_width=True,
-                            hide_index=True,
-                            height=400
-                        )
-                        
-                        # Alerta compacta para vencimientos
-                        proximos_vencer = df_display[(df_display['Dias_Para_Vencer'] >= 0) & (df_display['Dias_Para_Vencer'] <= 90)] if 'Dias_Para_Vencer' in df_display.columns else pd.DataFrame()
-                        if not proximos_vencer.empty:
-                            st.warning(f"⚠️ {len(proximos_vencer)} lote(s) vence(n) en los próximos 90 días")
-                        else:
-                            st.success("✅ No hay lotes próximos a vencer")
-                        
-                        # Botón de descarga centrado
-                        col1, col2, col3 = st.columns([1, 1, 1])
-                        with col2:
-                            excel_data = df_to_excel(df)
-                            st.download_button(
-                                label="📥 Descargar Excel",
-                                data=excel_data,
-                                file_name="consulta_stock.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                use_container_width=True,
-                                key=f"download_stock_{idx}"
-                            )
+                        total_stock = df['STOCK'].sum() if 'STOCK' in df.columns else 0
+                        render_stock_header(descripcion_articulo, int(total_stock))
+                        render_stock_table(df)
+                        render_stock_alerts(df)
+                        render_download_button(df, f"stock_{descripcion_articulo[:20]}", idx)
+                    
+                    elif "📉 Artículos con stock bajo" in item['respuesta']:
+                        # Stock bajo: mostrar cada artículo con su header y mini métricas
+                        st.info(f"📉 Se encontraron **{len(df)}** artículos con stock bajo")
+                        grouped = df.groupby('ARTICULO')
+                        for articulo, group in grouped:
+                            total_stock = group['STOCK'].sum() if 'STOCK' in group.columns else 0
+                            render_stock_header(articulo, int(total_stock))
+                            # Mini métricas para el primer lote
+                            first_row = group.iloc[0]
+                            col1, col2, col3, col4 = st.columns(4)
+                            col1.metric("Lote", first_row.get('LOTE', '-') or '-')
+                            col2.metric("Depósito", first_row.get('DEPOSITO', '-'))
+                            col3.metric("Vencimiento", str(first_row.get('VENCIMIENTO', '-'))[:10])
+                            col4.metric("Stock", first_row.get('STOCK', 0))
+                            st.divider()
+                        render_download_button(df, "stock_bajo", idx)
+                    
                     else:
-                        # Para otras consultas, mostrar normal
-                        st.dataframe(df, use_container_width=True, hide_index=True)
-                        excel_data = df_to_excel(df)
-                        st.download_button(
-                            label="📥 Descargar Excel",
-                            data=excel_data,
-                            file_name="consulta_stock.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            key=f"download_stock_{idx}"
-                        )
+                        # Otras consultas: header genérico + tabla + descarga
+                        total_stock = df['STOCK'].sum() if 'STOCK' in df.columns else len(df)
+                        descripcion = item['respuesta'].split(':')[0].strip() if ':' in item['respuesta'] else "Consulta"
+                        render_stock_header(descripcion, int(total_stock))
+                        render_stock_table(df)
+                        if "lotes" in item['respuesta'].lower():
+                            render_stock_alerts(df)
+                        render_download_button(df, descripcion.replace(" ", "_").lower()[:20], idx)
 
     # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
     if not st.session_state.get("pause_autorefresh_stock", False):
