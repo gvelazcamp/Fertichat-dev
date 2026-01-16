@@ -336,7 +336,7 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
                 s."CODIGO", s."ARTICULO", s."FAMILIA", s."DEPOSITO", s."LOTE", s."VENCIMIENTO", s."Dias_Para_Vencer", s."STOCK",
                 cr."Cliente / Proveedor" AS "Proveedor"
             FROM ({base}) s
-            LEFT JOIN public.chatbot_raw cr ON s."ARTICULO" = cr."Articulo" AND s."FAMILIA" = cr."Familia"
+            LEFT JOIN public.chatbot_raw cr ON s."ARTICULO" = cr."Articulo"
             WHERE UPPER(TRIM(COALESCE(s."FAMILIA", ''))) = %s
             ORDER BY 
                 s."ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
@@ -389,7 +389,6 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
     except Exception as e:
         print(f"Error en get_stock_familia: {e}")
         return pd.DataFrame()
-
 # =====================================================================
 # RESÚMENES Y AGREGACIONES
 # =====================================================================
