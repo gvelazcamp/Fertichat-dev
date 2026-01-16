@@ -233,6 +233,20 @@ def procesar_pregunta_v2(pregunta: str):
     print(f"{'=' * 60}")
 
     # =========================
+    # 🆕 PRIMERO: INTENTAR CON STOCK
+    # =========================
+    if any(word in pregunta.lower() for word in ["stock", "familia", "lote", "venc", "deposito", "depósito", "bajo", "crítico"]):
+        print("🔍 Detectada palabra clave de STOCK, intentando interpretador...")
+        respuesta, df_extra = responder_pregunta_stock(pregunta)
+        
+        # Si el interpretador manejó la pregunta (no retornó None)
+        if respuesta is not None:
+            print(f"✅ Pregunta manejada por interpretador de STOCK")
+            return respuesta, formatear_dataframe(df_extra) if df_extra is not None else None, None
+        else:
+            print("⚠️ Interpretador de stock retornó None, continuando con compras...")
+
+    # =========================
     # MARCA EN LOG: QUÉ "CEREBRO" SE ESTÁ USANDO
     # =========================
     print(f"[ORQUESTADOR] AGENTIC_SOURCE = {_AGENTIC_SOURCE}")
@@ -332,13 +346,6 @@ def procesar_pregunta_v2(pregunta: str):
             # Aquí podrías derivar a detalle_factura_numero si quieres
             pass
 
-    if tipo == "no_entendido":
-        # NUEVO: INTENTAR INTERPRETAR COMO PREGUNTA DE STOCK
-        if any(word in pregunta.lower() for word in ["stock", "artículo", "articulo", "lote", "familia", "depósito", "deposito", "vence", "vencimiento"]):
-            respuesta, df_extra = responder_pregunta_stock(pregunta)
-            if respuesta is not None:  # Si retornó algo, es stock
-                return respuesta, formatear_dataframe(df_extra) if df_extra is not None else None, None
-        
         sugerencia = interpretacion.get("sugerencia", "No entendí tu pregunta.")
         alternativas = interpretacion.get("alternativas", [])
         return (
