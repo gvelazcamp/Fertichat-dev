@@ -18,6 +18,7 @@ from sql_stock import (
     get_stock_lote_especifico,
     get_alertas_vencimiento_multiple,
     get_lista_articulos_stock,  # ✅ IMPORTAR PARA LISTA DE ARTÍCULOS
+    buscar_stock_por_lote,  # ✅ IMPORTAR PARA BÚSQUEDAS DE DEPÓSITOS
 )
 # from sql_compras import get_compras_articulo  # REMOVIDO PARA EVITAR IMPORTERROR
 
@@ -58,6 +59,9 @@ def clasificar_pregunta_stock(pregunta: str) -> Dict[str, Any]:
     - stock_cero: qué artículos están en stock cero, artículos sin stock
     - stock_unidad: qué artículos tienen solo 1 unidad, artículos con stock 1
     - necesito_pedir: necesito pedir algo, artículos para pedir, stock crítico
+    - que_hay_en_deposito: qué hay en el depósito, qué stock hay en el depósito
+    - en_que_deposito_esta: en qué depósito está el artículo
+    - deposito_con_mas_stock: qué depósito tiene más stock
     - comparacion_temporal: evolución en el tiempo, cómo cambió, estamos comprando más
     
     Responde SOLO con JSON:
@@ -76,6 +80,15 @@ def clasificar_pregunta_stock(pregunta: str) -> Dict[str, Any]:
     except Exception as e:
         print(f"Error en OpenAI: {e}")
         return {"tipo": "stock_total", "detalles": "Error en clasificación"}
+
+def extract_deposito_from_pregunta(pregunta: str) -> str:
+    """Extrae nombre de depósito de la pregunta"""
+    pregunta_lower = pregunta.lower()
+    depositos_conocidos = ['casa central', 'sucursal 1', 'sucursal 2', 'depósito 1', 'depósito 2', 'almacén', 'sucursal1', 'deposito1', 'deposito2']
+    for dep in depositos_conocidos:
+        if dep in pregunta_lower:
+            return dep.title()
+    return ""
 
 # =====================================================================
 # NUEVA FUNCIÓN: PREGUNTAS SOBRE TABLA ESPECÍFICA
@@ -490,6 +503,46 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
             respuesta = "No pude obtener datos"
             mostrar_tabla = False
     
+    elif tipo_pregunta == "que_hay_en_deposito":
+        # Extraer depósito de la pregunta
+        deposito = extract_deposito_from_pregunta(pregunta)
+        if deposito:
+            df_temp = buscar_stock_por_lote(deposito=deposito)
+            if not df_temp.empty:
+                articulos_unicos = df_temp['ARTICULO'].nunique()
+                lotes = df_temp['LOTE'].nunique()
+                total_stock = df_temp['STOCK'].sum()
+                respuesta = f"📦 En {deposito}: {articulos_unicos} artículos diferentes, {lotes} lotes, {int(total_stock)} unidades totales"
+                df_stock = df_temp
+                mostrar_tabla = True
+            else:
+                respuesta = f"No hay stock en {deposito}"
+                mostrar_tabla = False
+        else:
+            respuesta = "No pude identificar el depósito"
+            mostrar_tabla = False
+
+    elif tipo_pregunta == "en_que_deposito_esta":
+        if not df_stock.empty:
+            depositos_con_stock = df_stock.groupby('DEPOSITO')['STOCK'].sum().sort_values(ascending=False)
+            respuesta = f"🏢 {codigo_articulo or lote} está en:\n"
+            for dep, stock in depositos_con_stock.items():
+                respuesta += f"- {dep}: {int(stock)} unidades\n"
+        else:
+            respuesta = "No hay información de depósitos"
+            mostrar_tabla = False
+
+    elif tipo_pregunta == "deposito_con_mas_stock":
+        df_temp = get_stock_por_deposito()
+        if not df_temp.empty:
+            top_1 = df_temp.iloc[0]
+            respuesta = f"🏆 {top_1['deposito']} tiene el mayor stock con {int(top_1['stock_total']):,} unidades"
+            df_stock = df_temp
+            mostrar_tabla = True
+        else:
+            respuesta = "No pude obtener datos de depósitos"
+            mostrar_tabla = False
+    
     else:
         respuesta = "No entendí la pregunta específica"
         mostrar_tabla = False
@@ -810,6 +863,38 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
             else:
                 return "No hay artículos con stock crítico.", None
         return "No pude obtener datos de stock.", None
+
+    # ✅ NUEVO: Qué hay en depósito
+    if tipo == 'que_hay_en_deposito':
+        deposito = intencion.get('deposito', '')
+        df = buscar_stock_por_lote(deposito=deposito)
+        if df is not None and not df.empty:
+            articulos_unicos = df['ARTICULO'].nunique()
+            lotes = df['LOTE'].nunique()
+            total_stock = df['STOCK'].sum()
+            return f"📦 En {deposito}: {articulos_unicos} artículos diferentes, {lotes} lotes, {int(total_stock)} unidades totales", df
+        return f"No encontré stock en {deposito}.", None
+
+    # ✅ NUEVO: En qué depósito está artículo
+    if tipo == 'en_que_deposito_esta':
+        articulo = intencion.get('articulo', pregunta)
+        df = buscar_stock_por_lote(articulo=articulo)
+        if df is not None and not df.empty:
+            depositos_con_stock = df.groupby('DEPOSITO')['STOCK'].sum().sort_values(ascending=False)
+            respuesta = f"🏢 {articulo} está en:\n"
+            for dep, stock in depositos_con_stock.items():
+                respuesta += f"- {dep}: {int(stock)} unidades\n"
+            return respuesta, df
+        return f"No encontré '{articulo}' en ningún depósito.", None
+
+    # ✅ NUEVO: Depósito con más stock
+    if tipo == 'deposito_con_mas_stock':
+        df = get_stock_por_deposito()
+        if df is not None and not df.empty:
+            top_1 = df.iloc[0]
+            respuesta = f"🏆 {top_1['deposito']} tiene el mayor stock con {int(top_1['stock_total']):,} unidades ({int(top_1['articulos'])} artículos)"
+            return respuesta, df
+        return "No pude obtener datos de depósitos.", None
 
     return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo', 'listado de artículos'.", None
 
