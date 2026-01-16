@@ -634,61 +634,78 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
 # =====================================================================
 
 def detectar_intencion_stock(texto: str) -> dict:
-    """
-    Detecta la intención para consultas de stock
-    ✅ VERSIÓN MEJORADA: Usa el nuevo interpretador_stock
-    """
-    from interpretador_stock import interpretar_pregunta_stock
-    
-    # Usar el interpretador nuevo
-    resultado = interpretar_pregunta_stock(texto)
-    
-    # Convertir formato del interpretador al formato legacy esperado
-    tipo_nuevo = resultado.get("tipo")
-    params = resultado.get("parametros", {})
-    
-    # Mapeo de tipos nuevos a tipos legacy
-    if tipo_nuevo == "familia_especifica":
-        return {
-            'tipo': 'stock_familia',
-            'familia': params.get('familia', ''),
-            'debug': f'Stock familia {params.get("familia")}'
-        }
-    
-    elif tipo_nuevo == "por_familia":
-        return {'tipo': 'stock_por_familia', 'debug': 'Stock por familia general'}
-    
-    elif tipo_nuevo == "por_deposito":
-        return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
-    
-    elif tipo_nuevo == "total":
+    """Detecta la intención para consultas de stock"""
+    texto_lower = texto.lower().strip()
+
+    # ✅ 1. PRIORIZAR STOCK TOTAL
+    if 'total' in texto_lower and 'stock' in texto_lower:
         return {'tipo': 'stock_total', 'debug': 'Stock total'}
     
-    elif tipo_nuevo == "vencimientos":
-        dias = params.get('dias', 90)
+    # ✅ 2. Stock por familia general
+    if 'por familia' in texto_lower or 'familias' in texto_lower:
+        return {'tipo': 'stock_por_familia', 'debug': 'Stock por familia general'}
+
+    # ✅ 3. Stock por depósito
+    if 'por depósito' in texto_lower or 'por deposito' in texto_lower:
+        return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
+
+    # ✅ 4. DETECTAR FAMILIA ESPECÍFICA (ANTES de buscar artículo)
+    # Cargar familias desde BD
+    try:
+        from sql_core import ejecutar_consulta
+        query = """
+        SELECT DISTINCT TRIM("FAMILIA") AS familia
+        FROM public.stock
+        WHERE "FAMILIA" IS NOT NULL
+          AND TRIM("FAMILIA") <> ''
+          AND UPPER(TRIM("FAMILIA")) <> 'SIN FAMILIA'
+        ORDER BY familia
+        """
+        df = ejecutar_consulta(query, ())
+        familias = df['familia'].tolist() if df is not None and not df.empty else []
+    except:
+        familias = ["AF", "BE", "CM", "FB", "G", "HT", "ID", "MY", "TEST", "TR", "XX"]
+    
+    # Buscar familias en la pregunta
+    palabras = texto_lower.split()
+    for familia in familias:
+        familia_lower = familia.lower()
+        if familia_lower in palabras:
+            print(f"  ✅ Familia detectada: {familia}")
+            return {'tipo': 'stock_familia', 'familia': familia, 'debug': f'Stock familia {familia}'}
+
+    # ✅ 5. Vencimientos
+    if any(k in texto_lower for k in ['vencer', 'vencen', 'vencimiento', 'vence', 'por vencer']):
+        if 'vencido' in texto_lower or 'ya vencio' in texto_lower:
+            return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
+        import re
+        match = re.search(r'(\d+)\s*(dias|día|dia|días)', texto_lower)
+        dias = int(match.group(1)) if match else 90
         return {'tipo': 'lotes_por_vencer', 'dias': dias, 'debug': f'Lotes por vencer en {dias} días'}
-    
-    elif tipo_nuevo == "vencidos":
-        return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
-    
-    elif tipo_nuevo == "stock_bajo":
+
+    # ✅ 6. Stock bajo
+    if any(k in texto_lower for k in ['stock bajo', 'poco stock', 'bajo stock', 'quedan pocos', 'se acaba', 'reponer']):
         return {'tipo': 'stock_bajo', 'debug': 'Stock bajo'}
-    
-    elif tipo_nuevo == "lote":
-        return {
-            'tipo': 'lote_especifico',
-            'lote': params.get('lote', ''),
-            'debug': f'Lote específico: {params.get("lote")}'
-        }
-    
-    elif tipo_nuevo == "articulo":
-        return {
-            'tipo': 'stock_articulo',
-            'articulo': params.get('articulo', texto),
-            'debug': f'Stock de artículo: {params.get("articulo", texto)}'
-        }
-    
-    # Fallback: búsqueda general
+
+    # ✅ 7. Lote específico
+    if any(k in texto_lower for k in ['lote', 'nro lote', 'numero de lote']):
+        import re
+        match = re.search(r'lote\s+(\w+)', texto_lower)
+        if match:
+            return {'tipo': 'lote_especifico', 'lote': match.group(1), 'debug': f'Lote específico: {match.group(1)}'}
+
+    # ✅ 8. Stock de artículo (ÚLTIMO, como fallback)
+    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
+        palabras_excluir = [
+            'stock', 'cuanto', 'cuánto', 'cual', 'cuál', 'qué', 'que', 'es', 'el', 
+            'la', 'los', 'las', 'hay', 'de', 'del', 'tenemos', 'disponible'
+        ]
+        palabras = [p for p in texto_lower.split() if p not in palabras_excluir and len(p) > 2]
+        if palabras:
+            articulo = ' '.join(palabras)
+            return {'tipo': 'stock_articulo', 'articulo': articulo, 'debug': f'Stock de artículo: {articulo}'}
+
+    # ✅ 9. Fallback: búsqueda general
     return {'tipo': 'stock_articulo', 'articulo': texto, 'debug': f'Búsqueda general: {texto}'}
 
 def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
