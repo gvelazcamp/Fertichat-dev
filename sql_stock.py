@@ -432,3 +432,9 @@ def buscar_stock_por_lote(texto_busqueda: str = None, deposito: str = None, arti
     except Exception as e:
         print(f"Error en buscar_stock_por_lote: {e}")
         return pd.DataFrame()
+        
+# Agregar al final de sql_stock.py, antes del último return o después de get_alertas_stock_1
+
+def get_alertas_combinadas(dias_urgente: int = 30) -> list:
+    """Alias para get_alertas_vencimiento_multiple"""
+    return get_alertas_vencimiento_multiple(dias_urgente)
