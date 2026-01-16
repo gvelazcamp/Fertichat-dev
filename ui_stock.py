@@ -356,6 +356,14 @@ def detectar_intencion_stock(texto: str) -> dict:
     # ✅ PRIORIZAR STOCK TOTAL ANTES DE ARTÍCULO ESPECÍFICO
     if 'total' in texto_lower and 'stock' in texto_lower:
         return {'tipo': 'stock_total', 'debug': 'Stock total'}
+    
+    # ✅ NUEVO: Artículos totales
+    if 'artículos' in texto_lower or 'articulos' in texto_lower:
+        return {'tipo': 'stock_total', 'debug': 'Artículos totales'}
+    
+    # ✅ NUEVO: Lotes totales
+    if 'lotes' in texto_lower and ('registrados' in texto_lower or 'tengo' in texto_lower):
+        return {'tipo': 'stock_total', 'debug': 'Lotes totales'}
 
     # ✅ MOVER STOCK_ARTICULO ANTES DE VENCIMIENTOS PARA PRIORIZAR ARTÍCULO ESPECÍFICO
     # Stock de artículo específico (casos 1 y 4)
@@ -568,7 +576,6 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         return f"No encontré stock para '{articulo}'.", None
 
     return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo', 'listado de artículos'.", None
-
 # =========================
 # 📦 RESUMEN STOCK (ROTATIVO CADA 5s)
 # =========================
