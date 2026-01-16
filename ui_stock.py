@@ -65,6 +65,41 @@ def clasificar_pregunta_stock(pregunta: str) -> Dict[str, Any]:
         print(f"Error en OpenAI: {e}")
         return {"tipo": "stock_total", "detalles": "Error en clasificación"}
 
+# =====================================================================
+# NUEVA FUNCIÓN: PREGUNTAS SOBRE TABLA ESPECÍFICA
+# =====================================================================
+
+def procesar_pregunta_sobre_tabla(pregunta: str, codigo_articulo: str, df_stock: pd.DataFrame) -> str:
+    """
+    Responde preguntas contextuales sobre un artículo específico usando OpenAI
+    """
+    if not client or pregunta.strip() == "":
+        return "OpenAI no disponible o pregunta vacía"
+    
+    # Construir contexto
+    contexto = f"""
+    Artículo: {codigo_articulo}
+    Stock total: {df_stock['STOCK'].sum() if 'STOCK' in df_stock.columns else 0}
+    Lotes disponibles: {df_stock['LOTE'].tolist() if 'LOTE' in df_stock.columns else []}
+    Vencimientos: {df_stock['VENCIMIENTO'].tolist() if 'VENCIMIENTO' in df_stock.columns else []}
+    Depósitos: {df_stock['DEPOSITO'].unique().tolist() if 'DEPOSITO' in df_stock.columns else []}
+    Días para vencer: {df_stock['Dias_Para_Vencer'].tolist() if 'Dias_Para_Vencer' in df_stock.columns else []}
+    """
+    
+    try:
+        respuesta = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Eres un asistente que responde preguntas sobre stock de inventario. Responde de forma concisa y directa en español."},
+                {"role": "user", "content": f"Contexto:\n{contexto}\n\nPregunta: {pregunta}"}
+            ],
+            temperature=0.1,
+            max_tokens=200
+        )
+        return respuesta.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Error al procesar pregunta: {str(e)}"
+
 # =========================
 # HELPERS DE UI PARA STOCK
 # =========================
@@ -128,6 +163,49 @@ def render_stock_alerts(df: pd.DataFrame):
     else:
         st.success("✅ No hay lotes próximos a vencer")
 
+def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame):
+    """Chat compacto para preguntas sobre la tabla específica"""
+    # Botón para mostrar/ocultar chat
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.success("✅ Tabla cargada. ¿Preguntas sobre este artículo?")
+    with col2:
+        if st.button("💬 Preguntar", use_container_width=True, key=f"chat_btn_{codigo_articulo}"):
+            st.session_state[f'mostrar_chat_tabla_{codigo_articulo}'] = True
+    
+    # Chat compacto
+    if st.session_state.get(f'mostrar_chat_tabla_{codigo_articulo}', False):
+        with st.container():
+            st.markdown("""
+            <div style='background: #f8f9fa; 
+                        padding: 1rem; 
+                        border-radius: 8px; 
+                        border-left: 4px solid #667eea;'>
+                <small>💬 <strong>Pregunta sobre este artículo</strong></small>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            pregunta = st.text_input(
+                "Pregunta:",
+                placeholder="Ej: ¿cuándo fue la última compra? ¿en qué depósito hay más?",
+                key=f"chat_tabla_{codigo_articulo}",
+                label_visibility="collapsed"
+            )
+            
+            col_enviar, col_cerrar = st.columns([4, 1])
+            with col_enviar:
+                if st.button("🚀 Enviar", use_container_width=True, key=f"enviar_{codigo_articulo}"):
+                    if pregunta.strip():
+                        respuesta = procesar_pregunta_sobre_tabla(pregunta, codigo_articulo, df_stock)
+                        st.info(f"🤖 {respuesta}")
+                    else:
+                        st.warning("Escribe una pregunta")
+            
+            with col_cerrar:
+                if st.button("✖️", use_container_width=True, key=f"cerrar_{codigo_articulo}"):
+                    st.session_state[f'mostrar_chat_tabla_{codigo_articulo}'] = False
+                    st.rerun()
+
 def render_download_button(df: pd.DataFrame, filename: str, idx: int):
     """Botón de descarga centrado"""
     col1, col2, col3 = st.columns([1, 1, 1])
@@ -182,20 +260,6 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
     # 3. Clasificar pregunta con OpenAI
     clasificacion = clasificar_pregunta_stock(pregunta)
     tipo_pregunta = clasificacion.get('tipo', 'stock_total')
-    
-    # 4. Responder según tipo
-    respuesta = ""
-    mostrar_tabla = True  # ✅ NUEVO: Flag para decidir si mostrar tabla
-    
-    if tipo_pregunta == "vencimiento":
-        if not df_stock.empty and 'Dias_Para_Vencer' in df_stock.columns:
-            proximo = df_stock.nsmallest(1, 'Dias_Para_Vencer')
-            lote = proximo['LOTE'].iloc[0] if not proximo.empty else '-'
-            venc = proximo['VENCIMIENTO'].iloc[0] if not proximo.empty else '-'
-            dias = proximo['Dias_Para_Vencer'].iloc[0] if not proximo.empty else 0
-            respuesta = f"📅 El lote {lote} vence el {venc} ({dias} días)"
-        else:
-            respuesta = "No hay información de vencimientos"
     
     # 4. Responder según tipo
     respuesta = ""
@@ -279,6 +343,9 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
         render_stock_table(df_stock)
         render_stock_alerts(df_stock)
         render_download_button(df_stock, f"stock_{codigo_articulo[:20]}", "contextual")
+        # ✅ NUEVO: Agregar chat compacto
+        render_chat_compacto(codigo_articulo, df_stock)
+
 # =====================================================================
 # MÓDULO STOCK IA (CHATBOT)
 # =====================================================================
@@ -713,6 +780,8 @@ def mostrar_stock_ia():
             render_stock_table(df_art)
             render_stock_alerts(df_art)
             render_download_button(df_art, f"stock_{articulo_seleccionado[:20]}", "select")
+            # ✅ NUEVO: Agregar chat compacto
+            render_chat_compacto(articulo_seleccionado, df_art)
         else:
             st.warning(f"No hay stock para '{articulo_seleccionado}'.")
     else:
@@ -879,6 +948,8 @@ def mostrar_stock_ia():
                         render_stock_table(df)
                         render_stock_alerts(df)
                         render_download_button(df, f"stock_{descripcion_articulo[:20]}", idx)
+                        # ✅ NUEVO: Agregar chat compacto
+                        render_chat_compacto(descripcion_articulo, df)
                     
                     elif "📉 Artículos con stock bajo" in item['respuesta']:
                         # Stock bajo: mostrar cada artículo con su header y mini métricas
@@ -895,6 +966,8 @@ def mostrar_stock_ia():
                             col3.metric("Vencimiento", str(first_row.get('VENCIMIENTO', '-'))[:10])
                             col4.metric("Stock", first_row.get('STOCK', 0))
                             st.divider()
+                            # ✅ NUEVO: Agregar chat compacto para cada artículo
+                            render_chat_compacto(articulo, group)
                         render_download_button(df, "stock_bajo", idx)
                     
                     else:
