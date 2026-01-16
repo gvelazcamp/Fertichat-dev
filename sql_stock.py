@@ -330,18 +330,18 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
     try:
         base, _, _ = _stock_base_subquery()
         
-        # 1. Obtener todos los datos CON PROVEEDOR
+        # 1. Obtener todos los datos CON PROVEEDOR AGREGADO
         sql = f"""
             SELECT
-                s."CODIGO", s."ARTICULO", s."FAMILIA", s."DEPOSITO", s."LOTE", s."VENCIMIENTO", s."Dias_Para_Vencer", s."STOCK",
+                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK",
                 cr."Cliente / Proveedor" AS "Proveedor"
             FROM ({base}) s
             LEFT JOIN public.chatbot_raw cr ON s."ARTICULO" = cr."Articulo"
-            WHERE UPPER(TRIM(COALESCE(s."FAMILIA", ''))) = %s
+            WHERE UPPER(TRIM(COALESCE("FAMILIA", ''))) = %s
             ORDER BY 
-                s."ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
-                CASE WHEN s."VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
-                s."VENCIMIENTO" ASC NULLS LAST
+                "ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
+                CASE WHEN "VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
+                "VENCIMIENTO" ASC NULLS LAST
         """
         df = ejecutar_consulta(sql, (familia.upper().strip(),))
         
@@ -374,7 +374,7 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
                 row_dict['VENCIMIENTO'] = None
                 row_dict['Dias_Para_Vencer'] = None
                 row_dict['STOCK'] = 0
-                # ✅ AGREGAR PROVEEDOR EN FILA GENÉRICA
+                # ✅ AGREGAR PROVEEDOR (SIN TOCAR STOCK)
                 row_dict['Proveedor'] = group['Proveedor'].iloc[0] if 'Proveedor' in group.columns and not group['Proveedor'].isna().all() else None
                 cleaned_rows.append(row_dict)
         
@@ -389,6 +389,7 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
     except Exception as e:
         print(f"Error en get_stock_familia: {e}")
         return pd.DataFrame()
+        
 # =====================================================================
 # RESÚMENES Y AGREGACIONES
 # =====================================================================
