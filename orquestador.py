@@ -95,6 +95,180 @@ def _extraer_nro_factura_fallback(texto: str) -> Optional[str]:
     return None
 
 
+# =========================
+# NUEVO: INTERPRETACIÓN DE PREGUNTAS DE STOCK CON OPENAI
+# =========================
+import os
+from openai import OpenAI
+
+def interpretar_pregunta_stock(pregunta: str) -> dict:
+    """
+    Usa OpenAI para clasificar la intención de la pregunta de stock
+    """
+    if not OPENAI_API_KEY:
+        return {"tipo": "busqueda_libre", "parametros": {"texto": pregunta}}
+    
+    prompt = f"""
+Analiza esta pregunta sobre stock: "{pregunta}"
+
+Clasifica en UNO de estos tipos:
+1. "stock_total" - Pregunta por stock total, cuántos artículos, cuántos lotes
+2. "stock_por_familia" - Pregunta qué familias tienen más stock, stock por familia
+3. "stock_por_deposito" - Pregunta qué depósitos tienen más stock
+4. "stock_articulo" - Pregunta por un artículo específico (extraer nombre del artículo)
+5. "stock_familia_especifica" - Pregunta por una familia específica (extraer nombre: ID, VITEK, LAB, etc)
+6. "stock_lote" - Pregunta por un lote específico (extraer código de lote)
+7. "vencimientos" - Pregunta qué vence, cuándo vence, días para vencer
+8. "vencidos" - Pregunta por lotes vencidos
+9. "stock_bajo" - Pregunta por stock bajo, stock crítico, qué pedir
+10. "busqueda_libre" - Búsqueda con texto libre
+
+Responde SOLO con JSON:
+{{
+  "tipo": "...",
+  "parametros": {{
+    "articulo": "...",
+    "familia": "...",
+    "lote": "...",
+    "deposito": "...",
+    "dias": 90,
+    "texto": "..."
+  }}
+}}
+
+Si un parámetro no aplica, déjalo en null.
+"""
+    
+    try:
+        respuesta = OpenAI(api_key=OPENAI_API_KEY).chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Eres un clasificador de preguntas de inventario."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0
+        )
+        content = respuesta.choices[0].message.content.strip()
+        return json.loads(content)
+    except Exception as e:
+        print(f"Error interpretando pregunta de stock: {e}")
+        return {"tipo": "busqueda_libre", "parametros": {"texto": pregunta}}
+
+
+def responder_pregunta_stock(pregunta: str):
+    """
+    Orquestador principal que interpreta y ejecuta consultas de stock
+    """
+    # 1. Interpretar la pregunta
+    intencion = interpretar_pregunta_stock(pregunta)
+    tipo = intencion["tipo"]
+    params = intencion["parametros"]
+    
+    # 2. Ejecutar la función SQL correcta según el tipo
+    if tipo == "stock_total":
+        df = get_stock_total()
+        if df is not None and not df.empty:
+            return f"""
+            📊 Stock total:
+            - Registros: {int(df['registros'].iloc[0]):,}
+            - Artículos: {int(df['articulos'].iloc[0]):,}
+            - Lotes: {int(df['lotes'].iloc[0]):,}
+            - Stock total: {int(df['stock_total'].iloc[0]):,} unidades
+            """
+        return "⚠️ No se pudo obtener el resumen de stock."
+    
+    elif tipo == "stock_por_familia":
+        df = get_stock_por_familia()
+        if df is not None and not df.empty:
+            respuesta = "📊 Stock por familia:\n\n"
+            for _, row in df.head(10).iterrows():
+                respuesta += f"- {row['familia']}: {int(row['stock_total']):,} unidades ({int(row['articulos'])} artículos)\n"
+            return respuesta
+        return "⚠️ No se pudo obtener el stock por familia."
+    
+    elif tipo == "stock_por_deposito":
+        df = get_stock_por_deposito()
+        if df is not None and not df.empty:
+            respuesta = "🏢 Stock por depósito:\n\n"
+            for _, row in df.head(10).iterrows():
+                respuesta += f"- {row['deposito']}: {int(row['stock_total']):,} unidades ({int(row['articulos'])} artículos)\n"
+            return respuesta
+        return "⚠️ No se pudo obtener el stock por depósito."
+    
+    elif tipo == "stock_articulo":
+        articulo = params.get("articulo")
+        if articulo:
+            df = get_stock_articulo(articulo)
+            if df is None or df.empty:
+                return f"❌ No se encontró stock para '{articulo}'"
+            else:
+                total = df['STOCK'].sum()
+                lotes = df['LOTE'].nunique()
+                return f"📦 {articulo}: {int(total)} unidades en {lotes} lote(s)"
+        return "❌ Indicá el artículo."
+    
+    elif tipo == "stock_familia_especifica":
+        familia = params.get("familia")
+        if familia:
+            df = get_stock_familia(familia)
+            if df is None or df.empty:
+                return f"❌ No se encontró stock de la familia '{familia}' en Casa Central"
+            else:
+                articulos = df['ARTICULO'].nunique()
+                total = df['STOCK'].sum()
+                return f"📊 Familia {familia.upper()} (Casa Central): {articulos} artículos, {int(total)} unidades"
+        return "❌ Indicá la familia."
+    
+    elif tipo == "stock_lote":
+        lote = params.get("lote")
+        if lote:
+            df = get_stock_lote_especifico(lote)
+            if df is None or df.empty:
+                return f"❌ No se encontró el lote '{lote}'"
+            else:
+                r = df.iloc[0]
+                return f"📦 Lote {lote}:\n- Artículo: {r['ARTICULO']}\n- Depósito: {r['DEPOSITO']}\n- Stock: {int(r['STOCK'])} unidades\n- Vence: {r['VENCIMIENTO']}"
+        return "❌ Indicá el lote."
+    
+    elif tipo == "vencimientos":
+        dias = params.get("dias", 90)
+        df = get_lotes_por_vencer(dias=dias)
+        if df is None or df.empty:
+            return f"✅ No hay lotes que venzan en los próximos {dias} días"
+        else:
+            return f"⚠️ Hay {len(df)} lote(s) que vencen en los próximos {dias} días"
+    
+    elif tipo == "vencidos":
+        df = get_lotes_vencidos()
+        if df is None or df.empty:
+            return "✅ No hay lotes vencidos con stock"
+        else:
+            return f"⚠️ Hay {len(df)} lote(s) vencido(s) con stock"
+    
+    elif tipo == "stock_bajo":
+        df = get_stock_bajo(minimo=10)
+        if df is None or df.empty:
+            return "✅ No hay artículos con stock bajo"
+        else:
+            articulos = df.groupby('ARTICULO')['STOCK'].sum().sort_values().head(10)
+            respuesta = "⚠️ Artículos con stock bajo:\n\n"
+            for art, stock in articulos.items():
+                respuesta += f"- {art}: {int(stock)} unidades\n"
+            return respuesta
+    
+    elif tipo == "busqueda_libre":
+        texto = params.get("texto")
+        if texto:
+            df = buscar_stock_por_lote(texto_busqueda=texto)
+            if df is None or df.empty:
+                return f"❌ No se encontraron resultados para '{texto}'"
+            else:
+                return f"✅ Encontré {len(df)} registro(s) relacionados con '{texto}'"
+        return "❌ Indicá qué buscar."
+    
+    return "❌ No pude interpretar la pregunta"
+
+
 def procesar_pregunta_v2(pregunta: str):
     # FORZAR PARA "comparar compras roche, tresul 2024 2025"
     if pregunta.lower().strip() == "comparar compras roche, tresul 2024 2025":
@@ -119,7 +293,7 @@ def procesar_pregunta_v2(pregunta: str):
     print(f"{'=' * 60}")
 
     # =========================
-    # MARCA EN LOG: QUÉ “CEREBRO” SE ESTÁ USANDO
+    # MARCA EN LOG: QUÉ "CEREBRO" SE ESTÁ USANDO
     # =========================
     print(f"[ORQUESTADOR] AGENTIC_SOURCE = {_AGENTIC_SOURCE}")
 
@@ -219,6 +393,11 @@ def procesar_pregunta_v2(pregunta: str):
             pass
 
     if tipo == "no_entendido":
+        # NUEVO: INTENTAR INTERPRETAR COMO PREGUNTA DE STOCK
+        if any(word in pregunta.lower() for word in ["stock", "artículo", "articulo", "lote", "familia", "depósito", "deposito", "vence", "vencimiento"]):
+            respuesta = responder_pregunta_stock(pregunta)
+            return respuesta, None, None
+        
         sugerencia = interpretacion.get("sugerencia", "No entendí tu pregunta.")
         alternativas = interpretacion.get("alternativas", [])
         return (
