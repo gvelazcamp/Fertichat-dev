@@ -969,7 +969,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
     # ✅ NUEVO: Depósito con más stock
     if tipo == 'deposito_con_mas_stock':
         df = get_stock_por_deposito()
-        if df is not None and not df.empty:
+        if not df.empty:
             top_1 = df.iloc[0]
             respuesta = f"🏆 {top_1['deposito']} tiene el mayor stock con {int(top_1['stock_total']):,} unidades"
             return respuesta, df
@@ -978,7 +978,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
     # ✅ NUEVO: Familias con más stock
     if tipo == 'familias_con_mas_stock':
         df = get_stock_por_familia()
-        if df is not None and not df.empty:
+        if not df.empty:
             top_1 = df.iloc[0]
             respuesta = f"🏆 La familia con más stock es {top_1['familia']} con {int(top_1['stock_total']):,} unidades ({int(top_1['articulos'])} artículos)"
             return respuesta, df
@@ -987,7 +987,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
     # ✅ NUEVO: Artículos por familia
     if tipo == 'articulos_por_familia':
         df = get_stock_por_familia()
-        if df is not None and not df.empty:
+        if not df.empty:
             respuesta = "Artículos por familia:\n"
             for _, row in df.iterrows():
                 respuesta += f"- {row['familia']}: {int(row['articulos'])} artículos ({int(row['stock_total'])} unidades)\n"
@@ -1235,16 +1235,17 @@ def mostrar_stock_ia():
         st.session_state["articulo_contexto"] = None
         st.session_state["pause_autorefresh_stock"] = True
         
-        # Aplicar filtro de vencimiento
-        venc_filter = None
-        if vencimiento_filter == "<30 días":
-            venc_filter = "<30"
-        elif vencimiento_filter == "<15 días":
-            venc_filter = "<15"
+        # Obtener stock de la familia
+        df = get_stock_familia(familia_seleccionada)
         
-        df = get_stock_familia(familia=familia_seleccionada, vencimiento_filter=venc_filter)
+        # Aplicar filtro de vencimiento después de obtener datos
+        if vencimiento_filter == "<30 días":
+            df = df[df['Dias_Para_Vencer'] <= 30]
+        elif vencimiento_filter == "<15 días":
+            df = df[df['Dias_Para_Vencer'] <= 15]
+        
         descripcion_articulo = f"Familia {familia_seleccionada}"
-        if venc_filter:
+        if vencimiento_filter != "Ninguno":
             descripcion_articulo += f" ({vencimiento_filter})"
         
         if df is not None and not df.empty:
