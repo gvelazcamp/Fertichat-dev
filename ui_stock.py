@@ -1350,7 +1350,7 @@ def mostrar_stock_ia():
             with st.spinner("🔍 Consultando stock."):
                 respuesta, df = procesar_pregunta_stock(pregunta)
                 
-                st_session_state.historial_stock.append({
+                st.session_state.historial_stock.append({
                     'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     'pregunta': pregunta,
                     'respuesta': respuesta,
