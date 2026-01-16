@@ -155,9 +155,10 @@ Si un parámetro no aplica, déjalo en null.
         return {"tipo": "busqueda_libre", "parametros": {"texto": pregunta}}
 
 
-def responder_pregunta_stock(pregunta: str):
+def responder_pregunta_stock(pregunta: str) -> tuple:
     """
     Orquestador principal que interpreta y ejecuta consultas de stock
+    Devuelve: (mensaje, df) donde df puede ser None
     """
     # 1. Interpretar la pregunta
     intencion = interpretar_pregunta_stock(pregunta)
@@ -168,106 +169,97 @@ def responder_pregunta_stock(pregunta: str):
     if tipo == "stock_total":
         df = get_stock_total()
         if df is not None and not df.empty:
-            return f"""
+            mensaje = f"""
             📊 Stock total:
             - Registros: {int(df['registros'].iloc[0]):,}
             - Artículos: {int(df['articulos'].iloc[0]):,}
             - Lotes: {int(df['lotes'].iloc[0]):,}
             - Stock total: {int(df['stock_total'].iloc[0]):,} unidades
             """
-        return "⚠️ No se pudo obtener el resumen de stock."
+            return mensaje.strip(), None  # No tabla, solo mensaje
+        return "⚠️ No se pudo obtener el resumen de stock.", None
     
     elif tipo == "stock_por_familia":
         df = get_stock_por_familia()
         if df is not None and not df.empty:
-            respuesta = "📊 Stock por familia:\n\n"
-            for _, row in df.head(10).iterrows():
-                respuesta += f"- {row['familia']}: {int(row['stock_total']):,} unidades ({int(row['articulos'])} artículos)\n"
-            return respuesta
-        return "⚠️ No se pudo obtener el stock por familia."
+            return "📊 Stock por familia:", df  # Devuelve tabla
+        return "⚠️ No se pudo obtener el stock por familia.", None
     
     elif tipo == "stock_por_deposito":
         df = get_stock_por_deposito()
         if df is not None and not df.empty:
-            respuesta = "🏢 Stock por depósito:\n\n"
-            for _, row in df.head(10).iterrows():
-                respuesta += f"- {row['deposito']}: {int(row['stock_total']):,} unidades ({int(row['articulos'])} artículos)\n"
-            return respuesta
-        return "⚠️ No se pudo obtener el stock por depósito."
+            return "🏢 Stock por depósito:", df  # Devuelve tabla
+        return "⚠️ No se pudo obtener el stock por depósito.", None
     
     elif tipo == "stock_articulo":
         articulo = params.get("articulo")
         if articulo:
             df = get_stock_articulo(articulo)
             if df is None or df.empty:
-                return f"❌ No se encontró stock para '{articulo}'"
+                return f"❌ No se encontró stock para '{articulo}'", None
             else:
-                total = df['STOCK'].sum()
-                lotes = df['LOTE'].nunique()
-                return f"📦 {articulo}: {int(total)} unidades en {lotes} lote(s)"
-        return "❌ Indicá el artículo."
+                return f"📦 {articulo}: {int(df['STOCK'].sum())} unidades en {df['LOTE'].nunique()} lote(s)", df  # Devuelve tabla
+        return "❌ Indicá el artículo.", None
     
     elif tipo == "stock_familia_especifica":
         familia = params.get("familia")
         if familia:
             df = get_stock_familia(familia)
             if df is None or df.empty:
-                return f"❌ No se encontró stock de la familia '{familia}' en Casa Central"
+                return f"❌ No se encontró stock de la familia '{familia}' en Casa Central", None
             else:
-                articulos = df['ARTICULO'].nunique()
-                total = df['STOCK'].sum()
-                return f"📊 Familia {familia.upper()} (Casa Central): {articulos} artículos, {int(total)} unidades"
-        return "❌ Indicá la familia."
+                return f"📦 Stock de familia {familia.upper()} (Casa Central, {len(df)} registros):", df  # Devuelve tabla
+        return "❌ Indicá la familia.", None
     
     elif tipo == "stock_lote":
         lote = params.get("lote")
         if lote:
             df = get_stock_lote_especifico(lote)
             if df is None or df.empty:
-                return f"❌ No se encontró el lote '{lote}'"
+                return f"❌ No se encontró el lote '{lote}'", None
             else:
                 r = df.iloc[0]
-                return f"📦 Lote {lote}:\n- Artículo: {r['ARTICULO']}\n- Depósito: {r['DEPOSITO']}\n- Stock: {int(r['STOCK'])} unidades\n- Vence: {r['VENCIMIENTO']}"
-        return "❌ Indicá el lote."
+                mensaje = f"📦 Lote {lote}:\n- Artículo: {r['ARTICULO']}\n- Depósito: {r['DEPOSITO']}\n- Stock: {int(r['STOCK'])} unidades\n- Vence: {r['VENCIMIENTO']}"
+                return mensaje, df  # Devuelve tabla
+        return "❌ Indicá el lote.", None
     
     elif tipo == "vencimientos":
         dias = params.get("dias", 90)
         df = get_lotes_por_vencer(dias=dias)
         if df is None or df.empty:
-            return f"✅ No hay lotes que venzan en los próximos {dias} días"
+            return f"✅ No hay lotes que venzan en los próximos {dias} días", None
         else:
-            return f"⚠️ Hay {len(df)} lote(s) que vencen en los próximos {dias} días"
+            return f"⚠️ Hay {len(df)} lote(s) que vencen en los próximos {dias} días", df  # Devuelve tabla
     
     elif tipo == "vencidos":
         df = get_lotes_vencidos()
         if df is None or df.empty:
-            return "✅ No hay lotes vencidos con stock"
+            return "✅ No hay lotes vencidos con stock", None
         else:
-            return f"⚠️ Hay {len(df)} lote(s) vencido(s) con stock"
+            return f"⚠️ Hay {len(df)} lote(s) vencido(s) con stock", df  # Devuelve tabla
     
     elif tipo == "stock_bajo":
         df = get_stock_bajo(minimo=10)
         if df is None or df.empty:
-            return "✅ No hay artículos con stock bajo"
+            return "✅ No hay artículos con stock bajo", None
         else:
             articulos = df.groupby('ARTICULO')['STOCK'].sum().sort_values().head(10)
-            respuesta = "⚠️ Artículos con stock bajo:\n\n"
+            mensaje = "⚠️ Artículos con stock bajo:\n\n"
             for art, stock in articulos.items():
-                respuesta += f"- {art}: {int(stock)} unidades\n"
-            return respuesta
+                mensaje += f"- {art}: {int(stock)} unidades\n"
+            return mensaje.strip(), df  # Devuelve tabla
     
     elif tipo == "busqueda_libre":
         texto = params.get("texto")
         if texto:
             df = buscar_stock_por_lote(texto_busqueda=texto)
             if df is None or df.empty:
-                return f"❌ No se encontraron resultados para '{texto}'"
+                return f"❌ No se encontraron resultados para '{texto}'", None
             else:
-                return f"✅ Encontré {len(df)} registro(s) relacionados con '{texto}'"
-        return "❌ Indicá qué buscar."
+                return f"✅ Encontré {len(df)} registro(s) relacionados con '{texto}'", df  # Devuelve tabla
+        return "❌ Indicá qué buscar.", None
     
-    return "❌ No pude interpretar la pregunta"
-
+    return "❌ No pude interpretar la pregunta", None
 
 def procesar_pregunta_v2(pregunta: str):
     # FORZAR PARA "comparar compras roche, tresul 2024 2025"
