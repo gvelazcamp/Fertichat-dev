@@ -325,22 +325,20 @@ def get_stock_lote_especifico(lote: str) -> pd.DataFrame:
     except Exception:
         return pd.DataFrame()
 
-def get_stock_familia(familia: str) -> pd.DataFrame:
+def get_stock_familia(familia: str) -> pd.DataFrame: 
     try:
         base, _, _ = _stock_base_subquery()
         
-        # 1. Obtener todos los datos CON PROVEEDOR DE CHATBOT_RAW (STOCK DE STOCK)
+        # 1. Obtener todos los datos
         sql = f"""
             SELECT
-                s."CODIGO", s."ARTICULO", s."FAMILIA", s."DEPOSITO", s."LOTE", s."VENCIMIENTO", s."Dias_Para_Vencer", s."STOCK",
-                cr."Cliente / Proveedor" AS "Proveedor"
+                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
             FROM ({base}) s
-            LEFT JOIN public.chatbot_raw cr ON s."ARTICULO" = cr."Articulo"
-            WHERE UPPER(TRIM(COALESCE(s."FAMILIA", ''))) = %s
+            WHERE UPPER(TRIM(COALESCE("FAMILIA", ''))) = %s
             ORDER BY 
-                s."ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
-                CASE WHEN s."VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
-                s."VENCIMIENTO" ASC NULLS LAST
+                "ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
+                CASE WHEN "VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
+                "VENCIMIENTO" ASC NULLS LAST
         """
         df = ejecutar_consulta(sql, (familia.upper().strip(),))
         
@@ -373,8 +371,6 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
                 row_dict['VENCIMIENTO'] = None
                 row_dict['Dias_Para_Vencer'] = None
                 row_dict['STOCK'] = 0
-                # ✅ AGREGAR PROVEEDOR PARA SABER A QUIÉN PEDIR
-                row_dict['Proveedor'] = group['Proveedor'].iloc[0] if 'Proveedor' in group.columns and not group['Proveedor'].isna().all() else None
                 cleaned_rows.append(row_dict)
         
         df_cleaned = pd.DataFrame(cleaned_rows)
