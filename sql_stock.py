@@ -156,7 +156,9 @@ def _stock_base_subquery() -> tuple:
               )
             END AS "Dias_Para_Vencer"
         FROM "public"."stock" s
-        WHERE UPPER(TRIM(COALESCE(s."ARTICULO", ''))) <> 'SIN ARTICULO'
+        WHERE s."ARTICULO" NOT ILIKE '%(INACTIVO)%'
+          AND s."ARTICULO" NOT ILIKE '%INACTIVO%'
+          AND UPPER(TRIM(COALESCE(s."ARTICULO", ''))) <> 'SIN ARTICULO'
     """
     
     return sub, "public", "stock"
