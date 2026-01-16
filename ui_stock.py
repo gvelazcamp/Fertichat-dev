@@ -251,7 +251,7 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
     
     # 2. Obtener datos
     df_stock = get_stock_articulo(codigo_articulo)
-    # df_compras = get_compras_articulo(codigo_articulo)  # REMOVIDO PARA EVITAR ERROR
+    # df_compras = get_compras_articulo(codigo_articulo)  # REMOVIDO PARA EVITAR IMPORTERROR
     df_compras = pd.DataFrame()  # Placeholder vacío
     
     if df_stock.empty and df_compras.empty:
@@ -353,6 +353,16 @@ def detectar_intencion_stock(texto: str) -> dict:
     """Detecta la intención para consultas de stock"""
     texto_lower = texto.lower().strip()
 
+    # ✅ MOVER STOCK_ARTICULO ANTES DE VENCIMIENTOS PARA PRIORIZAR ARTÍCULO ESPECÍFICO
+    # Stock de artículo específico (casos 1 y 4)
+    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
+        # Extraer nombre del artículo
+        palabras_excluir = ['stock', 'cuanto', 'cuánto', 'hay', 'de', 'del', 'tenemos', 'disponible', 'el', 'la', 'los', 'las', 'que']
+        palabras = [p for p in texto_lower.split() if p not in palabras_excluir and len(p) > 2]
+        if palabras:
+            articulo = ' '.join(palabras)
+            return {'tipo': 'stock_articulo', 'articulo': articulo, 'debug': f'Stock de artículo: {articulo}'}
+
     # Vencimientos
     if any(k in texto_lower for k in ['vencer', 'vencen', 'vencimiento', 'vence', 'por vencer']):
         if 'vencido' in texto_lower or 'ya vencio' in texto_lower:
@@ -411,20 +421,7 @@ def detectar_intencion_stock(texto: str) -> dict:
     if any(k in texto_lower for k in ['deposito', 'depósito', 'depositos', 'depósitos', 'almacen']):
         return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
 
-    # Stock de artículo específico (casos 1 y 4)
-    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
-        # Extraer nombre del artículo
-        palabras_excluir = ['stock', 'cuanto', 'cuánto', 'hay', 'de', 'del', 'tenemos', 'disponible', 'el', 'la', 'los', 'las', 'que']
-        palabras = [p for p in texto_lower.split() if p not in palabras_excluir and len(p) > 2]
-        if palabras:
-            articulo = ' '.join(palabras)
-            return {'tipo': 'stock_articulo', 'articulo': articulo, 'debug': f'Stock de artículo: {articulo}'}
-
-    # Total general
-    if any(k in texto_lower for k in ['total', 'resumen', 'general', 'todo el stock']):
-        return {'tipo': 'stock_total', 'debug': 'Stock total'}
-
-    # Por defecto, intentar buscar artículo
+    # Al final, por defecto buscar artículo
     return {'tipo': 'stock_articulo', 'articulo': texto, 'debug': f'Búsqueda general: {texto}'}
 
 
@@ -792,6 +789,7 @@ def mostrar_stock_ia():
     else:
         st.session_state["articulo_contexto"] = None
         st.session_state["pause_autorefresh_stock"] = False  # ✅ REACTIVAR AUTOREFFRESH CUANDO NO HAY CONTEXTO
+
     st.markdown("---")
 
     if 'historial_stock' not in st.session_state:
@@ -928,7 +926,7 @@ def mostrar_stock_ia():
                 # ✅ Incrementar contador para crear nuevo input (esto limpia el campo)
                 st.session_state["stock_input_counter"] += 1
             st.rerun()
-            
+
     # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO ESTANDARIZADO
     if st.session_state.historial_stock:
         st.markdown("---")
