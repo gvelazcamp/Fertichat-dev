@@ -105,9 +105,9 @@ INTENTS_STOCK = [
     {
         "intent": "stock_familia_especifica",
         "patterns": [
-            r"(?:cual|cuales|que|qué)\s+es\s+el\s+stock\s+de\s+(id|fb|g|tr|xx|hm|mi)\b",
-            r"stock\s+(?:de\s+)?familia\s+(id|fb|g|tr|xx|hm|mi)\b",
-            r"(?:cual|cuales)\s+(?:es|son)\s+(?:el|los)\s+stock\s+de\s+(id|fb|g|tr|xx|hm|mi)\b"
+            r"(?:cual|cuales|que|qué)\s+es\s+el\s+stock\s+de\s+(?:la\s+familia\s+)?(\w+)",
+            r"stock\s+(?:de\s+)?familia\s+(\w+)",
+            r"(?:cual|cuales)\s+(?:es|son)\s+(?:el|los)\s+stock\s+de\s+(?:la\s+familia\s+)?(\w+)"
         ],
         "funcion": "obtener_stock_familia",
         "descripcion": "Stock de una familia específica"
@@ -164,18 +164,33 @@ def detectar_intencion_stock_regex(texto: str) -> dict:
         for pattern in intent["patterns"]:
             match = re.search(pattern, texto_lower, re.IGNORECASE)
             if match:
-                # Extraer parámetros del match
-                params = {}
+                # Extraer parámetros
                 if intent["intent"] == "stock_familia_especifica":
-                    params["familia"] = match.group(1).upper()
+                    familia = match.group(1).upper()
+                    if familia in ['ID', 'FB', 'G', 'TR', 'XX', 'HM', 'MI']:
+                        params = {"familia": familia}
+                        return {
+                            "tipo": intent["intent"],
+                            "parametros": params,
+                            "debug": intent["descripcion"]
+                        }
+                    else:
+                        # No es familia conocida, continuar a siguiente intent
+                        continue
                 elif intent["intent"] == "stock_articulo":
-                    params["articulo"] = match.group(1).strip()
-                
-                return {
-                    "tipo": intent["intent"],
-                    "parametros": params,
-                    "debug": intent["descripcion"]
-                }
+                    params = {"articulo": match.group(1).strip()}
+                    return {
+                        "tipo": intent["intent"],
+                        "parametros": params,
+                        "debug": intent["descripcion"]
+                    }
+                else:
+                    # Otros intents sin parámetros específicos
+                    return {
+                        "tipo": intent["intent"],
+                        "parametros": {},
+                        "debug": intent["descripcion"]
+                    }
     
     # Si no matchea nada, búsqueda general
     return {
