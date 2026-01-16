@@ -64,6 +64,7 @@ def clasificar_pregunta_stock(pregunta: str) -> Dict[str, Any]:
     - deposito_con_mas_stock: qué depósito tiene más stock
     - familias_con_mas_stock: qué familias tienen más stock
     - articulos_por_familia: cuántos artículos hay por familia
+    - busqueda_combinada: buscar artículos, lotes, códigos, texto libre, búsquedas combinadas
     - comparacion_temporal: evolución en el tiempo, cómo cambió, estamos comprando más
     
     Responde SOLO con JSON:
@@ -91,6 +92,42 @@ def extract_deposito_from_pregunta(pregunta: str) -> str:
         if dep in pregunta_lower:
             return dep.title()
     return ""
+
+def interpretar_busqueda(pregunta: str) -> dict:
+    """
+    Usa OpenAI para extraer parámetros de búsqueda de stock
+    """
+    if not client:
+        return {"texto_busqueda": pregunta.strip()}
+    
+    prompt = f"""
+    Analiza esta búsqueda de stock: "{pregunta}"
+    
+    Extrae los parámetros para buscar stock:
+    - articulo: nombre del artículo (ej: "vitek", "ana profile")
+    - lote: código de lote (ej: "L001", "ABC123")
+    - familia: familia del artículo (ej: "ID", "VITEK", "LAB", "QUIM")
+    - deposito: nombre del depósito (ej: "Casa Central", "Sucursal 1")
+    - texto_busqueda: búsqueda libre si no calza en las categorías anteriores (ej: "DL1590", "2027", "vitek casa")
+    
+    Responde SOLO con JSON válido. Si algo no aplica, déjalo en null.
+    Ejemplo: {{"articulo": "vitek", "lote": null, "familia": null, "deposito": "Casa Central", "texto_busqueda": null}}
+    """
+    
+    try:
+        respuesta = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=150
+        )
+        content = respuesta.choices[0].message.content.strip()
+        params = json.loads(content)
+        # Limpiar nulls
+        return {k: v for k, v in params.items() if v is not None}
+    except Exception as e:
+        print(f"Error interpretando búsqueda: {e}")
+        return {"texto_busqueda": pregunta.strip()}
 
 # =====================================================================
 # NUEVA FUNCIÓN: PREGUNTAS SOBRE TABLA ESPECÍFICA
@@ -568,6 +605,17 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
             respuesta = "No pude obtener datos"
             mostrar_tabla = False
     
+    elif tipo_pregunta == "busqueda_combinada":
+        params = interpretar_busqueda(pregunta)
+        df_temp = buscar_stock_por_lote(**params)
+        if not df_temp.empty:
+            respuesta = f"Encontré {len(df_temp)} registro(s) que coinciden con tu búsqueda."
+            df_stock = df_temp
+            mostrar_tabla = True
+        else:
+            respuesta = "No encontré resultados para tu búsqueda."
+            mostrar_tabla = False
+    
     else:
         respuesta = "No entendí la pregunta específica"
         mostrar_tabla = False
@@ -939,6 +987,16 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
                 respuesta += f"- {row['familia']}: {int(row['articulos'])} artículos ({int(row['stock_total'])} unidades)\n"
             return respuesta, df
         return "No pude obtener datos de familias.", None
+
+    # ✅ NUEVO: Búsqueda combinada
+    if tipo == 'busqueda_combinada':
+        params = interpretar_busqueda(pregunta)
+        df = buscar_stock_por_lote(**params)
+        if df is not None and not df.empty:
+            respuesta = f"Encontré {len(df)} registro(s) que coinciden con tu búsqueda."
+            return respuesta, df
+        else:
+            return "No encontré resultados para tu búsqueda.", None
 
     return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo', 'listado de artículos'.", None
 
