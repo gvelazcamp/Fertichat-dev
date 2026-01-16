@@ -206,7 +206,15 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
             cant = ultima['CANTIDAD'].iloc[0] if not ultima.empty else 0
             respuesta = f"🛒 Última compra: {fecha} - {cant} unidades"
         else:
-            respuesta = "No hay registros de compras (funcionalidad no implementada)"
+            # ✅ FALLBACK: Usar el lote con fecha de vencimiento más reciente (asumiendo que es el último comprado)
+            if not df_stock.empty and 'VENCIMIENTO' in df_stock.columns:
+                ultimo_lote = df_stock.nlargest(1, 'VENCIMIENTO')  # Más reciente vencimiento = último lote
+                lote = ultimo_lote['LOTE'].iloc[0] if not ultimo_lote.empty else '-'
+                venc = ultimo_lote['VENCIMIENTO'].iloc[0] if not ultimo_lote.empty else '-'
+                stock = ultimo_lote['STOCK'].iloc[0] if not ultimo_lote.empty else 0
+                respuesta = f"🛒 Último lote (asumiendo compra reciente): {lote} - Vence: {venc} - Stock: {stock}"
+            else:
+                respuesta = "No hay información de lotes para inferir última compra"
     
     elif tipo_pregunta == "deposito":
         if not df_stock.empty:
