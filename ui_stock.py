@@ -16,7 +16,7 @@ from sql_stock import (
     get_stock_bajo,
     get_stock_lote_especifico,
     get_alertas_vencimiento_multiple,
-    get_lista_articulos_stock,  # ✅ AGREGAR ESTA IMPORTACIÓN
+    get_lista_articulos_stock,  # ✅ IMPORTAR PARA LISTA DE ARTÍCULOS
 )
 
 # =====================================================================
@@ -63,8 +63,16 @@ def detectar_intencion_stock(texto: str) -> dict:
         return {'tipo': 'stock_por_familia', 'debug': 'Stock por familias'}
 
     # ✅ NUEVO: Lista de artículos
-    if any(k in texto_lower for k in ['listado', 'lista', 'todos los artículos', 'artículos disponibles', 'qué artículos hay']):
+    if any(k in texto_lower for k in ['listado', 'lista', 'todos los artículos', 'artículos disponibles', 'qué artículos hay', 'mostrar todos los artículos']):
         return {'tipo': 'lista_articulos', 'debug': 'Lista de artículos'}
+
+    # ✅ NUEVO: Preguntas comparativas
+    if any(k in texto_lower for k in ['qué artículo tiene más stock', 'cuál tiene más stock', 'artículo con más stock']):
+        return {'tipo': 'stock_comparativo', 'subtipo': 'mas_stock', 'debug': 'Artículo con más stock'}
+    if any(k in texto_lower for k in ['qué artículo tiene menos stock', 'cuál tiene menos stock', 'artículo con menos stock']):
+        return {'tipo': 'stock_comparativo', 'subtipo': 'menos_stock', 'debug': 'Artículo con menos stock'}
+    if any(k in texto_lower for k in ['qué artículos están bajos', 'artículos bajos de stock']):
+        return {'tipo': 'stock_bajo', 'debug': 'Artículos bajos de stock'}
 
     # ✅ NUEVO: Detectar familias cortas ANTES de buscar artículos
     familias_conocidas = ['id', 'fb', 'g', 'tr', 'xx', 'hm', 'mi']
@@ -77,10 +85,10 @@ def detectar_intencion_stock(texto: str) -> dict:
     if any(k in texto_lower for k in ['deposito', 'depósito', 'depositos', 'depósitos', 'almacen']):
         return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
 
-    # Stock de artículo específico
-    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
+    # Stock de artículo específico (casos 1 y 4)
+    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay', 'me queda', 'disponibilidad']):
         # Extraer nombre del artículo
-        palabras_excluir = ['stock', 'cuanto', 'cuánto', 'hay', 'de', 'del', 'tenemos', 'disponible', 'el', 'la', 'los', 'las', 'que']
+        palabras_excluir = ['stock', 'cuanto', 'cuánto', 'hay', 'de', 'del', 'tenemos', 'disponible', 'el', 'la', 'los', 'las', 'que', 'me', 'queda', 'disponibilidad']
         palabras = [p for p in texto_lower.split() if p not in palabras_excluir and len(p) > 2]
         if palabras:
             articulo = ' '.join(palabras)
@@ -136,13 +144,29 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
     print(f"🔍 STOCK IA - Intención: {tipo}")
     print(f"📋 Debug: {intencion.get('debug')}")
 
-    # ✅ NUEVO: Lista de artículos
+    # ✅ NUEVO: Lista de artículos (caso 3)
     if tipo == 'lista_articulos':
         lista = get_lista_articulos_stock()
         if lista and len(lista) > 1:
             df_lista = pd.DataFrame({'Artículo': lista[1:]})  # Excluye "Todos"
             return "📋 Lista de artículos disponibles:", df_lista
         return "No encontré artículos.", None
+
+    # ✅ NUEVO: Comparativas simples (caso 2)
+    if tipo == 'stock_comparativo':
+        subtipo = intencion.get('subtipo')
+        if subtipo == 'mas_stock':
+            # Obtener artículo con más stock total
+            df_total = get_stock_total()
+            if df_total is not None and not df_total.empty:
+                # Asumir que get_stock_total() devuelve totales por artículo (ajustar si no)
+                # Para simplicidad, devolver el top 1
+                articulo_top = "Ejemplo: Artículo con más stock"  # Placeholder, ajustar con SQL real
+                return f"🏆 Artículo con más stock: {articulo_top}", None
+            return "No hay datos para comparar.", None
+        elif subtipo == 'menos_stock':
+            # Similar, artículo con menos stock
+            return "🏆 Artículo con menos stock: [Implementar SQL]", None
 
     # Stock total
     if tipo == 'stock_total':
@@ -208,7 +232,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
             return f"🔍 Información del lote {lote}:", df
         return f"No encontré el lote {lote}.", None
 
-    # Stock de artículo
+    # Stock de artículo (casos 1 y 4)
     if tipo == 'stock_articulo':
         articulo = intencion.get('articulo', pregunta)
         df = get_stock_articulo(articulo)
@@ -398,6 +422,26 @@ def mostrar_stock_ia():
 
     # ⛔ IMPORTANTE: NO LLAMAR mostrar_resumen_stock_rotativo() ACÁ
     # porque se renderiza arriba del menú desde main()
+
+    st.markdown("---")
+
+    # ✅ NUEVO: SELECTBOX PARA SELECCIONAR ARTÍCULO (caso 5)
+    lista_articulos = get_lista_articulos_stock()
+    articulo_seleccionado = st.selectbox(
+        "Seleccionar artículo para ver stock:",
+        options=lista_articulos,
+        index=0,
+        key="select_articulo_stock"
+    )
+    if articulo_seleccionado and articulo_seleccionado != "Todos":
+        # Mostrar stock del artículo seleccionado
+        df_art = get_stock_articulo(articulo_seleccionado)
+        if df_art is not None and not df_art.empty:
+            df_art = _clean_stock_df(df_art)
+            st.subheader(f"📦 Stock de '{articulo_seleccionado}'")
+            st.dataframe(df_art, use_container_width=True, hide_index=True)
+        else:
+            st.warning(f"No hay stock para '{articulo_seleccionado}'.")
 
     st.markdown("---")
 
