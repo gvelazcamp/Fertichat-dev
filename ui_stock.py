@@ -163,29 +163,45 @@ def render_stock_alerts(df: pd.DataFrame):
     else:
         st.success("✅ No hay lotes próximos a vencer")
 
+def render_chat_compacto(codigo_articulo: str = "general", df_stock: pd.DataFrame = None):
+    if df_stock is None:
+        return
+    # ... resto igual, pero si codigo_articulo == "general", no mostrar "Preguntar" o algo
+
+# Pero para simplificar, quitar "Preguntar" cuando codigo_articulo == "general"
 def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame):
     """Chat compacto simplificado: botón al lado de descargar, input aparece al clickear"""
     
-    # ─── Botones: Descargar + Preguntar ───
-    col1, col2 = st.columns(2)
-    
-    with col1:
+    # ─── Botones: Descargar + Preguntar (solo si hay artículo específico) ───
+    if codigo_articulo != "general":
+        col1, col2 = st.columns(2)
+        with col1:
+            excel_data = df_to_excel(df_stock)
+            st.download_button(
+                label="📥 Descargar Excel",
+                data=excel_data,
+                file_name=f"stock_{codigo_articulo}.xlsx",
+                mime="application/vnd.ms-excel",
+                use_container_width=True,
+                key=f"download_chat_{codigo_articulo}"
+            )
+        with col2:
+            if st.button("💬 Preguntar", key=f"btn_preguntar_{codigo_articulo}", use_container_width=True):
+                st.session_state[f'mostrar_input_{codigo_articulo}'] = True
+    else:
+        # Solo descargar para casos generales
         excel_data = df_to_excel(df_stock)
         st.download_button(
             label="📥 Descargar Excel",
             data=excel_data,
-            file_name=f"stock_{codigo_articulo}.xlsx",
+            file_name=f"consulta_stock.xlsx",
             mime="application/vnd.ms-excel",
             use_container_width=True,
-            key=f"download_chat_{codigo_articulo}"
+            key=f"download_general"
         )
     
-    with col2:
-        if st.button("💬 Preguntar", key=f"btn_preguntar_{codigo_articulo}", use_container_width=True):
-            st.session_state[f'mostrar_input_{codigo_articulo}'] = True
-    
-    # ─── Input de pregunta (solo si clickearon "Preguntar") ───
-    if st.session_state.get(f'mostrar_input_{codigo_articulo}', False):
+    # ─── Input de pregunta (solo si clickearon "Preguntar" y hay artículo) ───
+    if codigo_articulo != "general" and st.session_state.get(f'mostrar_input_{codigo_articulo}', False):
         st.markdown("<br>", unsafe_allow_html=True)
         
         col_input, col_enviar = st.columns([5, 1])
@@ -210,8 +226,6 @@ def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame):
                     st.info(f"💡 {respuesta}")
                 else:
                     st.warning("Escribe una pregunta primero")
-                    
-
 # =====================================================================
 # NUEVA FUNCIÓN: CONSULTA CONTEXTUAL
 # =====================================================================
