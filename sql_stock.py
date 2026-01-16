@@ -326,20 +326,22 @@ def get_stock_lote_especifico(lote: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def get_stock_familia(familia: str) -> pd.DataFrame: 
+def get_stock_familia(familia: str) -> pd.DataFrame:
     try:
         base, _, _ = _stock_base_subquery()
         
-        # 1. Obtener todos los datos
+        # 1. Obtener todos los datos CON PROVEEDOR
         sql = f"""
             SELECT
-                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+                s."CODIGO", s."ARTICULO", s."FAMILIA", s."DEPOSITO", s."LOTE", s."VENCIMIENTO", s."Dias_Para_Vencer", s."STOCK",
+                cr."Cliente / Proveedor" AS "Proveedor"
             FROM ({base}) s
-            WHERE UPPER(TRIM(COALESCE("FAMILIA", ''))) = %s
+            LEFT JOIN public.chatbot_raw cr ON s."ARTICULO" = cr."Articulo" AND s."FAMILIA" = cr."Familia"
+            WHERE UPPER(TRIM(COALESCE(s."FAMILIA", ''))) = %s
             ORDER BY 
-                "ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
-                CASE WHEN "VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
-                "VENCIMIENTO" ASC NULLS LAST
+                s."ARTICULO" ASC,  -- ✅ ORDEN ALFABÉTICO
+                CASE WHEN s."VENCIMIENTO" IS NULL THEN 1 ELSE 0 END,
+                s."VENCIMIENTO" ASC NULLS LAST
         """
         df = ejecutar_consulta(sql, (familia.upper().strip(),))
         
@@ -372,6 +374,8 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
                 row_dict['VENCIMIENTO'] = None
                 row_dict['Dias_Para_Vencer'] = None
                 row_dict['STOCK'] = 0
+                # ✅ AGREGAR PROVEEDOR EN FILA GENÉRICA
+                row_dict['Proveedor'] = group['Proveedor'].iloc[0] if 'Proveedor' in group.columns and not group['Proveedor'].isna().all() else None
                 cleaned_rows.append(row_dict)
         
         df_cleaned = pd.DataFrame(cleaned_rows)
@@ -385,7 +389,6 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
     except Exception as e:
         print(f"Error en get_stock_familia: {e}")
         return pd.DataFrame()
-
 
 # =====================================================================
 # RESÚMENES Y AGREGACIONES
