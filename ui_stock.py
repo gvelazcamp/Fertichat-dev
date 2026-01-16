@@ -55,6 +55,7 @@ def detectar_intencion_stock(texto: str) -> dict:
 
     # Stock por familia
     if any(k in texto_lower for k in ['familia', 'familias', 'por familia', 'seccion', 'secciones']):
+        # Ver si menciona una familia específica
         familias_conocidas = ['id', 'fb', 'g', 'tr', 'xx', 'hm', 'mi']
         for fam in familias_conocidas:
             if fam in texto_lower.split():
@@ -385,67 +386,71 @@ def mostrar_stock_ia():
             st.session_state.historial_stock = []
             st.rerun()
 
-    pregunta = st.text_input(
-        "Escribe tu consulta de stock:",
-        placeholder="Ej: stock vitek / lotes por vencer / stock bajo",
-        key="input_stock"
-    )
+    # ✅ ALERTAS ARRIBA DEL INPUT (SOLO SI NO HAY HISTORIAL)
+    if not st.session_state.historial_stock:
+        try:
+            alertas = get_alertas_vencimiento_multiple(5)
+            if alertas:
+                import time
+                indice = int(time.time() // 5) % len(alertas)
+                alerta = alertas[indice]
 
-    # 🔴 ALERTA DE VENCIMIENTO ROTATIVA (basada en tiempo)
-    try:
-        alertas = get_alertas_vencimiento_multiple(5)
-        if alertas:
-            import time
-            # Cambiar cada 5 segundos basado en el tiempo actual
-            indice = int(time.time() // 5) % len(alertas)
-            alerta = alertas[indice]
+                # ✅ CORREGIDO: usar 'dias_restantes' en vez de 'dias'
+                dias = alerta['dias_restantes']
+                articulo = alerta['articulo']
+                lote = alerta['lote']
+                venc = alerta['vencimiento']
+                stock = alerta['stock']
 
-            # ✅ CORREGIDO: usar 'dias_restantes' en vez de 'dias'
-            dias = alerta['dias_restantes']
-            articulo = alerta['articulo']
-            lote = alerta['lote']
-            venc = alerta['vencimiento']
-            stock = alerta['stock']
+                # Contador
+                contador = f"<div style='text-align: center; font-size: 0.8em; color: #666; margin-top: 5px;'>{indice + 1} de {len(alertas)} alertas</div>"
 
-            # Contador
-            contador = f"<div style='text-align: center; font-size: 0.8em; color: #666; margin-top: 5px;'>{indice + 1} de {len(alertas)} alertas</div>"
+                html = ""
+                if dias <= 7:
+                    # Crítico - rojo
+                    html = """
+                    <div style="background-color: #fee2e2; border-left: 5px solid #dc2626; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                        <span style="color: #dc2626; font-weight: bold; font-size: 1.1em;">🚨 ¡ALERTA CRÍTICA!</span><br>
+                        <span style="color: #7f1d1d;"><b>{}</b> - Lote: <b>{}</b></span><br>
+                        <span style="color: #7f1d1d;">Vence: <b>{}</b> ({} días) | Stock: {}</span>
+                    </div>
+                    {}
+                    """.format(articulo, lote, venc, dias, stock, contador)
+                elif dias <= 30:
+                    # Urgente - naranja
+                    html = """
+                    <div style="background-color: #fff7ed; border-left: 5px solid #ea580c; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                        <span style="color: #ea580c; font-weight: bold; font-size: 1.1em;">⚠️ PRÓXIMO A VENCER</span><br>
+                        <span style="color: #9a3412;"><b>{}</b> - Lote: <b>{}</b></span><br>
+                        <span style="color: #9a3412;">Vence: <b>{}</b> ({} días) | Stock: {}</span>
+                    </div>
+                    {}
+                    """.format(articulo, lote, venc, dias, stock, contador)
+                else:
+                    # Atención - amarillo
+                    html = """
+                    <div style="background-color: #fefce8; border-left: 5px solid #ca8a04; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                        <span style="color: #ca8a04; font-weight: bold; font-size: 1.1em;">📋 Próximo vencimiento</span><br>
+                        <span style="color: #854d0e;"><b>{}</b> - Lote: <b>{}</b></span><br>
+                        <span style="color: #854d0e;">Vence: <b>{}</b> ({} días) | Stock: {}</span>
+                    </div>
+                    {}
+                    """.format(articulo, lote, venc, dias, stock, contador)
 
-            html = ""
-            if dias <= 7:
-                # Crítico - rojo
-                html = """
-                <div style="background-color: #fee2e2; border-left: 5px solid #dc2626; padding: 15px; border-radius: 5px; margin: 10px 0;">
-                    <span style="color: #dc2626; font-weight: bold; font-size: 1.1em;">🚨 ¡ALERTA CRÍTICA!</span><br>
-                    <span style="color: #7f1d1d;"><b>{}</b> - Lote: <b>{}</b></span><br>
-                    <span style="color: #7f1d1d;">Vence: <b>{}</b> ({} días) | Stock: {}</span>
-                </div>
-                {}
-                """.format(articulo, lote, venc, dias, stock, contador)
-            elif dias <= 30:
-                # Urgente - naranja
-                html = """
-                <div style="background-color: #fff7ed; border-left: 5px solid #ea580c; padding: 15px; border-radius: 5px; margin: 10px 0;">
-                    <span style="color: #ea580c; font-weight: bold; font-size: 1.1em;">⚠️ PRÓXIMO A VENCER</span><br>
-                    <span style="color: #9a3412;"><b>{}</b> - Lote: <b>{}</b></span><br>
-                    <span style="color: #9a3412;">Vence: <b>{}</b> ({} días) | Stock: {}</span>
-                </div>
-                {}
-                """.format(articulo, lote, venc, dias, stock, contador)
-            else:
-                # Atención - amarillo
-                html = """
-                <div style="background-color: #fefce8; border-left: 5px solid #ca8a04; padding: 15px; border-radius: 5px; margin: 10px 0;">
-                    <span style="color: #ca8a04; font-weight: bold; font-size: 1.1em;">📋 Próximo vencimiento</span><br>
-                    <span style="color: #854d0e;"><b>{}</b> - Lote: <b>{}</b></span><br>
-                    <span style="color: #854d0e;">Vence: <b>{}</b> ({} días) | Stock: {}</span>
-                </div>
-                {}
-                """.format(articulo, lote, venc, dias, stock, contador)
+                st.markdown(html, unsafe_allow_html=True)
+        except Exception as e:
+            print(f"⚠️ Error en alertas de vencimiento: {e}")
+            pass  # Si falla la alerta, no afecta el resto
 
-            st.markdown(html, unsafe_allow_html=True)
-    except Exception as e:
-        print(f"⚠️ Error en alertas de vencimiento: {e}")
-        pass  # Si falla la alerta, no afecta el resto
+    # ✅ Crear un contenedor para el input (se limpia después de procesar)
+    col_input = st.container()
+    with col_input:
+        pregunta = st.text_input(
+            "Escribe tu consulta de stock:",
+            placeholder="Ej: stock vitek / lotes por vencer / stock bajo",
+            key="input_stock",
+            value=""  # ✅ Asegurar que siempre esté vacío después de enviar
+        )
 
     if pregunta:
         with st.spinner("🔍 Consultando stock."):
@@ -455,11 +460,13 @@ def mostrar_stock_ia():
                 'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'pregunta': pregunta,
                 'respuesta': respuesta,
-                'df': df,  # ✅ Guardar el DataFrame
+                'df': df,  # ✅ Agregar DataFrame
                 'tiene_datos': df is not None and not df.empty
             })
-            
-            st.rerun()  # ✅ Forzar refresco para mostrar en historial
+
+            # ✅ LIMPIAR EL INPUT DESPUÉS DE PROCESAR
+            st.session_state["input_stock"] = ""
+            st.rerun()
 
     # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO
     if st.session_state.historial_stock:
