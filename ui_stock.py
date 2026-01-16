@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, Any
 import time
+import json
 
 from utils_format import formatear_dataframe, df_to_excel
 from sql_stock import (
@@ -18,6 +19,51 @@ from sql_stock import (
     get_alertas_vencimiento_multiple,
     get_lista_articulos_stock,  # ✅ IMPORTAR PARA LISTA DE ARTÍCULOS
 )
+from sql_compras import get_compras_articulo  # ✅ AGREGAR PARA COMPRAS (asume que existe)
+
+# =====================================================================
+# OPENAI PARA CLASIFICACIÓN DE PREGUNTAS
+# =====================================================================
+import os
+from openai import OpenAI
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
+def clasificar_pregunta_stock(pregunta: str) -> Dict[str, Any]:
+    """
+    Usa OpenAI para clasificar preguntas sobre stock contextual.
+    """
+    if not client:
+        return {"tipo": "stock_total", "detalles": "OpenAI no disponible"}
+    
+    prompt = f"""
+    Analiza esta pregunta sobre stock de un artículo:
+    "{pregunta}"
+    
+    Clasifica en uno de estos tipos:
+    - vencimiento: cuando vence, próximo a vencer, lotes que vencen
+    - ultima_compra: cuándo compramos, última vez que entró, cuándo fue la última compra
+    - deposito: dónde está, en qué depósito, dónde hay stock
+    - lote_antiguo: lote más viejo, lote más antiguo
+    - stock_total: cuánto hay, stock actual
+    - comparacion_temporal: evolución en el tiempo, cómo cambió, estamos comprando más
+    
+    Responde SOLO con JSON:
+    {{"tipo": "...", "detalles": "..."}}
+    """
+    
+    try:
+        respuesta = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=100
+        )
+        content = respuesta.choices[0].message.content.strip()
+        return json.loads(content)
+    except Exception as e:
+        print(f"Error en OpenAI: {e}")
+        return {"tipo": "stock_total", "detalles": "Error en clasificación"}
 
 # =========================
 # HELPERS DE UI PARA STOCK
@@ -95,6 +141,104 @@ def render_download_button(df: pd.DataFrame, filename: str, idx: int):
             use_container_width=True,
             key=f"download_{idx}"
         )
+
+# =====================================================================
+# NUEVA FUNCIÓN: CONSULTA CONTEXTUAL
+# =====================================================================
+
+def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = None):
+    """
+    Maneja preguntas sobre stock de un artículo específico con contexto.
+    
+    Ejemplos:
+    - "stock de vitek cuando vence" → Extrae artículo + pregunta
+    - "¿cuándo fue la última compra?" → Usa artículo del contexto (selectbox)
+    """
+    # 1. Identificar artículo (del contexto o de la pregunta)
+    if not codigo_articulo:
+        # Extraer de la pregunta
+        tokens = pregunta.lower().split()
+        # Buscar en lista de artículos
+        lista_art = get_lista_articulos_stock()[1:]  # Sin "Todos"
+        for art in lista_art:
+            art_lower = art.lower()
+            if any(word in art_lower for word in tokens):
+                codigo_articulo = art
+                break
+    
+    if not codigo_articulo:
+        st.error("No pude identificar el artículo. Selecciona uno del selectbox o mencionalo en la pregunta.")
+        return
+    
+    # 2. Obtener datos
+    df_stock = get_stock_articulo(codigo_articulo)
+    df_compras = get_compras_articulo(codigo_articulo)  # Asume que existe
+    
+    if df_stock.empty and df_compras.empty:
+        st.warning(f"No hay datos para '{codigo_articulo}'.")
+        return
+    
+    # 3. Clasificar pregunta con OpenAI
+    clasificacion = clasificar_pregunta_stock(pregunta)
+    tipo_pregunta = clasificacion.get('tipo', 'stock_total')
+    
+    # 4. Responder según tipo
+    respuesta = ""
+    if tipo_pregunta == "vencimiento":
+        if not df_stock.empty and 'Dias_Para_Vencer' in df_stock.columns:
+            proximo = df_stock.nsmallest(1, 'Dias_Para_Vencer')
+            lote = proximo['LOTE'].iloc[0] if not proximo.empty else '-'
+            venc = proximo['VENCIMIENTO'].iloc[0] if not proximo.empty else '-'
+            dias = proximo['Dias_Para_Vencer'].iloc[0] if not proximo.empty else 0
+            respuesta = f"📅 El lote {lote} vence el {venc} ({dias} días)"
+        else:
+            respuesta = "No hay información de vencimientos"
+    
+    elif tipo_pregunta == "ultima_compra":
+        if not df_compras.empty:
+            ultima = df_compras.nlargest(1, 'FECHA_COMPRA')  # Asume columna FECHA_COMPRA
+            fecha = ultima['FECHA_COMPRA'].iloc[0] if not ultima.empty else '-'
+            cant = ultima['CANTIDAD'].iloc[0] if not ultima.empty else 0
+            respuesta = f"🛒 Última compra: {fecha} - {cant} unidades"
+        else:
+            respuesta = "No hay registros de compras"
+    
+    elif tipo_pregunta == "deposito":
+        if not df_stock.empty:
+            depositos = df_stock['DEPOSITO'].unique()
+            respuesta = f"🏢 Depósitos: {', '.join(depositos)}"
+        else:
+            respuesta = "No hay información de depósitos"
+    
+    elif tipo_pregunta == "lote_antiguo":
+        if not df_stock.empty and 'VENCIMIENTO' in df_stock.columns:
+            antiguo = df_stock.nsmallest(1, 'VENCIMIENTO')
+            lote = antiguo['LOTE'].iloc[0] if not antiguo.empty else '-'
+            venc = antiguo['VENCIMIENTO'].iloc[0] if not antiguo.empty else '-'
+            respuesta = f"📦 Lote más antiguo: {lote} (vence {venc})"
+        else:
+            respuesta = "No hay información de lotes"
+    
+    elif tipo_pregunta == "stock_total":
+        total = df_stock['STOCK'].sum() if not df_stock.empty and 'STOCK' in df_stock.columns else 0
+        respuesta = f"📊 Stock total: {total} unidades"
+    
+    elif tipo_pregunta == "comparacion_temporal":
+        respuesta = "📈 Análisis temporal: [Implementar comparación histórica]"
+    
+    else:
+        respuesta = "No entendí la pregunta específica"
+    
+    # 5. Mostrar header + tabla + respuesta
+    total_stock = df_stock['STOCK'].sum() if not df_stock.empty and 'STOCK' in df_stock.columns else 0
+    render_stock_header(codigo_articulo, int(total_stock))
+    
+    if not df_stock.empty:
+        render_stock_table(df_stock)
+        render_stock_alerts(df_stock)
+        render_download_button(df_stock, f"stock_{codigo_articulo[:20]}", "contextual")
+    
+    st.success(respuesta)
 
 # =====================================================================
 # MÓDULO STOCK IA (CHATBOT)
@@ -490,6 +634,10 @@ def mostrar_stock_ia():
     if "stock_input_counter" not in st.session_state:
         st.session_state["stock_input_counter"] = 0
 
+    # ✅ NUEVO: CONTEXTO DEL ARTÍCULO SELECCIONADO
+    if "articulo_contexto" not in st.session_state:
+        st.session_state["articulo_contexto"] = None
+
     # Agregar espacio superior para compensar padding removido
     st.markdown("<div style='margin-top: 2.5rem;'></div>", unsafe_allow_html=True)
     
@@ -504,12 +652,13 @@ def mostrar_stock_ia():
     # ✅ NUEVO: SELECTBOX PARA SELECCIONAR ARTÍCULO (caso 5)
     lista_articulos = get_lista_articulos_stock()
     articulo_seleccionado = st.selectbox(
-        "Seleccionar artículo para ver stock:",
-        options=lista_articulos,
+        "Seleccionar artículo para contexto:",
+        options=["Ninguno"] + lista_articulos,
         index=0,
         key="select_articulo_stock"
     )
-    if articulo_seleccionado and articulo_seleccionado != "Todos":
+    if articulo_seleccionado and articulo_seleccionado != "Ninguno" and articulo_seleccionado != "Todos":
+        st.session_state["articulo_contexto"] = articulo_seleccionado
         # Mostrar stock del artículo seleccionado
         df_art = get_stock_articulo(articulo_seleccionado)
         if df_art is not None and not df_art.empty:
@@ -522,6 +671,8 @@ def mostrar_stock_ia():
             render_download_button(df_art, f"stock_{articulo_seleccionado[:20]}", "select")
         else:
             st.warning(f"No hay stock para '{articulo_seleccionado}'.")
+    else:
+        st.session_state["articulo_contexto"] = None
 
     st.markdown("---")
 
@@ -552,6 +703,11 @@ def mostrar_stock_ia():
         📉 **Alertas:**
         - "stock bajo"
         - "artículos a reponer"
+        
+        💡 **Preguntas contextuales (con artículo seleccionado):**
+        - "¿cuándo vence?"
+        - "¿última compra?"
+        - "¿en qué depósito está?"
         """)
 
         st.markdown("---")
@@ -627,22 +783,30 @@ def mostrar_stock_ia():
         )
 
     if pregunta and pregunta.strip():
-        # ✅ PAUSAR AUTOREFRESH AL HACER PREGUNTA
-        st.session_state["pause_autorefresh_stock"] = True
-        
-        with st.spinner("🔍 Consultando stock."):
-            respuesta, df = procesar_pregunta_stock(pregunta)
+        # ✅ NUEVO: SI HAY CONTEXTO DE ARTÍCULO, USAR CONSULTA CONTEXTUAL
+        articulo_contexto = st.session_state.get("articulo_contexto")
+        if articulo_contexto and articulo_contexto != "Ninguno":
+            # Procesar pregunta contextual sobre el artículo seleccionado
+            with st.spinner("🔍 Consultando stock contextual..."):
+                procesar_consulta_stock_contextual(pregunta, articulo_contexto)
+            # No agregar al historial normal, ya que es contextual
+        else:
+            # ✅ PAUSAR AUTOREFRESH AL HACER PREGUNTA
+            st.session_state["pause_autorefresh_stock"] = True
             
-            st.session_state.historial_stock.append({
-                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'pregunta': pregunta,
-                'respuesta': respuesta,
-                'df': df,  # ✅ Agregar DataFrame
-                'tiene_datos': df is not None and not df.empty
-            })
+            with st.spinner("🔍 Consultando stock."):
+                respuesta, df = procesar_pregunta_stock(pregunta)
+                
+                st.session_state.historial_stock.append({
+                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'pregunta': pregunta,
+                    'respuesta': respuesta,
+                    'df': df,  # ✅ Agregar DataFrame
+                    'tiene_datos': df is not None and not df.empty
+                })
 
-            # ✅ Incrementar contador para crear nuevo input (esto limpia el campo)
-            st.session_state["stock_input_counter"] += 1
+                # ✅ Incrementar contador para crear nuevo input (esto limpia el campo)
+                st.session_state["stock_input_counter"] += 1
             st.rerun()
 
     # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO ESTANDARIZADO
