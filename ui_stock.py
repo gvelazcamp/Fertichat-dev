@@ -651,6 +651,10 @@ def detectar_intencion_stock(texto: str) -> dict:
     if 'lotes' in texto_lower and ('registrados' in texto_lower or 'tengo' in texto_lower):
         return {'tipo': 'stock_total', 'debug': 'Lotes totales'}
 
+    # ✅ AGREGAR: Stock por familia general
+    if 'por familia' in texto_lower or 'familias' in texto_lower:
+        return {'tipo': 'stock_por_familia', 'debug': 'Stock por familia general'}
+
     # ✅ MOVER STOCK_ARTICULO ANTES DE VENCIMIENTOS PARA PRIORIZAR ARTÍCULO ESPECÍFICO
     # Stock de artículo específico (casos 1 y 4)
     if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
@@ -721,7 +725,6 @@ def detectar_intencion_stock(texto: str) -> dict:
 
     # Al final, por defecto buscar artículo
     return {'tipo': 'stock_articulo', 'articulo': texto, 'debug': f'Búsqueda general: {texto}'}
-
 
 def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
     """Limpia el DataFrame de stock: filtra (INACTIVO), si hay stock >0 mostrar solo esos; si todo =0 mostrar 1 fila genérica."""
