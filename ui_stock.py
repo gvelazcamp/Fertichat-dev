@@ -211,19 +211,6 @@ def render_chat_compacto(codigo_articulo: str, df_stock: pd.DataFrame):
                 else:
                     st.warning("Escribe una pregunta primero")
                     
-def render_download_button(df: pd.DataFrame, filename: str, idx: int):
-    """Botón de descarga centrado"""
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        excel_data = df_to_excel(df)
-        st.download_button(
-            label="📥 Descargar Excel",
-            data=excel_data,
-            file_name=f"{filename}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument/spreadsheetml.sheet",
-            use_container_width=True,
-            key=f"download_{idx}"
-        )
 
 # =====================================================================
 # NUEVA FUNCIÓN: CONSULTA CONTEXTUAL
