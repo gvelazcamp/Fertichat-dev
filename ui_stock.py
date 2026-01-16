@@ -1186,43 +1186,103 @@ def mostrar_stock_ia():
 
     st.markdown("---")
 
-    # ✅ NUEVO: SELECTBOX PARA SELECCIONAR ARTÍCULO (caso 5)
-    lista_articulos = get_lista_articulos_stock()
-    articulo_seleccionado = st.selectbox(
-        "Seleccionar artículo para contexto:",
-        options=["Ninguno"] + lista_articulos,
-        index=0,
-        key="select_articulo_stock"
-    )
-    if articulo_seleccionado and articulo_seleccionado != "Ninguno":
+    # ✅ NUEVO: SELECTBOXES PARA SELECCIONAR CONTEXTO AVANZADO
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        familias = get_lista_familias()
+        familia_seleccionada = st.selectbox(
+            "Seleccionar familia:",
+            options=["Ninguna"] + familias,
+            index=0,
+            key="select_familia_stock"
+        )
+    
+    with col2:
+        lista_articulos = get_lista_articulos_stock()
+        articulo_seleccionado = st.selectbox(
+            "Seleccionar artículo:",
+            options=["Ninguno"] + lista_articulos,
+            index=0,
+            key="select_articulo_stock"
+        )
+    
+    with col3:
+        vencimiento_filter = st.selectbox(
+            "Filtro vencimiento:",
+            options=["Ninguno", "<30 días", "<15 días"],
+            index=0,
+            key="select_vencimiento_stock"
+        )
+    
+    # ✅ LÓGICA PARA APLICAR FILTROS
+    if familia_seleccionada != "Ninguna":
+        # Prioridad a familia
+        st.session_state["articulo_contexto"] = None
+        st.session_state["pause_autorefresh_stock"] = True
+        
+        # Aplicar filtro de vencimiento
+        venc_filter = None
+        if vencimiento_filter == "<30 días":
+            venc_filter = "<30"
+        elif vencimiento_filter == "<15 días":
+            venc_filter = "<15"
+        
+        df = get_stock_familia(familia=familia_seleccionada, vencimiento_filter=venc_filter)
+        descripcion_articulo = f"Familia {familia_seleccionada}"
+        if venc_filter:
+            descripcion_articulo += f" ({vencimiento_filter})"
+        
+        if df is not None and not df.empty:
+            total_stock = df['STOCK'].sum() if 'STOCK' in df.columns else 0
+            render_stock_header(descripcion_articulo, int(total_stock))
+            render_stock_table(df)
+            render_stock_alerts(df)
+            render_chat_compacto(familia_seleccionada, df, unique_id="familia_select")
+        else:
+            st.warning(f"No hay stock para la familia '{familia_seleccionada}' con el filtro aplicado.")
+    
+    elif articulo_seleccionado != "Ninguno":
+        # Artículo seleccionado
         st.session_state["articulo_contexto"] = articulo_seleccionado
-        st.session_state["pause_autorefresh_stock"] = True  # ✅ PAUSAR AUTOREFFRESH CUANDO HAY CONTEXTO
+        st.session_state["pause_autorefresh_stock"] = True
         
         if articulo_seleccionado == "Todos":
-            # ✅ MOSTRAR STOCK POR FAMILIA, LÓGICA SIMILAR A "stock de id" PERO PARA TODOS
-            df_art = get_stock_por_familia()
+            # Stock por familia general
+            df = get_stock_por_familia()
             descripcion_articulo = "Stock por Familia"
-            # No limpiar stock 0, ya que es agrupado
         else:
-            # Mostrar stock del artículo seleccionado
-            df_art = get_stock_articulo(articulo_seleccionado)
+            # Stock del artículo
+            df = get_stock_articulo(articulo_seleccionado)
             descripcion_articulo = articulo_seleccionado
-            df_art = _clean_stock_df(df_art)
+            
+            # Aplicar filtro de vencimiento si se seleccionó
+            if vencimiento_filter != "Ninguno":
+                if 'Dias_Para_Vencer' in df.columns:
+                    if vencimiento_filter == "<30 días":
+                        df = df[df['Dias_Para_Vencer'] <= 30]
+                    elif vencimiento_filter == "<15 días":
+                        df = df[df['Dias_Para_Vencer'] <= 15]
+                    descripcion_articulo += f" ({vencimiento_filter})"
+            
+            df = _clean_stock_df(df)
         
-        if df_art is not None and not df_art.empty:
-            total_stock = df_art['STOCK'].sum() if 'STOCK' in df_art.columns else 0
+        if df is not None and not df.empty:
+            total_stock = df['STOCK'].sum() if 'STOCK' in df.columns else 0
             render_stock_header(descripcion_articulo, int(total_stock))
-            render_stock_table(df_art)
-            render_stock_alerts(df_art)
-            render_chat_compacto(articulo_seleccionado, df_art, unique_id="select")
+            render_stock_table(df)
+            render_stock_alerts(df)
+            render_chat_compacto(articulo_seleccionado, df, unique_id="articulo_select")
         else:
-            st.warning(f"No hay stock para '{articulo_seleccionado}'.")
+            st.warning(f"No hay stock para '{articulo_seleccionado}' con el filtro aplicado.")
+    
     else:
+        # Ninguno seleccionado
         st.session_state["articulo_contexto"] = None
-        st.session_state["pause_autorefresh_stock"] = False  # ✅ REACTIVAR AUTOREFFRESH CUANDO NO HAY CONTEXTO
+        st.session_state["pause_autorefresh_stock"] = False
+        st.info("Selecciona una familia, artículo o ambos para ver el stock. También puedes aplicar filtros de vencimiento.")
 
     st.markdown("---")
-
     if 'historial_stock' not in st.session_state:
         st.session_state.historial_stock = []
 
