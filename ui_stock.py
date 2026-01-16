@@ -341,6 +341,10 @@ def mostrar_resumen_stock_rotativo(dias_vencer: int = 365):  # ✅ CAMBIADO DEFA
 def mostrar_stock_ia():
     """Módulo Stock IA - Chat para consultas de stock"""
 
+    # ✅ INICIALIZAR FLAG PARA PAUSAR AUTOREFRESH
+    if "pause_autorefresh_stock" not in st.session_state:
+        st.session_state["pause_autorefresh_stock"] = False
+
     # Agregar espacio superior para compensar padding removido
     st.markdown("<div style='margin-top: 2.5rem;'></div>", unsafe_allow_html=True)
     
@@ -384,10 +388,11 @@ def mostrar_stock_ia():
 
         if st.button("🗑️ Limpiar historial", key="limpiar_stock", use_container_width=True):
             st.session_state.historial_stock = []
+            st.session_state["pause_autorefresh_stock"] = False  # ✅ REACTIVAR AUTOREFRESH
             st.rerun()
 
-    # ✅ ALERTAS ARRIBA DEL INPUT (SOLO SI NO HAY HISTORIAL)
-    if not st.session_state.historial_stock:
+    # ✅ ALERTAS ARRIBA DEL INPUT (SOLO SI NO HAY HISTORIAL Y NO ESTÁ PAUSADO)
+    if not st.session_state.historial_stock and not st.session_state.get("pause_autorefresh_stock", False):
         try:
             alertas = get_alertas_vencimiento_multiple(5)
             if alertas:
@@ -442,28 +447,29 @@ def mostrar_stock_ia():
             print(f"⚠️ Error en alertas de vencimiento: {e}")
             pass  # Si falla la alerta, no afecta el resto
 
-    # ✅ Crear un contenedor para el input (se limpia después de procesar)
-    col_input = st.container()
-    with col_input:
-        pregunta = st.text_input(
-            "Escribe tu consulta de stock:",
-            placeholder="Ej: stock vitek / lotes por vencer / stock bajo",
-            key="input_stock",
-            value=""  # ✅ Asegurar que siempre esté vacío después de enviar
-        )
+    pregunta = st.text_input(
+        "Escribe tu consulta de stock:",
+        placeholder="Ej: stock vitek / lotes por vencer / stock bajo",
+        key="input_stock"
+    )
 
     if pregunta:
+        # ✅ PAUSAR AUTOREFRESH AL HACER PREGUNTA
+        st.session_state["pause_autorefresh_stock"] = True
+        
         with st.spinner("🔍 Consultando stock."):
             respuesta, df = procesar_pregunta_stock(pregunta)
-            
+
             st.session_state.historial_stock.append({
                 'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'pregunta': pregunta,
                 'respuesta': respuesta,
-                'df': df,  # ✅ Agregar DataFrame
+                'df': df,
                 'tiene_datos': df is not None and not df.empty
             })
 
+            # Limpiar input
+            st.session_state["input_stock"] = ""
             st.rerun()
 
     # ✅ MOSTRAR HISTORIAL CON DASHBOARD MODERNO
@@ -480,10 +486,33 @@ def mostrar_stock_ia():
                 if 'df' in item and item['df'] is not None and not item['df'].empty:
                     df = item['df']
                     
-                    # ✅ USAR EL DASHBOARD MODERNO DE COMPRAS
-                    render_dashboard_compras_vendible(
-                        df,
-                        titulo="Stock",
-                        key_prefix=f"stock_hist_{idx}_",
-                        hide_metrics=True  # ✅ Ocultar tarjetas UYU/USD (no aplica a stock)
+                    # Mostrar info básica
+                    if 'STOCK' in df.columns:
+                        try:
+                            total_stock = df['STOCK'].apply(lambda x: float(
+                                str(x).replace(',', '.').replace(' ', '')
+                            ) if pd.notna(x) else 0).sum()
+                            st.info(f"📦 **Total stock:** {total_stock:,.0f} unidades".replace(',', '.'))
+                        except Exception:
+                            pass
+
+                    # Mostrar tabla
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+
+                    # Botón descargar
+                    excel_data = df_to_excel(df)
+                    st.download_button(
+                        label="📥 Descargar Excel",
+                        data=excel_data,
+                        file_name="consulta_stock.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"download_stock_{idx}"
                     )
+
+    # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
+    if not st.session_state.get("pause_autorefresh_stock", False):
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            st_autorefresh(interval=5000, key="stock_keepalive")
+        except Exception:
+            pass
