@@ -197,16 +197,31 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
         else:
             respuesta = "No hay información de vencimientos"
     
+    # 4. Responder según tipo
+    respuesta = ""
+    mostrar_tabla = True  # ✅ NUEVO: Flag para decidir si mostrar tabla
+    
+    if tipo_pregunta == "vencimiento":
+        if not df_stock.empty and 'Dias_Para_Vencer' in df_stock.columns:
+            proximo = df_stock.nsmallest(1, 'Dias_Para_Vencer')
+            lote = proximo['LOTE'].iloc[0] if not proximo.empty else '-'
+            venc = proximo['VENCIMIENTO'].iloc[0] if not proximo.empty else '-'
+            dias = proximo['Dias_Para_Vencer'].iloc[0] if not proximo.empty else 0
+            respuesta = f"📅 El lote {lote} vence el {venc} ({dias} días)"
+        else:
+            respuesta = "No hay información de vencimientos"
+    
     elif tipo_pregunta == "ultima_compra":
-        mostrar_tabla = False  # ❌ No mostrar tabla para compras
+        mostrar_tabla = True  # ✅ Mostrar tabla con el último lote
         if not df_compras.empty:
             # Asume columna FECHA_COMPRA
             ultima = df_compras.nlargest(1, 'FECHA_COMPRA') if 'FECHA_COMPRA' in df_compras.columns else pd.DataFrame()
             fecha = ultima['FECHA_COMPRA'].iloc[0] if not ultima.empty else '-'
             cant = ultima['CANTIDAD'].iloc[0] if not ultima.empty else 0
             respuesta = f"🛒 Última compra: {fecha} - {cant} unidades"
+            # Filtrar df_stock si hay compras, pero como es fallback, no
         else:
-            # ✅ FALLBACK: Usar el lote con fecha de vencimiento más reciente (asumiendo que es el último comprado)
+            # ✅ FALLBACK: Usar el lote con fecha de vencimiento más reciente
             if not df_stock.empty and 'VENCIMIENTO' in df_stock.columns:
                 # Asegurar que VENCIMIENTO sea datetime
                 df_stock_copy = df_stock.copy()
@@ -215,9 +230,12 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
                 lote = ultimo_lote['LOTE'].iloc[0] if not ultimo_lote.empty else '-'
                 venc = ultimo_lote['VENCIMIENTO'].iloc[0] if not ultimo_lote.empty else '-'
                 stock = ultimo_lote['STOCK'].iloc[0] if not ultimo_lote.empty else 0
-                respuesta = f"🛒 Último lote (asumiendo compra reciente): {lote} - Vence: {venc.strftime('%Y-%m-%d') if pd.notna(venc) else '-'} - Stock: {stock}"
+                respuesta = f"🛒 Último lote disponible: {lote} - Vence: {venc.strftime('%Y-%m-%d') if pd.notna(venc) else '-'} - Stock: {stock}"
+                # Filtrar df_stock para mostrar solo este lote
+                df_stock = ultimo_lote  # Mostrar solo el último lote
             else:
-                respuesta = "No hay información de lotes para inferir última compra"
+                respuesta = "No hay información de lotes"
+                mostrar_tabla = False
     
     elif tipo_pregunta == "deposito":
         if not df_stock.empty:
@@ -229,10 +247,13 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
     
     elif tipo_pregunta == "lote_antiguo":
         if not df_stock.empty and 'VENCIMIENTO' in df_stock.columns:
-            antiguo = df_stock.nsmallest(1, 'VENCIMIENTO')
+            # Asegurar datetime
+            df_stock_copy = df_stock.copy()
+            df_stock_copy['VENCIMIENTO'] = pd.to_datetime(df_stock_copy['VENCIMIENTO'], errors='coerce')
+            antiguo = df_stock_copy.nsmallest(1, 'VENCIMIENTO')
             lote = antiguo['LOTE'].iloc[0] if not antiguo.empty else '-'
             venc = antiguo['VENCIMIENTO'].iloc[0] if not antiguo.empty else '-'
-            respuesta = f"📦 Lote más antiguo: {lote} (vence {venc})"
+            respuesta = f"📦 Lote más antiguo: {lote} (vence {venc.strftime('%Y-%m-%d') if pd.notna(venc) else '-'})"
         else:
             respuesta = "No hay información de lotes"
     
@@ -258,7 +279,6 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
         render_stock_table(df_stock)
         render_stock_alerts(df_stock)
         render_download_button(df_stock, f"stock_{codigo_articulo[:20]}", "contextual")
-
 # =====================================================================
 # MÓDULO STOCK IA (CHATBOT)
 # =====================================================================
