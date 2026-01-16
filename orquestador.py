@@ -179,17 +179,17 @@ def responder_pregunta_stock(pregunta: str) -> tuple:
             return mensaje.strip(), None  # No tabla, solo mensaje
         return "⚠️ No se pudo obtener el resumen de stock.", None
     
-    elif tipo == "stock_por_familia":
-        df = get_stock_por_familia()
-        if df is not None and not df.empty:
+    if tipo == "stock_por_familia":
+        df = get_stock_total()  # En lugar de get_stock_por_familia()
+        if df is None or df.empty:
             return "📊 Stock por familia:", df  # Devuelve tabla
         return "⚠️ No se pudo obtener el stock por familia.", None
     
     elif tipo == "stock_por_deposito":
         df = get_stock_por_deposito()
         if df is not None and not df.empty:
-            return "🏢 Stock por depósito:", df  # Devuelve tabla
-        return "⚠️ No se pudo obtener el stock por depósito.", None
+            return "⚠️ No se pudo obtener el stock total.", None, None
+         return "📊 Stock total (agrupado por familia):", formatear_dataframe(df), None
     
     elif tipo == "stock_articulo":
         articulo = params.get("articulo")
