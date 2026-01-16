@@ -103,7 +103,6 @@ def _sql_num_expr_stock(col_expr: str) -> str:
     )::numeric
     """
 
-
 def _stock_base_subquery() -> tuple:
     """Subquery hardcoded para evitar problemas de detección de columnas."""
     
@@ -157,15 +156,13 @@ def _stock_base_subquery() -> tuple:
                 ) - CURRENT_DATE
               )
             END AS "Dias_Para_Vencer"
-        FROM "public"."stock"
+        FROM "public"."stock" s
         WHERE s."ARTICULO" NOT ILIKE '%(INACTIVO)%'
           AND s."ARTICULO" NOT ILIKE '%INACTIVO%'
           AND UPPER(TRIM(COALESCE(s."ARTICULO", ''))) <> 'SIN ARTICULO'
     """
     
     return sub, "public", "stock"
-
-
 # =====================================================================
 # LISTADOS DE STOCK
 # =====================================================================
