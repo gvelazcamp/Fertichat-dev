@@ -1042,12 +1042,16 @@ def mostrar_resumen_stock_rotativo(dias_vencer: int = 365):  # ✅ CAMBIADO DEFA
         return  # No mostrar ni refrescar si está pausado
 
     tick = 0
-    if not pregunta_actual.strip():
+    # ✅ SOLUCIÓN: Solo llamar autorefresh si NO hay pausa Y NO hay pregunta actual
+    if not pregunta_actual.strip() and not st.session_state.get("pause_autorefresh_stock", False):
         try:
             from streamlit_autorefresh import st_autorefresh
             tick = st_autorefresh(interval=5000, key="__rotar_stock_5s__") or 0
         except Exception:
             tick = 0  # si no está instalado, queda fijo
+
+    # ... resto del código igual ...
+
 
     df_stock_1 = _get_stock_cantidad_1(top_n=200)
     df_vencer = _get_lotes_proximos_a_vencer(dias=int(dias_vencer))
