@@ -1229,8 +1229,7 @@ def mostrar_stock_ia():
             key="select_vencimiento_stock"
         )
     
-    # ✅ LÓGICA PARA APLICAR FILTROS
-    # ✅ LÓGICA PARA APLICAR FILTROS
+    # ✅ LÓGICA PARA  FILTROS
     if familia_seleccionada != "Ninguna":
         # Prioridad a familia
         st.session_state["articulo_contexto"] = None
@@ -1291,6 +1290,30 @@ def mostrar_stock_ia():
             render_chat_compacto(articulo_seleccionado, df, unique_id="articulo_select")
         else:
             st.warning(f"No hay stock para '{articulo_seleccionado}' con el filtro aplicado.")
+    
+    elif vencimiento_filter != "Ninguno":
+        # ✅ SOLO FILTRO DE VENCIMIENTO: Traer TODOS los lotes que vencen próximamente
+        st.session_state["articulo_contexto"] = None
+        st.session_state["pause_autorefresh_stock"] = True
+        
+        if vencimiento_filter == "<30 días":
+            df = get_lotes_por_vencer(30)
+            descripcion_articulo = "Lotes que vencen en menos de 30 días"
+        elif vencimiento_filter == "<15 días":
+            df = get_lotes_por_vencer(15)
+            descripcion_articulo = "Lotes que vencen en menos de 15 días"
+        else:
+            df = pd.DataFrame()
+            descripcion_articulo = "Filtro no reconocido"
+        
+        if df is not None and not df.empty:
+            total_stock = df['STOCK'].sum() if 'STOCK' in df.columns else 0
+            render_stock_header(descripcion_articulo, int(total_stock))
+            render_stock_table(df)
+            render_stock_alerts(df)
+            render_chat_compacto("vencimiento_general", df, unique_id="vencimiento_select")
+        else:
+            st.warning(f"No hay lotes que venzan {vencimiento_filter}.")
     
     else:
         # Ninguno seleccionado
