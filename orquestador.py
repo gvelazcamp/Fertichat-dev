@@ -159,15 +159,103 @@ Si un parámetro no aplica, déjalo en null.
         return {"tipo": "busqueda_libre", "parametros": {"texto": pregunta}}
 
 
+def detectar_intencion_stock(texto: str) -> dict:
+    """Detecta la intención para consultas de stock"""
+    texto_lower = texto.lower().strip()
+
+    # ✅ PRIORIZAR STOCK TOTAL ANTES DE ARTÍCULO ESPECÍFICO
+    if 'total' in texto_lower and 'stock' in texto_lower:
+        return {'tipo': 'stock_total', 'debug': 'Stock total'}
+    
+    # ✅ NUEVO: Artículos totales
+    if 'artículos' in texto_lower or 'articulos' in texto_lower:
+        return {'tipo': 'stock_total', 'debug': 'Artículos totales'}
+    
+    # ✅ NUEVO: Lotes totales
+    if 'lotes' in texto_lower and ('registrados' in texto_lower or 'tengo' in texto_lower):
+        return {'tipo': 'stock_total', 'debug': 'Lotes totales'}
+
+    # ✅ DETECTAR FAMILIAS CONOCIDAS (antes de artículos)
+    familias_conocidas = ['id', 'fb', 'g', 'tr', 'xx', 'hm', 'mi']
+    for fam in familias_conocidas:
+        if fam in texto_lower.split():
+            return {'tipo': 'stock_familia_especifica', 'familia': fam.upper(), 'debug': f'Stock familia {fam.upper()}'}
+
+    # ✅ MOVER ANTES DE ARTÍCULO: Stock por familia general
+    if 'por familia' in texto_lower or 'familias' in texto_lower or 'familia' in texto_lower:
+        # Si no específica, stock por familia general
+        if 'por familia' in texto_lower or 'familias' in texto_lower:
+            return {'tipo': 'stock_por_familia', 'debug': 'Stock por familia general'}
+
+    # ✅ MOVER STOCK_ARTICULO ANTES DE VENCIMIENTOS PARA PRIORIZAR ARTÍCULO ESPECÍFICO
+    # Stock de artículo específico (casos 1 y 4)
+    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
+        # Extraer nombre del artículo
+        palabras_excluir = ['stock', 'cuanto', 'cuánto', 'hay', 'de', 'del', 'tenemos', 'disponible', 'el', 'la', 'los', 'las', 'que', 'es', 'un', 'una', 'cual']
+        palabras = [p for p in texto_lower.split() if p not in palabras_excluir and len(p) > 2]
+        if palabras:
+            articulo = ' '.join(palabras)
+            return {'tipo': 'stock_articulo', 'articulo': articulo, 'debug': f'Stock de artículo: {articulo}'}
+
+    # Vencimientos
+    if any(k in texto_lower for k in ['vencer', 'vencen', 'vencimiento', 'vence', 'por vencer']):
+        if 'vencido' in texto_lower or 'ya vencio' in texto_lower:
+            return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
+        # Extraer días si se menciona
+        import re
+        match = re.search(r'(\d+)\s*(dias|día|dia|días)', texto_lower)
+        dias = int(match.group(1)) if match else 90
+        return {'tipo': 'lotes_por_vencer', 'dias': dias, 'debug': f'Lotes por vencer en {dias} días'}
+
+    # Vencidos
+    if any(k in texto_lower for k in ['vencido', 'vencidos', 'ya vencio', 'caducado']):
+        return {'tipo': 'lotes_vencidos', 'debug': 'Lotes vencidos'}
+
+    # Stock bajo
+    if any(k in texto_lower for k in ['stock bajo', 'poco stock', 'bajo stock', 'quedan pocos', 'se acaba', 'reponer']):
+        return {'tipo': 'stock_bajo', 'debug': 'Stock bajo'}
+
+    # Lote específico
+    if any(k in texto_lower for k in ['lote', 'nro lote', 'numero de lote']):
+        # Buscar patrón de lote (alfanumérico)
+        import re
+        match = re.search(r'lote\s+(\w+)', texto_lower)
+        if match:
+            return {'tipo': 'lote_especifico', 'lote': match.group(1), 'debug': f'Lote específico: {match.group(1)}'}
+
+    # Stock por familia (ya cubierto arriba, pero dejar por si acaso)
+    if any(k in texto_lower for k in ['familia', 'familias', 'por familia', 'seccion', 'secciones']):
+        return {'tipo': 'stock_por_familia', 'debug': 'Stock por familias'}
+
+    # ✅ NUEVO: Lista de artículos
+    if any(k in texto_lower for k in ['listado', 'lista', 'todos los artículos', 'artículos disponibles', 'qué artículos hay']):
+        return {'tipo': 'lista_articulos', 'debug': 'Lista de artículos'}
+
+    # ✅ NUEVO: Preguntas comparativas
+    if any(k in texto_lower for k in ['qué artículo tiene más stock', 'cuál tiene más stock', 'artículo con más stock']):
+        return {'tipo': 'stock_comparativo', 'subtipo': 'mas_stock', 'debug': 'Artículo con más stock'}
+    if any(k in texto_lower for k in ['qué artículo tiene menos stock', 'cuál tiene menos stock', 'artículo con menos stock']):
+        return {'tipo': 'stock_comparativo', 'subtipo': 'menos_stock', 'debug': 'Artículo con menos stock'}
+    if any(k in texto_lower for k in ['qué artículos están bajos', 'artículos bajos de stock']):
+        return {'tipo': 'stock_bajo', 'debug': 'Artículos bajos de stock'}
+
+    # Stock por depósito
+    if any(k in texto_lower for k in ['deposito', 'depósito', 'depositos', 'depósitos', 'almacen']):
+        return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
+
+    # Al final, por defecto buscar artículo
+    return {'tipo': 'stock_articulo', 'articulo': texto, 'debug': f'Búsqueda general: {texto}'}
+
+
 def responder_pregunta_stock(pregunta: str) -> tuple:
     """
     Orquestador principal que interpreta y ejecuta consultas de stock
     Devuelve: (mensaje, df) donde df puede ser None
     """
     # 1. Interpretar la pregunta
-    intencion = interpretar_pregunta_stock(pregunta)
+    intencion = detectar_intencion_stock(pregunta)  # ✅ USAR LA FUNCIÓN LOCAL EN LUGAR DE OPENAI
     tipo = intencion["tipo"]
-    params = intencion["parametros"]
+    params = intencion.get("parametros", {})  # ✅ AGREGAR .get() POR SI NO HAY PARAMETROS
     
     # 2. Ejecutar la función SQL correcta según el tipo
     if tipo == "stock_total":
