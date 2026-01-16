@@ -1948,6 +1948,7 @@ def Compras_IA():
             st.session_state["historial_compras"] = []
             _dbg_set_interpretacion({})
             _dbg_set_sql(None, "", [], None)
+            st.session_state["pause_autorefresh"] = False  # ✅ REACTIVAR AUTOREFRESH
             st.rerun()
 
         # st.markdown("---")  # ← COMENTADA - ocupaba espacio al pedo
