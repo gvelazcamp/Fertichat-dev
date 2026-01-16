@@ -5,7 +5,6 @@
 import streamlit as st
 from datetime import datetime
 import random
-import textwrap
 
 
 def mostrar_inicio_desktop():
@@ -34,14 +33,13 @@ def mostrar_inicio_desktop():
     st.markdown('<div id="fc-home-desktop-marker" style="display:none;"></div>', unsafe_allow_html=True)
 
     # =========================
-    # CSS para botones como tarjetas (SOLO HOME DESKTOP)
+    # CSS CORPORATIVO LIMPIO - Estilo imagen (fondo blanco, iconos line-style)
     # =========================
     st.markdown("""
     <style>
     /* =========================================================
        ELIMINAR TODO EL PADDING SUPERIOR - AGRESIVO
        ========================================================= */
-    /* Cuando estamos en home desktop, eliminar TODOS los paddings superiores */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) {
         padding-top: 0 !important;
         margin-top: 0 !important;
@@ -69,7 +67,6 @@ def mostrar_inicio_desktop():
         margin-top: 0 !important;
     }
     
-    /* MÁS ESPECÍFICO: Todos los selectores posibles para block-container */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) [data-testid="stMainBlockContainer"],
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .block-container,
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) div.block-container {
@@ -77,7 +74,6 @@ def mostrar_inicio_desktop():
         margin-top: 0 !important;
     }
     
-    /* Eliminar gap y padding de vertical blocks también */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stVerticalBlock,
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) [data-testid="stVerticalBlock"] {
         padding-top: 0 !important;
@@ -85,7 +81,6 @@ def mostrar_inicio_desktop():
         gap: 0 !important;
     }
     
-    /* Oculta el título "Inicio" de Streamlit */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) h1 {
         display: none !important;
         margin: 0 !important;
@@ -93,233 +88,203 @@ def mostrar_inicio_desktop():
     }
     
     /* =========================================================
-       SOLO HOME DESKTOP (scoped): si el marcador existe, aplico estilos
+       TARJETAS CORPORATIVAS - ESTILO IMAGEN (fondo blanco limpio)
        ========================================================= */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) div[data-testid="column"]{
-        position: relative; /* el tile se posiciona dentro de la columna */
-    }
-
-    /* Botón como tarjeta (MUCHO MÁS GRANDE) */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button{
-        border:1px solid rgba(15,23,42,0.10);
-        background:rgba(255,255,255,0.82);
-        border-radius:20px;
-
-        /* tamaño fijo MUCHO MÁS ALTO */
-        height: 140px;
-        min-height: 140px;
-
-        /* espacio para el tile */
-        padding:20px 20px 20px 90px;
-
-        box-shadow:0 10px 24px rgba(2,6,23,0.06);
-        cursor:pointer;
-        transition:transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
-
-        width:100%;
-        text-align:left;
-
-        white-space: pre-line; /* respeta \n del texto */
-        font-size:14.5px;      /* desc más grande */
-        font-weight:600;
-        color:#334155;
-        line-height:1.35;
-
-        display:block;
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) div[data-testid="column"] {
         position: relative;
-        margin:0;
     }
 
-    /* Recomendado (Compras IA) - Señal visual sutil */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton:has(button[key="compras"]) > button {
-        border:2px solid rgba(37,99,235,0.30);
-        background:rgba(255,255,255,0.95);
-        box-shadow:0 12px 28px rgba(37,99,235,0.10);
-    }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton:has(button[key="compras"]) > button:hover {
-        border-color:rgba(37,99,235,0.50);
-        box-shadow:0 16px 38px rgba(37,99,235,0.15);
-    }
-
-    /* Primera línea como título - MÁS GRANDE */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button::first-line{
-        font-size:18px;
-        font-weight:900;
-        color:#0f172a;
-        letter-spacing:-0.01em;
-    }
-
-    /* Hover */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button:hover{
-        transform:translateY(-2px);
-        box-shadow:0 14px 34px rgba(2,6,23,0.09);
-        border-color:rgba(37,99,235,0.22);
-        background:rgba(255,255,255,0.90);
-    }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button:active{
-        transform:translateY(0);
-        box-shadow:0 10px 24px rgba(2,6,23,0.06);
-    }
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button:focus{
-        outline:none;
-        box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 10px 24px rgba(2,6,23,0.06);
+    /* Botón como tarjeta - Fondo blanco profesional */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button {
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: #ffffff;
+        border-radius: 12px;
+        
+        height: 200px;
+        min-height: 200px;
+        
+        padding: 24px 20px;
+        
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        cursor: pointer;
+        transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+        
+        width: 100%;
+        text-align: center;
+        
+        white-space: pre-line;
+        font-size: 14px;
+        font-weight: 400;
+        color: #64748b;
+        line-height: 1.6;
+        
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        position: relative;
+        margin: 0;
     }
 
-    /* Tile (ícono) -> MÁS GRANDE y ajustado */
-    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .fc-home-tile{
-        width:60px;
-        height:60px;
-        border-radius:18px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-
-        border:1px solid rgba(15,23,42,0.08);
-        background:rgba(255,255,255,0.86);
-        font-size:30px;
-
-        position:absolute;
-        left: 16px;
-        top: calc(50% + 70px);          /* <-- AJUSTADO PARA 140px */
-        transform: translateY(-50%);
-        z-index: 5;
-
-        pointer-events:none; /* no bloquea el click */
-        box-shadow:0 10px 18px rgba(2,6,23,0.07);
-        user-select:none;
+    /* Título de la tarjeta - Bold y oscuro */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button::first-line {
+        font-size: 17px;
+        font-weight: 700;
+        color: #1e293b;
+        letter-spacing: -0.01em;
     }
 
-    /* Colores tiles */
-    .tile-compras { background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.18); }
-    .tile-buscador { background:rgba(59,130,246,0.10); border-color:rgba(59,130,246,0.18); }
-    .tile-stock { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.22); }
-    .tile-dashboard { background:rgba(139,92,246,0.10); border-color:rgba(139,92,246,0.18); }
-    .tile-pedidos { background:rgba(2,132,199,0.10); border-color:rgba(2,132,199,0.18); }
-    .tile-baja { background:rgba(244,63,94,0.10); border-color:rgba(244,63,94,0.18); }
-    .tile-ordenes { background:rgba(100,116,139,0.10); border-color:rgba(100,116,139,0.18); }
-    .tile-indicadores { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.18); }
+    /* Hover corporativo - Solo sombra y borde azul */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+        border-color: rgba(59, 130, 246, 0.5);
+    }
+    
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
+    /* Icono - Tamaño grande, line-style */
+    div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .fc-home-tile {
+        width: 72px;
+        height: 72px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+        margin-bottom: 16px;
+        color: #3b82f6;
+        filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.12));
+        pointer-events: none;
+        user-select: none;
+    }
+
+    /* Badge rojo (solo para las tarjetas que lo necesiten) */
+    .fc-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: #ef4444;
+        color: white;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 9px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    }
 
     /* Responsive */
-    @media (max-width: 900px){
-        div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .fc-home-tile{
-            width:48px;
-            height:48px;
-            border-radius:14px;
-            font-size:24px;
-            left: 14px;
-            top: calc(50% + 44px);      /* <-- BAJADO ~0.5cm MÁS MOBILE */
+    @media (max-width: 900px) {
+        div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button {
+            height: 160px;
+            min-height: 160px;
+            padding: 18px 16px;
         }
-        div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button{
-            height: 92px;
-            min-height: 92px;
-            padding:14px 14px 14px 78px;
+        div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .fc-home-tile {
+            width: 56px;
+            height: 56px;
+            font-size: 32px;
+            margin-bottom: 12px;
         }
-        div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button::first-line{
-            font-size:15px;
+        div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button::first-line {
+            font-size: 15px;
         }
     }
 
-    /* SIDEBAR LIGHT SOLO EN HOME */
+    /* SIDEBAR LIGHT */
     section[data-testid="stSidebar"] {
-      background: #ffffff !important;
-      background-color: #ffffff !important;
-      background-image: none !important;
-      border-right: 1px solid rgba(15,23,42,0.08);
-      color: #0f172a !important;
-    }
-
-    section[data-testid="stSidebar"] > div,
-    div[data-testid="stSidebar"] > div {
-      background: #ffffff !important;
-      background-color: #ffffff !important;
-      backdrop-filter: none !important;
+        background: #ffffff !important;
+        border-right: 1px solid rgba(148, 163, 184, 0.2);
     }
 
     section[data-testid="stSidebar"] *,
-    section[data-testid="stSidebar"] li,
-    section[data-testid="stSidebar"] span,
-    section[data-testid="stSidebar"] div,
-    section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] label {
-      color: #0f172a !important;
-      background: transparent !important;
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] p {
+        color: #1e293b !important;
     }
 
-    /* Específico para radio buttons */
-    section[data-testid="stSidebar"] .stRadio label {
-      color: #0f172a !important;
-    }
-
-    /* Específico para botones */
     section[data-testid="stSidebar"] .stButton button {
-      background: #f1f5f9 !important;
-      color: #0f172a !important;
-      border: 1px solid #e2e8f0 !important;
+        background: #f1f5f9 !important;
+        color: #1e293b !important;
+        border: 1px solid #e2e8f0 !important;
     }
 
     section[data-testid="stSidebar"] .stButton button:hover {
-      background: #e2e8f0 !important;
+        background: #e2e8f0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
     # =========================
-    # Secciones con botones - NO MODIFICAR TAMAÑOS O BOTON ESTO FUNCIONA CORRECTAMENTE
+    # GRID DE TARJETAS - 2 FILAS
     # =========================
-    st.markdown("<div style='max-width:1100px;margin:140px auto 0 auto;'>", unsafe_allow_html=True)
-    st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 36px 6px;display:flex;align-items:center;gap:8px;'>📌 Inteligencia y consulta</div>", unsafe_allow_html=True)
+    st.markdown("<div style='max-width:1200px;margin:100px auto 0 auto;'>", unsafe_allow_html=True)
 
-    col1, col2, col3, col4 = st.columns(4)
+    # FILA 1 - Inteligencia y consulta
+    st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 24px 6px;display:flex;align-items:center;gap:8px;'>📌 Inteligencia y consulta</div>", unsafe_allow_html=True)
+    
+    col1, col2, col3, col4 = st.columns(4, gap="large")
+    
     with col1:
-        st.markdown('<div class="fc-home-tile tile-compras">🛒</div>', unsafe_allow_html=True)
-        if st.button("Compras IA\nConsultas inteligentes de compras y gastos", key="compras"):
+        st.markdown('<div class="fc-home-tile">🛒</div>', unsafe_allow_html=True)
+        if st.button("Compras IA\nConsultas inteligentes de compras y gastos", key="compras", use_container_width=True):
             st.query_params["go"] = "compras"
             st.rerun()
+    
     with col2:
-        st.markdown('<div class="fc-home-tile tile-buscador">🔎</div>', unsafe_allow_html=True)
-        if st.button("Buscador IA\nBuscar facturas, artículos y lotes", key="buscador"):
+        st.markdown('<div class="fc-home-tile">🔎</div>', unsafe_allow_html=True)
+        if st.button("Buscador IA\nBuscar facturas, artículos y lotes", key="buscador", use_container_width=True):
             st.query_params["go"] = "buscador"
             st.rerun()
+    
     with col3:
-        st.markdown('<div class="fc-home-tile tile-stock">📦</div>', unsafe_allow_html=True)
-        if st.button("Stock IA\nConsultar inventario y vencimientos", key="stock"):
+        st.markdown('<div class="fc-home-tile">📦</div>', unsafe_allow_html=True)
+        # Badge solo en Stock si hay alertas
+        st.markdown('<div class="fc-badge">1</div>', unsafe_allow_html=True)
+        if st.button("Stock IA\nConsultar inventario y vencimientos", key="stock", use_container_width=True):
             st.query_params["go"] = "stock"
             st.rerun()
+    
     with col4:
-        st.markdown('<div class="fc-home-tile tile-dashboard">📊</div>', unsafe_allow_html=True)
-        if st.button("Dashboard\nAnálisis y resúmenes ejecutivos", key="dashboard"):
+        st.markdown('<div class="fc-home-tile">📊</div>', unsafe_allow_html=True)
+        if st.button("Dashboard\nAnálisis y resúmenes ejecutivos", key="dashboard", use_container_width=True):
             st.query_params["go"] = "dashboard"
             st.rerun()
+
+    st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
+
+    # FILA 2 - Gestión operativa
+    st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 24px 6px;display:flex;align-items:center;gap:8px;'>⚙️ Gestión operativa</div>", unsafe_allow_html=True)
     
-    st.markdown("</div>", unsafe_allow_html=True)  # Cierra el contenedor con margen negativo
-
-    st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
-    st.markdown("<div style='max-width:1100px;margin:0 auto 0 auto;'>", unsafe_allow_html=True)
-    st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 36px 6px;display:flex;align-items:center;gap:8px;'>⚙️ Gestión operativa</div>", unsafe_allow_html=True)
-
-    col5, col6, col7, col8 = st.columns(4)
+    col5, col6, col7, col8 = st.columns(4, gap="large")
+    
     with col5:
-        st.markdown('<div class="fc-home-tile tile-pedidos">📄</div>', unsafe_allow_html=True)
-        if st.button("Pedidos internos\nGestionar pedidos y solicitudes", key="pedidos"):
+        st.markdown('<div class="fc-home-tile">📄</div>', unsafe_allow_html=True)
+        if st.button("Pedidos internos\nGestionar pedidos y solicitudes", key="pedidos", use_container_width=True):
             st.query_params["go"] = "pedidos"
             st.rerun()
+    
     with col6:
-        st.markdown('<div class="fc-home-tile tile-baja">🧾</div>', unsafe_allow_html=True)
-        if st.button("Baja de stock\nRegistrar consumo y bajas", key="baja"):
+        st.markdown('<div class="fc-home-tile">🧾</div>', unsafe_allow_html=True)
+        if st.button("Baja de stock\nRegistrar consumo y bajas", key="baja", use_container_width=True):
             st.query_params["go"] = "baja"
             st.rerun()
+    
     with col7:
-        st.markdown('<div class="fc-home-tile tile-ordenes">📦</div>', unsafe_allow_html=True)
-        if st.button("Órdenes de compra\nGenerar órdenes de compra", key="ordenes"):
+        st.markdown('<div class="fc-home-tile">📦</div>', unsafe_allow_html=True)
+        if st.button("Órdenes de compra\nGenerar órdenes de compra", key="ordenes", use_container_width=True):
             st.query_params["go"] = "ordenes"
             st.rerun()
+    
     with col8:
-        st.markdown('<div class="fc-home-tile tile-indicadores">📈</div>', unsafe_allow_html=True)
-        if st.button("Indicadores\nPower BI - Análisis avanzado", key="indicadores"):
+        st.markdown('<div class="fc-home-tile">📈</div>', unsafe_allow_html=True)
+        if st.button("Indicadores\nPower BI - Análisis avanzado", key="indicadores", use_container_width=True):
             st.query_params["go"] = "indicadores"
             st.rerun()
-    
-    st.markdown("</div>", unsafe_allow_html=True)  # Cierra el contenedor con margen negativo
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # =========================
     # TIP DEL DÍA
@@ -335,16 +300,16 @@ def mostrar_inicio_desktop():
 
     st.markdown(
         f"""
-        <div style="max-width:1100px;margin:40px auto 0 auto;">
+        <div style="max-width:1200px;margin:40px auto 0 auto;">
             <div style="
-                background: rgba(255,255,255,0.70);
-                border: 1px solid rgba(15,23,42,0.10);
-                border-left: 4px solid rgba(37,99,235,0.55);
-                border-radius: 16px;
-                padding: 14px 16px;
-                box-shadow: 0 10px 26px rgba(2,6,23,0.06);
+                background: #ffffff;
+                border: 1px solid rgba(148, 163, 184, 0.25);
+                border-left: 4px solid #3b82f6;
+                border-radius: 12px;
+                padding: 16px 20px;
+                box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
             ">
-                <p style="margin:0;color:#0b3b60;font-size:14px;font-weight:600;">
+                <p style="margin:0;color:#475569;font-size:14px;font-weight:500;">
                     {tip}
                 </p>
             </div>
