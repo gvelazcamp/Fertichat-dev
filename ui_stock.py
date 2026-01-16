@@ -771,18 +771,17 @@ def mostrar_stock_ia():
         st.session_state["pause_autorefresh_stock"] = True  # ✅ PAUSAR AUTOREFFRESH CUANDO HAY CONTEXTO
         
         if articulo_seleccionado == "Todos":
-            # ✅ MOSTRAR STOCK TOTAL, MISMA LÓGICA QUE "stock total"
-            df_art = get_stock_total()
-            descripcion_articulo = "Stock Total"
+            # ✅ MOSTRAR STOCK POR FAMILIA, LÓGICA SIMILAR A "stock de id" PERO PARA TODOS
+            df_art = get_stock_por_familia()
+            descripcion_articulo = "Stock por Familia"
+            # No limpiar stock 0, ya que es agrupado
         else:
             # Mostrar stock del artículo seleccionado
             df_art = get_stock_articulo(articulo_seleccionado)
             descripcion_articulo = articulo_seleccionado
+            df_art = _clean_stock_df(df_art)
         
         if df_art is not None and not df_art.empty:
-            # Para "Todos", no limpiar stock 0, mostrar como total
-            if articulo_seleccionado != "Todos":
-                df_art = _clean_stock_df(df_art)
             total_stock = df_art['STOCK'].sum() if 'STOCK' in df_art.columns else 0
             render_stock_header(descripcion_articulo, int(total_stock))
             render_stock_table(df_art)
