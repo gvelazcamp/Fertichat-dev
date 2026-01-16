@@ -63,7 +63,7 @@ def detectar_intencion_stock(texto: str) -> dict:
         return {'tipo': 'stock_por_familia', 'debug': 'Stock por familias'}
 
     # ✅ NUEVO: Lista de artículos
-    if any(k in texto_lower for k in ['listado', 'lista', 'todos los artículos', 'artículos disponibles', 'qué artículos hay', 'mostrar todos los artículos']):
+    if any(k in texto_lower for k in ['listado', 'lista', 'todos los artículos', 'artículos disponibles', 'qué artículos hay']):
         return {'tipo': 'lista_articulos', 'debug': 'Lista de artículos'}
 
     # ✅ NUEVO: Preguntas comparativas
@@ -86,9 +86,9 @@ def detectar_intencion_stock(texto: str) -> dict:
         return {'tipo': 'stock_por_deposito', 'debug': 'Stock por depósito'}
 
     # Stock de artículo específico (casos 1 y 4)
-    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay', 'me queda', 'disponibilidad']):
+    if any(k in texto_lower for k in ['stock', 'cuanto hay', 'cuánto hay', 'tenemos', 'disponible', 'hay']):
         # Extraer nombre del artículo
-        palabras_excluir = ['stock', 'cuanto', 'cuánto', 'hay', 'de', 'del', 'tenemos', 'disponible', 'el', 'la', 'los', 'las', 'que', 'me', 'queda', 'disponibilidad']
+        palabras_excluir = ['stock', 'cuanto', 'cuánto', 'hay', 'de', 'del', 'tenemos', 'disponible', 'el', 'la', 'los', 'las', 'que']
         palabras = [p for p in texto_lower.split() if p not in palabras_excluir and len(p) > 2]
         if palabras:
             articulo = ' '.join(palabras)
@@ -160,7 +160,6 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
             df_total = get_stock_total()
             if df_total is not None and not df_total.empty:
                 # Asumir que get_stock_total() devuelve totales por artículo (ajustar si no)
-                # Para simplicidad, devolver el top 1
                 articulo_top = "Ejemplo: Artículo con más stock"  # Placeholder, ajustar con SQL real
                 return f"🏆 Artículo con más stock: {articulo_top}", None
             return "No hay datos para comparar.", None
@@ -579,28 +578,85 @@ def mostrar_stock_ia():
                 if 'df' in item and item['df'] is not None and not item['df'].empty:
                     df = item['df']
                     
-                    # Mostrar info básica
-                    if 'STOCK' in df.columns:
-                        try:
-                            total_stock = df['STOCK'].apply(lambda x: float(
-                                str(x).replace(',', '.').replace(' ', '')
-                            ) if pd.notna(x) else 0).sum()
-                            st.info(f"📦 **Total stock:** {total_stock:,.0f} unidades".replace(',', '.'))
-                        except Exception:
-                            pass
-
-                    # Mostrar tabla
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-
-                    # Botón descargar
-                    excel_data = df_to_excel(df)
-                    st.download_button(
-                        label="📥 Descargar Excel",
-                        data=excel_data,
-                        file_name="consulta_stock.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key=f"download_stock_{idx}"
-                    )
+                    # ✅ NUEVO: REDISEÑO COMPACTO PARA STOCK DE ARTÍCULO
+                    if "📦 Stock de" in item['respuesta']:
+                        # Extraer nombre del artículo de la respuesta
+                        import re
+                        match = re.search(r"📦 Stock de '(.+?)':", item['respuesta'])
+                        descripcion_articulo = match.group(1) if match else "Artículo"
+                        
+                        # Calcular total stock
+                        total_stock = 0
+                        if 'STOCK' in df.columns:
+                            total_stock = df['STOCK'].apply(lambda x: float(str(x).replace(',', '.').replace(' ', '')) if pd.notna(x) else 0).sum()
+                        
+                        # Header limpio con gradiente
+                        st.markdown(f"""
+                        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                    padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem;'>
+                            <h3 style='color: white; margin: 0;'>📦 {descripcion_articulo}</h3>
+                            <div style='color: rgba(255,255,255,0.9); font-size: 0.9rem; margin-top: 0.3rem;'>
+                                Stock total: <strong>{total_stock:,.0f} unidades</strong>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Preparar df para display: agregar columna Días para vencer si no existe
+                        df_display = df.copy()
+                        if 'Dias_Para_Vencer' not in df_display.columns and 'VENCIMIENTO' in df_display.columns:
+                            df_display['Dias_Para_Vencer'] = (
+                                pd.to_datetime(df_display['VENCIMIENTO'], errors='coerce') - datetime.now()
+                            ).dt.days.fillna(-1).astype(int)
+                        
+                        # Función para colorear filas
+                        def highlight_vencimiento(row):
+                            if 'Dias_Para_Vencer' in row.index:
+                                dias = row['Dias_Para_Vencer']
+                                if pd.notna(dias) and dias >= 0:
+                                    if dias < 30:
+                                        return ['background-color: #fee2e2'] * len(row)  # Rojo claro
+                                    elif dias < 90:
+                                        return ['background-color: #fef3c7'] * len(row)  # Amarillo claro
+                            return [''] * len(row)
+                        
+                        # Tabla coloreada
+                        st.dataframe(
+                            df_display.style.apply(highlight_vencimiento, axis=1),
+                            use_container_width=True,
+                            hide_index=True,
+                            height=400
+                        )
+                        
+                        # Alerta compacta para vencimientos
+                        proximos_vencer = df_display[(df_display['Dias_Para_Vencer'] >= 0) & (df_display['Dias_Para_Vencer'] <= 90)] if 'Dias_Para_Vencer' in df_display.columns else pd.DataFrame()
+                        if not proximos_vencer.empty:
+                            st.warning(f"⚠️ {len(proximos_vencer)} lote(s) vence(n) en los próximos 90 días")
+                        else:
+                            st.success("✅ No hay lotes próximos a vencer")
+                        
+                        # Botón de descarga centrado
+                        col1, col2, col3 = st.columns([1, 1, 1])
+                        with col2:
+                            excel_data = df_to_excel(df)
+                            st.download_button(
+                                label="📥 Descargar Excel",
+                                data=excel_data,
+                                file_name="consulta_stock.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                use_container_width=True,
+                                key=f"download_stock_{idx}"
+                            )
+                    else:
+                        # Para otras consultas, mostrar normal
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        excel_data = df_to_excel(df)
+                        st.download_button(
+                            label="📥 Descargar Excel",
+                            data=excel_data,
+                            file_name="consulta_stock.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key=f"download_stock_{idx}"
+                        )
 
     # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
     if not st.session_state.get("pause_autorefresh_stock", False):
