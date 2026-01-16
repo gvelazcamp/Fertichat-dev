@@ -3,7 +3,6 @@ import pandas as pd
 import re
 from typing import Tuple, Optional
 import json
-from interpretador_stock import interpretar_pregunta_stock
 
 # =========================
 # AGENTIC AI (fallback seguro)
@@ -42,6 +41,9 @@ from sql_stock import (  # Importar funciones de stock
 )
 from utils_format import formatear_dataframe
 from utils_openai import responder_con_openai
+
+# NUEVO: Importar el interpretador dedicado de stock
+from interpretador_stock import interpretar_pregunta_stock
 
 ORQUESTADOR_CARGADO = True
 ORQUESTADOR_ERROR = None
@@ -97,101 +99,45 @@ def _extraer_nro_factura_fallback(texto: str) -> Optional[str]:
     return None
 
 
-# =========================
-# VERSIÓN SIMPLIFICADA: EXTRAER PARÁMETROS CON OPENAI
-# =========================
-
-def extraer_parametros_con_openai(pregunta: str) -> dict:
-    """
-    Usa OpenAI para extraer parámetros de la pregunta de stock
-    """
-    # Obtener API key (funciona en runtime, no en import)
-    api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
-    if not api_key:
-        return {}
-    
-    from openai import OpenAI
-    import os
-    client = OpenAI(api_key=api_key)
-    
-    prompt = f"""
-Analiza esta pregunta sobre stock: "{pregunta}"
-
-Extrae los siguientes parámetros (si aplican). Responde SOLO con JSON válido:
-
-{{
-  "familia": "id" o null (familias conocidas: ID, FB, G, TR, XX, HM, MI),
-  "articulo": "balsamo" o null,
-  "lote": "L001" o null,
-  "deposito": "casa central" o null,
-  "dias": 90 o null,
-  "tipo_consulta": "familia_especifica" o "articulo" o "lote" o "por_familia" o "por_deposito" o "vencimientos" o "vencidos" o "stock_bajo" o "total" o null
-}}
-
-tipo_consulta indica la intención principal.
-"""
-    
-    try:
-        respuesta = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Eres un extractor de parámetros. Responde solo con JSON válido."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0,
-            max_tokens=200
-        )
-        content = respuesta.choices[0].message.content.strip()
-        return json.loads(content)
-    except Exception as e:
-        print(f"Error extrayendo parámetros: {e}")
-        return {}
-
-
 def responder_pregunta_stock(pregunta: str) -> tuple:
     """
-    VERSIÓN SIMPLIFICADA: Usa OpenAI para extraer y ejecutar
+    Procesa preguntas de stock usando el interpretador dedicado
     """
-    # 1. Extraer parámetros con OpenAI
-    params = extraer_parametros_con_openai(pregunta)
+    # 1. Interpretar con el módulo dedicado
+    resultado = interpretar_pregunta_stock(pregunta)
     
-    if not params:
-        return "❌ No pude interpretar la pregunta", None
+    tipo = resultado["tipo"]
+    params = resultado["parametros"]
     
-    # 2. Decidir qué hacer basado en tipo_consulta
-    tipo = params.get("tipo_consulta")
+    # Debug
+    print(f"\n🔍 INTERPRETADOR STOCK:")
+    print(f"  Pregunta: {pregunta}")
+    print(f"  Tipo: {tipo}")
+    print(f"  Params: {params}")
     
-    if tipo == "familia_especifica" and params.get("familia"):
-        familia = params["familia"].upper()
+    # 2. Si no es stock, retornar None para que siga con compras
+    if tipo == "no_stock":
+        return None, None
+    
+    # 3. Ejecutar según tipo
+    if tipo == "familia_especifica":
+        familia = params.get("familia")
+        if not familia:
+            return "❌ No se detectó la familia", None
+        
         df = get_stock_familia(familia)
         if df is None or df.empty:
             return f"❌ No se encontró stock de la familia '{familia}' en Casa Central", None
         else:
-            return f"📦 Stock de familia {familia} (Casa Central, {len(df)} registros):", df
-    
-    elif tipo == "articulo" and params.get("articulo"):
-        articulo = params["articulo"]
-        df = get_stock_articulo(articulo)
-        if df is None or df.empty:
-            return f"❌ No se encontró stock para '{articulo}'", None
-        else:
-            return f"📦 {articulo}: {int(df['STOCK'].sum())} unidades en {df['LOTE'].nunique()} lote(s)", df
-    
-    elif tipo == "lote" and params.get("lote"):
-        lote = params["lote"]
-        df = get_stock_lote_especifico(lote)
-        if df is None or df.empty:
-            return f"❌ No se encontró el lote '{lote}'", None
-        else:
-            r = df.iloc[0]
-            mensaje = f"📦 Lote {lote}:\n- Artículo: {r['ARTICULO']}\n- Depósito: {r['DEPOSITO']}\n- Stock: {int(r['STOCK'])} unidades\n- Vence: {r['VENCIMIENTO']}"
-            return mensaje, df
+            articulos = df['ARTICULO'].nunique()
+            total = df['STOCK'].sum()
+            return f"📦 Familia {familia.upper()} (Casa Central): {articulos} artículos, {int(total)} unidades", df
     
     elif tipo == "por_familia":
         df = get_stock_por_familia()
         if df is not None and not df.empty:
             mensaje = f"📊 Stock por familia ({len(df)} familias):\n\n"
-            for _, row in df.head(5).iterrows():
+            for _, row in df.head(10).iterrows():
                 mensaje += f"- {row['familia']}: {int(row['stock_total']):,} unidades ({int(row['articulos'])} artículos)\n"
             return mensaje.strip(), df
         return "⚠️ No se pudo obtener el stock por familia.", None
@@ -200,10 +146,22 @@ def responder_pregunta_stock(pregunta: str) -> tuple:
         df = get_stock_por_deposito()
         if df is not None and not df.empty:
             mensaje = f"🏢 Stock por depósito ({len(df)} depósitos):\n\n"
-            for _, row in df.head(5).iterrows():
+            for _, row in df.head(10).iterrows():
                 mensaje += f"- {row['deposito']}: {int(row['stock_total']):,} unidades ({int(row['articulos'])} artículos)\n"
             return mensaje.strip(), df
         return "⚠️ No se pudo obtener el stock por depósito.", None
+    
+    elif tipo == "total":
+        df = get_stock_total()
+        if df is not None and not df.empty:
+            row = df.iloc[0]
+            mensaje = f"📊 Stock total general:\n"
+            mensaje += f"- Registros: {int(row['registros']):,}\n"
+            mensaje += f"- Artículos: {int(row['articulos']):,}\n"
+            mensaje += f"- Lotes: {int(row['lotes']):,}\n"
+            mensaje += f"- Stock total: {int(row['stock_total']):,} unidades"
+            return mensaje, None
+        return "⚠️ No se pudo obtener el resumen de stock.", None
     
     elif tipo == "vencimientos":
         dias = params.get("dias", 90)
@@ -231,20 +189,34 @@ def responder_pregunta_stock(pregunta: str) -> tuple:
                 mensaje += f"- {art}: {int(stock)} unidades\n"
             return mensaje.strip(), df
     
-    elif tipo == "total":
-        df = get_stock_total()
-        if df is not None and not df.empty:
-            row = df.iloc[0]
-            mensaje = f"📊 Stock total general:\n"
-            mensaje += f"- Registros: {int(row['registros']):,}\n"
-            mensaje += f"- Artículos: {int(row['articulos']):,}\n"
-            mensaje += f"- Lotes: {int(row['lotes']):,}\n"
-            mensaje += f"- Stock total: {int(row['stock_total']):,} unidades"
-            return mensaje, None
-        return "⚠️ No se pudo obtener el resumen de stock.", None
+    elif tipo == "articulo":
+        articulo = params.get("articulo")
+        if not articulo:
+            return "❌ No se detectó el artículo", None
+        
+        df = get_stock_articulo(articulo)
+        if df is None or df.empty:
+            return f"❌ No se encontró stock para '{articulo}'", None
+        else:
+            total = df['STOCK'].sum()
+            lotes = df['LOTE'].nunique()
+            return f"📦 {articulo}: {int(total)} unidades en {lotes} lote(s)", df
+    
+    elif tipo == "lote":
+        lote = params.get("lote")
+        if not lote:
+            return "❌ No se detectó el lote", None
+        
+        df = get_stock_lote_especifico(lote)
+        if df is None or df.empty:
+            return f"❌ No se encontró el lote '{lote}'", None
+        else:
+            r = df.iloc[0]
+            mensaje = f"📦 Lote {lote}:\n- Artículo: {r['ARTICULO']}\n- Depósito: {r['DEPOSITO']}\n- Stock: {int(r['STOCK'])} unidades\n- Vence: {r['VENCIMIENTO']}"
+            return mensaje, df
     
     else:
-        # Búsqueda libre
+        # Búsqueda libre como fallback
         df = buscar_stock_por_lote(texto_busqueda=pregunta)
         if df is None or df.empty:
             return f"❌ No se encontraron resultados para '{pregunta}'", None
@@ -364,7 +336,8 @@ def procesar_pregunta_v2(pregunta: str):
         # NUEVO: INTENTAR INTERPRETAR COMO PREGUNTA DE STOCK
         if any(word in pregunta.lower() for word in ["stock", "artículo", "articulo", "lote", "familia", "depósito", "deposito", "vence", "vencimiento"]):
             respuesta, df_extra = responder_pregunta_stock(pregunta)
-            return respuesta, formatear_dataframe(df_extra) if df_extra is not None else None, None
+            if respuesta is not None:  # Si retornó algo, es stock
+                return respuesta, formatear_dataframe(df_extra) if df_extra is not None else None, None
         
         sugerencia = interpretacion.get("sugerencia", "No entendí tu pregunta.")
         alternativas = interpretacion.get("alternativas", [])
