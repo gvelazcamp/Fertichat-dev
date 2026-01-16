@@ -329,7 +329,7 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
     try:
         base, _, _ = _stock_base_subquery()
         
-        # 1. Obtener stock SIN proveedor (como antes)
+        # 1. Obtener stock SIN proveedor
         sql = f"""
             SELECT
                 "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
@@ -352,7 +352,7 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
         if df.empty:
             return pd.DataFrame()
         
-        # 2. LÓGICA DE LIMPIEZA (igual que antes)
+        # 2. LÓGICA DE LIMPIEZA
         df['STOCK'] = df['STOCK'].fillna(0).astype(float)
         
         grouped = df.groupby('ARTICULO')
@@ -372,18 +372,25 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
         
         df_cleaned = pd.DataFrame(cleaned_rows)
         
-        # 3. ✅ Traer proveedores con normalización
+        # 3. ✅ Traer proveedores con normalización AGRESIVA
         sql_prov = """
             SELECT DISTINCT ON (normalized_articulo)
                 normalized_articulo AS "Articulo_Norm",
                 "Cliente / Proveedor" AS "Proveedor"
             FROM (
                 SELECT 
-                    REGEXP_REPLACE(UPPER(TRIM("Articulo")), '\\s+', ' ', 'g') AS normalized_articulo,
+                    REGEXP_REPLACE(
+                        REGEXP_REPLACE(
+                            REGEXP_REPLACE(UPPER(TRIM("Articulo")), '\\s+', ' ', 'g'),
+                            '\\s*\\([^)]*\\)\\s*', '', 'g'
+                        ),
+                        '[°º�ºª]', '°', 'g'
+                    ) AS normalized_articulo,
                     "Cliente / Proveedor",
                     "Fecha"
                 FROM public.chatbot_raw
             ) AS normalized
+            WHERE normalized_articulo != ''
             ORDER BY normalized_articulo, "Fecha" DESC NULLS LAST
         """
         df_prov = ejecutar_consulta(sql_prov)
@@ -393,8 +400,10 @@ def get_stock_familia(familia: str) -> pd.DataFrame:
             df_cleaned['ARTICULO_NORM'] = (
                 df_cleaned['ARTICULO']
                 .str.upper()
-                .str.strip()                        # Quita espacios extremos
-                .str.replace(r'\s+', ' ', regex=True)  # Normaliza espacios múltiples
+                .str.strip()
+                .str.replace(r'\s+', ' ', regex=True)
+                .str.replace(r'\s*\([^)]*\)\s*', '', regex=True)
+                .str.replace(r'[°º�ºª]', '°', regex=True)
             )
             
             # Merge
