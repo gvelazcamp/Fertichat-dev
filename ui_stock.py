@@ -345,7 +345,7 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
         render_stock_header(codigo_articulo, int(total_stock))
         render_stock_table(df_stock)
         render_stock_alerts(df_stock)
-        render_chat_compacto(codigo_articulo, df_stock)
+        render_chat_compacto(codigo_articulo, df_stock, unique_id="contextual")
 
 # =====================================================================
 # MÓDULO STOCK IA (CHATBOT)
@@ -578,6 +578,8 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         return f"No encontré stock para '{articulo}'.", None
 
     return "No entendí la consulta. Probá con: 'stock vitek', 'lotes por vencer', 'stock bajo', 'listado de artículos'.", None
+
+
 # =========================
 # 📦 RESUMEN STOCK (ROTATIVO CADA 5s)
 # =========================
@@ -795,7 +797,7 @@ def mostrar_stock_ia():
             render_stock_header(descripcion_articulo, int(total_stock))
             render_stock_table(df_art)
             render_stock_alerts(df_art)
-            render_chat_compacto(articulo_seleccionado, df_art)
+            render_chat_compacto(articulo_seleccionado, df_art, unique_id="select")
         else:
             st.warning(f"No hay stock para '{articulo_seleccionado}'.")
     else:
@@ -963,7 +965,7 @@ def mostrar_stock_ia():
                         render_stock_header(descripcion_articulo, int(total_stock))
                         render_stock_table(df)
                         render_stock_alerts(df)
-                        render_chat_compacto(descripcion_articulo, df)
+                        render_chat_compacto(descripcion_articulo, df, unique_id=f"hist_{idx}")
                     
                     elif "📉 Artículos con stock bajo" in item['respuesta']:
                         # Stock bajo: mostrar cada artículo con su header y mini métricas
@@ -980,8 +982,8 @@ def mostrar_stock_ia():
                             col3.metric("Vencimiento", str(first_row.get('VENCIMIENTO', '-'))[:10])
                             col4.metric("Stock", first_row.get('STOCK', 0))
                             st.divider()
-                            render_chat_compacto(articulo, group)
-                        render_chat_compacto("stock_bajo", df)
+                            render_chat_compacto(articulo, group, unique_id=f"hist_{idx}")
+                        render_chat_compacto("stock_bajo", df, unique_id=f"hist_{idx}")
                     
                     else:
                         # Otras consultas: header genérico + tabla + descarga
@@ -991,7 +993,7 @@ def mostrar_stock_ia():
                         render_stock_table(df)
                         if "lotes" in item['respuesta'].lower():
                             render_stock_alerts(df)
-                        render_chat_compacto(descripcion.replace(" ", "_").lower()[:20], df)
+                        render_chat_compacto(descripcion.replace(" ", "_").lower()[:20], df, unique_id=f"hist_{idx}")
 
     # ✅ AUTOREFRESH QUITADO COMPLETAMENTE - SE PAUSA CUANDO HAY ACTIVIDAD
     # if not st.session_state.get("pause_autorefresh_stock", False):
