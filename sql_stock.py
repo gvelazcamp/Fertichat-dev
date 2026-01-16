@@ -269,16 +269,21 @@ def buscar_stock_por_lote(
 
         if texto_busqueda:
             t = texto_busqueda.lower().strip()
-            where.append("""
-                (
-                  LOWER(COALESCE("ARTICULO", '')) LIKE %s OR
-                  LOWER(COALESCE("LOTE", '')) LIKE %s OR
-                  LOWER(COALESCE("CODIGO", '')) LIKE %s OR
-                  LOWER(COALESCE("FAMILIA", '')) LIKE %s OR
-                  LOWER(COALESCE("DEPOSITO", '')) LIKE %s
-                )
-            """)
-            params.extend([f"%{t}%"] * 5)
+            # Si el texto de búsqueda es corto (<=10 chars, sin espacios), buscar primero por CODIGO exacto
+            if len(t) <= 10 and ' ' not in t:
+                where.append("UPPER(TRIM(\"CODIGO\")) = %s")
+                params.append(t.upper())
+            else:
+                where.append("""
+                    (
+                      LOWER(COALESCE("ARTICULO", '')) LIKE %s OR
+                      LOWER(COALESCE("LOTE", '')) LIKE %s OR
+                      LOWER(COALESCE("CODIGO", '')) LIKE %s OR
+                      LOWER(COALESCE("FAMILIA", '')) LIKE %s OR
+                      LOWER(COALESCE("DEPOSITO", '')) LIKE %s
+                    )
+                """)
+                params.extend([f"%{t}%"] * 5)
 
         where_sql = "WHERE " + " AND ".join(where) if where else ""
 
@@ -306,14 +311,27 @@ def buscar_stock_por_lote(
 def get_stock_articulo(articulo: str) -> pd.DataFrame:
     try:
         base, _, _ = _stock_base_subquery()
-        sql = f"""
-            SELECT
-                "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
-            FROM ({base}) s
-            WHERE LOWER(COALESCE("ARTICULO", '')) LIKE %s
-            ORDER BY "VENCIMIENTO" ASC NULLS LAST, "LOTE" ASC
-        """
-        return ejecutar_consulta(sql, (f"%{articulo.lower().strip()}%",))
+        articulo = articulo.strip()
+        # Si el artículo es corto (<=10 chars, sin espacios), buscar por CODIGO exacto
+        if len(articulo) <= 10 and ' ' not in articulo:
+            sql = f"""
+                SELECT
+                    "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+                FROM ({base}) s
+                WHERE UPPER(TRIM("CODIGO")) = %s
+                ORDER BY "VENCIMIENTO" ASC NULLS LAST, "LOTE" ASC
+            """
+            return ejecutar_consulta(sql, (articulo.upper(),))
+        else:
+            # Búsqueda normal por ARTICULO
+            sql = f"""
+                SELECT
+                    "CODIGO","ARTICULO","FAMILIA","DEPOSITO","LOTE","VENCIMIENTO","Dias_Para_Vencer","STOCK"
+                FROM ({base}) s
+                WHERE LOWER(COALESCE("ARTICULO", '')) LIKE %s
+                ORDER BY "VENCIMIENTO" ASC NULLS LAST, "LOTE" ASC
+            """
+            return ejecutar_consulta(sql, (f"%{articulo.lower()}%",))
     except Exception:
         return pd.DataFrame()
 
