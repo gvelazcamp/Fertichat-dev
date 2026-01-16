@@ -91,29 +91,32 @@ def detectar_intencion_stock(texto: str) -> dict:
 
 
 def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Limpia el DataFrame de stock: si un artículo tiene TODO en stock 0, muestra solo 1 fila genérica."""
+    """Limpia el DataFrame de stock: consolida lotes con STOCK=0 en fila genérica, muestra lotes con >0 normalmente."""
     if df is None or df.empty:
         return df
     
-    # Convertir STOCK a numérico si no lo es
     df = df.copy()
     df['STOCK'] = df['STOCK'].apply(lambda x: float(str(x).replace(',', '.').replace(' ', '')) if pd.notna(x) else 0)
     
-    # Group by ARTICULO
     grouped = df.groupby('ARTICULO')
     cleaned_rows = []
     
     for articulo, group in grouped:
-        if (group['STOCK'] == 0).all():
-            # ✅ TODO en stock 0: mostrar 1 fila genérica (sin lote/vencimiento)
-            row = group.iloc[0].copy()
+        # Separar filas con stock >0 y =0
+        stock_positive = group[group['STOCK'] > 0]
+        stock_zero = group[group['STOCK'] == 0]
+        
+        if not stock_positive.empty:
+            # ✅ Mostrar lotes con stock >0 normalmente
+            cleaned_rows.extend(stock_positive.to_dict('records'))
+        
+        if not stock_zero.empty:
+            # ✅ Consolidar lotes con stock =0 en 1 fila genérica
+            row = stock_zero.iloc[0].copy()
             row['LOTE'] = '-'
             row['VENCIMIENTO'] = None
             row['Dias_Para_Vencer'] = None
             cleaned_rows.append(row)
-        else:
-            # ✅ Tiene stock >0: mostrar todas las filas
-            cleaned_rows.extend(group.to_dict('records'))
     
     return pd.DataFrame(cleaned_rows)
 
@@ -171,7 +174,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         df = get_lotes_vencidos()
         if df is not None and not df.empty:
             df = _clean_stock_df(df)  # ✅ Limpiar stock 0
-            return "��� Lotes ya vencidos:", df
+            return "🚨 Lotes ya vencidos:", df
         return "No hay lotes vencidos registrados.", None
 
     # Stock bajo
