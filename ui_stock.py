@@ -90,6 +90,34 @@ def detectar_intencion_stock(texto: str) -> dict:
     return {'tipo': 'stock_articulo', 'articulo': texto, 'debug': f'Búsqueda general: {texto}'}
 
 
+def _clean_stock_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Limpia el DataFrame de stock: si un artículo tiene TODO en stock 0, muestra solo 1 fila genérica."""
+    if df is None or df.empty:
+        return df
+    
+    # Convertir STOCK a numérico si no lo es
+    df = df.copy()
+    df['STOCK'] = df['STOCK'].apply(lambda x: float(str(x).replace(',', '.').replace(' ', '')) if pd.notna(x) else 0)
+    
+    # Group by ARTICULO
+    grouped = df.groupby('ARTICULO')
+    cleaned_rows = []
+    
+    for articulo, group in grouped:
+        if (group['STOCK'] == 0).all():
+            # ✅ TODO en stock 0: mostrar 1 fila genérica (sin lote/vencimiento)
+            row = group.iloc[0].copy()
+            row['LOTE'] = '-'
+            row['VENCIMIENTO'] = None
+            row['Dias_Para_Vencer'] = None
+            cleaned_rows.append(row)
+        else:
+            # ✅ Tiene stock >0: mostrar todas las filas
+            cleaned_rows.extend(group.to_dict('records'))
+    
+    return pd.DataFrame(cleaned_rows)
+
+
 def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]:
     """Procesa una pregunta sobre stock"""
 
@@ -118,6 +146,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         familia = intencion.get('familia', '')
         df = get_stock_familia(familia)
         if df is not None and not df.empty:
+            df = _clean_stock_df(df)  # ✅ Limpiar stock 0
             return f"📦 Stock de familia {familia}:", df
         return f"No encontré stock para la familia {familia}.", None
 
@@ -133,6 +162,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         dias = intencion.get('dias', 90)
         df = get_lotes_por_vencer(dias)
         if df is not None and not df.empty:
+            df = _clean_stock_df(df)  # ✅ Limpiar stock 0
             return f"⚠️ Lotes que vencen en los próximos {dias} días:", df
         return f"No hay lotes que venzan en los próximos {dias} días.", None
 
@@ -140,13 +170,15 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
     if tipo == 'lotes_vencidos':
         df = get_lotes_vencidos()
         if df is not None and not df.empty:
-            return "🚨 Lotes ya vencidos:", df
+            df = _clean_stock_df(df)  # ✅ Limpiar stock 0
+            return "��� Lotes ya vencidos:", df
         return "No hay lotes vencidos registrados.", None
 
     # Stock bajo
     if tipo == 'stock_bajo':
         df = get_stock_bajo(10)
         if df is not None and not df.empty:
+            df = _clean_stock_df(df)  # ✅ Limpiar stock 0
             return "📉 Artículos con stock bajo (≤10 unidades):", df
         return "No hay artículos con stock bajo.", None
 
@@ -155,6 +187,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         lote = intencion.get('lote', '')
         df = get_stock_lote_especifico(lote)
         if df is not None and not df.empty:
+            df = _clean_stock_df(df)  # ✅ Limpiar stock 0
             return f"🔍 Información del lote {lote}:", df
         return f"No encontré el lote {lote}.", None
 
@@ -163,6 +196,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         articulo = intencion.get('articulo', pregunta)
         df = get_stock_articulo(articulo)
         if df is not None and not df.empty:
+            df = _clean_stock_df(df)  # ✅ Limpiar stock 0
             return f"📦 Stock de '{articulo}':", df
         return f"No encontré stock para '{articulo}'.", None
 
