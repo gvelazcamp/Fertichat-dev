@@ -19,7 +19,7 @@ from sql_stock import (
     get_alertas_vencimiento_multiple,
     get_lista_articulos_stock,  # ✅ IMPORTAR PARA LISTA DE ARTÍCULOS
 )
-from sql_compras import get_compras_articulo  # ✅ AGREGAR PARA COMPRAS (asume que existe)
+# from sql_compras import get_compras_articulo  # REMOVIDO PARA EVITAR IMPORTERROR
 
 # =====================================================================
 # OPENAI PARA CLASIFICACIÓN DE PREGUNTAS
@@ -172,7 +172,8 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
     
     # 2. Obtener datos
     df_stock = get_stock_articulo(codigo_articulo)
-    df_compras = get_compras_articulo(codigo_articulo)  # Asume que existe
+    # df_compras = get_compras_articulo(codigo_articulo)  # REMOVIDO PARA EVITAR ERROR
+    df_compras = pd.DataFrame()  # Placeholder vacío
     
     if df_stock.empty and df_compras.empty:
         st.warning(f"No hay datos para '{codigo_articulo}'.")
@@ -196,12 +197,13 @@ def procesar_consulta_stock_contextual(pregunta: str, codigo_articulo: str = Non
     
     elif tipo_pregunta == "ultima_compra":
         if not df_compras.empty:
-            ultima = df_compras.nlargest(1, 'FECHA_COMPRA')  # Asume columna FECHA_COMPRA
+            # Asume columna FECHA_COMPRA
+            ultima = df_compras.nlargest(1, 'FECHA_COMPRA') if 'FECHA_COMPRA' in df_compras.columns else pd.DataFrame()
             fecha = ultima['FECHA_COMPRA'].iloc[0] if not ultima.empty else '-'
             cant = ultima['CANTIDAD'].iloc[0] if not ultima.empty else 0
             respuesta = f"🛒 Última compra: {fecha} - {cant} unidades"
         else:
-            respuesta = "No hay registros de compras"
+            respuesta = "No hay registros de compras (funcionalidad no implementada)"
     
     elif tipo_pregunta == "deposito":
         if not df_stock.empty:
@@ -448,7 +450,7 @@ def procesar_pregunta_stock(pregunta: str) -> Tuple[str, Optional[pd.DataFrame]]
         lote = intencion.get('lote', '')
         df = get_stock_lote_especifico(lote)
         if df is not None and not df.empty:
-            df = _clean_stock_df(df)  # ✅ Limpiar stock 0
+            df = _clean_stock_df(df)  # ✅ LimPIAR stock 0
             return f"🔍 Información del lote {lote}:", df
         return f"No encontré el lote {lote}.", None
 
