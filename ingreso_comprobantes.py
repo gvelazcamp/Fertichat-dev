@@ -1,6 +1,7 @@
 # =====================================================================
-# 📥 MÓDULO: INGRESO DE COMPROBANTES - FERTI CHAT (REDISEÑO)
+# 📥 MÓDULO: INGRESO DE COMPROBANTES - FERTI CHAT (REDISEÑO v2)
 # Archivo: ingreso_comprobantes_redesign.py
+# FIXES: Línea blanca, proveedor gigante, vencimiento, session_state
 # =====================================================================
 
 import streamlit as st
@@ -63,30 +64,6 @@ def _load_custom_css():
         --success: #27AE60;
         --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
         --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Contenedor principal */
-    .ingreso-container {
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-
-    /* Encabezado */
-    .page-header {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 32px;
-        padding-bottom: 20px;
-        border-bottom: 2px solid var(--border-color);
-    }
-
-    .page-header h1 {
-        font-size: 32px;
-        font-weight: 700;
-        color: var(--dark-gray);
-        margin: 0;
-        letter-spacing: -0.5px;
     }
 
     /* Secciones */
@@ -152,25 +129,15 @@ def _load_custom_css():
         border: none !important;
     }
 
-    .btn-primary > button {
+    .stButton > button {
         background: linear-gradient(135deg, var(--primary-blue), #3A7BC8) !important;
         color: white !important;
         box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3) !important;
     }
 
-    .btn-primary > button:hover {
+    .stButton > button:hover {
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4) !important;
-    }
-
-    .btn-secondary > button {
-        background: white !important;
-        color: var(--primary-blue) !important;
-        border: 2px solid var(--primary-blue) !important;
-    }
-
-    .btn-secondary > button:hover {
-        background: var(--light-blue) !important;
     }
 
     /* Data editor */
@@ -179,12 +146,18 @@ def _load_custom_css():
         border: 1px solid var(--border-color) !important;
     }
 
-    /* Títulos */
+    /* Métricas */
+    .stMetric {
+        background: white;
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
     h1, h2, h3 {
         color: var(--dark-gray) !important;
     }
 
-    /* Caption */
     .stCaption {
         font-size: 12px !important;
         font-weight: 600 !important;
@@ -193,7 +166,6 @@ def _load_custom_css():
         color: var(--text-primary) !important;
     }
 
-    /* Success/Error messages */
     .stSuccess {
         background-color: rgba(39, 174, 96, 0.1) !important;
         border-color: var(--success) !important;
@@ -201,11 +173,6 @@ def _load_custom_css():
 
     /* Responsive */
     @media (max-width: 768px) {
-        .page-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
         .form-section {
             padding: 20px;
         }
@@ -550,20 +517,21 @@ def _insert_detalle(tabla_det: str, detalle: dict) -> None:
     supabase.table(tabla_det).insert(detalle).execute()
 
 # =====================================================================
-# FUNCIÓN PRINCIPAL - REDISEÑADA
+# FUNCIÓN PRINCIPAL - REDISEÑADA v2 (FIXED)
 # =====================================================================
 
 def mostrar_ingreso_comprobantes():
     # Cargar CSS
     _load_custom_css()
 
-    # Encabezado
-    st.markdown(f"""
-    <div class="page-header">
-        <div>{ICONO_COMPROBANTE}</div>
-        <h1>Ingreso de comprobantes</h1>
-    </div>
-    """, unsafe_allow_html=True)
+    # Encabezado - SIN LÍNEA BLANCA
+    col_icon, col_title = st.columns([0.12, 0.88])
+    with col_icon:
+        st.markdown(ICONO_COMPROBANTE, unsafe_allow_html=True)
+    with col_title:
+        st.markdown("### Ingreso de comprobantes")
+
+    st.markdown("---")
 
     usuario_actual = st.session_state.get("usuario", st.session_state.get("user", "desconocido"))
 
@@ -573,50 +541,63 @@ def mostrar_ingreso_comprobantes():
 
     tabla_cab, tabla_det = _resolver_tablas_o_stop()
 
-    # Estado inicial
+    # ===== INICIALIZAR ESTADO =====
     if "comp_items" not in st.session_state:
         st.session_state["comp_items"] = []
+    
     if "comp_next_rid" not in st.session_state:
         st.session_state["comp_next_rid"] = 1
+    
     if "comp_reset_line" not in st.session_state:
         st.session_state["comp_reset_line"] = False
-
+    
     if "comp_fecha" not in st.session_state:
         st.session_state["comp_fecha"] = date.today()
+    
     if "comp_proveedor_sel" not in st.session_state:
         st.session_state["comp_proveedor_sel"] = ""
+    
     if "comp_nro" not in st.session_state:
         st.session_state["comp_nro"] = ""
+    
     if "comp_tipo" not in st.session_state:
         st.session_state["comp_tipo"] = "Factura"
+    
     if "comp_moneda" not in st.session_state:
         st.session_state["comp_moneda"] = "UYU"
+    
     if "comp_condicion" not in st.session_state:
         st.session_state["comp_condicion"] = "Contado"
-
+    
     if "comp_articulo_sel" not in st.session_state:
         st.session_state["comp_articulo_sel"] = ""
+    
     if "comp_articulo_prev" not in st.session_state:
         st.session_state["comp_articulo_prev"] = ""
-
+    
     if "comp_cantidad" not in st.session_state:
         st.session_state["comp_cantidad"] = 1
+    
     if "comp_precio" not in st.session_state:
         st.session_state["comp_precio"] = 0.0
+    
     if "comp_desc" not in st.session_state:
         st.session_state["comp_desc"] = 0.0
-
+    
     if "comp_has_lote" not in st.session_state:
         st.session_state["comp_has_lote"] = False
+    
     if "comp_has_venc" not in st.session_state:
         st.session_state["comp_has_venc"] = False
+    
     if "comp_lote" not in st.session_state:
         st.session_state["comp_lote"] = ""
+    
     if "comp_venc_date" not in st.session_state:
         st.session_state["comp_venc_date"] = date.today()
 
-    # Reset renglón
-    if st.session_state["comp_reset_line"]:
+    # ===== RESET DESPUÉS DE INICIALIZAR =====
+    if st.session_state.get("comp_reset_line", False):
         st.session_state["comp_articulo_sel"] = ""
         st.session_state["comp_articulo_prev"] = ""
         st.session_state["comp_cantidad"] = 1
@@ -726,7 +707,8 @@ def mostrar_ingreso_comprobantes():
         st.number_input("Desc. %", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc", label_visibility="collapsed")
         st.caption("Desc. %")
 
-    # Lote y Vencimiento
+    # Lote y Vencimiento - EN LA MISMA FILA
+    st.markdown("---")
     l1, l2 = st.columns(2)
 
     with l1:
@@ -751,6 +733,7 @@ def mostrar_ingreso_comprobantes():
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled", label_visibility="collapsed")
 
     # Botón Agregar
+    st.markdown("---")
     if st.button("➕ Agregar artículo", use_container_width=True):
         if not st.session_state["comp_proveedor_sel"]:
             st.error("Seleccioná un proveedor.")
@@ -835,13 +818,9 @@ def mostrar_ingreso_comprobantes():
         )
 
         if st.button("🗑 Quitar seleccionados", use_container_width=True):
-            to_del = set(edited.loc[edited["🗑"] == True, "_rid"].tolist() if "_rid" in edited.columns else [])
-            if to_del:
-                st.session_state["comp_items"] = [it for it in st.session_state["comp_items"] if it.get("_rid") not in to_del]
-            else:
-                # Si no hay columna _rid, usar índice
-                mask = edited["🗑"].tolist()
-                st.session_state["comp_items"] = [it for i, it in enumerate(st.session_state["comp_items"]) if not mask[i]]
+            # Obtener índices donde está marcado el checkbox
+            mask = edited["🗑"].tolist()
+            st.session_state["comp_items"] = [it for i, it in enumerate(st.session_state["comp_items"]) if not mask[i]]
             st.rerun()
 
         # TOTALES
@@ -867,16 +846,13 @@ def mostrar_ingreso_comprobantes():
         st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================
-    # BOTONES DE ACCIÓN
+    # BOTÓN GUARDAR
     # =========================================
     st.markdown('<div class="form-section">', unsafe_allow_html=True)
 
-    col_btn1, col_btn2 = st.columns(2)
+    col_empty, col_save = st.columns([2, 1])
 
-    with col_btn1:
-        pass
-
-    with col_btn2:
+    with col_save:
         if st.button("💾 Guardar comprobante", use_container_width=True, key="btn_save"):
             if not st.session_state["comp_proveedor_sel"] or not st.session_state["comp_nro"] or not st.session_state["comp_items"]:
                 st.error("Faltan datos obligatorios (Proveedor, Nº Comprobante y al menos 1 artículo).")
