@@ -388,27 +388,27 @@ require_auth()
 st.title("Inicio")
 
 # =========================
+# CONTAINER FIJO PARA EVITAR DESPLAZAMIENTO VISUAL
+# =========================
+main_container = st.container()
+
+# =========================
 # INICIALIZACIÓN
 # =========================
 init_db()
 user = get_current_user() or {}
 
-# Grupos del menú
+# Inicializar página
+if "pagina" not in st.session_state:
+    st.session_state.pagina = "🏠 Inicio"
+
+# Grupos del menú (para sidebar)
 groups = {
     "PRINCIPAL": ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"],
     "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes"],
     "CATÁLOGO": ["📚 Artículos", "🧩 Familias", "🏬 Depósitos", "📑 Comprobantes"],
     "ANÁLISIS": ["📊 Dashboard", "📈 Indicadores (Power BI)"],
 }
-
-# Inicializar radios
-for group in groups:
-    key = f"radio_{group.lower()}"
-    if key not in st.session_state:
-        if group == "PRINCIPAL":
-            st.session_state[key] = "🏠 Inicio"
-        else:
-            st.session_state[key] = None
 
 # Forzar flag del orquestador
 st.session_state["ORQUESTADOR_CARGADO"] = True
@@ -516,57 +516,60 @@ def _clear_qp():
 # Desde tarjetas (go=?)
 _go = _get_qp_first("go")
 if _go == "compras":
-    st.session_state["radio_principal"] = "🛒 Compras IA"
+    st.session_state.pagina = "🛒 Compras IA"
     _clear_qp()
     st.rerun()
 
 elif _go == "buscador":
-    st.session_state["radio_principal"] = "🔎 Buscador IA"
+    st.session_state.pagina = "🔎 Buscador IA"
     _clear_qp()
     st.rerun()
 
 elif _go == "stock":
-    st.session_state["radio_principal"] = "📦 Stock IA"
+    st.session_state.pagina = "📦 Stock IA"
     _clear_qp()
     st.rerun()
 
 elif _go == "dashboard":
-    st.session_state["radio_analisis"] = "📊 Dashboard"
+    st.session_state.pagina = "📊 Dashboard"
     _clear_qp()
     st.rerun()
 
 elif _go == "pedidos":
-    st.session_state["radio_gestion"] = "📄 Pedidos internos"
+    st.session_state.pagina = "📄 Pedidos internos"
     _clear_qp()
     st.rerun()
 
 elif _go == "baja":
-    st.session_state["radio_gestion"] = "🧾 Baja de stock"
+    st.session_state.pagina = "🧾 Baja de stock"
     _clear_qp()
     st.rerun()
 
 elif _go == "ordenes":
-    st.session_state["radio_gestion"] = "📦 Órdenes de compra"
+    st.session_state.pagina = "📦 Órdenes de compra"
     _clear_qp()
     st.rerun()
 
 elif _go == "indicadores":
-    st.session_state["radio_analisis"] = "📈 Indicadores (Power BI)"
+    st.session_state.pagina = "📈 Indicadores (Power BI)"
     _clear_qp()
     st.rerun()
 
 # Desde campana (ir_notif=1)
 try:
     if st.query_params.get("ir_notif") == "1":
-        st.session_state["radio_gestion"] = "📄 Pedidos internos"
+        st.session_state.pagina = "📄 Pedidos internos"
         _clear_qp()
         st.rerun()
 except Exception:
     pass
 
 # =========================
-# SIDEBAR
+# SIDEBAR CON NAVEGACIÓN SUAVE
 # =========================
+def ir(pagina):
+    st.session_state.pagina = pagina
+
 with st.sidebar:
     st.markdown("""
     <style>
@@ -602,53 +605,43 @@ with st.sidebar:
         white-space: nowrap !important;
     }
     
-    /* Ocultar el label vacío del radio */
-    section[data-testid="stSidebar"] label[data-testid="stWidgetLabel"] {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* Hacer círculos MUCHO MÁS CHICOS */
-    section[data-testid="stSidebar"] input[type="radio"] {
-        width: 12px !important;
-        height: 12px !important;
-        min-width: 12px !important;
-        margin-right: 8px !important;
-        flex-shrink: 0 !important;
-        accent-color: #3b82f6 !important;
-    }
-    
-    /* Contenedor MÁS COMPACTO */
-    section[data-testid="stSidebar"] .stRadio > div {
-        gap: 0 !important;
-    }
-    
-    /* Labels SÚPER COMPACTOS */
-    section[data-testid="stSidebar"] .stRadio label {
-        padding: 4px 12px 4px 8px !important;
+    /* Estilos para botones del menú */
+    section[data-testid="stSidebar"] .stButton > button {
+        width: 100% !important;
+        text-align: left !important;
+        padding: 8px 16px !important;
         font-size: 14px !important;
         font-weight: 500 !important;
         color: #475569 !important;
         border-left: 3px solid transparent !important;
         transition: all 120ms ease !important;
         cursor: pointer !important;
-        display: flex !important;
-        align-items: center !important;
-        margin: 0 !important;
         background: transparent !important;
-        position: relative !important;
-        min-height: 28px !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        min-height: 32px !important;
         line-height: 1.2 !important;
+        position: relative !important;
     }
     
-    /* Flechita azul ANTES del círculo */
-    section[data-testid="stSidebar"] .stRadio label::before {
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        background: #f8fafc !important;
+        border-left-color: #3b82f6 !important;
+        color: #1e293b !important;
+    }
+    
+    section[data-testid="stSidebar"] .stButton > button:focus {
+        background: #ebf5ff !important;
+        border-left-color: #3b82f6 !important;
+        color: #1e293b !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Flechita azul antes del texto */
+    section[data-testid="stSidebar"] .stButton > button::before {
         content: '▸' !important;
         position: absolute !important;
-        left: -12px !important;
+        left: 8px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
         color: #3b82f6 !important;
@@ -657,20 +650,9 @@ with st.sidebar:
         line-height: 1 !important;
     }
     
-    /* Flechita más bold cuando está seleccionado */
-    section[data-testid="stSidebar"] .stRadio input:checked + div label::before {
+    /* Flechita más bold cuando activo */
+    section[data-testid="stSidebar"] .stButton > button:focus::before {
         font-weight: 900 !important;
-    }
-    
-    section[data-testid="stSidebar"] .stRadio label:hover {
-        background: #f8fafc !important;
-    }
-    
-    section[data-testid="stSidebar"] .stRadio input:checked + div label {
-        background: #ebf5ff !important;
-        border-left-color: #3b82f6 !important;
-        font-weight: 600 !important;
-        color: #1e293b !important;
     }
     
     .fc-divider {
@@ -723,19 +705,23 @@ with st.sidebar:
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
-    # Menu agrupado
+    # Menu agrupado con botones
     for group, options in groups.items():
         st.markdown(f'<div class="fc-section-header">{group}</div>', unsafe_allow_html=True)
-        st.radio("", options, key=f"radio_{group.lower()}", label_visibility="collapsed")
+        for opt in options:
+            is_active = st.session_state.pagina == opt
+            if st.button(opt, key=f"btn_{opt.replace(' ', '_').replace('🏠', 'home').replace('🛒', 'compras').replace('🔎', 'buscador').replace('📦', 'stock').replace('📄', 'pedidos').replace('🧾', 'baja').replace('📥', 'ingreso').replace('📚', 'articulos').replace('🧩', 'familias').replace('🏬', 'depositos').replace('📑', 'comprobantes').replace('📊', 'dashboard').replace('📈', 'indicadores')}", on_click=ir, args=(opt,), help=f"Ir a {opt}"):
+                pass
     
     st.components.v1.html(r"""
     <script>
     (function() {
         const interval = setInterval(() => {
-            const labels = parent.document.querySelectorAll('section[data-testid="stSidebar"] .stRadio label p');
-            if (labels.length > 0) {
-                labels.forEach(label => {
-                    label.textContent = label.textContent.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+            const buttons = parent.document.querySelectorAll('section[data-testid="stSidebar"] .stButton button');
+            if (buttons.length > 0) {
+                buttons.forEach(button => {
+                    const text = button.textContent;
+                    button.textContent = text.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                 });
                 clearInterval(interval);
             }
@@ -793,81 +779,75 @@ def mostrar_debug_sql_factura():
 
 
 # =========================
-# ROUTER PRINCIPAL
+# ROUTER PRINCIPAL CON CONTAINER FIJO
 # =========================
-menu_actual = None
-for group, options in groups.items():
-    val = st.session_state.get(f"radio_{group.lower()}")
-    if val:
-        menu_actual = val
-        break
+with main_container:
+    if st.session_state.pagina == "🏠 Inicio":
+        mostrar_inicio()
 
-if menu_actual == "🏠 Inicio":
-    mostrar_inicio()
+    elif "Chat (Chainlit)" in st.session_state.pagina:
+        mostrar_chat_chainlit()
 
-elif "Chat (Chainlit)" in menu_actual:
-    mostrar_chat_chainlit()
+    elif st.session_state.pagina == "🛒 Compras IA":
+        mostrar_resumen_compras_rotativo()
+        Compras_IA()
 
-elif menu_actual == "🛒 Compras IA":
-    mostrar_resumen_compras_rotativo()
-    Compras_IA()
+        # Panel de debug general (última consulta)
+        if st.session_state.get("DEBUG_SQL", False):
+            with st.expander("🛠 Debug (última consulta)", expanded=True):
+                st.subheader("Interpretación")
+                st.json(st.session_state.get("DBG_INT_LAST", {}))
 
-    # Panel de debug general (última consulta)
-    if st.session_state.get("DEBUG_SQL", False):
-        with st.expander("🛠 Debug (última consulta)", expanded=True):
-            st.subheader("Interpretación")
-            st.json(st.session_state.get("DBG_INT_LAST", {}))
+                st.subheader("SQL ejecutado")
+                st.write("Origen:", st.session_state.get("DBG_SQL_LAST_TAG"))
+                st.write("Params:", st.session_state.get("DBG_SQL_LAST_PARAMS", []))
 
-            st.subheader("SQL ejecutado")
-            st.write("Origen:", st.session_state.get("DBG_SQL_LAST_TAG"))
-            st.write("Params:", st.session_state.get("DBG_SQL_LAST_PARAMS", []))
+                st.subheader("Resultado")
+                st.write("Filas:", st.session_state.get("DBG_SQL_ROWS"))
+                st.write("Columnas:", st.session_state.get("DBG_SQL_COLS", []))
 
-            st.subheader("Resultado")
-            st.write("Filas:", st.session_state.get("DBG_SQL_ROWS"))
-            st.write("Columnas:", st.session_state.get("DBG_SQL_COLS", []))
+    elif st.session_state.pagina == "🔍 Debug SQL factura":
+        mostrar_debug_sql_factura()
 
-elif menu_actual == "🔍 Debug SQL factura":
-    mostrar_debug_sql_factura()
+    elif st.session_state.pagina == "📦 Stock IA":
+        mostrar_resumen_stock_rotativo(dias_vencer=30)  # Cambiado a 30 días
+        mostrar_stock_ia()
 
-elif menu_actual == "📦 Stock IA":
-    mostrar_resumen_stock_rotativo(dias_vencer=30)  # Cambiado a 30 días
-    mostrar_stock_ia()
+    elif st.session_state.pagina == "🔎 Buscador IA":
+        mostrar_buscador_ia()
 
-elif menu_actual == "🔎 Buscador IA":
-    mostrar_buscador_ia()
+    elif st.session_state.pagina == "📥 Ingreso de comprobantes":
+        mostrar_ingreso_comprobantes()
 
-elif menu_actual == "📥 Ingreso de comprobantes":
-    mostrar_ingreso_comprobantes()
+    elif st.session_state.pagina == "📊 Dashboard":
+        mostrar_dashboard()
 
-elif menu_actual == "📊 Dashboard":
-    mostrar_dashboard()
+    elif st.session_state.pagina == "📄 Pedidos internos":
+        mostrar_pedidos_internos()
 
-elif menu_actual == "📄 Pedidos internos":
-    mostrar_pedidos_internos()
+    elif st.session_state.pagina == "🧾 Baja de stock":
+        mostrar_baja_stock()
 
-elif menu_actual == "🧾 Baja de stock":
-    mostrar_baja_stock()
+    elif st.session_state.pagina == "📈 Indicadores (Power BI)":
+        mostrar_indicadores_ia()
 
-elif menu_actual == "📈 Indicadores (Power BI)":
-    mostrar_indicadores_ia()
+    elif st.session_state.pagina == "📦 Órdenes de compra":
+        mostrar_ordenes_compra()
 
-elif menu_actual == "📦 Órdenes de compra":
-    mostrar_ordenes_compra()
+    elif st.session_state.pagina == "📒 Ficha de stock":
+        mostrar_ficha_stock()
 
-elif menu_actual == "📒 Ficha de stock":
-    mostrar_ficha_stock()
+    elif st.session_state.pagina == "📚 Artículos":
+        mostrar_articulos()
 
-elif menu_actual == "📚 Artículos":
-    mostrar_articulos()
+    elif st.session_state.pagina == "🏬 Depósitos":
+        mostrar_depositos()
 
-elif menu_actual == "🏬 Depósitos":
-    mostrar_depositos()
+    elif st.session_state.pagina == "🧩 Familias":
+        mostrar_familias()
 
-elif menu_actual == "🧩 Familias":
-    mostrar_familias()
-
-elif menu_actual == "📑 Comprobantes":
-    mostrar_menu_comprobantes()
+    elif st.session_state.pagina == "📑 Comprobantes":
+        mostrar_menu_comprobantes()
 
 # Marca visual para saber que el orquestador está cargado
 # st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
