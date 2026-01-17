@@ -136,51 +136,26 @@ def mostrar_inicio_desktop():
     }
 
     /* =========================================================
-       SIDEBAR MINIMALISTA PREMIUM (OPCIÓN 4)
+       SIDEBAR MINIMALISTA PREMIUM
        ========================================================= */
     
-    /* Fondo y bordes */
     section[data-testid="stSidebar"] {
         background: #ffffff !important;
         border-right: 1px solid rgba(148, 163, 184, 0.15);
-        padding: 0 !important;
     }
 
     section[data-testid="stSidebar"] > div {
         background: #ffffff !important;
-        padding-top: 24px !important;
+        padding-top: 16px !important;
     }
 
-    /* Ocultar radio buttons nativos */
-    section[data-testid="stSidebar"] .stRadio {
+    /* Ocultar círculos de radio pero mantener funcionalidad */
+    section[data-testid="stSidebar"] input[type="radio"] {
         display: none !important;
     }
 
-    /* Header FertiChat */
-    section[data-testid="stSidebar"] h1:first-of-type {
-        font-size: 16px !important;
-        font-weight: 700 !important;
-        color: #1e293b !important;
-        padding: 0 16px 12px 16px !important;
-        margin: 0 0 12px 0 !important;
-        border-bottom: 2px solid #3b82f6 !important;
-    }
-
-    /* Secciones (PRINCIPAL, ANÁLISIS, etc) */
-    section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3,
-    section[data-testid="stSidebar"] h4 {
-        font-size: 12px !important;
-        font-weight: 600 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        color: #94a3b8 !important;
-        padding: 8px 16px !important;
-        margin: 24px 0 8px 0 !important;
-    }
-
-    /* Items principales con dot */
-    section[data-testid="stSidebar"] label {
+    /* Labels como items del menú */
+    section[data-testid="stSidebar"] .stRadio label {
         padding: 10px 16px !important;
         font-size: 14px !important;
         font-weight: 500 !important;
@@ -190,50 +165,42 @@ def mostrar_inicio_desktop():
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
-        margin: 0 !important;
+        margin: 2px 0 !important;
+        background: transparent !important;
     }
 
-    /* Dot antes del texto */
-    section[data-testid="stSidebar"] label::before {
-        content: "•" !important;
-        margin-right: 12px !important;
+    /* Dot antes del label */
+    section[data-testid="stSidebar"] .stRadio label div[data-testid="stMarkdownContainer"]::before {
+        content: "• " !important;
         color: #94a3b8 !important;
-        font-size: 16px !important;
+        margin-right: 8px !important;
     }
 
     /* Hover */
-    section[data-testid="stSidebar"] label:hover {
+    section[data-testid="stSidebar"] .stRadio label:hover {
         background: #f8fafc !important;
     }
 
-    /* Activo */
-    section[data-testid="stSidebar"] input:checked + div label {
+    /* Item activo */
+    section[data-testid="stSidebar"] .stRadio input:checked + div + label,
+    section[data-testid="stSidebar"] .stRadio input:checked ~ label {
         background: #ebf5ff !important;
         border-left-color: #3b82f6 !important;
         font-weight: 600 !important;
         color: #1e293b !important;
     }
 
-    /* Sub-items (sin dot, con indent) */
-    section[data-testid="stSidebar"] label[for*="sub-"]::before,
-    section[data-testid="stSidebar"] label:has(~ label)::before {
-        content: none !important;
+    /* Headers de sección (detecta texto todo mayúsculas) */
+    section[data-testid="stSidebar"] label:has(div[data-testid="stMarkdownContainer"]:is(:where(*))) {
+        text-transform: uppercase;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #94a3b8 !important;
+        padding: 16px 16px 8px 16px !important;
+        margin-top: 16px !important;
     }
 
-    section[data-testid="stSidebar"] label[for*="sub-"],
-    section[data-testid="stSidebar"] label:has(~ label) {
-        padding-left: 36px !important;
-        font-weight: 400 !important;
-    }
-
-    /* Separador antes de cerrar sesión */
-    section[data-testid="stSidebar"] hr {
-        border: none !important;
-        border-top: 1px solid rgba(148, 163, 184, 0.15) !important;
-        margin: 24px 16px !important;
-    }
-
-    /* Botones */
+    /* Botones del sidebar */
     section[data-testid="stSidebar"] .stButton button {
         background: transparent !important;
         color: #475569 !important;
@@ -245,12 +212,6 @@ def mostrar_inicio_desktop():
         width: 100% !important;
         border-left: 3px solid transparent !important;
         transition: all 120ms ease !important;
-    }
-
-    section[data-testid="stSidebar"] .stButton button::before {
-        content: "•" !important;
-        margin-right: 12px !important;
-        color: #94a3b8 !important;
     }
 
     section[data-testid="stSidebar"] .stButton button:hover {
