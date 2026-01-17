@@ -567,41 +567,22 @@ with st.sidebar:
         width: 100%;
     }
     
-    /* Ocultar "Ir a:" - TODOS los selectores posibles */
-    section[data-testid="stSidebar"] .stRadio > label,
-    section[data-testid="stSidebar"] .stRadio > div > label:first-child,
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* OCULTAR círculos A LA FUERZA */
-    section[data-testid="stSidebar"] input[type="radio"],
-    section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"],
-    section[data-testid="stSidebar"] .stRadio input {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
+    /* SOLO ocultar círculos del radio, NO los labels */
+    section[data-testid="stSidebar"] input[type="radio"] {
         width: 0 !important;
         height: 0 !important;
+        opacity: 0 !important;
         position: absolute !important;
-        left: -9999px !important;
+        pointer-events: none !important;
     }
     
     /* Contenedor más compacto */
-    section[data-testid="stSidebar"] .stRadio > div,
-    section[data-testid="stSidebar"] div[role="radiogroup"] {
-        gap: 0 !important;
-        display: flex !important;
-        flex-direction: column !important;
+    section[data-testid="stSidebar"] .stRadio > div {
+        gap: 2px !important;
     }
     
-    /* Labels MÁS COMPACTOS */
-    section[data-testid="stSidebar"] .stRadio label,
-    section[data-testid="stSidebar"] div[role="radiogroup"] label {
+    /* Labels MÁS COMPACTOS y con flechitas */
+    section[data-testid="stSidebar"] .stRadio label {
         padding: 6px 16px 6px 32px !important;
         font-size: 14px !important;
         font-weight: 500 !important;
@@ -615,29 +596,25 @@ with st.sidebar:
         background: transparent !important;
         position: relative !important;
         min-height: 32px !important;
-        line-height: 1.2 !important;
+        line-height: 1.3 !important;
     }
     
-    /* Flechita SVG azul */
-    section[data-testid="stSidebar"] .stRadio label::before,
-    section[data-testid="stSidebar"] div[role="radiogroup"] label::before {
-        content: '' !important;
+    /* Flechita SVG azul ANTES del texto */
+    section[data-testid="stSidebar"] .stRadio label::before {
+        content: '▸' !important;
         position: absolute !important;
         left: 12px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
-        width: 14px !important;
-        height: 14px !important;
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
-        background-repeat: no-repeat !important;
-        background-position: center !important;
-        background-size: 14px 14px !important;
+        color: #3b82f6 !important;
+        font-size: 16px !important;
+        font-weight: 400 !important;
+        line-height: 1 !important;
     }
     
-    /* Flechita más gruesa cuando está seleccionado */
-    section[data-testid="stSidebar"] .stRadio input:checked + div label::before,
-    section[data-testid="stSidebar"] div[role="radiogroup"] input:checked + div label::before {
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
+    /* Flechita más bold cuando está seleccionado */
+    section[data-testid="stSidebar"] .stRadio input:checked + div label::before {
+        font-weight: 900 !important;
     }
     
     section[data-testid="stSidebar"] .stRadio label:hover {
@@ -704,14 +681,14 @@ with st.sidebar:
     
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
     
-    st.components.v1.html("""
+    st.components.v1.html(r"""
     <script>
     (function() {
         const interval = setInterval(() => {
             const labels = parent.document.querySelectorAll('section[data-testid="stSidebar"] .stRadio label p');
             if (labels.length > 0) {
                 labels.forEach(label => {
-                    label.textContent = label.textContent.replace(/[\\u{1F000}-\\u{1F9FF}\\u{2600}-\\u{26FF}\\u{2700}-\\u{27BF}]/gu, '').trim();
+                    label.textContent = label.textContent.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                 });
                 clearInterval(interval);
             }
@@ -831,7 +808,7 @@ elif menu_actual == "📒 Ficha de stock":
 elif menu_actual == "📚 Artículos":
     mostrar_articulos()
 
-elif menu_actual == "���� Depósitos":
+elif menu_actual == "🏬 Depósitos":
     mostrar_depositos()
 
 elif menu_actual == "🧩 Familias":
