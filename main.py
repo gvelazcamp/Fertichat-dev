@@ -561,10 +561,12 @@ with st.sidebar:
         text-transform: uppercase;
         letter-spacing: 1px;
         color: #94a3b8;
-        padding: 8px 16px;
+        padding: 12px 16px 8px 16px;
         margin: 16px 0 2px 0;
         display: block !important;
         width: 100%;
+        overflow: visible !important;
+        white-space: nowrap !important;
     }
     
     /* Hacer círculos MUCHO MÁS CHICOS */
@@ -680,7 +682,7 @@ with st.sidebar:
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     st.markdown('<div class="fc-section-header">PRINCIPAL</div>', unsafe_allow_html=True)
     
-    st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
+    st.radio("", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
     
     st.components.v1.html(r"""
     <script>
