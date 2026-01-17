@@ -140,20 +140,27 @@ def _load_custom_css():
         box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4) !important;
     }
 
-    /* Botón agregar artículo */
-    .add-button {
-        background: none !important;
+    /* Botón agregar artículo - SVG limpio */
+    .stButton > button[data-testid*="btn_add_art"] {
+        width: 50px !important;
+        height: 50px !important;
+        background: linear-gradient(135deg, #4A90E2, #3A7BC8) !important;
         border: none !important;
-        color: var(--primary-blue) !important;
-        font-size: 20px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3) !important;
+        transition: all 0.3s ease !important;
+        background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDVWMTVNNCAxMEgxNSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHN2Zz4=") !important;
+        background-size: 20px !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        color: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
-        box-shadow: none !important;
     }
 
-    .add-button:hover {
-        color: #3A7BC8 !important;
-        box-shadow: none !important;
+    .stButton > button[data-testid*="btn_add_art"]:hover {
+        box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4) !important;
+        transform: translateY(-2px) !important;
     }
 
     /* Data editor */
@@ -697,7 +704,7 @@ def mostrar_ingreso_comprobantes():
             else:
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
         with c_btn:
-            if st.button("➕", key="btn_add_art"):
+            if st.button("", key="btn_add_art", help="Agregar artículo"):
                 if not st.session_state["comp_articulo_sel"]:
                     st.error("Seleccioná un artículo.")
                 else:
