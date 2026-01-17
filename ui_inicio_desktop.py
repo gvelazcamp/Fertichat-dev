@@ -1,3 +1,4 @@
+```python
 # =========================
 # UI_INICIO_DESKTOP.PY - PANTALLA DE INICIO PARA PC (CORPORATIVO)
 # =========================
@@ -8,14 +9,8 @@ import random
 
 
 def mostrar_inicio_desktop():
-    """Pantalla de inicio con accesos rápidos a los módulos (look corporativo para PC)"""
-
-    # FORZAR DETECCIÓN DESKTOP (para que el router sepa que es PC)
     st.session_state["is_mobile"] = False
     
-    # =========================
-    # Datos usuario / saludo
-    # =========================
     user = st.session_state.get("user", {})
     nombre = user.get("nombre", "Usuario")
 
@@ -27,19 +22,10 @@ def mostrar_inicio_desktop():
     else:
         saludo = "¡Buenas noches"
 
-    # =========================
-    # MARCADOR DESKTOP (para aplicar CSS SOLO en esta pantalla)
-    # =========================
     st.markdown('<div id="fc-home-desktop-marker" style="display:none;"></div>', unsafe_allow_html=True)
 
-    # =========================
-    # CSS CORPORATIVO LIMPIO - Iconos integrados
-    # =========================
     st.markdown("""
     <style>
-    /* =========================================================
-       ELIMINAR TODO EL PADDING SUPERIOR - AGRESIVO
-       ========================================================= */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) {
         padding-top: 0 !important;
         margin-top: 0 !important;
@@ -87,37 +73,27 @@ def mostrar_inicio_desktop():
         padding: 0 !important;
     }
     
-    /* =========================================================
-       TARJETAS CORPORATIVAS
-       ========================================================= */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) div[data-testid="column"] {
         position: relative;
     }
 
-    /* Botón como tarjeta - Fondo blanco profesional */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button {
         border: 1px solid rgba(148, 163, 184, 0.25);
         background: #ffffff;
         border-radius: 12px;
-        
         height: 200px;
         min-height: 200px;
-        
-        padding: 90px 20px 20px 20px;
-        
+        padding: 80px 20px 20px 20px;
         box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
         cursor: pointer;
         transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
-        
         width: 100%;
         text-align: center;
-        
         white-space: pre-line;
         font-size: 14px;
         font-weight: 400;
         color: #64748b;
         line-height: 1.6;
-        
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -126,7 +102,6 @@ def mostrar_inicio_desktop():
         margin: 0;
     }
 
-    /* Título de la tarjeta - Bold y oscuro */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button::first-line {
         font-size: 17px;
         font-weight: 700;
@@ -134,7 +109,6 @@ def mostrar_inicio_desktop():
         letter-spacing: -0.01em;
     }
 
-    /* Hover corporativo */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button:hover {
         transform: translateY(-3px);
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
@@ -146,7 +120,6 @@ def mostrar_inicio_desktop():
         box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
     }
 
-    /* Badge rojo */
     .fc-badge {
         position: absolute;
         top: 12px;
@@ -161,19 +134,17 @@ def mostrar_inicio_desktop():
         z-index: 10;
     }
 
-    /* Responsive */
     @media (max-width: 900px) {
         div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button {
             height: 160px;
             min-height: 160px;
-            padding: 70px 16px 16px 16px;
+            padding: 65px 16px 16px 16px;
         }
         div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button::first-line {
             font-size: 15px;
         }
     }
 
-    /* SIDEBAR LIGHT */
     section[data-testid="stSidebar"] {
         background: #ffffff !important;
         border-right: 1px solid rgba(148, 163, 184, 0.2);
@@ -197,12 +168,7 @@ def mostrar_inicio_desktop():
     </style>
     """, unsafe_allow_html=True)
 
-    # =========================
-    # GRID DE TARJETAS CON ICONOS SVG
-    # =========================
     st.markdown("<div style='max-width:1200px;margin:100px auto 0 auto;'>", unsafe_allow_html=True)
-
-    # FILA 1 - Inteligencia y consulta
     st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 24px 6px;display:flex;align-items:center;gap:8px;'>📌 Inteligencia y consulta</div>", unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4, gap="large")
@@ -210,7 +176,7 @@ def mostrar_inicio_desktop():
     with col1:
         st.markdown("""
         <div style="text-align:center;margin-bottom:-200px;pointer-events:none;position:relative;z-index:1;">
-            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
             </svg>
@@ -223,7 +189,7 @@ def mostrar_inicio_desktop():
     with col2:
         st.markdown("""
         <div style="text-align:center;margin-bottom:-200px;pointer-events:none;position:relative;z-index:1;">
-            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
         </div>
@@ -236,7 +202,7 @@ def mostrar_inicio_desktop():
         st.markdown('<div class="fc-badge">1</div>', unsafe_allow_html=True)
         st.markdown("""
         <div style="text-align:center;margin-bottom:-200px;pointer-events:none;position:relative;z-index:1;">
-            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                 <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
             </svg>
@@ -249,7 +215,7 @@ def mostrar_inicio_desktop():
     with col4:
         st.markdown("""
         <div style="text-align:center;margin-bottom:-200px;pointer-events:none;position:relative;z-index:1;">
-            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
                 <line x1="6" y1="20" x2="6" y2="14"/>
             </svg>
@@ -260,8 +226,6 @@ def mostrar_inicio_desktop():
             st.rerun()
 
     st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
-
-    # FILA 2 - Gestión operativa
     st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 24px 6px;display:flex;align-items:center;gap:8px;'>⚙️ Gestión operativa</div>", unsafe_allow_html=True)
     
     col5, col6, col7, col8 = st.columns(4, gap="large")
@@ -269,7 +233,7 @@ def mostrar_inicio_desktop():
     with col5:
         st.markdown("""
         <div style="text-align:center;margin-bottom:-200px;pointer-events:none;position:relative;z-index:1;">
-            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
                 <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
@@ -283,7 +247,7 @@ def mostrar_inicio_desktop():
     with col6:
         st.markdown("""
         <div style="text-align:center;margin-bottom:-200px;pointer-events:none;position:relative;z-index:1;">
-            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/>
                 <line x1="9" y1="15" x2="15" y2="15"/>
@@ -297,7 +261,7 @@ def mostrar_inicio_desktop():
     with col7:
         st.markdown("""
         <div style="text-align:center;margin-bottom:-200px;pointer-events:none;position:relative;z-index:1;">
-            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                 <polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/>
                 <polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
@@ -312,7 +276,7 @@ def mostrar_inicio_desktop():
     with col8:
         st.markdown("""
         <div style="text-align:center;margin-bottom:-200px;pointer-events:none;position:relative;z-index:1;">
-            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/>
                 <line x1="6" y1="20" x2="6" y2="16"/>
             </svg>
@@ -324,9 +288,6 @@ def mostrar_inicio_desktop():
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # =========================
-    # TIP DEL DÍA
-    # =========================
     tips = [
         "💡 Escribí 'compras roche 2025' para ver todas las compras a Roche este año",
         "💡 Usá 'lotes por vencer' en Stock IA para ver vencimientos próximos",
@@ -355,3 +316,4 @@ def mostrar_inicio_desktop():
         """,
         unsafe_allow_html=True
     )
+```
