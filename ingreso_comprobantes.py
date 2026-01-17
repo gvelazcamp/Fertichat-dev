@@ -681,51 +681,6 @@ def mostrar_ingreso_comprobantes():
             else:
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
 
-    # Botón Agregar
-    if st.button("➕ Agregar artículo", use_container_width=True):
-        if not st.session_state["comp_articulo_sel"]:
-            st.error("Seleccioná un artículo.")
-        else:
-            art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {})
-            art_desc = _articulo_desc_from_row(art_row) or st.session_state["comp_articulo_sel"]
-            art_id = art_row.get("id")
-
-            iva_tipo_final = _map_iva_tipo_from_articulo_row(art_row)
-            iva_rate = _iva_rate_from_tipo(iva_tipo_final)
-
-            cantidad = int(st.session_state["comp_cantidad"] or 1)
-            precio_unit = float(st.session_state["comp_precio"] or 0.0)
-            desc_pct = float(st.session_state["comp_desc"] or 0.0)
-
-            calc = _calc_linea(cantidad, precio_unit, iva_rate, desc_pct)
-
-            rid = int(st.session_state["comp_next_rid"])
-            st.session_state["comp_next_rid"] = rid + 1
-
-            lote_val = (st.session_state["comp_lote"] or "").strip() if st.session_state["comp_has_lote"] else ""
-            venc_val = str(st.session_state["comp_venc_date"]) if st.session_state["comp_has_venc"] else ""
-
-            st.session_state["comp_items"].append({
-                "_rid": rid,
-                "articulo": art_desc,
-                "articulo_id": art_id,
-                "cantidad": cantidad,
-                "precio_unit_sin_iva": float(precio_unit),
-                "iva_tipo": iva_tipo_final,
-                "iva_rate": float(iva_rate),
-                "descuento_pct": float(desc_pct),
-                "descuento_monto": float(calc["descuento_monto"]),
-                "subtotal_sin_iva": float(calc["subtotal_sin_iva"]),
-                "iva_monto": float(calc["iva_monto"]),
-                "total_con_iva": float(calc["total_con_iva"]),
-                "lote": lote_val,
-                "vencimiento": venc_val,
-                "moneda": st.session_state["comp_moneda"],
-            })
-
-            st.session_state["comp_reset_line"] = True
-            st.rerun()
-
     # Autocargar precio/IVA al cambiar artículo
     if st.session_state["comp_articulo_sel"] != st.session_state["comp_articulo_prev"]:
         st.session_state["comp_articulo_prev"] = st.session_state["comp_articulo_sel"]
