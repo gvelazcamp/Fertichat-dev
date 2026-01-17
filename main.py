@@ -667,7 +667,7 @@ with st.sidebar:
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
     
     # JavaScript para quitar emojis
-    st.markdown("""
+    st.markdown(r"""
     <script>
     document.querySelectorAll('section[data-testid="stSidebar"] .stRadio label p').forEach(el => {
         el.textContent = el.textContent.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
