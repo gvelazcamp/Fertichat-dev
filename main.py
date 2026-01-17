@@ -680,7 +680,7 @@ with st.sidebar:
     
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
     
-    st.components.v1.html("""
+    st.components.v1.html(r"""
     <script>
     (function() {
         const interval = setInterval(() => {
