@@ -687,7 +687,7 @@ def mostrar_ingreso_comprobantes():
 
     # Botones ➕ y ✖ compactos en la misma fila
     with btn_col:
-        st.markdown("<div style='height: 44px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 44px"></div>", unsafe_allow_html=True)
         c_add, c_clear = st.columns(2)
         with c_add:
             btn_add = st.button("➕", key="btn_add_item", help="Agregar", use_container_width=True)
@@ -739,11 +739,15 @@ def mostrar_ingreso_comprobantes():
         st.session_state["comp_reset_line"] = True
         st.rerun()
 
-    # Autocargar precio/IVA al cambiar artículo
+    # Autocargar precio/IVA al cambiar artículo (FIXED)
     if st.session_state["comp_articulo_sel"] != st.session_state["comp_articulo_prev"]:
         st.session_state["comp_articulo_prev"] = st.session_state["comp_articulo_sel"]
-        precio_db = _map_precio_sin_iva_from_articulo_row(art_row) if art_row else 0.0
-        st.session_state["comp_precio"] = float(precio_db or 0.0)
+        # precio_db = _map_precio_sin_iva_from_articulo_row(art_row) if art_row else 0.0  # Comentado, no usamos precios desde DB aquí
+        precio_db = 0.0  # Siempre 0.0, ya que no tenemos precios en chatbot_raw
+        try:
+            st.session_state["comp_precio"] = float(precio_db)
+        except Exception:
+            st.session_state["comp_precio"] = 0.0
         st.session_state["comp_cantidad"] = 1
         st.session_state["comp_desc"] = 0.0
         st.session_state["comp_has_lote"] = False
