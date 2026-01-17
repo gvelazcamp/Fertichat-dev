@@ -103,7 +103,7 @@ def agregar_selector_manual_dispositivo():
             index=1 if es_mobile_actual else 0,
             horizontal=True,
             key="selector_dispositivo_manual",
-            help="Cambia la vista entre desktop and mobile"
+            help="Cambia la vista between desktop and mobile"
         )
         
         # Actualizar session_state
@@ -567,6 +567,15 @@ with st.sidebar:
         width: 100%;
         overflow: visible !important;
         white-space: nowrap !important;
+    }
+    
+    /* Ocultar el label vacío del radio */
+    section[data-testid="stSidebar"] label[data-testid="stWidgetLabel"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
     /* Hacer círculos MUCHO MÁS CHICOS */
