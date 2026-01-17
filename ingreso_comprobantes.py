@@ -877,6 +877,15 @@ def mostrar_ingreso_comprobantes():
                     st.write(str(e))
                     st.stop()
 
+    # =========================================
+    # BOTÓN GUARDAR (SIEMPRE VISIBLE, PERO DISABLED SI NO HAY ITEMS)
+    # =========================================
+    else:
+        col_empty, col_save = st.columns([2, 1])
+
+        with col_save:
+            st.button("💾 Guardar comprobante", use_container_width=True, key="btn_save", disabled=True)
+
 
 
 # =====================================================================
