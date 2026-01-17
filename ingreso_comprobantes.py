@@ -140,6 +140,24 @@ def _load_custom_css():
         box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4) !important;
     }
 
+    /* Botones pequeños para incrementar/decrementar */
+    .small-btn {
+        padding: 4px 8px !important;
+        font-size: 12px !important;
+        width: auto !important;
+        min-width: 30px !important;
+        height: 30px !important;
+        border-radius: 4px !important;
+        background: var(--primary-blue) !important;
+        color: white !important;
+        box-shadow: none !important;
+    }
+
+    .small-btn:hover {
+        background: #3A7BC8 !important;
+        box-shadow: none !important;
+    }
+
     /* Data editor */
     .stDataFrame {
         border-radius: 8px !important;
@@ -642,17 +660,37 @@ def mostrar_ingreso_comprobantes():
     st.markdown("---")
     st.caption("Agregar artículo")
 
-    # Fila compacta: Artículo | Cantidad | Precio | IVA | Desc | Lote | Vencimiento
-    art, cant, prec, iva, desc, lote, venc = st.columns([2, 1, 1, 1, 1, 1.5, 1.5])
+    # Fila compacta: Artículo | Cantidad [−][+] | Precio [−][+] | IVA | Desc% [−][+] | Lote | Vencimiento | [−] [+]
+    art, cant, prec, iva, desc, lote, venc = st.columns([2.5, 2.5, 2.5, 1.5, 2.5, 2, 3])
 
     with art:
         st.selectbox("Artículo", articulos_options, key="comp_articulo_sel")
 
     with cant:
-        st.number_input("Cant.", min_value=1, step=1, key="comp_cantidad")
+        col_dec, col_inp, col_inc = st.columns([0.3, 0.4, 0.3])
+        with col_dec:
+            if st.button("−", key="dec_cant"):
+                st.session_state["comp_cantidad"] = max(1, st.session_state["comp_cantidad"] - 1)
+                st.rerun()
+        with col_inp:
+            st.number_input("Cant.", min_value=1, step=1, key="comp_cantidad", label_visibility="collapsed")
+        with col_inc:
+            if st.button("+", key="inc_cant"):
+                st.session_state["comp_cantidad"] += 1
+                st.rerun()
 
     with prec:
-        st.number_input("P.Unit.", min_value=0.0, step=0.01, key="comp_precio")
+        col_dec, col_inp, col_inc = st.columns([0.3, 0.4, 0.3])
+        with col_dec:
+            if st.button("−", key="dec_prec"):
+                st.session_state["comp_precio"] = max(0.0, st.session_state["comp_precio"] - 0.01)
+                st.rerun()
+        with col_inp:
+            st.number_input("P.Unit.", min_value=0.0, step=0.01, key="comp_precio", label_visibility="collapsed")
+        with col_inc:
+            if st.button("+", key="inc_prec"):
+                st.session_state["comp_precio"] += 0.01
+                st.rerun()
 
     with iva:
         art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {}) if st.session_state["comp_articulo_sel"] else {}
@@ -660,7 +698,17 @@ def mostrar_ingreso_comprobantes():
         st.text_input("IVA", value=iva_tipo_sugerido, disabled=True, key="comp_iva_display")
 
     with desc:
-        st.number_input("Desc.%", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc")
+        col_dec, col_inp, col_inc = st.columns([0.3, 0.4, 0.3])
+        with col_dec:
+            if st.button("−", key="dec_desc"):
+                st.session_state["comp_desc"] = max(0.0, st.session_state["comp_desc"] - 0.5)
+                st.rerun()
+        with col_inp:
+            st.number_input("Desc.%", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc", label_visibility="collapsed")
+        with col_inc:
+            if st.button("+", key="inc_desc"):
+                st.session_state["comp_desc"] = min(100.0, st.session_state["comp_desc"] + 0.5)
+                st.rerun()
 
     with lote:
         c_chk, c_inp = st.columns([0.4, 0.6])
@@ -671,7 +719,7 @@ def mostrar_ingreso_comprobantes():
             st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"])
 
     with venc:
-        c_chk, c_inp = st.columns([0.4, 0.6])
+        c_chk, c_inp, c_quit, c_add = st.columns([0.3, 0.4, 0.15, 0.15])
         with c_chk:
             st.checkbox("Venc.", key="comp_has_venc")
         with c_inp:
@@ -680,6 +728,55 @@ def mostrar_ingreso_comprobantes():
                 st.date_input(" ", value=venc_value, key="comp_venc_date")
             else:
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
+        with c_quit:
+            if st.button("−", key="quit_art"):
+                if st.session_state["comp_items"]:
+                    st.session_state["comp_items"].pop()  # Quitar el último artículo
+                    st.rerun()
+        with c_add:
+            if st.button("+", key="add_art"):
+                if not st.session_state["comp_articulo_sel"]:
+                    st.error("Seleccioná un artículo.")
+                else:
+                    art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {})
+                    art_desc = _articulo_desc_from_row(art_row) or st.session_state["comp_articulo_sel"]
+                    art_id = art_row.get("id")
+
+                    iva_tipo_final = _map_iva_tipo_from_articulo_row(art_row)
+                    iva_rate = _iva_rate_from_tipo(iva_tipo_final)
+
+                    cantidad = int(st.session_state["comp_cantidad"] or 1)
+                    precio_unit = float(st.session_state["comp_precio"] or 0.0)
+                    desc_pct = float(st.session_state["comp_desc"] or 0.0)
+
+                    calc = _calc_linea(cantidad, precio_unit, iva_rate, desc_pct)
+
+                    rid = int(st.session_state["comp_next_rid"])
+                    st.session_state["comp_next_rid"] = rid + 1
+
+                    lote_val = (st.session_state["comp_lote"] or "").strip() if st.session_state["comp_has_lote"] else ""
+                    venc_val = str(st.session_state["comp_venc_date"]) if st.session_state["comp_has_venc"] else ""
+
+                    st.session_state["comp_items"].append({
+                        "_rid": rid,
+                        "articulo": art_desc,
+                        "articulo_id": art_id,
+                        "cantidad": cantidad,
+                        "precio_unit_sin_iva": float(precio_unit),
+                        "iva_tipo": iva_tipo_final,
+                        "iva_rate": float(iva_rate),
+                        "descuento_pct": float(desc_pct),
+                        "descuento_monto": float(calc["descuento_monto"]),
+                        "subtotal_sin_iva": float(calc["subtotal_sin_iva"]),
+                        "iva_monto": float(calc["iva_monto"]),
+                        "total_con_iva": float(calc["total_con_iva"]),
+                        "lote": lote_val,
+                        "vencimiento": venc_val,
+                        "moneda": st.session_state["comp_moneda"],
+                    })
+
+                    st.session_state["comp_reset_line"] = True
+                    st.rerun()
 
     # Autocargar precio/IVA al cambiar artículo
     if st.session_state["comp_articulo_sel"] != st.session_state["comp_articulo_prev"]:
