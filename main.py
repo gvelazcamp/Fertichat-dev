@@ -567,26 +567,42 @@ with st.sidebar:
         width: 100%;
     }
     
-    /* Ocultar "Ir a:" del radio */
-    section[data-testid="stSidebar"] .stRadio > label {
+    /* Ocultar "Ir a:" - TODOS los selectores posibles */
+    section[data-testid="stSidebar"] .stRadio > label,
+    section[data-testid="stSidebar"] .stRadio > div > label:first-child,
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label {
         display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
-    /* OCULTAR círculos nativos */
-    section[data-testid="stSidebar"] input[type="radio"] {
+    /* OCULTAR círculos A LA FUERZA */
+    section[data-testid="stSidebar"] input[type="radio"],
+    section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"],
+    section[data-testid="stSidebar"] .stRadio input {
         display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        position: absolute !important;
+        left: -9999px !important;
     }
     
-    /* Contenedor del radio más compacto */
-    section[data-testid="stSidebar"] .stRadio > div {
+    /* Contenedor más compacto */
+    section[data-testid="stSidebar"] .stRadio > div,
+    section[data-testid="stSidebar"] div[role="radiogroup"] {
         gap: 0 !important;
         display: flex !important;
         flex-direction: column !important;
     }
     
-    /* Labels con flechitas */
-    section[data-testid="stSidebar"] .stRadio label {
-        padding: 8px 16px 8px 32px !important;
+    /* Labels MÁS COMPACTOS */
+    section[data-testid="stSidebar"] .stRadio label,
+    section[data-testid="stSidebar"] div[role="radiogroup"] label {
+        padding: 6px 16px 6px 32px !important;
         font-size: 14px !important;
         font-weight: 500 !important;
         color: #475569 !important;
@@ -598,11 +614,13 @@ with st.sidebar:
         margin: 0 !important;
         background: transparent !important;
         position: relative !important;
-        min-height: 36px !important;
+        min-height: 32px !important;
+        line-height: 1.2 !important;
     }
     
     /* Flechita SVG azul */
-    section[data-testid="stSidebar"] .stRadio label::before {
+    section[data-testid="stSidebar"] .stRadio label::before,
+    section[data-testid="stSidebar"] div[role="radiogroup"] label::before {
         content: '' !important;
         position: absolute !important;
         left: 12px !important;
@@ -617,7 +635,8 @@ with st.sidebar:
     }
     
     /* Flechita más gruesa cuando está seleccionado */
-    section[data-testid="stSidebar"] .stRadio input:checked + div label::before {
+    section[data-testid="stSidebar"] .stRadio input:checked + div label::before,
+    section[data-testid="stSidebar"] div[role="radiogroup"] input:checked + div label::before {
         background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
     }
     
@@ -812,7 +831,7 @@ elif menu_actual == "📒 Ficha de stock":
 elif menu_actual == "📚 Artículos":
     mostrar_articulos()
 
-elif menu_actual == "🏬 Depósitos":
+elif menu_actual == "���� Depósitos":
     mostrar_depositos()
 
 elif menu_actual == "🧩 Familias":
