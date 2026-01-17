@@ -689,9 +689,19 @@ with st.sidebar:
     )
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="fc-section-header">MENU PRINCIPAL</div>', unsafe_allow_html=True)
     
-    st.radio("", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
+    # Menu agrupado
+    st.markdown('<div class="fc-section-header">PRINCIPAL</div>', unsafe_allow_html=True)
+    st.radio("", ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"], key="radio_menu", label_visibility="collapsed")
+    
+    st.markdown('<div class="fc-section-header">GESTIÓN</div>', unsafe_allow_html=True)
+    st.radio("", ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes"], key="radio_menu", label_visibility="collapsed")
+    
+    st.markdown('<div class="fc-section-header">CATÁLOGO</div>', unsafe_allow_html=True)
+    st.radio("", ["📚 Artículos", "🧩 Familias", "🏬 Depósitos", "📑 Comprobantes"], key="radio_menu", label_visibility="collapsed")
+    
+    st.markdown('<div class="fc-section-header">ANÁLISIS</div>', unsafe_allow_html=True)
+    st.radio("", ["📊 Dashboard", "📈 Indicadores (Power BI)"], key="radio_menu", label_visibility="collapsed")
     
     st.components.v1.html(r"""
     <script>
