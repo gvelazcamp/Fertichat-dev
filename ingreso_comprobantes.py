@@ -40,7 +40,7 @@ TABLAS_DETALLE_CANDIDATAS = [
 ]
 
 TABLA_STOCK = "stock"
-TABLA_PROVEEDORES = "proveedores"
+TABLA_PROVEEDORES = "chatbot_raw"  # Cambiado a chatbot_raw
 TABLA_ARTICULOS = "articulos"
 
 # =====================================================================
@@ -343,18 +343,17 @@ def _cache_proveedores() -> list:
         end = start + page - 1
         res = (
             supabase.table(TABLA_PROVEEDORES)
-            .select("*")
-            .order("nombre")
+            .select("Cliente / Proveedor")
             .range(start, end)
             .execute()
         )
-        batch = res.data or []
+        batch = [r["Cliente / Proveedor"] for r in res.data if r.get("Cliente / Proveedor")]
         out.extend(batch)
         if len(batch) < page:
             break
         start += page
 
-    return out
+    return list(set(out))  # Unique proveedores
 
 @st.cache_data(ttl=600)
 def _cache_articulos() -> list:
@@ -386,11 +385,11 @@ def _get_proveedor_options() -> tuple[list, dict]:
     data = _cache_proveedores()
     name_to_id = {}
     options = [""]
-    for r in data:
-        nombre = str(r.get("nombre", "") or "").strip()
+    for nombre in data:
+        nombre = str(nombre).strip()
         if nombre:
             options.append(nombre)
-            name_to_id[nombre] = r.get("id")
+            name_to_id[nombre] = None  # No hay id en chatbot_raw
     return options, name_to_id
 
 def _get_articulo_options() -> tuple[list, dict]:
@@ -653,6 +652,7 @@ def mostrar_ingreso_comprobantes():
     with col6:
         st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion", label_visibility="collapsed")
         st.caption("Condición")
+
 
     # =========================================
     # ARTÍCULOS - LAYOUT COMPACTO TIPO TABLA
