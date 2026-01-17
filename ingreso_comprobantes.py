@@ -178,6 +178,15 @@ def _load_custom_css():
         background: var(--success) !important;
     }
 
+    /* Botones compactos para agregar/limpiar artículo */
+    div[data-testid="column"]:has(button[key*="btn_add_item"]) button,
+    div[data-testid="column"]:has(button[key*="btn_clear_item"]) button {
+        padding: 4px 8px !important;
+        font-size: 14px !important;
+        min-height: 32px !important;
+        height: 32px !important;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
         .form-section {
@@ -649,8 +658,8 @@ def mostrar_ingreso_comprobantes():
     st.markdown("---")
     st.caption("Agregar artículo")
 
-    # Fila compacta: Artículo | Cantidad | Precio | IVA | Desc | Lote | Vencimiento
-    art, cant, prec, iva, desc, lote, venc = st.columns([2, 1, 1, 1, 1, 1.5, 1.5])
+    # Fila compacta: Artículo | Cantidad | Precio | IVA | Desc | Lote | Vencimiento | Botones
+    art, cant, prec, iva, desc, lote, venc, btn_col = st.columns([2.5, 1, 1, 0.8, 1, 1.2, 1.2, 0.7])
 
     with art:
         st.selectbox("Artículo", articulos_options, key="comp_articulo_sel")
@@ -688,17 +697,14 @@ def mostrar_ingreso_comprobantes():
             else:
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
 
-    # =========================================
-    # BOTONES ➕ y ✖ PARA AGREGAR/LIMPIAR LÍNEA
-    # =========================================
-    st.markdown("")  # Pequeño espacio
-    col_spacer, col_add, col_clear = st.columns([6, 1, 1])
-    
-    with col_add:
-        btn_add = st.button("➕", key="btn_add_item", help="Agregar artículo a la lista", use_container_width=True)
-    
-    with col_clear:
-        btn_clear = st.button("✖", key="btn_clear_item", help="Limpiar línea actual", use_container_width=True)
+    # Botones ➕ y ✖ compactos en la misma fila
+    with btn_col:
+        st.markdown("<p style='font-size:12px; margin-bottom:5px;'>&nbsp;</p>", unsafe_allow_html=True)
+        c_add, c_clear = st.columns(2)
+        with c_add:
+            btn_add = st.button("➕", key="btn_add_item", help="Agregar", use_container_width=True)
+        with c_clear:
+            btn_clear = st.button("✖", key="btn_clear_item", help="Limpiar", use_container_width=True)
 
     # Lógica del botón AGREGAR
     if btn_add:
