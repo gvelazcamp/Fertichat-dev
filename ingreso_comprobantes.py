@@ -3,6 +3,7 @@
 # Archivo: ingreso_comprobantes_redesign.py
 # FIXES: Línea blanca, proveedor gigante, vencimiento, session_state
 # ADDED: Botones ➕ y ✖ para agregar/limpiar línea de artículo
+# FIXED: Proveedores no cargan - Quitado cache temporalmente para debug
 # =====================================================================
 
 import streamlit as st
@@ -342,11 +343,10 @@ def _fmt_money(v: float, moneda: str) -> str:
     return f"{moneda} {s}"
 
 # =====================================================================
-# CACHE SUPABASE
+# CACHE SUPABASE (QUITADO TEMPORALMENTE PARA DEBUG)
 # =====================================================================
 
-@st.cache_data(ttl=600)
-def _cache_proveedores() -> list:
+def _cache_proveedores() -> list:  # Quitado @st.cache_data para forzar carga fresca
     if not supabase:
         return []
 
@@ -358,8 +358,7 @@ def _cache_proveedores() -> list:
         st.error(f"Error cargando proveedores: {e}")
         return []
 
-@st.cache_data(ttl=600)
-def _cache_articulos() -> list:
+def _cache_articulos() -> list:  # Quitado @st.cache_data para forzar carga fresca
     if not supabase:
         return []
 
@@ -611,6 +610,9 @@ def mostrar_ingreso_comprobantes():
 
     proveedores_options, prov_name_to_id = _get_proveedor_options()
     articulos_options, art_label_to_row = _get_articulo_options()
+
+    # DEBUG: Muestra qué proveedores se cargaron (quita después de probar)
+    st.write("Proveedores cargados:", proveedores_options)
 
     if st.session_state["comp_proveedor_sel"] not in proveedores_options:
         st.session_state["comp_proveedor_sel"] = ""
