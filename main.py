@@ -103,7 +103,7 @@ def agregar_selector_manual_dispositivo():
             index=1 if es_mobile_actual else 0,
             horizontal=True,
             key="selector_dispositivo_manual",
-            help="Cambia la vista entre desktop and mobile"
+            help="Cambia la vista entre desktop y mobile"
         )
         
         # Actualizar session_state
@@ -561,33 +561,40 @@ with st.sidebar:
         text-transform: uppercase;
         letter-spacing: 1px;
         color: #94a3b8;
-        padding: 20px 0 8px 0;
+        padding: 20px 16px 8px 16px;
         margin: 0;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
     
-    /* Radio buttons con flechas SVG azules */
-    section[data-testid="stSidebar"] input[type="radio"] {
-        appearance: none;
-        -webkit-appearance: none;
+    /* Radio buttons con flechas SVG azules - MÁS ESPECÍFICO */
+    section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"] {
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
         width: 18px !important;
         height: 18px !important;
+        min-width: 18px !important;
         margin-right: 10px !important;
         flex-shrink: 0 !important;
-        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') no-repeat center !important;
+        border: none !important;
+        background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
         background-size: contain !important;
     }
     
-    section[data-testid="stSidebar"] input[type="radio"]:checked {
-        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') no-repeat center !important;
-        background-size: contain !important;
+    section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"]:checked {
+        background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
     }
     
     section[data-testid="stSidebar"] .stRadio > div {
         gap: 0 !important;
     }
     
-    section[data-testid="stRadio"] label {
-        padding: 10px 16px 10px 0 !important;
+    section[data-testid="stSidebar"] .stRadio label {
+        padding: 10px 16px 10px 4px !important;
         font-size: 14px !important;
         font-weight: 500 !important;
         color: #475569 !important;
@@ -661,12 +668,12 @@ with st.sidebar:
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
-    # MENÚ
+    # Header de sección ANTES del radio
     st.markdown('<div class="fc-section-header">PRINCIPAL</div>', unsafe_allow_html=True)
     
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
     
-    # JavaScript para quitar emojis del sidebar
+    # JavaScript para quitar emojis
     st.components.v1.html(r"""
     <script>
     (function() {
@@ -674,7 +681,6 @@ with st.sidebar:
             const labels = parent.document.querySelectorAll('section[data-testid="stSidebar"] .stRadio label p');
             if (labels.length > 0) {
                 labels.forEach(label => {
-                    // Quitar emojis (rango Unicode completo)
                     label.textContent = label.textContent.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                 });
                 clearInterval(interval);
@@ -751,7 +757,7 @@ elif menu_actual == "🛒 Compras IA":
     if st.session_state.get("DEBUG_SQL", False):
         with st.expander("🛠 Debug (última consulta)", expanded=True):
             st.subheader("Interpretación")
-            st.json(st.session_state.get("DBG_INT_LAST", {}))
+            st.json(st.session_state.get("DBG_INT_LAST", {})
 
             st.subheader("SQL ejecutado")
             st.write("Origen:", st.session_state.get("DBG_SQL_LAST_TAG"))
@@ -798,7 +804,7 @@ elif menu_actual == "📚 Artículos":
 elif menu_actual == "🏬 Depósitos":
     mostrar_depositos()
 
-elif menu_actual == "🧩 Familias":
+elif menu_actual == "��� Familias":
     mostrar_familias()
 
 elif menu_actual == "📑 Comprobantes":
