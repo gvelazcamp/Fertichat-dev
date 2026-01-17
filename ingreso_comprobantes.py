@@ -351,9 +351,37 @@ def _cache_proveedores() -> list:
         return []
 
     try:
-        res = supabase.table(TABLA_PROVEEDORES).select('"Cliente / Proveedor"').execute()
-        data = [r["Cliente / Proveedor"] for r in res.data if r.get("Cliente / Proveedor")]
-        return list(set(data))
+        # Traer todos los registros con paginación como artículos
+        out = []
+        start = 0
+        page = 1000
+        max_rows = 50000
+
+        while start < max_rows:
+            end = start + page - 1
+            res = (
+                supabase.table(TABLA_PROVEEDORES)
+                .select("*")
+                .range(start, end)
+                .execute()
+            )
+            batch = res.data or []
+            out.extend(batch)
+            if len(batch) < page:
+                break
+            start += page
+
+        # Buscar el campo de proveedor (puede tener diferentes nombres)
+        proveedores = set()
+        campos_candidatos = ["Cliente / Proveedor", "cliente / proveedor", "Proveedor", "proveedor", "nombre", "Nombre"]
+        
+        for r in out:
+            for campo in campos_candidatos:
+                if campo in r and r.get(campo):
+                    proveedores.add(str(r[campo]).strip())
+                    break
+        
+        return sorted(list(proveedores))
     except Exception as e:
         st.error(f"Error cargando proveedores: {e}")
         return []
