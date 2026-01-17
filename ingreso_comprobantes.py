@@ -687,7 +687,7 @@ def mostrar_ingreso_comprobantes():
 
     # Botones ➕ y ✖ compactos en la misma fila
     with btn_col:
-        st.markdown("<div style='height: 44px"></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 44px'></div>", unsafe_allow_html=True)
         c_add, c_clear = st.columns(2)
         with c_add:
             btn_add = st.button("➕", key="btn_add_item", help="Agregar", use_container_width=True)
