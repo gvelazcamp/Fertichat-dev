@@ -343,7 +343,7 @@ def _cache_proveedores() -> list:
         end = start + page - 1
         res = (
             supabase.table(TABLA_PROVEEDORES)
-            .select("Cliente / Proveedor")
+            .select('"Cliente / Proveedor"')
             .range(start, end)
             .execute()
         )
