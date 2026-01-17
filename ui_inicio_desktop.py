@@ -1,4 +1,3 @@
-```python
 # =========================
 # UI_INICIO_DESKTOP.PY - PANTALLA DE INICIO PARA PC (CORPORATIVO)
 # =========================
@@ -316,4 +315,3 @@ def mostrar_inicio_desktop():
         """,
         unsafe_allow_html=True
     )
-```
