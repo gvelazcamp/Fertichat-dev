@@ -330,32 +330,41 @@ def _fmt_money(v: float, moneda: str) -> str:
 # =====================================================================
 
 @st.cache_data(ttl=600)
+@st.cache_data(ttl=600)
 def _cache_proveedores() -> list:
     if not supabase:
         return []
 
     try:
-        # Intenta obtener primer registro para ver columnas
-        res_test = supabase.table(TABLA_PROVEEDORES).select("*").limit(1).execute()
-        if not res_test.data:
+        # Opción 1: Intenta con exactitud
+        try:
+            res = supabase.table(TABLA_PROVEEDORES).select('"Cliente / Proveedor"').execute()
+            if res.data:
+                data = [str(r.get("Cliente / Proveedor")).strip() for r in res.data if r.get("Cliente / Proveedor")]
+                return sorted(list(set([x for x in data if x])))
+        except:
+            pass
+        
+        # Opción 2: Trae todo y busca columna
+        res = supabase.table(TABLA_PROVEEDORES).select("*").limit(100).execute()
+        if not res.data:
             return []
         
-        # Busca columna que contenga "proveedor" o "cliente"
-        columnas = list(res_test.data[0].keys())
+        # Encuentra la columna que contiene "proveedor"
+        cols = list(res.data[0].keys())
         prov_col = None
-        for col in columnas:
+        for col in cols:
             if "proveedor" in col.lower() or "cliente" in col.lower():
                 prov_col = col
                 break
         
         if not prov_col:
-            # Si no encuentra, intenta con el nombre original
-            prov_col = "Cliente / Proveedor"
+            return []
         
-        # Trae datos de esa columna
-        res = supabase.table(TABLA_PROVEEDORES).select(f'"{prov_col}"').execute()
+        # Extrae valores
         data = [str(r.get(prov_col)).strip() for r in res.data if r.get(prov_col)]
-        return sorted(list(set(data)))
+        return sorted(list(set([x for x in data if x])))
+        
     except Exception as e:
         return []
 
@@ -699,9 +708,9 @@ def mostrar_ingreso_comprobantes():
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
 
     with btn:
-        col_p, col_m = st.columns(2)
-        with col_p:
-            if st.button("+", key="btn_add_art", help="Agregar"):
+        col_add, col_rem = st.columns(2)
+        with col_add:
+            if st.button("+", key="btn_add_art", use_container_width=True):
                 if not st.session_state["comp_articulo_sel"]:
                     st.error("Seleccioná un artículo.")
                 else:
@@ -745,8 +754,8 @@ def mostrar_ingreso_comprobantes():
                     st.session_state["comp_reset_line"] = True
                     st.rerun()
         
-        with col_m:
-            if st.button("-", key="btn_remove_art", help="Quitar"):
+        with col_rem:
+            if st.button("-", key="btn_remove_art", use_container_width=True):
                 if st.session_state["comp_items"]:
                     st.session_state["comp_items"].pop()
                     st.rerun()
