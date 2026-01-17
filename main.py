@@ -556,7 +556,7 @@ with st.sidebar:
     }
     
     .fc-section-header {
-        font-size: 11px;
+        font-size: 16px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 1px;
@@ -689,7 +689,7 @@ with st.sidebar:
     )
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="fc-section-header">PRINCIPAL</div>', unsafe_allow_html=True)
+    st.markdown('<div class="fc-section-header">MENU PRINCIPAL</div>', unsafe_allow_html=True)
     
     st.radio("", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
     
