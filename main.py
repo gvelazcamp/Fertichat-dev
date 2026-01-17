@@ -33,6 +33,7 @@ from comprobantes import mostrar_menu_comprobantes
 from ui_chat_chainlit import mostrar_chat_chainlit
 from sql_core import ejecutar_consulta
 
+# NUEVOS IMPORTS PARA SOPORTE DE COMPRAS
 from ia_interpretador import interpretar_pregunta
 from sql_facturas import get_facturas_proveedor as get_facturas_proveedor_detalle
 from sql_compras import (
@@ -44,22 +45,34 @@ from sql_compras import (
 from utils_format import formatear_dataframe
 from utils_openai import responder_con_openai
 
+# =========================
+# IMPORT ORQUESTADOR PARA INTEGRACIÓN (con try-except para evitar errores)
+# =========================
 try:
     from orquestador import procesar_pregunta_v2
 except ImportError:
     def procesar_pregunta_v2(*args, **kwargs):
         return "Orquestador no disponible", None, None
 
+# =========================
+# DETECCIÓN DE DISPOSITIVO
+# =========================
 def inicializar_deteccion_dispositivo():
+    """
+    Inicializa la detección de dispositivo usando JavaScript.
+    Se ejecuta una sola vez al inicio.
+    """
     if "device_detected" not in st.session_state:
         st.session_state["device_detected"] = False
-        st.session_state["is_mobile"] = False
+        st.session_state["is_mobile"] = False  # Default a desktop
         
+        # JavaScript para detectar ancho de pantalla
         js_detect = """
         <script>
         const width = window.innerWidth || document.documentElement.clientWidth;
         const isMobile = width < 768;
         
+        // Guardar en localStorage para persistencia
         if (typeof(Storage) !== "undefined") {
             localStorage.setItem('viewport_width', width);
             localStorage.setItem('is_mobile', isMobile);
@@ -68,13 +81,20 @@ def inicializar_deteccion_dispositivo():
         """
         
         st.components.v1.html(js_detect, height=0)
+        
+        # Marcar como detectado
         st.session_state["device_detected"] = True
 
 
 def agregar_selector_manual_dispositivo():
+    """
+    Agrega un selector manual en el sidebar para cambiar entre mobile/desktop.
+    Útil para testing y para usuarios que quieran forzar una vista.
+    """
     with st.sidebar:
         st.markdown("---")
         
+        # Obtener estado actual
         es_mobile_actual = st.session_state.get("is_mobile", False)
         
         dispositivo = st.radio(
@@ -86,11 +106,18 @@ def agregar_selector_manual_dispositivo():
             help="Cambia la vista entre desktop y mobile"
         )
         
+        # Actualizar session_state
         st.session_state["is_mobile"] = (dispositivo == "📱 Mobile")
 
 
+# =========================
+# FUNCIÓN PARA EJECUTAR CONSULTAS POR TIPO (AGREGADA)
+# =========================
 def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
     try:
+        # =========================================================
+        # FACTURAS (LISTADO) - usa sql_facturas
+        # =========================================================
         if tipo in ("facturas_proveedor", "facturas_proveedor_detalle"):
             proveedores = params.get("proveedores", [])
             if isinstance(proveedores, str):
@@ -123,6 +150,9 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
                 None,
             )
 
+        # =========================================================
+        # COMPRAS (NUEVO)
+        # =========================================================
         elif tipo == "compras_proveedor_anio":
             proveedor = params.get("proveedor", "").strip()
             anio = params.get("anio", 2025)
@@ -205,6 +235,9 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
                 None,
             )
 
+        # =========================================================
+        # OTROS TIPOS
+        # =========================================================
         return f"❌ Tipo de consulta '{tipo}' no implementado.", None, None
 
     except Exception as e:
@@ -212,20 +245,31 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
         traceback.print_exc()
         return f"❌ Error: {str(e)[:150]}", None, None
 
+# =========================
+# ESTILO GLOBAL E INICIO DE SESIÓN
+# =========================
 st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
 
+# =========================
+# CSS PARA ELIMINAR TODO PADDING SUPERIOR (más específico)
+# =========================
 st.markdown("""
 <style>
+/* ====== ELIMINAR TODO PADDING SUPERIOR ====== */
+
+/* Contenedor principal de la app */
 .main > div:first-child {
     padding-top: 0rem !important;
 }
 
+/* Bloque principal */
 .main .block-container {
     padding-top: 0rem !important;
     padding-bottom: 0rem !important;
     margin-top: 0rem !important;
 }
 
+/* Todos los bloques verticales (el que ves en violeta) */
 div.stVerticalBlock,
 div[data-testid="stVerticalBlock"],
 div[class*="stVerticalBlock"] {
@@ -234,27 +278,37 @@ div[class*="stVerticalBlock"] {
     gap: 0rem !important;
 }
 
+/* Contenedor de la vista */
 div[data-testid="stAppViewContainer"] {
     padding-top: 0rem !important;
 }
 
+/* Primer elemento de cada sección */
 .main > div:first-child > div:first-child {
     padding-top: 0rem !important;
 }
 
+/* Si tenés header fijo */
 header[data-testid="stHeader"] {
     background-color: transparent;
     height: 0rem;
 }
 
+/* Ajuste fino - solo dejá un mínimo para que no se solape con el header del navegador */
 .main .block-container {
     padding-top: 0.5rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
+# =========================
+# CSS PARA OCULTAR KEEPALIVE / AUTOREFRESH
+# =========================
 st.markdown("""
 <style>
+/* ====== OCULTAR KEEPALIVE / AUTOREFRESH ====== */
+
+/* Ocultar componente keepalive por su key única */
 div[class*="st-key-fc_keepalive"],
 div.st-key-fc_keepalive,
 [data-testid="stElementContainer"].st-key-fc_keepalive {
@@ -265,11 +319,13 @@ div.st-key-fc_keepalive,
     visibility: hidden !important;
 }
 
+/* Ocultar cualquier iframe de autorefresh */
 iframe[src*="streamlit_autorefresh"] {
     display: none !important;
     height: 0 !important;
 }
 
+/* Ocultar contenedor padre del autorefresh */
 div.stElementContainer:has(iframe[src*="streamlit_autorefresh"]) {
     display: none !important;
     height: 0 !important;
@@ -277,8 +333,13 @@ div.stElementContainer:has(iframe[src*="streamlit_autorefresh"]) {
 </style>
 """, unsafe_allow_html=True)
 
+# =========================
+# FIX UI: BOTONES DEL SIDEBAR (evita texto vertical en "Cerrar sesión")
+# =========================
 CSS_SIDEBAR_BUTTON_FIX = """
 <style>
+/* Si en Home tenés CSS que transforma .stButton en "tarjeta", puede pegarle al sidebar.
+   Esto lo pisa SOLO en el sidebar para evitar quiebres por char (texto vertical). */
 section[data-testid="stSidebar"] .stButton > button,
 div[data-testid="stSidebar"] .stButton > button{
     height: auto !important;
@@ -299,23 +360,37 @@ st.markdown(CSS_SIDEBAR_BUTTON_FIX, unsafe_allow_html=True)
 require_auth()
 st.title("Inicio")
 
+# =========================
+# INICIALIZACIÓN
+# =========================
 init_db()
 user = get_current_user() or {}
 
 if "radio_menu" not in st.session_state:
     st.session_state["radio_menu"] = "🏠 Inicio"
 
+# Forzar flag del orquestador
 st.session_state["ORQUESTADOR_CARGADO"] = True
 
+# Reaplicar CSS (por compatibilidad con versiones anteriores)
 st.markdown(f"<style>{CSS_GLOBAL}</style>", unsafe_allow_html=True)
 
+# =========================
+# INICIALIZAR DETECCIÓN DE DISPOSITIVO
+# =========================
 inicializar_deteccion_dispositivo()
 
+# =========================
+# NOTIFICACIONES
+# =========================
 usuario_actual = user.get("usuario", user.get("email", ""))
 cant_pendientes = 0
 if usuario_actual:
     cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
 
+# =========================
+# HEADER MÓVIL
+# =========================
 badge_html = ""
 if cant_pendientes > 0:
     badge_html = f'<span class="notif-badge">{cant_pendientes}</span>'
@@ -333,6 +408,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# =========================
+# HEADER ESCRITORIO
+# =========================
 campana_html = '<span style="font-size:26px;">🔔</span>'
 if cant_pendientes > 0:
     campana_html = (
@@ -372,6 +450,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# =========================
+# NAVEGACIÓN POR QUERY PARAMS (tarjetas / campana)
+# =========================
 def _get_qp_first(key: str):
     try:
         v = st.query_params.get(key)
@@ -391,6 +472,7 @@ def _clear_qp():
         st.experimental_set_query_params()
 
 
+# Desde tarjetas (go=?)
 _go = _get_qp_first("go")
 if _go == "compras":
     _target = None
@@ -440,6 +522,7 @@ elif _go == "indicadores":
     _clear_qp()
     st.rerun()
 
+# Desde campana (ir_notif=1)
 try:
     if st.query_params.get("ir_notif") == "1":
         st.session_state["radio_menu"] = "📄 Pedidos internos"
@@ -449,7 +532,7 @@ except Exception:
     pass
 
 # =========================
-# SIDEBAR CON FLECHAS SVG AZULES
+# SIDEBAR
 # =========================
 with st.sidebar:
     st.markdown("""
@@ -536,6 +619,7 @@ with st.sidebar:
     </style>
     """, unsafe_allow_html=True)
     
+    # Header con logo
     st.markdown("""
     <div class='fc-sidebar-header'>
         <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
@@ -545,6 +629,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
+    # Buscador
     st.text_input(
         "Buscar...",
         key="sidebar_search",
@@ -552,6 +637,7 @@ with st.sidebar:
         placeholder="Buscar...",
     )
     
+    # Info usuario
     st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
     if user.get("empresa"):
         st.markdown(f"🏢 {user.get('empresa')}")
@@ -559,6 +645,7 @@ with st.sidebar:
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
+    # Botón cerrar sesión
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar"):
@@ -567,18 +654,34 @@ with st.sidebar:
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
+    # Debug SQL
     st.session_state["DEBUG_SQL"] = st.checkbox(
         "Debug SQL", value=False, key="debug_sql"
     )
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="fc-section-header">MENÚ</div>', unsafe_allow_html=True)
+    
+    # MENÚ
+    st.markdown('<div class="fc-section-header">PRINCIPAL</div>', unsafe_allow_html=True)
     
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
+    
+    # JavaScript para quitar emojis
+    st.markdown("""
+    <script>
+    document.querySelectorAll('section[data-testid="stSidebar"] .stRadio label p').forEach(el => {
+        el.textContent = el.textContent.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
+    });
+    </script>
+    """, unsafe_allow_html=True)
 
+# =========================
+# FUNCIÓN DEBUG SQL FACTURA (pestaña aparte)
+# =========================
 def mostrar_debug_sql_factura():
     st.header("🔍 Debug SQL Factura")
 
+    # Probar conexión
     try:
         test_df = ejecutar_consulta("SELECT 1 as test", ())
         if test_df is not None and not test_df.empty:
@@ -588,11 +691,13 @@ def mostrar_debug_sql_factura():
     except Exception as e:
         st.error(f"❌ Error en base de datos: {str(e)[:100]}")
 
+    # Estado orquestador
     if st.session_state.get("ORQUESTADOR_CARGADO"):
         st.success("✅ Orquestador funcionando ok")
     else:
         st.warning("⚠️ Orquestador no cargado")
 
+    # Params últimos de facturas (si los usás desde sql_facturas)
     if "DEBUG_SQL_FACTURA_PARAMS" in st.session_state:
         st.subheader("🎯 Interpretador trata de traer esto:")
         params = st.session_state["DEBUG_SQL_FACTURA_PARAMS"]
@@ -608,6 +713,7 @@ def mostrar_debug_sql_factura():
             "Hacé una consulta como 'todas las facturas roche 2025' primero."
         )
 
+    # SQL último de facturas
     if "DEBUG_SQL_FACTURA_QUERY" in st.session_state:
         st.subheader("🛠 SQL trata de traer:")
         query = st.session_state["DEBUG_SQL_FACTURA_QUERY"]
@@ -617,6 +723,9 @@ def mostrar_debug_sql_factura():
         st.info("ℹ️ No hay SQL reciente. Hacé una consulta primero.")
 
 
+# =========================
+# ROUTER PRINCIPAL
+# =========================
 menu_actual = st.session_state["radio_menu"]
 
 if menu_actual == "🏠 Inicio":
@@ -629,6 +738,7 @@ elif menu_actual == "🛒 Compras IA":
     mostrar_resumen_compras_rotativo()
     Compras_IA()
 
+    # Panel de debug general (última consulta)
     if st.session_state.get("DEBUG_SQL", False):
         with st.expander("🛠 Debug (última consulta)", expanded=True):
             st.subheader("Interpretación")
@@ -646,7 +756,7 @@ elif menu_actual == "🔍 Debug SQL factura":
     mostrar_debug_sql_factura()
 
 elif menu_actual == "📦 Stock IA":
-    mostrar_resumen_stock_rotativo(dias_vencer=30)
+    mostrar_resumen_stock_rotativo(dias_vencer=30)  # Cambiado a 30 días
     mostrar_stock_ia()
 
 elif menu_actual == "🔎 Buscador IA":
@@ -684,3 +794,7 @@ elif menu_actual == "🧩 Familias":
 
 elif menu_actual == "📑 Comprobantes":
     mostrar_menu_comprobantes()
+
+# Marca visual para saber que el orquestador está cargado
+# st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
+# st.write("ORQUESTADOR_CARGADO = True")
