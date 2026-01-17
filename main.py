@@ -518,49 +518,40 @@ _go = _get_qp_first("go")
 if _go == "compras":
     st.session_state["radio_principal"] = "🛒 Compras IA"
     _clear_qp()
-    st.rerun()
 
 elif _go == "buscador":
     st.session_state["radio_principal"] = "🔎 Buscador IA"
     _clear_qp()
-    st.rerun()
 
 elif _go == "stock":
     st.session_state["radio_principal"] = "📦 Stock IA"
     _clear_qp()
-    st.rerun()
 
 elif _go == "dashboard":
     st.session_state["radio_analisis"] = "📊 Dashboard"
     _clear_qp()
-    st.rerun()
 
 elif _go == "pedidos":
     st.session_state["radio_gestion"] = "📄 Pedidos internos"
     _clear_qp()
-    st.rerun()
 
 elif _go == "baja":
     st.session_state["radio_gestion"] = "🧾 Baja de stock"
     _clear_qp()
-    st.rerun()
 
 elif _go == "ordenes":
     st.session_state["radio_gestion"] = "📦 Órdenes de compra"
     _clear_qp()
-    st.rerun()
 
 elif _go == "indicadores":
     st.session_state["radio_analisis"] = "📈 Indicadores (Power BI)"
     _clear_qp()
-    st.rerun()
 
 # Desde campana (ir_notif=1)
 try:
     if st.query_params.get("ir_notif") == "1":
         st.session_state["radio_gestion"] = "📄 Pedidos internos"
         _clear_qp()
-        st.rerun()
 except Exception:
     pass
 
