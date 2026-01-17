@@ -383,7 +383,7 @@ inicializar_deteccion_dispositivo()
 # =========================
 # NOTIFICACIONES
 # =========================
-usuario_actual = user.get("usuario", user.get("email", "")
+usuario_actual = user.get("usuario", user.get("email", ""))
 cant_pendientes = 0
 if usuario_actual:
     cant_pendientes = contar_notificaciones_no_leidas(usuario_actual)
