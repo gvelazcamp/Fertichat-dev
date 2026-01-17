@@ -764,7 +764,7 @@ with st.sidebar:
     # Info usuario
     st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
     if user.get("empresa"):
-        st.markdown(f"🏢 {user.get('empresa')")
+        st.markdown(f"🏢 {user.get('empresa')}")
     st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
