@@ -562,24 +562,31 @@ with st.sidebar:
         letter-spacing: 1px;
         color: #94a3b8;
         padding: 8px 16px;
-        margin: 16px 0 8px 0;
+        margin: 16px 0 4px 0;
         display: block !important;
         width: 100%;
     }
     
-    /* OCULTAR círculos nativos COMPLETAMENTE */
-    section[data-testid="stSidebar"] input[type="radio"] {
-        opacity: 0 !important;
-        width: 0 !important;
-        height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        position: absolute !important;
+    /* Ocultar "Ir a:" del radio */
+    section[data-testid="stSidebar"] .stRadio > label {
+        display: none !important;
     }
     
-    /* Flechitas como ::before en el label */
+    /* OCULTAR círculos nativos */
+    section[data-testid="stSidebar"] input[type="radio"] {
+        display: none !important;
+    }
+    
+    /* Contenedor del radio más compacto */
+    section[data-testid="stSidebar"] .stRadio > div {
+        gap: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    /* Labels con flechitas */
     section[data-testid="stSidebar"] .stRadio label {
-        padding: 10px 16px !important;
+        padding: 8px 16px 8px 32px !important;
         font-size: 14px !important;
         font-weight: 500 !important;
         color: #475569 !important;
@@ -588,32 +595,30 @@ with st.sidebar:
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
-        margin: 2px 0 !important;
+        margin: 0 !important;
         background: transparent !important;
         position: relative !important;
-        padding-left: 28px !important;
+        min-height: 36px !important;
     }
     
+    /* Flechita SVG azul */
     section[data-testid="stSidebar"] .stRadio label::before {
         content: '' !important;
         position: absolute !important;
-        left: 8px !important;
+        left: 12px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
-        width: 16px !important;
-        height: 16px !important;
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
+        width: 14px !important;
+        height: 14px !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
         background-repeat: no-repeat !important;
         background-position: center !important;
-        background-size: 16px 16px !important;
+        background-size: 14px 14px !important;
     }
     
+    /* Flechita más gruesa cuando está seleccionado */
     section[data-testid="stSidebar"] .stRadio input:checked + div label::before {
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
-    }
-    
-    section[data-testid="stSidebar"] .stRadio > div {
-        gap: 0 !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
     }
     
     section[data-testid="stSidebar"] .stRadio label:hover {
@@ -680,7 +685,7 @@ with st.sidebar:
     
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
     
-    st.components.v1.html(r"""
+    st.components.v1.html("""
     <script>
     (function() {
         const interval = setInterval(() => {
