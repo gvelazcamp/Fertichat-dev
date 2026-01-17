@@ -334,13 +334,26 @@ def _cache_proveedores() -> list:
     if not supabase:
         return []
 
-    try:
-        res = supabase.table(TABLA_PROVEEDORES).select('"Cliente / Proveedor"').execute()
-        data = [r["Cliente / Proveedor"] for r in res.data if r.get("Cliente / Proveedor")]
-        return list(set(data))
-    except Exception as e:
-        st.error(f"Error cargando proveedores: {e}")
-        return []
+    out = []
+    start = 0
+    page = 1000
+    max_rows = 50000
+
+    while start < max_rows:
+        end = start + page - 1
+        res = (
+            supabase.table(TABLA_PROVEEDORES)
+            .select('"Cliente / Proveedor"')
+            .range(start, end)
+            .execute()
+        )
+        batch = [r["Cliente / Proveedor"] for r in res.data if r.get("Cliente / Proveedor")]
+        out.extend(batch)
+        if len(batch) < page:
+            break
+        start += page
+
+    return list(set(out))  # Unique proveedores
 
 @st.cache_data(ttl=600)
 def _cache_articulos() -> list:
@@ -615,24 +628,30 @@ def mostrar_ingreso_comprobantes():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.date_input("Fecha", key="comp_fecha")
+        st.date_input("Fecha", key="comp_fecha", label_visibility="collapsed")
+        st.caption("Fecha")
 
     with col2:
-        st.selectbox("Tipo", ["Factura", "Remito", "Nota de Crédito"], key="comp_tipo")
+        st.selectbox("Tipo", ["Factura", "Remito", "Nota de Crédito"], key="comp_tipo", label_visibility="collapsed")
+        st.caption("Tipo")
 
     with col3:
-        st.selectbox("Moneda", ["UYU", "USD"], key="comp_moneda")
+        st.selectbox("Moneda", ["UYU", "USD"], key="comp_moneda", label_visibility="collapsed")
+        st.caption("Moneda")
 
     col4, col5, col6 = st.columns(3)
 
     with col4:
-        st.selectbox("Proveedor", proveedores_options, key="comp_proveedor_sel")
+        st.selectbox("Proveedor", proveedores_options, key="comp_proveedor_sel", label_visibility="collapsed")
+        st.caption("Proveedor")
 
     with col5:
-        st.text_input("Nº Comprobante", key="comp_nro")
+        st.text_input("Nº Comprobante", key="comp_nro", label_visibility="collapsed")
+        st.caption("Nº Comprobante")
 
     with col6:
-        st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion")
+        st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion", label_visibility="collapsed")
+        st.caption("Condición")
 
 
     # =========================================
@@ -646,40 +665,42 @@ def mostrar_ingreso_comprobantes():
     art, cant, prec, iva, desc, lote, venc, btn = st.columns([2, 1, 1, 1, 1, 1.5, 1.5, 0.5])
 
     with art:
-        st.selectbox("Artículo", articulos_options, key="comp_articulo_sel")
+        st.selectbox("Artículo", articulos_options, key="comp_articulo_sel", label_visibility="collapsed")
 
     with cant:
-        st.number_input("Cant.", min_value=1, step=1, key="comp_cantidad")
+        st.number_input("Cant.", min_value=1, step=1, key="comp_cantidad", label_visibility="collapsed")
 
     with prec:
-        st.number_input("P.Unit.", min_value=0.0, step=0.01, key="comp_precio")
+        st.number_input("P.Unit.", min_value=0.0, step=0.01, key="comp_precio", label_visibility="collapsed")
 
     with iva:
         art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {}) if st.session_state["comp_articulo_sel"] else {}
         iva_tipo_sugerido = _map_iva_tipo_from_articulo_row(art_row) if art_row else "22%"
-        st.text_input("IVA", value=iva_tipo_sugerido, disabled=True, key="comp_iva_display")
+        st.text_input("IVA", value=iva_tipo_sugerido, disabled=True, label_visibility="collapsed")
 
     with desc:
-        st.number_input("Desc.%", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc")
+        st.number_input("Desc.%", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc", label_visibility="collapsed")
 
     with lote:
+        st.caption("Lote")
         c_chk, c_inp = st.columns([0.4, 0.6])
         with c_chk:
-            st.checkbox("Lote", key="comp_has_lote")
+            st.checkbox(" ", key="comp_has_lote", label_visibility="collapsed")
         with c_inp:
             lote_value = "" if not st.session_state["comp_has_lote"] else st.session_state.get("comp_lote", "")
-            st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"])
+            st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"], label_visibility="collapsed")
 
     with venc:
+        st.caption("Venc.")
         c_chk, c_inp = st.columns([0.4, 0.6])
         with c_chk:
-            st.checkbox("Venc.", key="comp_has_venc")
+            st.checkbox(" ", key="comp_has_venc", label_visibility="collapsed")
         with c_inp:
             if st.session_state["comp_has_venc"]:
                 venc_value = st.session_state.get("comp_venc_date", date.today())
-                st.date_input(" ", value=venc_value, key="comp_venc_date")
+                st.date_input(" ", value=venc_value, key="comp_venc_date", label_visibility="collapsed")
             else:
-                st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
+                st.text_input(" ", value="", disabled=True, key="comp_venc_disabled", label_visibility="collapsed")
 
     with btn:
         if st.button("➕", key="btn_add_art"):
@@ -795,87 +816,97 @@ def mostrar_ingreso_comprobantes():
             st.session_state["comp_items"] = [it for i, it in enumerate(st.session_state["comp_items"]) if not mask[i]]
             st.rerun()
 
-        # Métricas y guardar en la misma fila
+        # TOTALES
+        moneda_actual = st.session_state["comp_moneda"]
+        subtotal = float(df_items["subtotal_sin_iva"].sum())
+        iva_total = float(df_items["iva_monto"].sum())
+        total_calculado = float(df_items["total_con_iva"].sum())
+        desc_total = float(df_items["descuento_monto"].sum()) if "descuento_monto" in df_items.columns else 0.0
+
         st.markdown("---")
-        col_metrics, col_save = st.columns([3, 1])
+        st.caption("Resumen financiero")
 
-        with col_metrics:
-            st.caption("Resumen financiero")
+        t1, t2, t3, t4 = st.columns(4)
+        with t1:
+            st.metric("Subtotal", _fmt_money(subtotal, moneda_actual))
+        with t2:
+            st.metric("Desc./Rec.", _fmt_money(desc_total, moneda_actual))
+        with t3:
+            st.metric("Impuestos", _fmt_money(iva_total, moneda_actual))
+        with t4:
+            st.metric("Total", _fmt_money(total_calculado, moneda_actual))
 
-            t1, t2, t3, t4 = st.columns(4)
-            with t1:
+    # =========================================
+    # BOTÓN GUARDAR
+    # =========================================
+
+    col_empty, col_save = st.columns([2, 1])
+
+    with col_save:
+        if st.button("💾 Guardar comprobante", use_container_width=True, key="btn_save"):
+            if not st.session_state["comp_proveedor_sel"] or not st.session_state["comp_nro"] or not st.session_state["comp_items"]:
+                st.error("Faltan datos obligatorios (Proveedor, Nº Comprobante y al menos 1 artículo).")
+                st.stop()
+
+            proveedor_nombre = str(st.session_state["comp_proveedor_sel"]).strip()
+            proveedor_id = prov_name_to_id.get(proveedor_nombre)
+            nro_norm = str(st.session_state["comp_nro"]).strip()
+
+            try:
+                df_items = pd.DataFrame(st.session_state["comp_items"])
                 subtotal = float(df_items["subtotal_sin_iva"].sum())
-                st.metric("Subtotal", _fmt_money(subtotal, st.session_state["comp_moneda"]))
-            with t2:
-                desc_total = float(df_items["descuento_monto"].sum()) if "descuento_monto" in df_items.columns else 0.0
-                st.metric("Desc./Rec.", _fmt_money(desc_total, st.session_state["comp_moneda"]))
-            with t3:
                 iva_total = float(df_items["iva_monto"].sum())
-                st.metric("Impuestos", _fmt_money(iva_total, st.session_state["comp_moneda"]))
-            with t4:
                 total_calculado = float(df_items["total_con_iva"].sum())
-                st.metric("Total", _fmt_money(total_calculado, st.session_state["comp_moneda"]))
 
-        with col_save:
-            if st.button("💾 Guardar comprobante", use_container_width=True, key="btn_save"):
-                if not st.session_state["comp_proveedor_sel"] or not st.session_state["comp_nro"] or not st.session_state["comp_items"]:
-                    st.error("Faltan datos obligatorios (Proveedor, Nº Comprobante y al menos 1 artículo).")
-                    st.stop()
+                cabecera = {
+                    "fecha": str(st.session_state["comp_fecha"]),
+                    "proveedor": proveedor_nombre,
+                    "proveedor_id": proveedor_id,
+                    "tipo_comprobante": st.session_state["comp_tipo"],
+                    "nro_comprobante": nro_norm,
+                    "condicion_pago": st.session_state["comp_condicion"],
+                    "usuario": str(usuario_actual),
+                    "moneda": st.session_state["comp_moneda"],
+                    "subtotal": subtotal,
+                    "iva_total": iva_total,
+                    "total": total_calculado,
+                }
 
-                proveedor_nombre = str(st.session_state["comp_proveedor_sel"]).strip()
-                proveedor_id = prov_name_to_id.get(proveedor_nombre)
-                nro_norm = str(st.session_state["comp_nro"]).strip()
+                res = _insert_cabecera(tabla_cab, cabecera)
+                comprobante_id = res.data[0]["id"]
 
-                try:
-                    cabecera = {
-                        "fecha": str(st.session_state["comp_fecha"]),
-                        "proveedor": proveedor_nombre,
-                        "proveedor_id": proveedor_id,
-                        "tipo_comprobante": st.session_state["comp_tipo"],
-                        "nro_comprobante": nro_norm,
-                        "condicion_pago": st.session_state["comp_condicion"],
+                for item in st.session_state["comp_items"]:
+                    detalle = {
+                        "comprobante_id": comprobante_id,
+                        "articulo": item["articulo"],
+                        "articulo_id": item.get("articulo_id"),
+                        "cantidad": int(item["cantidad"]),
+                        "lote": item.get("lote", ""),
+                        "vencimiento": item.get("vencimiento", ""),
                         "usuario": str(usuario_actual),
                         "moneda": st.session_state["comp_moneda"],
-                        "subtotal": subtotal,
-                        "iva_total": iva_total,
-                        "total": total_calculado,
+                        "precio_unit_sin_iva": float(item.get("precio_unit_sin_iva", 0.0)),
+                        "iva_tipo": item.get("iva_tipo", "22%"),
+                        "iva_rate": float(item.get("iva_rate", 0.22)),
+                        "descuento_pct": float(item.get("descuento_pct", 0.0)),
+                        "descuento_monto": float(item.get("descuento_monto", 0.0)),
+                        "subtotal_sin_iva": float(item.get("subtotal_sin_iva", 0.0)),
+                        "iva_monto": float(item.get("iva_monto", 0.0)),
+                        "total_con_iva": float(item.get("total_con_iva", 0.0)),
                     }
 
-                    res = _insert_cabecera(tabla_cab, cabecera)
-                    comprobante_id = res.data[0]["id"]
+                    _insert_detalle(tabla_det, detalle)
+                    _impactar_stock(detalle["articulo"], detalle["cantidad"])
 
-                    for item in st.session_state["comp_items"]:
-                        detalle = {
-                            "comprobante_id": comprobante_id,
-                            "articulo": item["articulo"],
-                            "articulo_id": item.get("articulo_id"),
-                            "cantidad": int(item["cantidad"]),
-                            "lote": item.get("lote", ""),
-                            "vencimiento": item.get("vencimiento", ""),
-                            "usuario": str(usuario_actual),
-                            "moneda": st.session_state["comp_moneda"],
-                            "precio_unit_sin_iva": float(item.get("precio_unit_sin_iva", 0.0)),
-                            "iva_tipo": item.get("iva_tipo", "22%"),
-                            "iva_rate": float(item.get("iva_rate", 0.22)),
-                            "descuento_pct": float(item.get("descuento_pct", 0.0)),
-                            "descuento_monto": float(item.get("descuento_monto", 0.0)),
-                            "subtotal_sin_iva": float(item.get("subtotal_sin_iva", 0.0)),
-                            "iva_monto": float(item.get("iva_monto", 0.0)),
-                            "total_con_iva": float(item.get("total_con_iva", 0.0)),
-                        }
+                st.success("✅ Comprobante guardado correctamente.")
+                st.session_state["comp_items"] = []
+                st.session_state["comp_reset_line"] = True
+                st.rerun()
 
-                        _insert_detalle(tabla_det, detalle)
-                        _impactar_stock(detalle["articulo"], detalle["cantidad"])
-
-                    st.success("✅ Comprobante guardado correctamente.")
-                    st.session_state["comp_items"] = []
-                    st.session_state["comp_reset_line"] = True
-                    st.rerun()
-
-                except Exception as e:
-                    st.error("❌ No se pudo guardar en Supabase.")
-                    st.write(str(e))
-                    st.stop()
+            except Exception as e:
+                st.error("❌ No se pudo guardar en Supabase.")
+                st.write(str(e))
+                st.stop()
 
 
 
