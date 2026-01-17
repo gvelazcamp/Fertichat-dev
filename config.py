@@ -18,21 +18,21 @@ OPENAI_MODEL = "gpt-4o-mini"
 # OPCIONES DE MENÚ
 # =========================
 MENU_OPTIONS = [
-    "Inicio",
-    "Compras IA",
-    "Buscador IA",
-    "Stock IA",
-    "Ingreso de comprobantes",
-    "Comprobantes",
-    "Dashboard",
-    "Pedidos internos",
-    "Baja de stock",
-    "Indicadores (Power BI)",
-    "Órdenes de compra",
-    "Artículos",
-    "Ficha de stock",
-    "Depósitos",
-    "Familias",
+    "🏠 Inicio",
+    "🛒 Compras IA",
+    "🔎 Buscador IA",
+    "📦 Stock IA",
+    "📥 Ingreso de comprobantes",
+    "📑 Comprobantes",
+    "📊 Dashboard",
+    "📄 Pedidos internos",
+    "🧾 Baja de stock",
+    "📈 Indicadores (Power BI)",
+    "📦 Órdenes de compra",
+    "📚 Artículos",
+    "📒 Ficha de stock",
+    "🏬 Depósitos",
+    "🧩 Familias",
 ]
 
 # Power BI URL
