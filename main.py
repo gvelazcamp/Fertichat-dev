@@ -402,7 +402,7 @@ user = get_current_user() or {}
 if "pagina" not in st.session_state:
     st.session_state.pagina = "🏠 Inicio"
 
-# Grupos del menú (para sidebar)
+# Grupos del menú
 groups = {
     "PRINCIPAL": ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"],
     "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes"],
@@ -565,11 +565,8 @@ except Exception:
     pass
 
 # =========================
-# SIDEBAR CON NAVEGACIÓN SUAVE
+# SIDEBAR
 # =========================
-def ir(pagina):
-    st.session_state.pagina = pagina
-
 with st.sidebar:
     st.markdown("""
     <style>
@@ -605,43 +602,53 @@ with st.sidebar:
         white-space: nowrap !important;
     }
     
-    /* Estilos para botones del menú */
-    section[data-testid="stSidebar"] .stButton > button {
-        width: 100% !important;
-        text-align: left !important;
-        padding: 8px 16px !important;
+    /* Ocultar el label vacío del radio */
+    section[data-testid="stSidebar"] label[data-testid="stWidgetLabel"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Hacer círculos MUCHO MÁS CHICOS */
+    section[data-testid="stSidebar"] input[type="radio"] {
+        width: 12px !important;
+        height: 12px !important;
+        min-width: 12px !important;
+        margin-right: 8px !important;
+        flex-shrink: 0 !important;
+        accent-color: #3b82f6 !important;
+    }
+    
+    /* Contenedor MÁS COMPACTO */
+    section[data-testid="stSidebar"] .stRadio > div {
+        gap: 0 !important;
+    }
+    
+    /* Labels SÚPER COMPACTOS */
+    section[data-testid="stSidebar"] .stRadio label {
+        padding: 4px 12px 4px 8px !important;
         font-size: 14px !important;
         font-weight: 500 !important;
         color: #475569 !important;
         border-left: 3px solid transparent !important;
         transition: all 120ms ease !important;
         cursor: pointer !important;
-        background: transparent !important;
-        border-radius: 0 !important;
+        display: flex !important;
+        align-items: center !important;
         margin: 0 !important;
-        min-height: 32px !important;
-        line-height: 1.2 !important;
+        background: transparent !important;
         position: relative !important;
+        min-height: 28px !important;
+        line-height: 1.2 !important;
     }
     
-    section[data-testid="stSidebar"] .stButton > button:hover {
-        background: #f8fafc !important;
-        border-left-color: #3b82f6 !important;
-        color: #1e293b !important;
-    }
-    
-    section[data-testid="stSidebar"] .stButton > button:focus {
-        background: #ebf5ff !important;
-        border-left-color: #3b82f6 !important;
-        color: #1e293b !important;
-        font-weight: 600 !important;
-    }
-    
-    /* Flechita azul antes del texto */
-    section[data-testid="stSidebar"] .stButton > button::before {
+    /* Flechita azul ANTES del círculo */
+    section[data-testid="stSidebar"] .stRadio label::before {
         content: '▸' !important;
         position: absolute !important;
-        left: 8px !important;
+        left: -12px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
         color: #3b82f6 !important;
@@ -650,9 +657,20 @@ with st.sidebar:
         line-height: 1 !important;
     }
     
-    /* Flechita más bold cuando activo */
-    section[data-testid="stSidebar"] .stButton > button:focus::before {
+    /* Flechita más bold cuando está seleccionado */
+    section[data-testid="stSidebar"] .stRadio input:checked + div label::before {
         font-weight: 900 !important;
+    }
+    
+    section[data-testid="stSidebar"] .stRadio label:hover {
+        background: #f8fafc !important;
+    }
+    
+    section[data-testid="stSidebar"] .stRadio input:checked + div label {
+        background: #ebf5ff !important;
+        border-left-color: #3b82f6 !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
     }
     
     .fc-divider {
@@ -705,23 +723,21 @@ with st.sidebar:
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
-    # Menu agrupado con botones
+    # Menu agrupado
     for group, options in groups.items():
         st.markdown(f'<div class="fc-section-header">{group}</div>', unsafe_allow_html=True)
-        for opt in options:
-            is_active = st.session_state.pagina == opt
-            if st.button(opt, key=f"btn_{opt.replace(' ', '_').replace('🏠', 'home').replace('🛒', 'compras').replace('🔎', 'buscador').replace('📦', 'stock').replace('📄', 'pedidos').replace('🧾', 'baja').replace('📥', 'ingreso').replace('📚', 'articulos').replace('🧩', 'familias').replace('🏬', 'depositos').replace('📑', 'comprobantes').replace('📊', 'dashboard').replace('📈', 'indicadores')}", on_click=ir, args=(opt,), help=f"Ir a {opt}"):
-                pass
+        selected = st.radio("", options, key=f"radio_{group.lower()}", label_visibility="collapsed", index=options.index(st.session_state.pagina) if st.session_state.pagina in options else 0)
+        if selected:
+            st.session_state.pagina = selected
     
     st.components.v1.html(r"""
     <script>
     (function() {
         const interval = setInterval(() => {
-            const buttons = parent.document.querySelectorAll('section[data-testid="stSidebar"] .stButton button');
-            if (buttons.length > 0) {
-                buttons.forEach(button => {
-                    const text = button.textContent;
-                    button.textContent = text.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+            const labels = parent.document.querySelectorAll('section[data-testid="stSidebar"] .stRadio label p');
+            if (labels.length > 0) {
+                labels.forEach(label => {
+                    label.textContent = label.textContent.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
                 });
                 clearInterval(interval);
             }
