@@ -3,7 +3,7 @@
 # Archivo: ingreso_comprobantes_redesign.py
 # FIXES: Línea blanca, proveedor gigante, vencimiento, session_state
 # ADDED: Botones ➕ y ✖ para agregar/limpiar línea de artículo
-# FIXED: Proveedores no cargan - Quitado cache temporalmente para debug
+# FIXED: Proveedores no cargan - Cambiado a sql_core como en ui_compras
 # =====================================================================
 
 import streamlit as st
@@ -13,6 +13,7 @@ import os
 import re
 
 from supabase import create_client
+from sql_core import ejecutar_consulta  # ✅ IMPORTADO PARA CARGAR PROVEEDORES/ARTÍCULOS
 
 # =====================================================================
 # CONFIGURACIÓN SUPABASE
@@ -343,45 +344,37 @@ def _fmt_money(v: float, moneda: str) -> str:
     return f"{moneda} {s}"
 
 # =====================================================================
-# CACHE SUPABASE (QUITADO TEMPORALMENTE PARA DEBUG)
+# CACHE SUPABASE (CAMBIADO A sql_core)
 # =====================================================================
 
-def _cache_proveedores() -> list:  # Quitado @st.cache_data para forzar carga fresca
-    if not supabase:
-        return []
-
+def _cache_proveedores() -> list:  # ✅ CAMBIADO A sql_core como en ui_compras
     try:
-        res = supabase.table(TABLA_PROVEEDORES).select('"Cliente / Proveedor"').execute()
-        data = [r["Cliente / Proveedor"] for r in res.data if r.get("Cliente / Proveedor")]
-        return list(set(data))
+        sql = '''
+            SELECT DISTINCT TRIM("Cliente / Proveedor") AS prov 
+            FROM chatbot_raw 
+            WHERE TRIM("Cliente / Proveedor") != '' 
+            ORDER BY prov
+        '''
+        df = ejecutar_consulta(sql, ())
+        if df is None or df.empty:
+            return []
+        provs = df['prov'].tolist()
+        return provs
     except Exception as e:
         st.error(f"Error cargando proveedores: {e}")
         return []
 
-def _cache_articulos() -> list:  # Quitado @st.cache_data para forzar carga fresca
-    if not supabase:
+def _cache_articulos() -> list:  # ✅ CAMBIADO A sql_core como en ui_compras
+    try:
+        sql = 'SELECT DISTINCT TRIM("Articulo") AS art FROM chatbot_raw WHERE TRIM("Articulo") != \'\' ORDER BY art'
+        df = ejecutar_consulta(sql, ())
+        if df is None or df.empty:
+            return []
+        arts = df['art'].tolist()
+        return arts
+    except Exception as e:
+        st.error(f"Error cargando artículos: {e}")
         return []
-
-    out = []
-    start = 0
-    page = 1000
-    max_rows = 50000
-
-    while start < max_rows:
-        end = start + page - 1
-        res = (
-            supabase.table(TABLA_ARTICULOS)
-            .select("*")
-            .range(start, end)
-            .execute()
-        )
-        batch = res.data or []
-        out.extend(batch)
-        if len(batch) < page:
-            break
-        start += page
-
-    return out
 
 def _get_proveedor_options() -> tuple[list, dict]:
     data = _cache_proveedores()
@@ -398,11 +391,11 @@ def _get_articulo_options() -> tuple[list, dict]:
     data = _cache_articulos()
     label_to_row = {}
     options = [""]
-    for r in data:
-        label = _articulo_label(r)
-        if label:
-            options.append(label)
-            label_to_row[label] = r
+    for art in data:
+        art = str(art).strip()
+        if art:
+            options.append(art)
+            label_to_row[art] = {"Articulo": art}  # Simulado, ya que no tenemos row completa
     return options, label_to_row
 
 # =====================================================================
