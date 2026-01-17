@@ -103,7 +103,7 @@ def agregar_selector_manual_dispositivo():
             index=1 if es_mobile_actual else 0,
             horizontal=True,
             key="selector_dispositivo_manual",
-            help="Cambia la vista entre desktop y mobile"
+            help="Cambia la vista entre desktop and mobile"
         )
         
         # Actualizar session_state
@@ -667,7 +667,7 @@ with st.sidebar:
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
     
     # JavaScript para quitar emojis del sidebar
-    st.components.v1.html("""
+    st.components.v1.html(r"""
     <script>
     (function() {
         const interval = setInterval(() => {
