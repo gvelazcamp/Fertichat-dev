@@ -516,42 +516,60 @@ def _clear_qp():
 # Desde tarjetas (go=?)
 _go = _get_qp_first("go")
 if _go == "compras":
-    st.session_state["radio_principal"] = "🛒 Compras IA"
+    with st.spinner("⏳ Cargando Compras..."):
+        st.session_state["radio_principal"] = "🛒 Compras IA"
     _clear_qp()
+    st.rerun()
 
 elif _go == "buscador":
-    st.session_state["radio_principal"] = "🔎 Buscador IA"
+    with st.spinner("🔍 Cargando Buscador..."):
+        st.session_state["radio_principal"] = "🔎 Buscador IA"
     _clear_qp()
+    st.rerun()
 
 elif _go == "stock":
-    st.session_state["radio_principal"] = "📦 Stock IA"
+    with st.spinner("📦 Cargando Stock..."):
+        st.session_state["radio_principal"] = "📦 Stock IA"
     _clear_qp()
+    st.rerun()
 
 elif _go == "dashboard":
-    st.session_state["radio_analisis"] = "📊 Dashboard"
+    with st.spinner("📊 Cargando Dashboard..."):
+        st.session_state["radio_analisis"] = "📊 Dashboard"
     _clear_qp()
+    st.rerun()
 
 elif _go == "pedidos":
-    st.session_state["radio_gestion"] = "📄 Pedidos internos"
+    with st.spinner("📄 Cargando Pedidos..."):
+        st.session_state["radio_gestion"] = "📄 Pedidos internos"
     _clear_qp()
+    st.rerun()
 
 elif _go == "baja":
-    st.session_state["radio_gestion"] = "🧾 Baja de stock"
+    with st.spinner("🧾 Cargando Baja de Stock..."):
+        st.session_state["radio_gestion"] = "🧾 Baja de stock"
     _clear_qp()
+    st.rerun()
 
 elif _go == "ordenes":
-    st.session_state["radio_gestion"] = "📦 Órdenes de compra"
+    with st.spinner("📦 Cargando Órdenes..."):
+        st.session_state["radio_gestion"] = "📦 Órdenes de compra"
     _clear_qp()
+    st.rerun()
 
 elif _go == "indicadores":
-    st.session_state["radio_analisis"] = "📈 Indicadores (Power BI)"
+    with st.spinner("📈 Cargando Indicadores..."):
+        st.session_state["radio_analisis"] = "📈 Indicadores (Power BI)"
     _clear_qp()
+    st.rerun()
 
 # Desde campana (ir_notif=1)
 try:
     if st.query_params.get("ir_notif") == "1":
-        st.session_state["radio_gestion"] = "📄 Pedidos internos"
+        with st.spinner("🔔 Cargando Notificaciones..."):
+            st.session_state["radio_gestion"] = "📄 Pedidos internos"
         _clear_qp()
+        st.rerun()
 except Exception:
     pass
 
