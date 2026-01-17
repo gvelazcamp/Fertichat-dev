@@ -586,7 +586,7 @@ with st.sidebar:
         gap: 0 !important;
     }
     
-    section[data-testid="stSidebar"] .stRadio label {
+    section[data-testid="stRadio"] label {
         padding: 10px 16px 10px 0 !important;
         font-size: 14px !important;
         font-weight: 500 !important;
@@ -666,14 +666,23 @@ with st.sidebar:
     
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
     
-    # JavaScript para quitar emojis
-    st.markdown(r"""
+    # JavaScript para quitar emojis del sidebar
+    st.components.v1.html("""
     <script>
-    document.querySelectorAll('section[data-testid="stSidebar"] .stRadio label p').forEach(el => {
-        el.textContent = el.textContent.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
-    });
+    (function() {
+        const interval = setInterval(() => {
+            const labels = parent.document.querySelectorAll('section[data-testid="stSidebar"] .stRadio label p');
+            if (labels.length > 0) {
+                labels.forEach(label => {
+                    // Quitar emojis (rango Unicode completo)
+                    label.textContent = label.textContent.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+                });
+                clearInterval(interval);
+            }
+        }, 100);
+    })();
     </script>
-    """, unsafe_allow_html=True)
+    """, height=0)
 
 # =========================
 # FUNCIÓN DEBUG SQL FACTURA (pestaña aparte)
