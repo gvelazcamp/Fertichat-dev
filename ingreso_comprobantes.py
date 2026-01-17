@@ -605,8 +605,6 @@ def mostrar_ingreso_comprobantes():
         st.session_state["comp_desc"] = 0.0
         st.session_state["comp_has_lote"] = False
         st.session_state["comp_has_venc"] = False
-        st.session_state["comp_lote"] = ""
-        st.session_state["comp_venc_date"] = date.today()
         st.session_state["comp_reset_line"] = False
 
     proveedores_options, prov_name_to_id = _get_proveedor_options()
@@ -716,9 +714,8 @@ def mostrar_ingreso_comprobantes():
         with c_chk:
             st.checkbox(" ", key="comp_has_lote", label_visibility="collapsed")
         with c_inp:
-            st.text_input(" ", key="comp_lote", disabled=not st.session_state["comp_has_lote"], label_visibility="collapsed")
-            if not st.session_state["comp_has_lote"]:
-                st.session_state["comp_lote"] = ""
+            lote_value = "" if not st.session_state["comp_has_lote"] else st.session_state.get("comp_lote", "")
+            st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"], label_visibility="collapsed")
 
     with l2:
         st.caption("Vencimiento")
@@ -727,7 +724,8 @@ def mostrar_ingreso_comprobantes():
             st.checkbox(" ", key="comp_has_venc", label_visibility="collapsed")
         with c_inp:
             if st.session_state["comp_has_venc"]:
-                st.date_input(" ", key="comp_venc_date", label_visibility="collapsed")
+                venc_value = st.session_state.get("comp_venc_date", date.today())
+                st.date_input(" ", value=venc_value, key="comp_venc_date", label_visibility="collapsed")
             else:
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled", label_visibility="collapsed")
 
