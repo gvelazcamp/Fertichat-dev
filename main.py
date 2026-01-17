@@ -366,8 +366,22 @@ st.title("Inicio")
 init_db()
 user = get_current_user() or {}
 
-if "radio_menu" not in st.session_state:
-    st.session_state["radio_menu"] = "🏠 Inicio"
+# Grupos del menú
+groups = {
+    "PRINCIPAL": ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"],
+    "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes"],
+    "CATÁLOGO": ["📚 Artículos", "🧩 Familias", "🏬 Depósitos", "📑 Comprobantes"],
+    "ANÁLISIS": ["📊 Dashboard", "📈 Indicadores (Power BI)"],
+}
+
+# Inicializar radios
+for group in groups:
+    key = f"radio_{group.lower()}"
+    if key not in st.session_state:
+        if group == "PRINCIPAL":
+            st.session_state[key] = "🏠 Inicio"
+        else:
+            st.session_state[key] = None
 
 # Forzar flag del orquestador
 st.session_state["ORQUESTADOR_CARGADO"] = True
@@ -475,57 +489,49 @@ def _clear_qp():
 # Desde tarjetas (go=?)
 _go = _get_qp_first("go")
 if _go == "compras":
-    _target = None
-    for _opt in MENU_OPTIONS:
-        if "compras" in (_opt or "").lower():
-            _target = _opt
-            break
-
-    if _target:
-        st.session_state["radio_menu"] = _target
-
+    st.session_state["radio_principal"] = "🛒 Compras IA"
     _clear_qp()
     st.rerun()
 
 elif _go == "buscador":
-    st.session_state["radio_menu"] = "🔎 Buscador IA"
+    st.session_state["radio_principal"] = "🔎 Buscador IA"
     _clear_qp()
     st.rerun()
 
 elif _go == "stock":
-    st.session_state["radio_menu"] = "📦 Stock IA"
+    st.session_state["radio_principal"] = "📦 Stock IA"
     _clear_qp()
     st.rerun()
 
 elif _go == "dashboard":
-    st.session_state["radio_menu"] = "📊 Dashboard"
+    st.session_state["radio_analisis"] = "📊 Dashboard"
     _clear_qp()
     st.rerun()
 
 elif _go == "pedidos":
-    st.session_state["radio_menu"] = "📄 Pedidos internos"
+    st.session_state["radio_gestion"] = "📄 Pedidos internos"
     _clear_qp()
     st.rerun()
 
 elif _go == "baja":
-    st.session_state["radio_menu"] = "🧾 Baja de stock"
+    st.session_state["radio_gestion"] = "🧾 Baja de stock"
     _clear_qp()
     st.rerun()
 
 elif _go == "ordenes":
-    st.session_state["radio_menu"] = "📦 Órdenes de compra"
+    st.session_state["radio_gestion"] = "📦 Órdenes de compra"
     _clear_qp()
     st.rerun()
 
 elif _go == "indicadores":
-    st.session_state["radio_menu"] = "📈 Indicadores (Power BI)"
+    st.session_state["radio_analisis"] = "📈 Indicadores (Power BI)"
     _clear_qp()
     st.rerun()
 
 # Desde campana (ir_notif=1)
 try:
     if st.query_params.get("ir_notif") == "1":
-        st.session_state["radio_menu"] = "📄 Pedidos internos"
+        st.session_state["radio_gestion"] = "📄 Pedidos internos"
         _clear_qp()
         st.rerun()
 except Exception:
@@ -691,17 +697,9 @@ with st.sidebar:
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
     # Menu agrupado
-    st.markdown('<div class="fc-section-header">PRINCIPAL</div>', unsafe_allow_html=True)
-    st.radio("", ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"], key="radio_menu", label_visibility="collapsed")
-    
-    st.markdown('<div class="fc-section-header">GESTIÓN</div>', unsafe_allow_html=True)
-    st.radio("", ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes"], key="radio_menu", label_visibility="collapsed")
-    
-    st.markdown('<div class="fc-section-header">CATÁLOGO</div>', unsafe_allow_html=True)
-    st.radio("", ["📚 Artículos", "🧩 Familias", "🏬 Depósitos", "📑 Comprobantes"], key="radio_menu", label_visibility="collapsed")
-    
-    st.markdown('<div class="fc-section-header">ANÁLISIS</div>', unsafe_allow_html=True)
-    st.radio("", ["📊 Dashboard", "📈 Indicadores (Power BI)"], key="radio_menu", label_visibility="collapsed")
+    for group, options in groups.items():
+        st.markdown(f'<div class="fc-section-header">{group}</div>', unsafe_allow_html=True)
+        st.radio("", options, key=f"radio_{group.lower()}", label_visibility="collapsed")
     
     st.components.v1.html(r"""
     <script>
@@ -770,7 +768,12 @@ def mostrar_debug_sql_factura():
 # =========================
 # ROUTER PRINCIPAL
 # =========================
-menu_actual = st.session_state["radio_menu"]
+menu_actual = None
+for group, options in groups.items():
+    val = st.session_state.get(f"radio_{group.lower()}")
+    if val:
+        menu_actual = val
+        break
 
 if menu_actual == "🏠 Inicio":
     mostrar_inicio()
