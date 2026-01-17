@@ -371,14 +371,15 @@ def _cache_proveedores() -> list:
                 break
             start += page
 
-        # Buscar el campo de proveedor (puede tener diferentes nombres)
+        # Buscar el campo de proveedor en cada registro
         proveedores = set()
-        campos_candidatos = ["Cliente / Proveedor", "cliente / proveedor", "Proveedor", "proveedor", "nombre", "Nombre"]
         
         for r in out:
-            for campo in campos_candidatos:
-                if campo in r and r.get(campo):
-                    proveedores.add(str(r[campo]).strip())
+            # Buscar cualquier campo que contenga "proveedor" o "cliente"
+            for key, value in r.items():
+                key_lower = key.lower()
+                if ("proveedor" in key_lower or "cliente" in key_lower) and value:
+                    proveedores.add(str(value).strip())
                     break
         
         return sorted(list(proveedores))
