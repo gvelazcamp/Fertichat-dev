@@ -406,6 +406,10 @@ groups = {
     "ANÁLISIS": ["📊 Dashboard", "📈 Indicadores (Power BI)"],
 }
 
+# Inicializar página
+if "pagina" not in st.session_state:
+    st.session_state.pagina = "🏠 Inicio"
+
 # Inicializar radios
 for group in groups:
     key = f"radio_{group.lower()}"
@@ -523,48 +527,80 @@ _go = _get_qp_first("go")
 if _go == "compras":
     with st.spinner("⏳ Cargando Compras..."):
         st.session_state["radio_principal"] = "🛒 Compras IA"
+        st.session_state.pagina = "🛒 Compras IA"
+        for g in groups:
+            if g != "PRINCIPAL":
+                st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
 
 elif _go == "buscador":
     with st.spinner("🔍 Cargando Buscador..."):
         st.session_state["radio_principal"] = "🔎 Buscador IA"
+        st.session_state.pagina = "🔎 Buscador IA"
+        for g in groups:
+            if g != "PRINCIPAL":
+                st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
 
 elif _go == "stock":
     with st.spinner("📦 Cargando Stock..."):
         st.session_state["radio_principal"] = "📦 Stock IA"
+        st.session_state.pagina = "📦 Stock IA"
+        for g in groups:
+            if g != "PRINCIPAL":
+                st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
 
 elif _go == "dashboard":
     with st.spinner("📊 Cargando Dashboard..."):
         st.session_state["radio_analisis"] = "📊 Dashboard"
+        st.session_state.pagina = "📊 Dashboard"
+        for g in groups:
+            if g != "ANÁLISIS":
+                st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
 
 elif _go == "pedidos":
     with st.spinner("📄 Cargando Pedidos..."):
         st.session_state["radio_gestion"] = "📄 Pedidos internos"
+        st.session_state.pagina = "📄 Pedidos internos"
+        for g in groups:
+            if g != "GESTIÓN":
+                st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
 
 elif _go == "baja":
     with st.spinner("🧾 Cargando Baja de Stock..."):
         st.session_state["radio_gestion"] = "🧾 Baja de stock"
+        st.session_state.pagina = "🧾 Baja de stock"
+        for g in groups:
+            if g != "GESTIÓN":
+                st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
 
 elif _go == "ordenes":
     with st.spinner("📦 Cargando Órdenes..."):
         st.session_state["radio_gestion"] = "📦 Órdenes de compra"
+        st.session_state.pagina = "📦 Órdenes de compra"
+        for g in groups:
+            if g != "GESTIÓN":
+                st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
 
 elif _go == "indicadores":
     with st.spinner("📈 Cargando Indicadores..."):
         st.session_state["radio_analisis"] = "📈 Indicadores (Power BI)"
+        st.session_state.pagina = "📈 Indicadores (Power BI)"
+        for g in groups:
+            if g != "ANÁLISIS":
+                st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
 
@@ -573,6 +609,10 @@ try:
     if st.query_params.get("ir_notif") == "1":
         with st.spinner("🔔 Cargando Notificaciones..."):
             st.session_state["radio_gestion"] = "📄 Pedidos internos"
+            st.session_state.pagina = "📄 Pedidos internos"
+            for g in groups:
+                if g != "GESTIÓN":
+                    st.session_state[f"radio_{g.lower()}"] = None
         _clear_qp()
         st.rerun()
 except Exception:
@@ -581,6 +621,14 @@ except Exception:
 # =========================
 # SIDEBAR
 # =========================
+def update_pagina(group):
+    selected = st.session_state[f"radio_{group.lower()}"]
+    if selected:
+        st.session_state.pagina = selected
+        for g in groups:
+            if g != group:
+                st.session_state[f"radio_{g.lower()}"] = None
+
 with st.sidebar:
     st.markdown("""
     <style>
@@ -716,7 +764,7 @@ with st.sidebar:
     # Info usuario
     st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
     if user.get("empresa"):
-        st.markdown(f"🏢 {user.get('empresa')}")
+        st.markdown(f"🏢 {user.get('empresa')")
     st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
@@ -740,7 +788,7 @@ with st.sidebar:
     # Menu agrupado
     for group, options in groups.items():
         st.markdown(f'<div class="fc-section-header">{group}</div>', unsafe_allow_html=True)
-        st.radio("", options, key=f"radio_{group.lower()}", label_visibility="collapsed")
+        st.radio("", options, key=f"radio_{group.lower()}", label_visibility="collapsed", on_change=update_pagina, args=(group,))
     
     st.components.v1.html(r"""
     <script>
@@ -809,21 +857,14 @@ def mostrar_debug_sql_factura():
 # =========================
 # ROUTER PRINCIPAL CON CONTAINER FIJO
 # =========================
-menu_actual = None
-for group, options in groups.items():
-    val = st.session_state.get(f"radio_{group.lower()}")
-    if val:
-        menu_actual = val
-        break
-
 with main_container:
-    if menu_actual == "🏠 Inicio":
+    if st.session_state.pagina == "🏠 Inicio":
         mostrar_inicio()
 
-    elif "Chat (Chainlit)" in menu_actual:
+    elif "Chat (Chainlit)" in st.session_state.pagina:
         mostrar_chat_chainlit()
 
-    elif menu_actual == "🛒 Compras IA":
+    elif st.session_state.pagina == "🛒 Compras IA":
         mostrar_resumen_compras_rotativo()
         Compras_IA()
 
@@ -832,56 +873,54 @@ with main_container:
             with st.expander("🛠 Debug (última consulta)", expanded=True):
                 st.subheader("Interpretación")
                 st.json(st.session_state.get("DBG_INT_LAST", {}))
-
                 st.subheader("SQL ejecutado")
                 st.write("Origen:", st.session_state.get("DBG_SQL_LAST_TAG"))
                 st.write("Params:", st.session_state.get("DBG_SQL_LAST_PARAMS", []))
-
                 st.subheader("Resultado")
                 st.write("Filas:", st.session_state.get("DBG_SQL_ROWS"))
                 st.write("Columnas:", st.session_state.get("DBG_SQL_COLS", []))
 
-    elif menu_actual == "🔍 Debug SQL factura":
+    elif st.session_state.pagina == "🔍 Debug SQL factura":
         mostrar_debug_sql_factura()
 
-    elif menu_actual == "📦 Stock IA":
+    elif st.session_state.pagina == "📦 Stock IA":
         mostrar_resumen_stock_rotativo(dias_vencer=30)  # Cambiado a 30 días
         mostrar_stock_ia()
 
-    elif menu_actual == "🔎 Buscador IA":
+    elif st.session_state.pagina == "🔎 Buscador IA":
         mostrar_buscador_ia()
 
-    elif menu_actual == "📥 Ingreso de comprobantes":
+    elif st.session_state.pagina == "📥 Ingreso de comprobantes":
         mostrar_ingreso_comprobantes()
 
-    elif menu_actual == "📊 Dashboard":
+    elif st.session_state.pagina == "📊 Dashboard":
         mostrar_dashboard()
 
-    elif menu_actual == "📄 Pedidos internos":
+    elif st.session_state.pagina == "📄 Pedidos internos":
         mostrar_pedidos_internos()
 
-    elif menu_actual == "🧾 Baja de stock":
+    elif st.session_state.pagina == "🧾 Baja de stock":
         mostrar_baja_stock()
 
-    elif menu_actual == "📈 Indicadores (Power BI)":
+    elif st.session_state.pagina == "📈 Indicadores (Power BI)":
         mostrar_indicadores_ia()
 
-    elif menu_actual == "📦 Órdenes de compra":
+    elif st.session_state.pagina == "📦 Órdenes de compra":
         mostrar_ordenes_compra()
 
-    elif menu_actual == "📒 Ficha de stock":
+    elif st.session_state.pagina == "📒 Ficha de stock":
         mostrar_ficha_stock()
 
-    elif menu_actual == "📚 Artículos":
+    elif st.session_state.pagina == "📚 Artículos":
         mostrar_articulos()
 
-    elif menu_actual == "🏬 Depósitos":
+    elif st.session_state.pagina == "🏬 Depósitos":
         mostrar_depositos()
 
-    elif menu_actual == "🧩 Familias":
+    elif st.session_state.pagina == "🧩 Familias":
         mostrar_familias()
 
-    elif menu_actual == "📑 Comprobantes":
+    elif st.session_state.pagina == "📑 Comprobantes":
         mostrar_menu_comprobantes()
 
 # Marca visual para saber que el orquestador está cargado
