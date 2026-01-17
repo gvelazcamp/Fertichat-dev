@@ -21,9 +21,6 @@ def mostrar_inicio_desktop():
 
     st.markdown("""
     <style>
-    /* =========================================================
-       RESET PADDING SUPERIOR
-       ========================================================= */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) {
         padding-top: 0 !important;
         margin-top: 0 !important;
@@ -71,9 +68,6 @@ def mostrar_inicio_desktop():
         padding: 0 !important;
     }
     
-    /* =========================================================
-       TARJETAS HOME
-       ========================================================= */
     div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) div[data-testid="column"] {
         position: relative;
     }
@@ -135,90 +129,6 @@ def mostrar_inicio_desktop():
         z-index: 10;
     }
 
-    /* =========================================================
-       SIDEBAR MINIMALISTA PREMIUM
-       ========================================================= */
-    
-    section[data-testid="stSidebar"] {
-        background: #ffffff !important;
-        border-right: 1px solid rgba(148, 163, 184, 0.15);
-    }
-
-    section[data-testid="stSidebar"] > div {
-        background: #ffffff !important;
-        padding-top: 16px !important;
-    }
-
-    /* Ocultar círculos de radio pero mantener funcionalidad */
-    section[data-testid="stSidebar"] input[type="radio"] {
-        display: none !important;
-    }
-
-    /* Labels como items del menú */
-    section[data-testid="stSidebar"] .stRadio label {
-        padding: 10px 16px !important;
-        font-size: 14px !important;
-        font-weight: 500 !important;
-        color: #475569 !important;
-        border-left: 3px solid transparent !important;
-        transition: all 120ms ease !important;
-        cursor: pointer !important;
-        display: flex !important;
-        align-items: center !important;
-        margin: 2px 0 !important;
-        background: transparent !important;
-    }
-
-    /* Dot antes del label */
-    section[data-testid="stSidebar"] .stRadio label div[data-testid="stMarkdownContainer"]::before {
-        content: "• " !important;
-        color: #94a3b8 !important;
-        margin-right: 8px !important;
-    }
-
-    /* Hover */
-    section[data-testid="stSidebar"] .stRadio label:hover {
-        background: #f8fafc !important;
-    }
-
-    /* Item activo */
-    section[data-testid="stSidebar"] .stRadio input:checked + div + label,
-    section[data-testid="stSidebar"] .stRadio input:checked ~ label {
-        background: #ebf5ff !important;
-        border-left-color: #3b82f6 !important;
-        font-weight: 600 !important;
-        color: #1e293b !important;
-    }
-
-    /* Headers de sección (detecta texto todo mayúsculas) */
-    section[data-testid="stSidebar"] label:has(div[data-testid="stMarkdownContainer"]:is(:where(*))) {
-        text-transform: uppercase;
-        font-size: 12px !important;
-        font-weight: 600 !important;
-        color: #94a3b8 !important;
-        padding: 16px 16px 8px 16px !important;
-        margin-top: 16px !important;
-    }
-
-    /* Botones del sidebar */
-    section[data-testid="stSidebar"] .stButton button {
-        background: transparent !important;
-        color: #475569 !important;
-        border: none !important;
-        padding: 10px 16px !important;
-        font-size: 14px !important;
-        font-weight: 500 !important;
-        text-align: left !important;
-        width: 100% !important;
-        border-left: 3px solid transparent !important;
-        transition: all 120ms ease !important;
-    }
-
-    section[data-testid="stSidebar"] .stButton button:hover {
-        background: #f8fafc !important;
-    }
-
-    /* Responsive */
     @media (max-width: 900px) {
         div[data-testid="stAppViewContainer"]:has(#fc-home-desktop-marker) .stButton > button {
             height: 160px;
