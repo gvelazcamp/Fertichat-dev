@@ -277,7 +277,17 @@ def buscar_comprobantes(
 def mostrar_buscador_ia():
     """Pantalla del Buscador de Comprobantes - CON INTENCIONES IA"""
 
-    st.title("🔍 Buscador de Comprobantes")
+    # Título con SVG azul en lugar del emoji
+    st.markdown("""
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="11" cy="11" r="8" stroke="#2563eb" stroke-width="2"/>
+            <path d="m21 21-4.35-4.35" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h1 style="margin: 0; font-size: 2.5rem; font-weight: 600; color: #1f2937;">Buscador de Comprobantes</h1>
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.markdown("Búsqueda con filtros + preguntas en lenguaje natural")
 
     # --- Selector principal: Factura o Lote ---
@@ -585,4 +595,3 @@ def mostrar_buscador_ia():
 
         else:
             st.info("👆 Seleccioná filtros y presioná **Buscar** para buscar lotes en stock")
-
