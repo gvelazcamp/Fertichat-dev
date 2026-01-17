@@ -777,6 +777,8 @@ def mostrar_ingreso_comprobantes():
             st.session_state["comp_reset_line"] = True
             st.rerun()
 
+    # Espacio grande
+    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
 
     # =========================================
     # SECCIÓN 3: TABLA DE ARTÍCULOS
