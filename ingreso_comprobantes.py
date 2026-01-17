@@ -1,6 +1,6 @@
 # =====================================================================
-# 📥 MÓDULO: INGRESO DE COMPROBANTES - FERTI CHAT
-# Archivo: ingreso_comprobantes.py
+# 📥 MÓDULO: INGRESO DE COMPROBANTES - FERTI CHAT (REDISEÑO)
+# Archivo: ingreso_comprobantes_redesign.py
 # =====================================================================
 
 import streamlit as st
@@ -43,7 +43,199 @@ TABLA_PROVEEDORES = "proveedores"
 TABLA_ARTICULOS = "articulos"
 
 # =====================================================================
-# HELPERS
+# CSS CORPORATIVO
+# =====================================================================
+
+def _load_custom_css():
+    """Carga el CSS corporativo personalizado"""
+    css = """
+    <style>
+    /* ===== ESTILOS GENERALES ===== */
+    :root {
+        --primary-blue: #4A90E2;
+        --light-blue: #E8F0FF;
+        --dark-gray: #2C3E50;
+        --medium-gray: #5A6C7D;
+        --light-gray: #F5F7FA;
+        --border-color: #E0E6ED;
+        --text-primary: #2C3E50;
+        --text-secondary: #5A6C7D;
+        --success: #27AE60;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+        --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Contenedor principal */
+    .ingreso-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* Encabezado */
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 32px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .page-header h1 {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--dark-gray);
+        margin: 0;
+        letter-spacing: -0.5px;
+    }
+
+    /* Secciones */
+    .form-section {
+        background: white;
+        border-radius: 12px;
+        padding: 28px;
+        margin-bottom: 24px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.3s ease;
+    }
+
+    .form-section:hover {
+        box-shadow: var(--shadow-md);
+        border-color: var(--primary-blue);
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid var(--light-gray);
+    }
+
+    .section-header h2 {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Inputs */
+    .stTextInput input, .stNumberInput input, .stSelectbox select,
+    .stDateInput input {
+        border: 1.5px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        padding: 12px 14px !important;
+        font-size: 14px !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .stTextInput input:focus, .stNumberInput input:focus,
+    .stSelectbox select:focus, .stDateInput input:focus {
+        border-color: var(--primary-blue) !important;
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1) !important;
+    }
+
+    /* Botones */
+    .stButton > button {
+        width: 100%;
+        padding: 12px 28px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.3s ease !important;
+        border: none !important;
+    }
+
+    .btn-primary > button {
+        background: linear-gradient(135deg, var(--primary-blue), #3A7BC8) !important;
+        color: white !important;
+        box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3) !important;
+    }
+
+    .btn-primary > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4) !important;
+    }
+
+    .btn-secondary > button {
+        background: white !important;
+        color: var(--primary-blue) !important;
+        border: 2px solid var(--primary-blue) !important;
+    }
+
+    .btn-secondary > button:hover {
+        background: var(--light-blue) !important;
+    }
+
+    /* Data editor */
+    .stDataFrame {
+        border-radius: 8px !important;
+        border: 1px solid var(--border-color) !important;
+    }
+
+    /* Títulos */
+    h1, h2, h3 {
+        color: var(--dark-gray) !important;
+    }
+
+    /* Caption */
+    .stCaption {
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        color: var(--text-primary) !important;
+    }
+
+    /* Success/Error messages */
+    .stSuccess {
+        background-color: rgba(39, 174, 96, 0.1) !important;
+        border-color: var(--success) !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .form-section {
+            padding: 20px;
+        }
+
+        .stButton > button {
+            padding: 10px 20px !important;
+        }
+    }
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+# =====================================================================
+# ICONO SVG
+# =====================================================================
+
+ICONO_COMPROBANTE = """
+<svg width="48" height="48" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M16 8C14.8954 8 14 8.89543 14 10V54C14 55.1046 14.8954 56 16 56H48C49.1046 56 50 55.1046 50 54V20L38 8H16Z" 
+        fill="#E8F0FF" stroke="#4A90E2" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="22" y1="28" x2="42" y2="28" stroke="#4A90E2" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="36" x2="42" y2="36" stroke="#4A90E2" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="44" x2="36" y2="44" stroke="#4A90E2" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="32" cy="52" r="10" fill="#4A90E2"/>
+  <path d="M32 48V55M29 51L32 48L35 51" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
+"""
+
+# =====================================================================
+# HELPERS (SIN CAMBIOS)
 # =====================================================================
 
 def _safe_float(x, default=0.0) -> float:
@@ -72,11 +264,6 @@ def _iva_rate_from_tipo(iva_tipo: str) -> float:
     return 0.0
 
 def _map_iva_tipo_from_articulo_row(row: dict) -> str:
-    """
-    Lee IVA desde la fila del artículo, especialmente desde:
-    - "Tipo Impuesto" (ej: "1- Exento 0%", "IVA 10%", "IVA 22%")
-    Devuelve: "Exento" / "10%" / "22%"
-    """
     if not row:
         return "22%"
 
@@ -111,16 +298,12 @@ def _map_iva_tipo_from_articulo_row(row: dict) -> str:
     if "22%" in v or re.search(r"\b22\b", v):
         return "22%"
 
-    # fallback típico: "1- Exento 0%"
     if re.match(r"^\s*1\s*[-]", v):
         return "Exento"
 
     return "22%"
 
 def _map_precio_sin_iva_from_articulo_row(row: dict) -> float:
-    """
-    Intenta leer precio unitario SIN IVA desde la fila del artículo.
-    """
     if not row:
         return 0.0
 
@@ -176,7 +359,7 @@ def _fmt_money(v: float, moneda: str) -> str:
     return f"{moneda} {s}"
 
 # =====================================================================
-# CACHE SUPABASE (PAGINADO)
+# CACHE SUPABASE
 # =====================================================================
 
 @st.cache_data(ttl=600)
@@ -255,7 +438,7 @@ def _get_articulo_options() -> tuple[list, dict]:
     return options, label_to_row
 
 # =====================================================================
-# RESOLVER TABLAS COMPROBANTES (AUTO)
+# RESOLVER TABLAS
 # =====================================================================
 
 def _pick_table_name(candidates: list[str]) -> str | None:
@@ -270,7 +453,6 @@ def _pick_table_name(candidates: list[str]) -> str | None:
             s = str(e)
             if ("PGRST205" in s) or ("schema cache" in s) or ("Could not find the table" in s):
                 continue
-            # Otro error (RLS/permiso): la tabla existe pero no se puede leer.
             return name
 
     return None
@@ -368,11 +550,20 @@ def _insert_detalle(tabla_det: str, detalle: dict) -> None:
     supabase.table(tabla_det).insert(detalle).execute()
 
 # =====================================================================
-# FUNCIÓN PRINCIPAL
+# FUNCIÓN PRINCIPAL - REDISEÑADA
 # =====================================================================
 
 def mostrar_ingreso_comprobantes():
-    st.title("📥 Ingreso de comprobantes")
+    # Cargar CSS
+    _load_custom_css()
+
+    # Encabezado
+    st.markdown(f"""
+    <div class="page-header">
+        <div>{ICONO_COMPROBANTE}</div>
+        <h1>Ingreso de comprobantes</h1>
+    </div>
+    """, unsafe_allow_html=True)
 
     usuario_actual = st.session_state.get("usuario", st.session_state.get("user", "desconocido"))
 
@@ -380,12 +571,9 @@ def mostrar_ingreso_comprobantes():
         st.warning("Supabase no configurado.")
         st.stop()
 
-    # Detecta tablas reales o corta con SQL listo
     tabla_cab, tabla_det = _resolver_tablas_o_stop()
 
-    # -------------------------
     # Estado inicial
-    # -------------------------
     if "comp_items" not in st.session_state:
         st.session_state["comp_items"] = []
     if "comp_next_rid" not in st.session_state:
@@ -393,7 +581,6 @@ def mostrar_ingreso_comprobantes():
     if "comp_reset_line" not in st.session_state:
         st.session_state["comp_reset_line"] = False
 
-    # Defaults widgets
     if "comp_fecha" not in st.session_state:
         st.session_state["comp_fecha"] = date.today()
     if "comp_proveedor_sel" not in st.session_state:
@@ -419,7 +606,6 @@ def mostrar_ingreso_comprobantes():
     if "comp_desc" not in st.session_state:
         st.session_state["comp_desc"] = 0.0
 
-    # Lote/venc (por defecto apagados)
     if "comp_has_lote" not in st.session_state:
         st.session_state["comp_has_lote"] = False
     if "comp_has_venc" not in st.session_state:
@@ -429,7 +615,7 @@ def mostrar_ingreso_comprobantes():
     if "comp_venc_date" not in st.session_state:
         st.session_state["comp_venc_date"] = date.today()
 
-    # Reset renglón de carga (ANTES de widgets)
+    # Reset renglón
     if st.session_state["comp_reset_line"]:
         st.session_state["comp_articulo_sel"] = ""
         st.session_state["comp_articulo_prev"] = ""
@@ -442,46 +628,69 @@ def mostrar_ingreso_comprobantes():
         st.session_state["comp_venc_date"] = date.today()
         st.session_state["comp_reset_line"] = False
 
-    # Datos Supabase (cache)
     proveedores_options, prov_name_to_id = _get_proveedor_options()
     articulos_options, art_label_to_row = _get_articulo_options()
 
-    # Sanitizar selecciones viejas
     if st.session_state["comp_proveedor_sel"] not in proveedores_options:
         st.session_state["comp_proveedor_sel"] = ""
     if st.session_state["comp_articulo_sel"] not in articulos_options:
         st.session_state["comp_articulo_sel"] = ""
 
-    # =========================
-    # CABECERA
-    # =========================
-    c1, c2, c3 = st.columns(3)
+    # =========================================
+    # SECCIÓN 1: DATOS DEL COMPROBANTE
+    # =========================================
+    st.markdown('<div class="form-section">', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="section-header">
+        <div style="color: #4A90E2; font-size: 18px;">≡</div>
+        <h2>Datos del comprobante</h2>
+    </div>
+    """, unsafe_allow_html=True)
 
-    with c1:
-        st.date_input("Fecha", key="comp_fecha")
+    col1, col2, col3 = st.columns(3)
 
-        cprov, cnro = st.columns([2, 1])
-        with cprov:
-            st.selectbox("Proveedor", proveedores_options, key="comp_proveedor_sel")
-        with cnro:
-            st.text_input("Nº Comprobante", key="comp_nro")
+    with col1:
+        st.date_input("Fecha", key="comp_fecha", label_visibility="collapsed")
+        st.caption("Fecha")
 
-    with c2:
-        st.selectbox("Tipo", ["Factura", "Remito", "Nota de Crédito"], key="comp_tipo")
-        st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion")
+    with col2:
+        st.selectbox("Tipo", ["Factura", "Remito", "Nota de Crédito"], key="comp_tipo", label_visibility="collapsed")
+        st.caption("Tipo")
 
-    with c3:
-        st.selectbox("Moneda", ["UYU", "USD"], key="comp_moneda")
+    with col3:
+        st.selectbox("Moneda", ["UYU", "USD"], key="comp_moneda", label_visibility="collapsed")
+        st.caption("Moneda")
 
-    st.markdown("### 📦 Artículos")
+    col4, col5, col6 = st.columns(3)
 
-    # =========================
-    # RENGLÓN DE CARGA
-    # =========================
-    i1, i2, i3, i4, i5, i6, i7 = st.columns([2.6, 1, 1.2, 1.1, 1.1, 1.2, 1.4])
+    with col4:
+        st.selectbox("Proveedor", proveedores_options, key="comp_proveedor_sel", label_visibility="collapsed")
+        st.caption("Proveedor")
 
-    with i1:
-        st.selectbox("Artículo", articulos_options, key="comp_articulo_sel")
+    with col5:
+        st.text_input("Nº Comprobante", key="comp_nro", label_visibility="collapsed")
+        st.caption("Nº Comprobante")
+
+    with col6:
+        st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion", label_visibility="collapsed")
+        st.caption("Condición")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # =========================================
+    # SECCIÓN 2: AGREGAR ARTÍCULOS
+    # =========================================
+    st.markdown('<div class="form-section">', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="section-header">
+        <div style="color: #4A90E2; font-size: 18px;">📦</div>
+        <h2>Artículos del comprobante</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Artículo
+    st.selectbox("Artículo", articulos_options, key="comp_articulo_sel", label_visibility="collapsed")
+    st.caption("Artículo")
 
     # Autocargar precio/IVA
     art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {}) if st.session_state["comp_articulo_sel"] else {}
@@ -493,35 +702,46 @@ def mostrar_ingreso_comprobantes():
         st.session_state["comp_precio"] = float(precio_db or 0.0)
         st.session_state["comp_cantidad"] = 1
         st.session_state["comp_desc"] = 0.0
-
-        # Cada renglón decide si lleva lote/vencimiento
         st.session_state["comp_has_lote"] = False
         st.session_state["comp_has_venc"] = False
         st.session_state["comp_lote"] = ""
         st.session_state["comp_venc_date"] = date.today()
 
-    with i2:
-        st.number_input("Cantidad", min_value=1, step=1, key="comp_cantidad")
-    with i3:
-        st.number_input("Precio unit. s/IVA", min_value=0.0, step=0.01, key="comp_precio")
-    with i4:
-        st.text_input("IVA", value=iva_tipo_sugerido, disabled=True)
-    with i5:
-        st.number_input("Desc. %", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc")
+    # Fila de entrada: Cantidad, Precio, IVA, Desc
+    i1, i2, i3, i4 = st.columns(4)
 
-    with i6:
+    with i1:
+        st.number_input("Cantidad", min_value=1, step=1, key="comp_cantidad", label_visibility="collapsed")
+        st.caption("Cantidad")
+
+    with i2:
+        st.number_input("Precio unit. s/IVA", min_value=0.0, step=0.01, key="comp_precio", label_visibility="collapsed")
+        st.caption("Precio unit. s/IVA")
+
+    with i3:
+        st.text_input("IVA", value=iva_tipo_sugerido, disabled=True, label_visibility="collapsed")
+        st.caption("IVA")
+
+    with i4:
+        st.number_input("Desc. %", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc", label_visibility="collapsed")
+        st.caption("Desc. %")
+
+    # Lote y Vencimiento
+    l1, l2 = st.columns(2)
+
+    with l1:
         st.caption("Lote")
-        c_chk, c_inp = st.columns([0.25, 0.75])
+        c_chk, c_inp = st.columns([0.3, 0.7])
         with c_chk:
-            if not st.session_state["comp_has_lote"]:
-                st.session_state["comp_lote"] = ""
             st.checkbox(" ", key="comp_has_lote", label_visibility="collapsed")
         with c_inp:
             st.text_input(" ", key="comp_lote", disabled=not st.session_state["comp_has_lote"], label_visibility="collapsed")
+            if not st.session_state["comp_has_lote"]:
+                st.session_state["comp_lote"] = ""
 
-    with i7:
-        st.caption("Venc.")
-        c_chk, c_inp = st.columns([0.25, 0.75])
+    with l2:
+        st.caption("Vencimiento")
+        c_chk, c_inp = st.columns([0.3, 0.7])
         with c_chk:
             st.checkbox(" ", key="comp_has_venc", label_visibility="collapsed")
         with c_inp:
@@ -530,12 +750,8 @@ def mostrar_ingreso_comprobantes():
             else:
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled", label_visibility="collapsed")
 
-    badd, bsave = st.columns([1, 1])
-
-    # =========================
-    # ➕ AGREGAR ARTÍCULO
-    # =========================
-    if badd.button("➕ Agregar artículo", use_container_width=True):
+    # Botón Agregar
+    if st.button("➕ Agregar artículo", use_container_width=True):
         if not st.session_state["comp_proveedor_sel"]:
             st.error("Seleccioná un proveedor.")
         elif not st.session_state["comp_articulo_sel"]:
@@ -578,21 +794,23 @@ def mostrar_ingreso_comprobantes():
                 "moneda": st.session_state["comp_moneda"],
             })
 
-            # Reset del renglón para que "Agregar artículo" cree una NUEVA línea
             st.session_state["comp_reset_line"] = True
             st.rerun()
 
-    # =========================
-    # TABLA ÚNICA + BORRAR
-    # =========================
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # =========================================
+    # SECCIÓN 3: TABLA DE ARTÍCULOS
+    # =========================================
     if st.session_state["comp_items"]:
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+
         df_items = pd.DataFrame(st.session_state["comp_items"]).copy()
 
-        if "🗑 Eliminar" not in df_items.columns:
-            df_items["🗑 Eliminar"] = False
+        if "🗑" not in df_items.columns:
+            df_items["🗑"] = False
 
         show_cols = [
-            "_rid",
             "articulo",
             "cantidad",
             "precio_unit_sin_iva",
@@ -603,108 +821,133 @@ def mostrar_ingreso_comprobantes():
             "total_con_iva",
             "lote",
             "vencimiento",
-            "🗑 Eliminar",
+            "🗑",
         ]
 
+        st.caption("Detalle de artículos")
         edited = st.data_editor(
             df_items[show_cols],
             use_container_width=True,
             hide_index=True,
             height=240,
-            disabled=[c for c in show_cols if c != "🗑 Eliminar"],
+            disabled=[c for c in show_cols if c != "🗑"],
             key="comp_editor"
         )
 
-        cdel1, _ = st.columns([1, 3])
-        if cdel1.button("🗑 Quitar seleccionados", use_container_width=True):
-            to_del = set(edited.loc[edited["🗑 Eliminar"] == True, "_rid"].tolist())
-            st.session_state["comp_items"] = [it for it in st.session_state["comp_items"] if it.get("_rid") not in to_del]
+        if st.button("🗑 Quitar seleccionados", use_container_width=True):
+            to_del = set(edited.loc[edited["🗑"] == True, "_rid"].tolist() if "_rid" in edited.columns else [])
+            if to_del:
+                st.session_state["comp_items"] = [it for it in st.session_state["comp_items"] if it.get("_rid") not in to_del]
+            else:
+                # Si no hay columna _rid, usar índice
+                mask = edited["🗑"].tolist()
+                st.session_state["comp_items"] = [it for i, it in enumerate(st.session_state["comp_items"]) if not mask[i]]
             st.rerun()
 
-        # Totales
+        # TOTALES
         moneda_actual = st.session_state["comp_moneda"]
         subtotal = float(df_items["subtotal_sin_iva"].sum())
         iva_total = float(df_items["iva_monto"].sum())
         total_calculado = float(df_items["total_con_iva"].sum())
         desc_total = float(df_items["descuento_monto"].sum()) if "descuento_monto" in df_items.columns else 0.0
 
-        t1, t2, t3, t4 = st.columns([2.2, 2.2, 2.2, 2.4])
+        st.markdown("---")
+        st.caption("Resumen financiero")
+
+        t1, t2, t3, t4 = st.columns(4)
         with t1:
-            st.caption("SUB TOTAL")
-            st.text_input("SUB TOTAL", value=_fmt_money(subtotal, moneda_actual), disabled=True, label_visibility="collapsed")
+            st.metric("Subtotal", _fmt_money(subtotal, moneda_actual))
         with t2:
-            st.caption("DESC./REC.")
-            st.text_input("DESC./REC.", value=_fmt_money(desc_total, moneda_actual), disabled=True, label_visibility="collapsed")
+            st.metric("Desc./Rec.", _fmt_money(desc_total, moneda_actual))
         with t3:
-            st.caption("IMPUESTOS")
-            st.text_input("IMPUESTOS", value=_fmt_money(iva_total, moneda_actual), disabled=True, label_visibility="collapsed")
+            st.metric("Impuestos", _fmt_money(iva_total, moneda_actual))
         with t4:
-            st.caption("TOTAL")
-            st.text_input("TOTAL", value=_fmt_money(total_calculado, moneda_actual), disabled=True, label_visibility="collapsed")
+            st.metric("Total", _fmt_money(total_calculado, moneda_actual))
 
-    # =========================
-    # 💾 GUARDAR COMPROBANTE
-    # =========================
-    if bsave.button("💾 Guardar comprobante", use_container_width=True):
-        if not st.session_state["comp_proveedor_sel"] or not st.session_state["comp_nro"] or not st.session_state["comp_items"]:
-            st.error("Faltan datos obligatorios (Proveedor, Nº Comprobante y al menos 1 artículo).")
-            st.stop()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        proveedor_nombre = str(st.session_state["comp_proveedor_sel"]).strip()
-        proveedor_id = prov_name_to_id.get(proveedor_nombre)
-        nro_norm = str(st.session_state["comp_nro"]).strip()
+    # =========================================
+    # BOTONES DE ACCIÓN
+    # =========================================
+    st.markdown('<div class="form-section">', unsafe_allow_html=True)
 
-        try:
-            df_items = pd.DataFrame(st.session_state["comp_items"])
-            subtotal = float(df_items["subtotal_sin_iva"].sum())
-            iva_total = float(df_items["iva_monto"].sum())
-            total_calculado = float(df_items["total_con_iva"].sum())
+    col_btn1, col_btn2 = st.columns(2)
 
-            cabecera = {
-                "fecha": str(st.session_state["comp_fecha"]),
-                "proveedor": proveedor_nombre,
-                "proveedor_id": proveedor_id,
-                "tipo_comprobante": st.session_state["comp_tipo"],
-                "nro_comprobante": nro_norm,
-                "condicion_pago": st.session_state["comp_condicion"],
-                "usuario": str(usuario_actual),
-                "moneda": st.session_state["comp_moneda"],
-                "subtotal": subtotal,
-                "iva_total": iva_total,
-                "total": total_calculado,
-            }
+    with col_btn1:
+        pass
 
-            res = _insert_cabecera(tabla_cab, cabecera)
-            comprobante_id = res.data[0]["id"]
+    with col_btn2:
+        if st.button("💾 Guardar comprobante", use_container_width=True, key="btn_save"):
+            if not st.session_state["comp_proveedor_sel"] or not st.session_state["comp_nro"] or not st.session_state["comp_items"]:
+                st.error("Faltan datos obligatorios (Proveedor, Nº Comprobante y al menos 1 artículo).")
+                st.stop()
 
-            for item in st.session_state["comp_items"]:
-                detalle = {
-                    "comprobante_id": comprobante_id,
-                    "articulo": item["articulo"],
-                    "articulo_id": item.get("articulo_id"),
-                    "cantidad": int(item["cantidad"]),
-                    "lote": item.get("lote", ""),
-                    "vencimiento": item.get("vencimiento", ""),
+            proveedor_nombre = str(st.session_state["comp_proveedor_sel"]).strip()
+            proveedor_id = prov_name_to_id.get(proveedor_nombre)
+            nro_norm = str(st.session_state["comp_nro"]).strip()
+
+            try:
+                df_items = pd.DataFrame(st.session_state["comp_items"])
+                subtotal = float(df_items["subtotal_sin_iva"].sum())
+                iva_total = float(df_items["iva_monto"].sum())
+                total_calculado = float(df_items["total_con_iva"].sum())
+
+                cabecera = {
+                    "fecha": str(st.session_state["comp_fecha"]),
+                    "proveedor": proveedor_nombre,
+                    "proveedor_id": proveedor_id,
+                    "tipo_comprobante": st.session_state["comp_tipo"],
+                    "nro_comprobante": nro_norm,
+                    "condicion_pago": st.session_state["comp_condicion"],
                     "usuario": str(usuario_actual),
                     "moneda": st.session_state["comp_moneda"],
-                    "precio_unit_sin_iva": float(item.get("precio_unit_sin_iva", 0.0)),
-                    "iva_tipo": item.get("iva_tipo", "22%"),
-                    "iva_rate": float(item.get("iva_rate", 0.22)),
-                    "descuento_pct": float(item.get("descuento_pct", 0.0)),
-                    "descuento_monto": float(item.get("descuento_monto", 0.0)),
-                    "subtotal_sin_iva": float(item.get("subtotal_sin_iva", 0.0)),
-                    "iva_monto": float(item.get("iva_monto", 0.0)),
-                    "total_con_iva": float(item.get("total_con_iva", 0.0)),
+                    "subtotal": subtotal,
+                    "iva_total": iva_total,
+                    "total": total_calculado,
                 }
 
-                _insert_detalle(tabla_det, detalle)
-                _impactar_stock(detalle["articulo"], detalle["cantidad"])
+                res = _insert_cabecera(tabla_cab, cabecera)
+                comprobante_id = res.data[0]["id"]
 
-            st.success("Comprobante guardado correctamente.")
-            st.session_state["comp_items"] = []
-            st.rerun()
+                for item in st.session_state["comp_items"]:
+                    detalle = {
+                        "comprobante_id": comprobante_id,
+                        "articulo": item["articulo"],
+                        "articulo_id": item.get("articulo_id"),
+                        "cantidad": int(item["cantidad"]),
+                        "lote": item.get("lote", ""),
+                        "vencimiento": item.get("vencimiento", ""),
+                        "usuario": str(usuario_actual),
+                        "moneda": st.session_state["comp_moneda"],
+                        "precio_unit_sin_iva": float(item.get("precio_unit_sin_iva", 0.0)),
+                        "iva_tipo": item.get("iva_tipo", "22%"),
+                        "iva_rate": float(item.get("iva_rate", 0.22)),
+                        "descuento_pct": float(item.get("descuento_pct", 0.0)),
+                        "descuento_monto": float(item.get("descuento_monto", 0.0)),
+                        "subtotal_sin_iva": float(item.get("subtotal_sin_iva", 0.0)),
+                        "iva_monto": float(item.get("iva_monto", 0.0)),
+                        "total_con_iva": float(item.get("total_con_iva", 0.0)),
+                    }
 
-        except Exception as e:
-            st.error("No se pudo guardar en Supabase.")
-            st.write(str(e))
-            st.stop()
+                    _insert_detalle(tabla_det, detalle)
+                    _impactar_stock(detalle["articulo"], detalle["cantidad"])
+
+                st.success("✅ Comprobante guardado correctamente.")
+                st.session_state["comp_items"] = []
+                st.session_state["comp_reset_line"] = True
+                st.rerun()
+
+            except Exception as e:
+                st.error("❌ No se pudo guardar en Supabase.")
+                st.write(str(e))
+                st.stop()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+# =====================================================================
+# ENTRY POINT
+# =====================================================================
+
+if __name__ == "__main__":
+    mostrar_ingreso_comprobantes()
