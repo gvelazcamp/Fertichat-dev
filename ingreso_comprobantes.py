@@ -330,42 +330,16 @@ def _fmt_money(v: float, moneda: str) -> str:
 # =====================================================================
 
 @st.cache_data(ttl=600)
-@st.cache_data(ttl=600)
 def _cache_proveedores() -> list:
     if not supabase:
         return []
 
     try:
-        # Opción 1: Intenta con exactitud
-        try:
-            res = supabase.table(TABLA_PROVEEDORES).select('"Cliente / Proveedor"').execute()
-            if res.data:
-                data = [str(r.get("Cliente / Proveedor")).strip() for r in res.data if r.get("Cliente / Proveedor")]
-                return sorted(list(set([x for x in data if x])))
-        except:
-            pass
-        
-        # Opción 2: Trae todo y busca columna
-        res = supabase.table(TABLA_PROVEEDORES).select("*").limit(100).execute()
-        if not res.data:
-            return []
-        
-        # Encuentra la columna que contiene "proveedor"
-        cols = list(res.data[0].keys())
-        prov_col = None
-        for col in cols:
-            if "proveedor" in col.lower() or "cliente" in col.lower():
-                prov_col = col
-                break
-        
-        if not prov_col:
-            return []
-        
-        # Extrae valores
-        data = [str(r.get(prov_col)).strip() for r in res.data if r.get(prov_col)]
-        return sorted(list(set([x for x in data if x])))
-        
+        res = supabase.table(TABLA_PROVEEDORES).select('"Cliente / Proveedor"').execute()
+        data = [r["Cliente / Proveedor"] for r in res.data if r.get("Cliente / Proveedor")]
+        return list(set(data))
     except Exception as e:
+        st.error(f"Error cargando proveedores: {e}")
         return []
 
 @st.cache_data(ttl=600)
@@ -708,57 +682,49 @@ def mostrar_ingreso_comprobantes():
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
 
     with btn:
-        col_add, col_rem = st.columns(2)
-        with col_add:
-            if st.button("+", key="btn_add_art", use_container_width=True):
-                if not st.session_state["comp_articulo_sel"]:
-                    st.error("Seleccioná un artículo.")
-                else:
-                    art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {})
-                    art_desc = _articulo_desc_from_row(art_row) or st.session_state["comp_articulo_sel"]
-                    art_id = art_row.get("id")
+        if st.button("➕", key="btn_add_art"):
+            if not st.session_state["comp_articulo_sel"]:
+                st.error("Seleccioná un artículo.")
+            else:
+                art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {})
+                art_desc = _articulo_desc_from_row(art_row) or st.session_state["comp_articulo_sel"]
+                art_id = art_row.get("id")
 
-                    iva_tipo_final = _map_iva_tipo_from_articulo_row(art_row)
-                    iva_rate = _iva_rate_from_tipo(iva_tipo_final)
+                iva_tipo_final = _map_iva_tipo_from_articulo_row(art_row)
+                iva_rate = _iva_rate_from_tipo(iva_tipo_final)
 
-                    cantidad = int(st.session_state["comp_cantidad"] or 1)
-                    precio_unit = float(st.session_state["comp_precio"] or 0.0)
-                    desc_pct = float(st.session_state["comp_desc"] or 0.0)
+                cantidad = int(st.session_state["comp_cantidad"] or 1)
+                precio_unit = float(st.session_state["comp_precio"] or 0.0)
+                desc_pct = float(st.session_state["comp_desc"] or 0.0)
 
-                    calc = _calc_linea(cantidad, precio_unit, iva_rate, desc_pct)
+                calc = _calc_linea(cantidad, precio_unit, iva_rate, desc_pct)
 
-                    rid = int(st.session_state["comp_next_rid"])
-                    st.session_state["comp_next_rid"] = rid + 1
+                rid = int(st.session_state["comp_next_rid"])
+                st.session_state["comp_next_rid"] = rid + 1
 
-                    lote_val = (st.session_state["comp_lote"] or "").strip() if st.session_state["comp_has_lote"] else ""
-                    venc_val = str(st.session_state["comp_venc_date"]) if st.session_state["comp_has_venc"] else ""
+                lote_val = (st.session_state["comp_lote"] or "").strip() if st.session_state["comp_has_lote"] else ""
+                venc_val = str(st.session_state["comp_venc_date"]) if st.session_state["comp_has_venc"] else ""
 
-                    st.session_state["comp_items"].append({
-                        "_rid": rid,
-                        "articulo": art_desc,
-                        "articulo_id": art_id,
-                        "cantidad": cantidad,
-                        "precio_unit_sin_iva": float(precio_unit),
-                        "iva_tipo": iva_tipo_final,
-                        "iva_rate": float(iva_rate),
-                        "descuento_pct": float(desc_pct),
-                        "descuento_monto": float(calc["descuento_monto"]),
-                        "subtotal_sin_iva": float(calc["subtotal_sin_iva"]),
-                        "iva_monto": float(calc["iva_monto"]),
-                        "total_con_iva": float(calc["total_con_iva"]),
-                        "lote": lote_val,
-                        "vencimiento": venc_val,
-                        "moneda": st.session_state["comp_moneda"],
-                    })
+                st.session_state["comp_items"].append({
+                    "_rid": rid,
+                    "articulo": art_desc,
+                    "articulo_id": art_id,
+                    "cantidad": cantidad,
+                    "precio_unit_sin_iva": float(precio_unit),
+                    "iva_tipo": iva_tipo_final,
+                    "iva_rate": float(iva_rate),
+                    "descuento_pct": float(desc_pct),
+                    "descuento_monto": float(calc["descuento_monto"]),
+                    "subtotal_sin_iva": float(calc["subtotal_sin_iva"]),
+                    "iva_monto": float(calc["iva_monto"]),
+                    "total_con_iva": float(calc["total_con_iva"]),
+                    "lote": lote_val,
+                    "vencimiento": venc_val,
+                    "moneda": st.session_state["comp_moneda"],
+                })
 
-                    st.session_state["comp_reset_line"] = True
-                    st.rerun()
-        
-        with col_rem:
-            if st.button("-", key="btn_remove_art", use_container_width=True):
-                if st.session_state["comp_items"]:
-                    st.session_state["comp_items"].pop()
-                    st.rerun()
+                st.session_state["comp_reset_line"] = True
+                st.rerun()
 
     # Autocargar precio/IVA al cambiar artículo
     if st.session_state["comp_articulo_sel"] != st.session_state["comp_articulo_prev"]:
