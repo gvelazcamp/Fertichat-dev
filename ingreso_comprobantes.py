@@ -49,6 +49,9 @@ TABLA_ARTICULOS = "articulos"
 
 def _load_custom_css():
     """Carga el CSS corporativo personalizado"""
+    # Cargar FontAwesome
+    st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">', unsafe_allow_html=True)
+    
     css = """
     <style>
     /* ===== ESTILOS GENERALES ===== */
@@ -140,7 +143,7 @@ def _load_custom_css():
         box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4) !important;
     }
 
-    /* Botón agregar artículo - SVG limpio */
+    /* Botón agregar artículo - FontAwesome */
     .stButton > button[data-testid*="btn_add_art"] {
         width: 50px !important;
         height: 50px !important;
@@ -149,13 +152,21 @@ def _load_custom_css():
         border-radius: 8px !important;
         box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3) !important;
         transition: all 0.3s ease !important;
-        background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDVWMTVNNCAxMEgxNSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHN2Zz4=") !important;
-        background-size: 20px !important;
-        background-repeat: no-repeat !important;
-        background-position: center !important;
         color: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
+    }
+
+    .stButton > button[data-testid*="btn_add_art"]::before {
+        content: "\\f0fe";
+        font-family: "Font Awesome 6 Free";
+        font-weight: 900;
+        color: white !important;
+        font-size: 20px !important;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
     }
 
     .stButton > button[data-testid*="btn_add_art"]:hover {
@@ -358,8 +369,25 @@ def _cache_proveedores() -> list:
         return []
 
     try:
-        res = supabase.table(TABLA_PROVEEDORES).select('"Cliente / Proveedor"').execute()
-        data = [r["Cliente / Proveedor"] for r in res.data if r.get("Cliente / Proveedor")]
+        # Búsqueda flexible: intentar varios nombres de columna posibles
+        possible_columns = [
+            '"Cliente / Proveedor"',
+            '"cliente / proveedor"',
+            '"Cliente/Proveedor"',
+            '"cliente/proveedor"',
+            '"Proveedor"',
+            '"proveedor"'
+        ]
+        data = []
+        for col in possible_columns:
+            try:
+                res = supabase.table(TABLA_PROVEEDORES).select(col).execute()
+                if res.data:
+                    data = [r[col.strip('"')] for r in res.data if r.get(col.strip('"'))]
+                    if data:
+                        break
+            except:
+                continue
         return list(set(data))
     except Exception as e:
         st.error(f"Error cargando proveedores: {e}")
