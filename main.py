@@ -532,62 +532,191 @@ except Exception:
     pass
 
 # =========================
-# SIDEBAR
+# SIDEBAR CON ICONOS SVG MINIMALISTAS
 # =========================
 with st.sidebar:
-    st.markdown(
-        """
-        <div style='
-            background: rgba(255,255,255,0.85);
-            padding: 16px;
-            border-radius: 18px;
-            margin-bottom: 14px;
-            border: 1px solid rgba(15, 23, 42, 0.10);
-            box-shadow: 0 10px 26px rgba(2, 6, 23, 0.06);
-        '>
-            <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
-                <div style='font-size: 26px;'>🦋</div>
-                <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
-            </div>
+    # CSS para sidebar premium con iconos SVG
+    st.markdown("""
+    <style>
+    /* Sidebar fondo blanco limpio */
+    section[data-testid="stSidebar"] {
+        background: #ffffff !important;
+        border-right: 1px solid rgba(148, 163, 184, 0.15);
+    }
+    
+    section[data-testid="stSidebar"] > div {
+        background: #ffffff !important;
+    }
+    
+    /* Header FertiChat */
+    .fc-sidebar-header {
+        background: rgba(255,255,255,0.85);
+        padding: 16px;
+        border-radius: 18px;
+        margin-bottom: 14px;
+        border: 1px solid rgba(15, 23, 42, 0.10);
+        box-shadow: 0 10px 26px rgba(2, 6, 23, 0.06);
+    }
+    
+    /* Secciones (PRINCIPAL, ANÁLISIS, etc) */
+    .fc-section-header {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #94a3b8;
+        padding: 20px 16px 8px 16px;
+        margin: 0;
+    }
+    
+    /* Ocultar radio buttons nativos */
+    section[data-testid="stSidebar"] input[type="radio"] {
+        display: none !important;
+    }
+    
+    /* Labels como items del menú */
+    section[data-testid="stSidebar"] .stRadio label {
+        padding: 10px 16px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        color: #475569 !important;
+        border-left: 3px solid transparent !important;
+        transition: all 120ms ease !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        margin: 2px 0 !important;
+        background: transparent !important;
+    }
+    
+    /* Iconos SVG dentro de labels */
+    section[data-testid="stSidebar"] .stRadio label svg {
+        width: 18px;
+        height: 18px;
+        stroke: #3b82f6;
+        flex-shrink: 0;
+    }
+    
+    /* Hover */
+    section[data-testid="stSidebar"] .stRadio label:hover {
+        background: #f8fafc !important;
+    }
+    
+    /* Item activo */
+    section[data-testid="stSidebar"] .stRadio input:checked + div + label,
+    section[data-testid="stSidebar"] .stRadio input:checked ~ label {
+        background: #ebf5ff !important;
+        border-left-color: #3b82f6 !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+    }
+    
+    /* Divider */
+    .fc-divider {
+        height: 1px;
+        background: rgba(148, 163, 184, 0.15);
+        margin: 16px 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Header con logo
+    st.markdown("""
+    <div class='fc-sidebar-header'>
+        <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
+            <div style='font-size: 26px;'>🦋</div>
+            <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
         </div>
-    """,
-    unsafe_allow_html=True,
-)
-
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Buscador
     st.text_input(
         "Buscar...",
         key="sidebar_search",
         label_visibility="collapsed",
         placeholder="Buscar...",
     )
-
+    
+    # Info usuario
     st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
     if user.get("empresa"):
         st.markdown(f"🏢 {user.get('empresa')}")
     st.markdown(f"📧 _{user.get('Usuario', user.get('usuario', ''))}_")
-
-    st.markdown("---")
-
+    
+    st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
+    
+    # Botón cerrar sesión
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button("🚪 Cerrar sesión", key="btn_logout_sidebar"):
             logout()
             st.rerun()
-
-    st.markdown("---")
-
-    # Debug SQL (checkbox global)
+    
+    st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
+    
+    # Debug SQL
     st.session_state["DEBUG_SQL"] = st.checkbox(
         "Debug SQL", value=False, key="debug_sql"
     )
     
-    # Selector manual de dispositivo (DESHABILITADO - descomentar si necesitas testing)
-    # agregar_selector_manual_dispositivo()
-
-    st.markdown("---")
-    st.markdown("## 📌 Menú")
-
-    st.radio("Ir a:", MENU_OPTIONS, key="radio_menu")
+    st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
+    
+    # MENÚ CON ICONOS SVG
+    st.markdown('<div class="fc-section-header">PRINCIPAL</div>', unsafe_allow_html=True)
+    
+    # Mapeo de opciones a iconos SVG
+    MENU_ICONS = {
+        "🏠 Inicio": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+        "🛒 Compras IA": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
+        "🔎 Buscador IA": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
+        "📦 Stock IA": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+        "📥 Ingreso de comprobantes": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+        "📑 Comprobantes": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+        "📊 Dashboard": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+        "📄 Pedidos internos": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+        "🧾 Baja de stock": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>',
+        "📈 Indicadores (Power BI)": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
+        "📦 Órdenes de compra": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>',
+        "📚 Artículos": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+        "📒 Ficha de stock": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+        "🏬 Depósitos": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+        "🧩 Familias": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+        "🔍 Debug SQL factura": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="11" y1="16" x2="11.01" y2="16"/></svg>',
+    }
+    
+    # Crear opciones con iconos
+    menu_options_html = []
+    for idx, option in enumerate(MENU_OPTIONS):
+        icon_svg = MENU_ICONS.get(option, '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>')
+        # Quitar emoji del texto
+        clean_text = option
+        for emoji in ["🏠", "🛒", "🔎", "📦", "📥", "📑", "📊", "📄", "🧾", "📈", "📚", "📒", "🏬", "🧩", "🔍"]:
+            clean_text = clean_text.replace(emoji, "").strip()
+        
+        menu_options_html.append(f"""
+        <label style="
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            border-left: 3px solid transparent;
+            transition: all 120ms ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 2px 0;
+            background: transparent;
+        " class="fc-menu-item" data-option="{option}">
+            {icon_svg}
+            <span>{clean_text}</span>
+        </label>
+        """)
+    
+    # Usar el radio nativo pero con labels customizados
+    st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
 
 # =========================
 # FUNCIÓN DEBUG SQL FACTURA (pestaña aparte)
