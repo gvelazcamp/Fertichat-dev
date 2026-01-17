@@ -656,19 +656,58 @@ def mostrar_ingreso_comprobantes():
 
 
     # =========================================
-    # SECCIÓN 2: AGREGAR ARTÍCULOS
+    # ARTÍCULOS
     # =========================================
 
-    st.markdown("""
-    <div class="section-header">
-        <div style="color: #4A90E2; font-size: 18px;">📦</div>
-        <h2>Artículos del comprobante</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    # Artículo con botón +
+    col_sel, col_btn = st.columns([4, 1])
+    with col_sel:
+        st.selectbox("Artículo", articulos_options, key="comp_articulo_sel", label_visibility="collapsed")
+        st.caption("Artículo")
+    with col_btn:
+        if st.button("➕", key="btn_add_art"):
+            if not st.session_state["comp_articulo_sel"]:
+                st.error("Seleccioná un artículo.")
+            else:
+                art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {})
+                art_desc = _articulo_desc_from_row(art_row) or st.session_state["comp_articulo_sel"]
+                art_id = art_row.get("id")
 
-    # Artículo
-    st.selectbox("Artículo", articulos_options, key="comp_articulo_sel", label_visibility="collapsed")
-    st.caption("Artículo")
+                iva_tipo_final = _map_iva_tipo_from_articulo_row(art_row)
+                iva_rate = _iva_rate_from_tipo(iva_tipo_final)
+
+                cantidad = int(st.session_state["comp_cantidad"] or 1)
+                precio_unit = float(st.session_state["comp_precio"] or 0.0)
+                desc_pct = float(st.session_state["comp_desc"] or 0.0)
+
+                calc = _calc_linea(cantidad, precio_unit, iva_rate, desc_pct)
+
+                rid = int(st.session_state["comp_next_rid"])
+                st.session_state["comp_next_rid"] = rid + 1
+
+                lote_val = (st.session_state["comp_lote"] or "").strip() if st.session_state["comp_has_lote"] else ""
+                venc_val = str(st.session_state["comp_venc_date"]) if st.session_state["comp_has_venc"] else ""
+
+                st.session_state["comp_items"].append({
+                    "_rid": rid,
+                    "articulo": art_desc,
+                    "articulo_id": art_id,
+                    "cantidad": cantidad,
+                    "precio_unit_sin_iva": float(precio_unit),
+                    "iva_tipo": iva_tipo_final,
+                    "iva_rate": float(iva_rate),
+                    "descuento_pct": float(desc_pct),
+                    "descuento_monto": float(calc["descuento_monto"]),
+                    "subtotal_sin_iva": float(calc["subtotal_sin_iva"]),
+                    "iva_monto": float(calc["iva_monto"]),
+                    "total_con_iva": float(calc["total_con_iva"]),
+                    "lote": lote_val,
+                    "vencimiento": venc_val,
+                    "moneda": st.session_state["comp_moneda"],
+                })
+
+                st.session_state["comp_reset_line"] = True
+                st.rerun()
 
     # Autocargar precio/IVA
     art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {}) if st.session_state["comp_articulo_sel"] else {}
@@ -685,7 +724,7 @@ def mostrar_ingreso_comprobantes():
         st.session_state["comp_lote"] = ""
         st.session_state["comp_venc_date"] = date.today()
 
-    # Fila de entrada: Cantidad, Precio, IVA, Desc
+    # Fila compacta: Cantidad, Precio, IVA, Desc
     i1, i2, i3, i4 = st.columns(4)
 
     with i1:
@@ -704,8 +743,7 @@ def mostrar_ingreso_comprobantes():
         st.number_input("Desc. %", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc", label_visibility="collapsed")
         st.caption("Desc. %")
 
-    # Lote y Vencimiento - EN LA MISMA FILA
-    st.markdown("---")
+    # Fila: Lote y Vencimiento
     l1, l2 = st.columns(2)
 
     with l1:
@@ -728,54 +766,6 @@ def mostrar_ingreso_comprobantes():
                 st.date_input(" ", value=venc_value, key="comp_venc_date", label_visibility="collapsed")
             else:
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled", label_visibility="collapsed")
-
-    # Botón Agregar
-    st.markdown("---")
-    if st.button("➕ Agregar artículo", use_container_width=True):
-        if not st.session_state["comp_proveedor_sel"]:
-            st.error("Seleccioná un proveedor.")
-        elif not st.session_state["comp_articulo_sel"]:
-            st.error("Seleccioná un artículo.")
-        else:
-            art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {})
-            art_desc = _articulo_desc_from_row(art_row) or st.session_state["comp_articulo_sel"]
-            art_id = art_row.get("id")
-
-            iva_tipo_final = _map_iva_tipo_from_articulo_row(art_row)
-            iva_rate = _iva_rate_from_tipo(iva_tipo_final)
-
-            cantidad = int(st.session_state["comp_cantidad"] or 1)
-            precio_unit = float(st.session_state["comp_precio"] or 0.0)
-            desc_pct = float(st.session_state["comp_desc"] or 0.0)
-
-            calc = _calc_linea(cantidad, precio_unit, iva_rate, desc_pct)
-
-            rid = int(st.session_state["comp_next_rid"])
-            st.session_state["comp_next_rid"] = rid + 1
-
-            lote_val = (st.session_state["comp_lote"] or "").strip() if st.session_state["comp_has_lote"] else ""
-            venc_val = str(st.session_state["comp_venc_date"]) if st.session_state["comp_has_venc"] else ""
-
-            st.session_state["comp_items"].append({
-                "_rid": rid,
-                "articulo": art_desc,
-                "articulo_id": art_id,
-                "cantidad": cantidad,
-                "precio_unit_sin_iva": float(precio_unit),
-                "iva_tipo": iva_tipo_final,
-                "iva_rate": float(iva_rate),
-                "descuento_pct": float(desc_pct),
-                "descuento_monto": float(calc["descuento_monto"]),
-                "subtotal_sin_iva": float(calc["subtotal_sin_iva"]),
-                "iva_monto": float(calc["iva_monto"]),
-                "total_con_iva": float(calc["total_con_iva"]),
-                "lote": lote_val,
-                "vencimiento": venc_val,
-                "moneda": st.session_state["comp_moneda"],
-            })
-
-            st.session_state["comp_reset_line"] = True
-            st.rerun()
 
     # Espacio grande
     st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
