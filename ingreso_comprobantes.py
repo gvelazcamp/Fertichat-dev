@@ -620,7 +620,7 @@ def mostrar_ingreso_comprobantes():
     # =========================================
     # SECCIÓN 1: DATOS DEL COMPROBANTE
     # =========================================
-    st.markdown('<div class="form-section">', unsafe_allow_html=True)
+
     st.markdown("""
     <div class="section-header">
         <div style="color: #4A90E2; font-size: 18px;">≡</div>
@@ -656,12 +656,11 @@ def mostrar_ingreso_comprobantes():
         st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion", label_visibility="collapsed")
         st.caption("Condición")
 
-    st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================
     # SECCIÓN 2: AGREGAR ARTÍCULOS
     # =========================================
-    st.markdown('<div class="form-section">', unsafe_allow_html=True)
+
     st.markdown("""
     <div class="section-header">
         <div style="color: #4A90E2; font-size: 18px;">📦</div>
@@ -780,13 +779,11 @@ def mostrar_ingreso_comprobantes():
             st.session_state["comp_reset_line"] = True
             st.rerun()
 
-    st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================
     # SECCIÓN 3: TABLA DE ARTÍCULOS
     # =========================================
     if st.session_state["comp_items"]:
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
 
         df_items = pd.DataFrame(st.session_state["comp_items"]).copy()
 
@@ -843,12 +840,10 @@ def mostrar_ingreso_comprobantes():
         with t4:
             st.metric("Total", _fmt_money(total_calculado, moneda_actual))
 
-        st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================
     # BOTÓN GUARDAR
     # =========================================
-    st.markdown('<div class="form-section">', unsafe_allow_html=True)
 
     col_empty, col_save = st.columns([2, 1])
 
@@ -918,7 +913,6 @@ def mostrar_ingreso_comprobantes():
                 st.write(str(e))
                 st.stop()
 
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # =====================================================================
