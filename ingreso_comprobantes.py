@@ -605,6 +605,8 @@ def mostrar_ingreso_comprobantes():
         st.session_state["comp_desc"] = 0.0
         st.session_state["comp_has_lote"] = False
         st.session_state["comp_has_venc"] = False
+        st.session_state["comp_lote"] = ""
+        st.session_state["comp_venc_date"] = date.today()
         st.session_state["comp_reset_line"] = False
 
     proveedores_options, prov_name_to_id = _get_proveedor_options()
@@ -618,7 +620,7 @@ def mostrar_ingreso_comprobantes():
     # =========================================
     # SECCIÓN 1: DATOS DEL COMPROBANTE
     # =========================================
-
+    st.markdown('<div class="form-section">', unsafe_allow_html=True)
     st.markdown("""
     <div class="section-header">
         <div style="color: #4A90E2; font-size: 18px;">≡</div>
@@ -654,19 +656,47 @@ def mostrar_ingreso_comprobantes():
         st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion", label_visibility="collapsed")
         st.caption("Condición")
 
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================
-    # ARTÍCULOS
+    # SECCIÓN 2: ARTÍCULOS DEL COMPROBANTE
     # =========================================
+    st.markdown('<div class="form-section">', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="section-header">
+        <div style="color: #4A90E2; font-size: 18px;">📦</div>
+        <h2>Artículos del comprobante</h2>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Artículo con botón +
-    col_sel, col_btn = st.columns([4, 1])
-    with col_sel:
+    # Autocargar precio/IVA
+    art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {}) if st.session_state["comp_articulo_sel"] else {}
+    iva_tipo_sugerido = _map_iva_tipo_from_articulo_row(art_row) if art_row else "22%"
+    precio_db = _map_precio_sin_iva_from_articulo_row(art_row) if art_row else 0.0
+
+    if st.session_state["comp_articulo_sel"] != st.session_state["comp_articulo_prev"]:
+        st.session_state["comp_articulo_prev"] = st.session_state["comp_articulo_sel"]
+        st.session_state["comp_precio"] = float(precio_db or 0.0)
+        st.session_state["comp_cantidad"] = 1
+        st.session_state["comp_desc"] = 0.0
+        st.session_state["comp_has_lote"] = False
+        st.session_state["comp_has_venc"] = False
+        st.session_state["comp_lote"] = ""
+        st.session_state["comp_venc_date"] = date.today()
+
+    # FILA 1: Artículo + Botón agregar INLINE
+    col_art, col_btn = st.columns([0.92, 0.08])
+    
+    with col_art:
         st.selectbox("Artículo", articulos_options, key="comp_articulo_sel", label_visibility="collapsed")
         st.caption("Artículo")
+    
     with col_btn:
-        if st.button("➕", key="btn_add_art"):
-            if not st.session_state["comp_articulo_sel"]:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        if st.button("➕", key="btn_add_item", help="Agregar artículo", use_container_width=True):
+            if not st.session_state["comp_proveedor_sel"]:
+                st.error("Seleccioná un proveedor.")
+            elif not st.session_state["comp_articulo_sel"]:
                 st.error("Seleccioná un artículo.")
             else:
                 art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {})
@@ -709,22 +739,7 @@ def mostrar_ingreso_comprobantes():
                 st.session_state["comp_reset_line"] = True
                 st.rerun()
 
-    # Autocargar precio/IVA
-    art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {}) if st.session_state["comp_articulo_sel"] else {}
-    iva_tipo_sugerido = _map_iva_tipo_from_articulo_row(art_row) if art_row else "22%"
-    precio_db = _map_precio_sin_iva_from_articulo_row(art_row) if art_row else 0.0
-
-    if st.session_state["comp_articulo_sel"] != st.session_state["comp_articulo_prev"]:
-        st.session_state["comp_articulo_prev"] = st.session_state["comp_articulo_sel"]
-        st.session_state["comp_precio"] = float(precio_db or 0.0)
-        st.session_state["comp_cantidad"] = 1
-        st.session_state["comp_desc"] = 0.0
-        st.session_state["comp_has_lote"] = False
-        st.session_state["comp_has_venc"] = False
-        st.session_state["comp_lote"] = ""
-        st.session_state["comp_venc_date"] = date.today()
-
-    # Fila compacta: Cantidad, Precio, IVA, Desc
+    # FILA 2: Cantidad, Precio, IVA, Desc
     i1, i2, i3, i4 = st.columns(4)
 
     with i1:
@@ -743,7 +758,8 @@ def mostrar_ingreso_comprobantes():
         st.number_input("Desc. %", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc", label_visibility="collapsed")
         st.caption("Desc. %")
 
-    # Fila: Lote y Vencimiento
+    # FILA 3: Lote y Vencimiento
+    st.markdown("---")
     l1, l2 = st.columns(2)
 
     with l1:
@@ -752,8 +768,9 @@ def mostrar_ingreso_comprobantes():
         with c_chk:
             st.checkbox(" ", key="comp_has_lote", label_visibility="collapsed")
         with c_inp:
-            lote_value = "" if not st.session_state["comp_has_lote"] else st.session_state.get("comp_lote", "")
-            st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"], label_visibility="collapsed")
+            st.text_input(" ", key="comp_lote", disabled=not st.session_state["comp_has_lote"], label_visibility="collapsed")
+            if not st.session_state["comp_has_lote"]:
+                st.session_state["comp_lote"] = ""
 
     with l2:
         st.caption("Vencimiento")
@@ -762,18 +779,17 @@ def mostrar_ingreso_comprobantes():
             st.checkbox(" ", key="comp_has_venc", label_visibility="collapsed")
         with c_inp:
             if st.session_state["comp_has_venc"]:
-                venc_value = st.session_state.get("comp_venc_date", date.today())
-                st.date_input(" ", value=venc_value, key="comp_venc_date", label_visibility="collapsed")
+                st.date_input(" ", key="comp_venc_date", label_visibility="collapsed")
             else:
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled", label_visibility="collapsed")
 
-    # Espacio grande
-    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================
     # SECCIÓN 3: TABLA DE ARTÍCULOS
     # =========================================
     if st.session_state["comp_items"]:
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
 
         df_items = pd.DataFrame(st.session_state["comp_items"]).copy()
 
@@ -830,10 +846,12 @@ def mostrar_ingreso_comprobantes():
         with t4:
             st.metric("Total", _fmt_money(total_calculado, moneda_actual))
 
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================
     # BOTÓN GUARDAR
     # =========================================
+    st.markdown('<div class="form-section">', unsafe_allow_html=True)
 
     col_empty, col_save = st.columns([2, 1])
 
@@ -903,6 +921,7 @@ def mostrar_ingreso_comprobantes():
                 st.write(str(e))
                 st.stop()
 
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # =====================================================================
