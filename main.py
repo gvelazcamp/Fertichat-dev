@@ -334,6 +334,33 @@ div.stElementContainer:has(iframe[src*="streamlit_autorefresh"]) {
 """, unsafe_allow_html=True)
 
 # =========================
+# CSS PARA SUAVIZAR RERUN (quitar animaciones y loaders)
+# =========================
+st.markdown("""
+<style>
+/* Quitar animaciones de rerun */
+.stApp {
+    transition: none !important;
+}
+
+/* Quitar fade-in */
+section[data-testid="stMain"] {
+    animation: none !important;
+}
+
+/* Ocultar loader superior */
+div[data-testid="stDecoration"] {
+    display: none !important;
+}
+
+/* Quitar shimmer / placeholders */
+[data-testid="stSkeleton"] {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =========================
 # FIX UI: BOTONES DEL SIDEBAR (evita texto vertical en "Cerrar sesión")
 # =========================
 CSS_SIDEBAR_BUTTON_FIX = """
