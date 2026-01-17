@@ -103,7 +103,7 @@ def agregar_selector_manual_dispositivo():
             index=1 if es_mobile_actual else 0,
             horizontal=True,
             key="selector_dispositivo_manual",
-            help="Cambia la vista entre desktop and mobile"
+            help="Cambia la vista between desktop and mobile"
         )
         
         # Actualizar session_state
@@ -334,6 +334,33 @@ div.stElementContainer:has(iframe[src*="streamlit_autorefresh"]) {
 """, unsafe_allow_html=True)
 
 # =========================
+# CSS PARA SUAVIZAR RERUN (quitar animaciones y loaders)
+# =========================
+st.markdown("""
+<style>
+/* Quitar animaciones de rerun */
+.stApp {
+    transition: none !important;
+}
+
+/* Quitar fade-in */
+section[data-testid="stMain"] {
+    animation: none !important;
+}
+
+/* Ocultar loader superior */
+div[data-testid="stDecoration"] {
+    display: none !important;
+}
+
+/* Quitar shimmer / placeholders */
+[data-testid="stSkeleton"] {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =========================
 # FIX UI: BOTONES DEL SIDEBAR (evita texto vertical en "Cerrar sesión")
 # =========================
 CSS_SIDEBAR_BUTTON_FIX = """
@@ -366,8 +393,22 @@ st.title("Inicio")
 init_db()
 user = get_current_user() or {}
 
-if "radio_menu" not in st.session_state:
-    st.session_state["radio_menu"] = "🏠 Inicio"
+# Grupos del menú
+groups = {
+    "PRINCIPAL": ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"],
+    "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes"],
+    "CATÁLOGO": ["📚 Artículos", "🧩 Familias", "🏬 Depósitos", "📑 Comprobantes"],
+    "ANÁLISIS": ["📊 Dashboard", "📈 Indicadores (Power BI)"],
+}
+
+# Inicializar radios
+for group in groups:
+    key = f"radio_{group.lower()}"
+    if key not in st.session_state:
+        if group == "PRINCIPAL":
+            st.session_state[key] = "🏠 Inicio"
+        else:
+            st.session_state[key] = None
 
 # Forzar flag del orquestador
 st.session_state["ORQUESTADOR_CARGADO"] = True
@@ -475,57 +516,49 @@ def _clear_qp():
 # Desde tarjetas (go=?)
 _go = _get_qp_first("go")
 if _go == "compras":
-    _target = None
-    for _opt in MENU_OPTIONS:
-        if "compras" in (_opt or "").lower():
-            _target = _opt
-            break
-
-    if _target:
-        st.session_state["radio_menu"] = _target
-
+    st.session_state["radio_principal"] = "🛒 Compras IA"
     _clear_qp()
     st.rerun()
 
 elif _go == "buscador":
-    st.session_state["radio_menu"] = "🔎 Buscador IA"
+    st.session_state["radio_principal"] = "🔎 Buscador IA"
     _clear_qp()
     st.rerun()
 
 elif _go == "stock":
-    st.session_state["radio_menu"] = "📦 Stock IA"
+    st.session_state["radio_principal"] = "📦 Stock IA"
     _clear_qp()
     st.rerun()
 
 elif _go == "dashboard":
-    st.session_state["radio_menu"] = "📊 Dashboard"
+    st.session_state["radio_analisis"] = "📊 Dashboard"
     _clear_qp()
     st.rerun()
 
 elif _go == "pedidos":
-    st.session_state["radio_menu"] = "📄 Pedidos internos"
+    st.session_state["radio_gestion"] = "📄 Pedidos internos"
     _clear_qp()
     st.rerun()
 
 elif _go == "baja":
-    st.session_state["radio_menu"] = "🧾 Baja de stock"
+    st.session_state["radio_gestion"] = "🧾 Baja de stock"
     _clear_qp()
     st.rerun()
 
 elif _go == "ordenes":
-    st.session_state["radio_menu"] = "📦 Órdenes de compra"
+    st.session_state["radio_gestion"] = "📦 Órdenes de compra"
     _clear_qp()
     st.rerun()
 
 elif _go == "indicadores":
-    st.session_state["radio_menu"] = "📈 Indicadores (Power BI)"
+    st.session_state["radio_analisis"] = "📈 Indicadores (Power BI)"
     _clear_qp()
     st.rerun()
 
 # Desde campana (ir_notif=1)
 try:
     if st.query_params.get("ir_notif") == "1":
-        st.session_state["radio_menu"] = "📄 Pedidos internos"
+        st.session_state["radio_gestion"] = "📄 Pedidos internos"
         _clear_qp()
         st.rerun()
 except Exception:
@@ -556,30 +589,46 @@ with st.sidebar:
     }
     
     .fc-section-header {
-        font-size: 11px;
+        font-size: 16px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 1px;
         color: #94a3b8;
-        padding: 8px 16px;
-        margin: 16px 0 8px 0;
+        padding: 12px 16px 8px 16px;
+        margin: 16px 0 2px 0;
         display: block !important;
         width: 100%;
+        overflow: visible !important;
+        white-space: nowrap !important;
     }
     
-    /* OCULTAR círculos nativos COMPLETAMENTE */
-    section[data-testid="stSidebar"] input[type="radio"] {
-        opacity: 0 !important;
-        width: 0 !important;
+    /* Ocultar TODOS los labels de widgets en el sidebar */
+    section[data-testid="stSidebar"] label[data-testid="stWidgetLabel"] {
+        display: none !important;
+        visibility: hidden !important;
         height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
-        position: absolute !important;
     }
     
-    /* Flechitas como ::before en el label */
+    /* Hacer círculos MUCHO MÁS CHICOS */
+    section[data-testid="stSidebar"] input[type="radio"] {
+        width: 12px !important;
+        height: 12px !important;
+        min-width: 12px !important;
+        margin-right: 8px !important;
+        flex-shrink: 0 !important;
+        accent-color: #3b82f6 !important;
+    }
+    
+    /* Contenedor MÁS COMPACTO */
+    section[data-testid="stSidebar"] .stRadio > div {
+        gap: 0 !important;
+    }
+    
+    /* Labels SÚPER COMPACTOS */
     section[data-testid="stSidebar"] .stRadio label {
-        padding: 10px 16px !important;
+        padding: 4px 12px 4px 8px !important;
         font-size: 14px !important;
         font-weight: 500 !important;
         color: #475569 !important;
@@ -588,32 +637,29 @@ with st.sidebar:
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
-        margin: 2px 0 !important;
+        margin: 0 !important;
         background: transparent !important;
         position: relative !important;
-        padding-left: 28px !important;
+        min-height: 28px !important;
+        line-height: 1.2 !important;
     }
     
+    /* Flechita azul ANTES del círculo */
     section[data-testid="stSidebar"] .stRadio label::before {
-        content: '' !important;
+        content: '▸' !important;
         position: absolute !important;
-        left: 8px !important;
+        left: -12px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
-        width: 16px !important;
-        height: 16px !important;
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
-        background-repeat: no-repeat !important;
-        background-position: center !important;
-        background-size: 16px 16px !important;
+        color: #3b82f6 !important;
+        font-size: 14px !important;
+        font-weight: 400 !important;
+        line-height: 1 !important;
     }
     
+    /* Flechita más bold cuando está seleccionado */
     section[data-testid="stSidebar"] .stRadio input:checked + div label::before {
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
-    }
-    
-    section[data-testid="stSidebar"] .stRadio > div {
-        gap: 0 !important;
+        font-weight: 900 !important;
     }
     
     section[data-testid="stSidebar"] .stRadio label:hover {
@@ -676,9 +722,11 @@ with st.sidebar:
     )
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="fc-section-header">PRINCIPAL</div>', unsafe_allow_html=True)
     
-    st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
+    # Menu agrupado
+    for group, options in groups.items():
+        st.markdown(f'<div class="fc-section-header">{group}</div>', unsafe_allow_html=True)
+        st.radio("", options, key=f"radio_{group.lower()}", label_visibility="collapsed")
     
     st.components.v1.html(r"""
     <script>
@@ -747,7 +795,12 @@ def mostrar_debug_sql_factura():
 # =========================
 # ROUTER PRINCIPAL
 # =========================
-menu_actual = st.session_state["radio_menu"]
+menu_actual = None
+for group, options in groups.items():
+    val = st.session_state.get(f"radio_{group.lower()}")
+    if val:
+        menu_actual = val
+        break
 
 if menu_actual == "🏠 Inicio":
     mostrar_inicio()
