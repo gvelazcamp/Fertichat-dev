@@ -140,6 +140,22 @@ def _load_custom_css():
         box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4) !important;
     }
 
+    /* Botón agregar artículo */
+    .add-button {
+        background: none !important;
+        border: none !important;
+        color: var(--primary-blue) !important;
+        font-size: 20px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .add-button:hover {
+        color: #3A7BC8 !important;
+        box-shadow: none !important;
+    }
+
     /* Data editor */
     .stDataFrame {
         border-radius: 8px !important;
@@ -643,7 +659,7 @@ def mostrar_ingreso_comprobantes():
     st.caption("Agregar artículo")
 
     # Fila compacta: Artículo | Cantidad | Precio | IVA | Desc | Lote | Vencimiento | +
-    art, cant, prec, iva, desc, lote, venc = st.columns([2, 1, 1, 1, 1, 1.5, 2])
+    art, cant, prec, iva, desc, lote, venc = st.columns([2, 1, 1, 1, 1, 1.5, 2.5])
 
     with art:
         st.selectbox("Artículo", articulos_options, key="comp_articulo_sel")
@@ -671,7 +687,7 @@ def mostrar_ingreso_comprobantes():
             st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"])
 
     with venc:
-        c_chk, c_inp, c_btn = st.columns([0.3, 0.5, 0.2])
+        c_chk, c_inp, c_btn = st.columns([0.25, 0.5, 0.25])
         with c_chk:
             st.checkbox("Venc.", key="comp_has_venc")
         with c_inp:
