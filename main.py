@@ -562,28 +562,29 @@ with st.sidebar:
         letter-spacing: 1px;
         color: #94a3b8;
         padding: 8px 16px;
-        margin: 16px 0 4px 0;
+        margin: 16px 0 2px 0;
         display: block !important;
         width: 100%;
     }
     
-    /* SOLO ocultar círculos del radio, NO los labels */
+    /* Hacer círculos MUCHO MÁS CHICOS */
     section[data-testid="stSidebar"] input[type="radio"] {
-        width: 0 !important;
-        height: 0 !important;
-        opacity: 0 !important;
-        position: absolute !important;
-        pointer-events: none !important;
+        width: 12px !important;
+        height: 12px !important;
+        min-width: 12px !important;
+        margin-right: 8px !important;
+        flex-shrink: 0 !important;
+        accent-color: #3b82f6 !important;
     }
     
-    /* Contenedor más compacto */
+    /* Contenedor MÁS COMPACTO */
     section[data-testid="stSidebar"] .stRadio > div {
-        gap: 2px !important;
+        gap: 0 !important;
     }
     
-    /* Labels MÁS COMPACTOS y con flechitas */
+    /* Labels SÚPER COMPACTOS */
     section[data-testid="stSidebar"] .stRadio label {
-        padding: 6px 16px 6px 32px !important;
+        padding: 4px 12px 4px 8px !important;
         font-size: 14px !important;
         font-weight: 500 !important;
         color: #475569 !important;
@@ -595,19 +596,19 @@ with st.sidebar:
         margin: 0 !important;
         background: transparent !important;
         position: relative !important;
-        min-height: 32px !important;
-        line-height: 1.3 !important;
+        min-height: 28px !important;
+        line-height: 1.2 !important;
     }
     
-    /* Flechita SVG azul ANTES del texto */
+    /* Flechita azul ANTES del círculo */
     section[data-testid="stSidebar"] .stRadio label::before {
         content: '▸' !important;
         position: absolute !important;
-        left: 12px !important;
+        left: -12px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
         color: #3b82f6 !important;
-        font-size: 16px !important;
+        font-size: 14px !important;
         font-weight: 400 !important;
         line-height: 1 !important;
     }
