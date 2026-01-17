@@ -49,9 +49,6 @@ TABLA_ARTICULOS = "articulos"
 
 def _load_custom_css():
     """Carga el CSS corporativo personalizado"""
-    # Cargar FontAwesome
-    st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">', unsafe_allow_html=True)
-    
     css = """
     <style>
     /* ===== ESTILOS GENERALES ===== */
@@ -143,7 +140,7 @@ def _load_custom_css():
         box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4) !important;
     }
 
-    /* Botón agregar artículo - FontAwesome */
+    /* Botón agregar artículo */
     .stButton > button[data-testid*="btn_add_art"] {
         width: 50px !important;
         height: 50px !important;
@@ -158,11 +155,10 @@ def _load_custom_css():
     }
 
     .stButton > button[data-testid*="btn_add_art"]::before {
-        content: "\\f0fe";
-        font-family: "Font Awesome 6 Free";
-        font-weight: 900;
+        content: "+";
         color: white !important;
-        font-size: 20px !important;
+        font-size: 30px !important;
+        font-weight: bold !important;
         position: absolute;
         top: 50%;
         left: 50%;
@@ -369,25 +365,25 @@ def _cache_proveedores() -> list:
         return []
 
     try:
-        # Búsqueda flexible: intentar varios nombres de columna posibles
-        possible_columns = [
-            '"Cliente / Proveedor"',
-            '"cliente / proveedor"',
-            '"Cliente/Proveedor"',
-            '"cliente/proveedor"',
-            '"Proveedor"',
-            '"proveedor"'
-        ]
-        data = []
-        for col in possible_columns:
-            try:
-                res = supabase.table(TABLA_PROVEEDORES).select(col).execute()
-                if res.data:
-                    data = [r[col.strip('"')] for r in res.data if r.get(col.strip('"'))]
-                    if data:
-                        break
-            except:
-                continue
+        # Obtener una fila de ejemplo para ver las columnas
+        sample = supabase.table(TABLA_PROVEEDORES).select("*").limit(1).execute()
+        if not sample.data:
+            return []
+        
+        columns = list(sample.data[0].keys())
+        # Buscar columna que coincida case insensitive con "cliente / proveedor"
+        proveedor_col = None
+        for col in columns:
+            if col.lower().strip() == "cliente / proveedor":
+                proveedor_col = col
+                break
+        
+        if not proveedor_col:
+            return []
+        
+        # Ahora seleccionar esa columna
+        res = supabase.table(TABLA_PROVEEDORES).select(f'"{proveedor_col}"').execute()
+        data = [r[proveedor_col] for r in res.data if r.get(proveedor_col)]
         return list(set(data))
     except Exception as e:
         st.error(f"Error cargando proveedores: {e}")
