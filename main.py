@@ -103,7 +103,7 @@ def agregar_selector_manual_dispositivo():
             index=1 if es_mobile_actual else 0,
             horizontal=True,
             key="selector_dispositivo_manual",
-            help="Cambia la vista entre desktop y mobile"
+            help="Cambia la vista entre desktop and mobile"
         )
         
         # Actualizar session_state
@@ -757,7 +757,7 @@ elif menu_actual == "🛒 Compras IA":
     if st.session_state.get("DEBUG_SQL", False):
         with st.expander("🛠 Debug (última consulta)", expanded=True):
             st.subheader("Interpretación")
-            st.json(st.session_state.get("DBG_INT_LAST", {})
+            st.json(st.session_state.get("DBG_INT_LAST", {}))
 
             st.subheader("SQL ejecutado")
             st.write("Origen:", st.session_state.get("DBG_SQL_LAST_TAG"))
@@ -804,7 +804,7 @@ elif menu_actual == "📚 Artículos":
 elif menu_actual == "🏬 Depósitos":
     mostrar_depositos()
 
-elif menu_actual == "��� Familias":
+elif menu_actual == "🧩 Familias":
     mostrar_familias()
 
 elif menu_actual == "📑 Comprobantes":
