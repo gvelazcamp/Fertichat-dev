@@ -140,36 +140,6 @@ def _load_custom_css():
         box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4) !important;
     }
 
-    /* Botón agregar artículo */
-    .stButton > button[data-testid*="btn_add_art"] {
-        width: 50px !important;
-        height: 50px !important;
-        background: linear-gradient(135deg, #4A90E2, #3A7BC8) !important;
-        border: none !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3) !important;
-        transition: all 0.3s ease !important;
-        color: transparent !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-
-    .stButton > button[data-testid*="btn_add_art"]::before {
-        content: "+";
-        color: white !important;
-        font-size: 30px !important;
-        font-weight: bold !important;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-    }
-
-    .stButton > button[data-testid*="btn_add_art"]:hover {
-        box-shadow: 0 4px 16px rgba(74, 144, 226, 0.4) !important;
-        transform: translateY(-2px) !important;
-    }
-
     /* Data editor */
     .stDataFrame {
         border-radius: 8px !important;
@@ -365,28 +335,27 @@ def _cache_proveedores() -> list:
         return []
 
     try:
-        # Obtener una fila de ejemplo para ver las columnas
-        sample = supabase.table(TABLA_PROVEEDORES).select("*").limit(1).execute()
-        if not sample.data:
+        # Paso 1: Lee primer registro para ver columnas
+        res_test = supabase.table(TABLA_PROVEEDORES).select("*").limit(1).execute()
+        if not res_test.data:
             return []
         
-        columns = list(sample.data[0].keys())
-        # Buscar columna que coincida case insensitive con "cliente / proveedor"
-        proveedor_col = None
-        for col in columns:
-            if col.lower().strip() == "cliente / proveedor":
-                proveedor_col = col
+        # Paso 2: Busca columna que contenga "proveedor" o "cliente"
+        columnas = list(res_test.data[0].keys())
+        prov_col = None
+        for col in columnas:
+            if "proveedor" in col.lower() or "cliente" in col.lower():
+                prov_col = col
                 break
         
-        if not proveedor_col:
+        if not prov_col:
             return []
         
-        # Ahora seleccionar esa columna
-        res = supabase.table(TABLA_PROVEEDORES).select(f'"{proveedor_col}"').execute()
-        data = [r[proveedor_col] for r in res.data if r.get(proveedor_col)]
-        return list(set(data))
+        # Paso 3: Trae datos de esa columna
+        res = supabase.table(TABLA_PROVEEDORES).select(f'"{prov_col}"').execute()
+        data = [str(r.get(prov_col)).strip() for r in res.data if r.get(prov_col)]
+        return sorted(list(set(data)))
     except Exception as e:
-        st.error(f"Error cargando proveedores: {e}")
         return []
 
 @st.cache_data(ttl=600)
@@ -689,8 +658,8 @@ def mostrar_ingreso_comprobantes():
     st.markdown("---")
     st.caption("Agregar artículo")
 
-    # Fila compacta: Artículo | Cantidad | Precio | IVA | Desc | Lote | Vencimiento | +
-    art, cant, prec, iva, desc, lote, venc = st.columns([2, 1, 1, 1, 1, 1.5, 2.5])
+    # Fila compacta: Artículo | Cantidad | Precio | IVA | Desc | Lote | Vencimiento | +/-
+    art, cant, prec, iva, desc, lote, venc, btn = st.columns([2, 1, 1, 1, 1, 1.5, 1.5, 0.5])
 
     with art:
         st.selectbox("Artículo", articulos_options, key="comp_articulo_sel")
@@ -718,7 +687,7 @@ def mostrar_ingreso_comprobantes():
             st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"])
 
     with venc:
-        c_chk, c_inp, c_btn = st.columns([0.25, 0.5, 0.25])
+        c_chk, c_inp = st.columns([0.4, 0.6])
         with c_chk:
             st.checkbox("Venc.", key="comp_has_venc")
         with c_inp:
@@ -727,8 +696,11 @@ def mostrar_ingreso_comprobantes():
                 st.date_input(" ", value=venc_value, key="comp_venc_date")
             else:
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
-        with c_btn:
-            if st.button("", key="btn_add_art", help="Agregar artículo"):
+
+    with btn:
+        col_plus, col_minus = st.columns(2)
+        with col_plus:
+            if st.button("＋", key="btn_add_art", help="Agregar"):
                 if not st.session_state["comp_articulo_sel"]:
                     st.error("Seleccioná un artículo.")
                 else:
@@ -754,23 +726,23 @@ def mostrar_ingreso_comprobantes():
                     st.session_state["comp_items"].append({
                         "_rid": rid,
                         "articulo": art_desc,
-                        "articulo_id": art_id,
-                        "cantidad": cantidad,
-                        "precio_unit_sin_iva": float(precio_unit),
-                        "iva_tipo": iva_tipo_final,
-                        "iva_rate": float(iva_rate),
-                        "descuento_pct": float(desc_pct),
-                        "descuento_monto": float(calc["descuento_monto"]),
-                        "subtotal_sin_iva": float(calc["subtotal_sin_iva"]),
-                        "iva_monto": float(calc["iva_monto"]),
-                        "total_con_iva": float(calc["total_con_iva"]),
-                        "lote": lote_val,
-                        "vencimiento": venc_val,
-                        "moneda": st.session_state["comp_moneda"],
-                    })
+                    "articulo_id": art_id,
+                    "cantidad": cantidad,
+                    "precio_unit_sin_iva": float(precio_unit),
+                    "iva_tipo": iva_tipo_final,
+                    "iva_rate": float(iva_rate),
+                    "descuento_pct": float(desc_pct),
+                    "descuento_monto": float(calc["descuento_monto"]),
+                    "subtotal_sin_iva": float(calc["subtotal_sin_iva"]),
+                    "iva_monto": float(calc["iva_monto"]),
+                    "total_con_iva": float(calc["total_con_iva"]),
+                    "lote": lote_val,
+                    "vencimiento": venc_val,
+                    "moneda": st.session_state["comp_moneda"],
+                })
 
-                    st.session_state["comp_reset_line"] = True
-                    st.rerun()
+                st.session_state["comp_reset_line"] = True
+                st.rerun()
 
     # Autocargar precio/IVA al cambiar artículo
     if st.session_state["comp_articulo_sel"] != st.session_state["comp_articulo_prev"]:
@@ -922,16 +894,6 @@ def mostrar_ingreso_comprobantes():
                     st.error("❌ No se pudo guardar en Supabase.")
                     st.write(str(e))
                     st.stop()
-
-    # =========================================
-    # BOTÓN GUARDAR (SIEMPRE VISIBLE, PERO DISABLED SI NO HAY ITEMS)
-    # =========================================
-    else:
-        st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
-        col_empty, col_save = st.columns([2, 1])
-
-        with col_save:
-            st.button("💾 Guardar comprobante", use_container_width=True, key="btn_save", disabled=True)
 
 
 
