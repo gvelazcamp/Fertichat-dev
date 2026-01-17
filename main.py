@@ -561,50 +561,25 @@ with st.sidebar:
         text-transform: uppercase;
         letter-spacing: 1px;
         color: #94a3b8;
-        padding: 20px 16px 8px 16px;
-        margin: 0;
+        padding: 8px 16px;
+        margin: 16px 0 8px 0;
         display: block !important;
+        width: 100%;
     }
     
-    /* Ocultar círculos nativos y poner flechas SVG */
+    /* OCULTAR círculos nativos COMPLETAMENTE */
     section[data-testid="stSidebar"] input[type="radio"] {
-        position: relative !important;
-        appearance: none !important;
-        -webkit-appearance: none !important;
-        -moz-appearance: none !important;
-        width: 18px !important;
-        height: 18px !important;
-        min-width: 18px !important;
-        margin-right: 10px !important;
-        flex-shrink: 0 !important;
-        border: none !important;
-        background: transparent !important;
-        cursor: pointer !important;
-    }
-    
-    section[data-testid="stSidebar"] input[type="radio"]::before {
-        content: '' !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
         position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 18px !important;
-        height: 18px !important;
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
-        background-repeat: no-repeat !important;
-        background-position: center !important;
-        background-size: 18px 18px !important;
     }
     
-    section[data-testid="stSidebar"] input[type="radio"]:checked::before {
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
-    }
-    
-    section[data-testid="stSidebar"] .stRadio > div {
-        gap: 0 !important;
-    }
-    
+    /* Flechitas como ::before en el label */
     section[data-testid="stSidebar"] .stRadio label {
-        padding: 10px 16px 10px 4px !important;
+        padding: 10px 16px !important;
         font-size: 14px !important;
         font-weight: 500 !important;
         color: #475569 !important;
@@ -615,6 +590,30 @@ with st.sidebar:
         align-items: center !important;
         margin: 2px 0 !important;
         background: transparent !important;
+        position: relative !important;
+        padding-left: 28px !important;
+    }
+    
+    section[data-testid="stSidebar"] .stRadio label::before {
+        content: '' !important;
+        position: absolute !important;
+        left: 8px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 16px !important;
+        height: 16px !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        background-size: 16px 16px !important;
+    }
+    
+    section[data-testid="stSidebar"] .stRadio input:checked + div label::before {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>') !important;
+    }
+    
+    section[data-testid="stSidebar"] .stRadio > div {
+        gap: 0 !important;
     }
     
     section[data-testid="stSidebar"] .stRadio label:hover {
@@ -681,7 +680,7 @@ with st.sidebar:
     
     st.radio("Ir a:", MENU_OPTIONS, key="radio_menu", label_visibility="collapsed")
     
-    st.components.v1.html(r"""
+    st.components.v1.html("""
     <script>
     (function() {
         const interval = setInterval(() => {
@@ -692,7 +691,7 @@ with st.sidebar:
                 });
                 clearInterval(interval);
             }
-        }, 100);
+        }, 50);
     })();
     </script>
     """, height=0)
