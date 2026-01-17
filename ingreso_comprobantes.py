@@ -654,17 +654,55 @@ def mostrar_ingreso_comprobantes():
         st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion", label_visibility="collapsed")
         st.caption("Condición")
 
-
     # =========================================
-    # ARTÍCULOS
+    # ARTÍCULOS - LAYOUT COMPACTO TIPO TABLA
     # =========================================
 
-    # Artículo con botón +
-    col_sel, col_btn = st.columns([4, 1])
-    with col_sel:
+    st.markdown("---")
+    st.caption("Agregar artículo")
+
+    # Fila compacta: Artículo | Cantidad | Precio | IVA | Desc | Lote | Vencimiento | +
+    art, cant, prec, iva, desc, lote, venc, btn = st.columns([2, 1, 1, 1, 1, 1.5, 1.5, 0.5])
+
+    with art:
         st.selectbox("Artículo", articulos_options, key="comp_articulo_sel", label_visibility="collapsed")
-        st.caption("Artículo")
-    with col_btn:
+
+    with cant:
+        st.number_input("Cant.", min_value=1, step=1, key="comp_cantidad", label_visibility="collapsed")
+
+    with prec:
+        st.number_input("P.Unit.", min_value=0.0, step=0.01, key="comp_precio", label_visibility="collapsed")
+
+    with iva:
+        art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {}) if st.session_state["comp_articulo_sel"] else {}
+        iva_tipo_sugerido = _map_iva_tipo_from_articulo_row(art_row) if art_row else "22%"
+        st.text_input("IVA", value=iva_tipo_sugerido, disabled=True, label_visibility="collapsed")
+
+    with desc:
+        st.number_input("Desc.%", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc", label_visibility="collapsed")
+
+    with lote:
+        st.caption("Lote")
+        c_chk, c_inp = st.columns([0.4, 0.6])
+        with c_chk:
+            st.checkbox(" ", key="comp_has_lote", label_visibility="collapsed")
+        with c_inp:
+            lote_value = "" if not st.session_state["comp_has_lote"] else st.session_state.get("comp_lote", "")
+            st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"], label_visibility="collapsed")
+
+    with venc:
+        st.caption("Venc.")
+        c_chk, c_inp = st.columns([0.4, 0.6])
+        with c_chk:
+            st.checkbox(" ", key="comp_has_venc", label_visibility="collapsed")
+        with c_inp:
+            if st.session_state["comp_has_venc"]:
+                venc_value = st.session_state.get("comp_venc_date", date.today())
+                st.date_input(" ", value=venc_value, key="comp_venc_date", label_visibility="collapsed")
+            else:
+                st.text_input(" ", value="", disabled=True, key="comp_venc_disabled", label_visibility="collapsed")
+
+    with btn:
         if st.button("➕", key="btn_add_art"):
             if not st.session_state["comp_articulo_sel"]:
                 st.error("Seleccioná un artículo.")
@@ -709,13 +747,10 @@ def mostrar_ingreso_comprobantes():
                 st.session_state["comp_reset_line"] = True
                 st.rerun()
 
-    # Autocargar precio/IVA
-    art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {}) if st.session_state["comp_articulo_sel"] else {}
-    iva_tipo_sugerido = _map_iva_tipo_from_articulo_row(art_row) if art_row else "22%"
-    precio_db = _map_precio_sin_iva_from_articulo_row(art_row) if art_row else 0.0
-
+    # Autocargar precio/IVA al cambiar artículo
     if st.session_state["comp_articulo_sel"] != st.session_state["comp_articulo_prev"]:
         st.session_state["comp_articulo_prev"] = st.session_state["comp_articulo_sel"]
+        precio_db = _map_precio_sin_iva_from_articulo_row(art_row) if art_row else 0.0
         st.session_state["comp_precio"] = float(precio_db or 0.0)
         st.session_state["comp_cantidad"] = 1
         st.session_state["comp_desc"] = 0.0
@@ -723,52 +758,6 @@ def mostrar_ingreso_comprobantes():
         st.session_state["comp_has_venc"] = False
         st.session_state["comp_lote"] = ""
         st.session_state["comp_venc_date"] = date.today()
-
-    # Fila compacta: Cantidad, Precio, IVA, Desc
-    i1, i2, i3, i4 = st.columns(4)
-
-    with i1:
-        st.number_input("Cantidad", min_value=1, step=1, key="comp_cantidad", label_visibility="collapsed")
-        st.caption("Cantidad")
-
-    with i2:
-        st.number_input("Precio unit. s/IVA", min_value=0.0, step=0.01, key="comp_precio", label_visibility="collapsed")
-        st.caption("Precio unit. s/IVA")
-
-    with i3:
-        st.text_input("IVA", value=iva_tipo_sugerido, disabled=True, label_visibility="collapsed")
-        st.caption("IVA")
-
-    with i4:
-        st.number_input("Desc. %", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc", label_visibility="collapsed")
-        st.caption("Desc. %")
-
-    # Fila: Lote y Vencimiento
-    l1, l2 = st.columns(2)
-
-    with l1:
-        st.caption("Lote")
-        c_chk, c_inp = st.columns([0.3, 0.7])
-        with c_chk:
-            st.checkbox(" ", key="comp_has_lote", label_visibility="collapsed")
-        with c_inp:
-            lote_value = "" if not st.session_state["comp_has_lote"] else st.session_state.get("comp_lote", "")
-            st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"], label_visibility="collapsed")
-
-    with l2:
-        st.caption("Vencimiento")
-        c_chk, c_inp = st.columns([0.3, 0.7])
-        with c_chk:
-            st.checkbox(" ", key="comp_has_venc", label_visibility="collapsed")
-        with c_inp:
-            if st.session_state["comp_has_venc"]:
-                venc_value = st.session_state.get("comp_venc_date", date.today())
-                st.date_input(" ", value=venc_value, key="comp_venc_date", label_visibility="collapsed")
-            else:
-                st.text_input(" ", value="", disabled=True, key="comp_venc_disabled", label_visibility="collapsed")
-
-    # Espacio grande
-    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
 
     # =========================================
     # SECCIÓN 3: TABLA DE ARTÍCULOS
@@ -846,7 +835,6 @@ def mostrar_ingreso_comprobantes():
             st.metric("Impuestos", _fmt_money(iva_total, moneda_actual))
         with t4:
             st.metric("Total", _fmt_money(total_calculado, moneda_actual))
-
 
     # =========================================
     # BOTÓN GUARDAR
