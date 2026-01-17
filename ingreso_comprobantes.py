@@ -628,30 +628,24 @@ def mostrar_ingreso_comprobantes():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.date_input("Fecha", key="comp_fecha", label_visibility="collapsed")
-        st.caption("Fecha")
+        st.date_input("Fecha", key="comp_fecha")
 
     with col2:
-        st.selectbox("Tipo", ["Factura", "Remito", "Nota de Crédito"], key="comp_tipo", label_visibility="collapsed")
-        st.caption("Tipo")
+        st.selectbox("Tipo", ["Factura", "Remito", "Nota de Crédito"], key="comp_tipo")
 
     with col3:
-        st.selectbox("Moneda", ["UYU", "USD"], key="comp_moneda", label_visibility="collapsed")
-        st.caption("Moneda")
+        st.selectbox("Moneda", ["UYU", "USD"], key="comp_moneda")
 
     col4, col5, col6 = st.columns(3)
 
     with col4:
-        st.selectbox("Proveedor", proveedores_options, key="comp_proveedor_sel", label_visibility="collapsed")
-        st.caption("Proveedor")
+        st.selectbox("Proveedor", proveedores_options, key="comp_proveedor_sel")
 
     with col5:
-        st.text_input("Nº Comprobante", key="comp_nro", label_visibility="collapsed")
-        st.caption("Nº Comprobante")
+        st.text_input("Nº Comprobante", key="comp_nro")
 
     with col6:
-        st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion", label_visibility="collapsed")
-        st.caption("Condición")
+        st.selectbox("Condición", ["Contado", "Crédito"], key="comp_condicion")
 
 
     # =========================================
@@ -665,42 +659,42 @@ def mostrar_ingreso_comprobantes():
     art, cant, prec, iva, desc, lote, venc, btn = st.columns([2, 1, 1, 1, 1, 1.5, 1.5, 0.5])
 
     with art:
-        st.selectbox("Artículo", articulos_options, key="comp_articulo_sel", label_visibility="collapsed")
+        st.selectbox("Artículo", articulos_options, key="comp_articulo_sel")
 
     with cant:
-        st.number_input("Cant.", min_value=1, step=1, key="comp_cantidad", label_visibility="collapsed")
+        st.number_input("Cant.", min_value=1, step=1, key="comp_cantidad")
 
     with prec:
-        st.number_input("P.Unit.", min_value=0.0, step=0.01, key="comp_precio", label_visibility="collapsed")
+        st.number_input("P.Unit.", min_value=0.0, step=0.01, key="comp_precio")
 
     with iva:
         art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {}) if st.session_state["comp_articulo_sel"] else {}
         iva_tipo_sugerido = _map_iva_tipo_from_articulo_row(art_row) if art_row else "22%"
-        st.text_input("IVA", value=iva_tipo_sugerido, disabled=True, label_visibility="collapsed")
+        st.text_input("IVA", value=iva_tipo_sugerido, disabled=True, key="comp_iva_display")
 
     with desc:
-        st.number_input("Desc.%", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc", label_visibility="collapsed")
+        st.number_input("Desc.%", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc")
 
     with lote:
         st.caption("Lote")
         c_chk, c_inp = st.columns([0.4, 0.6])
         with c_chk:
-            st.checkbox(" ", key="comp_has_lote", label_visibility="collapsed")
+            st.checkbox(" ", key="comp_has_lote")
         with c_inp:
             lote_value = "" if not st.session_state["comp_has_lote"] else st.session_state.get("comp_lote", "")
-            st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"], label_visibility="collapsed")
+            st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"])
 
     with venc:
         st.caption("Venc.")
         c_chk, c_inp = st.columns([0.4, 0.6])
         with c_chk:
-            st.checkbox(" ", key="comp_has_venc", label_visibility="collapsed")
+            st.checkbox(" ", key="comp_has_venc")
         with c_inp:
             if st.session_state["comp_has_venc"]:
                 venc_value = st.session_state.get("comp_venc_date", date.today())
-                st.date_input(" ", value=venc_value, key="comp_venc_date", label_visibility="collapsed")
+                st.date_input(" ", value=venc_value, key="comp_venc_date")
             else:
-                st.text_input(" ", value="", disabled=True, key="comp_venc_disabled", label_visibility="collapsed")
+                st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
 
     with btn:
         if st.button("➕", key="btn_add_art"):
