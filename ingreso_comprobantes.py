@@ -3,7 +3,7 @@
 # Archivo: ingreso_comprobantes_redesign.py
 # FIXES: Línea blanca, proveedor gigante, vencimiento, session_state
 # ADDED: Botones ➕ y ✖ para agregar/limpiar línea de artículo
-# FIXED: Proveedores no cargan - Cambiado a sql_core como en ui_compras
+# FIXED: Proveedores cargan desde sql_core como en ui_compras
 # =====================================================================
 
 import streamlit as st
@@ -344,10 +344,11 @@ def _fmt_money(v: float, moneda: str) -> str:
     return f"{moneda} {s}"
 
 # =====================================================================
-# CACHE SUPABASE (CAMBIADO A sql_core)
+# CACHE SUPABASE (USANDO sql_core)
 # =====================================================================
 
-def _cache_proveedores() -> list:  # ✅ CAMBIADO A sql_core como en ui_compras
+@st.cache_data(ttl=600)
+def _cache_proveedores() -> list:  # ✅ USANDO sql_core como en ui_compras
     try:
         sql = '''
             SELECT DISTINCT TRIM("Cliente / Proveedor") AS prov 
@@ -364,7 +365,8 @@ def _cache_proveedores() -> list:  # ✅ CAMBIADO A sql_core como en ui_compras
         st.error(f"Error cargando proveedores: {e}")
         return []
 
-def _cache_articulos() -> list:  # ✅ CAMBIADO A sql_core como en ui_compras
+@st.cache_data(ttl=600)
+def _cache_articulos() -> list:  # ✅ USANDO sql_core como en ui_compras
     try:
         sql = 'SELECT DISTINCT TRIM("Articulo") AS art FROM chatbot_raw WHERE TRIM("Articulo") != \'\' ORDER BY art'
         df = ejecutar_consulta(sql, ())
@@ -603,9 +605,6 @@ def mostrar_ingreso_comprobantes():
 
     proveedores_options, prov_name_to_id = _get_proveedor_options()
     articulos_options, art_label_to_row = _get_articulo_options()
-
-    # DEBUG: Muestra qué proveedores se cargaron (quita después de probar)
-    st.write("Proveedores cargados:", proveedores_options)
 
     if st.session_state["comp_proveedor_sel"] not in proveedores_options:
         st.session_state["comp_proveedor_sel"] = ""
