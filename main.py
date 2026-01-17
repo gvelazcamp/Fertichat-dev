@@ -388,6 +388,11 @@ require_auth()
 st.title("Inicio")
 
 # =========================
+# CONTAINER FIJO PARA EVITAR DESPLAZAMIENTO VISUAL
+# =========================
+main_container = st.container()
+
+# =========================
 # INICIALIZACIÓN
 # =========================
 init_db()
@@ -802,7 +807,7 @@ def mostrar_debug_sql_factura():
 
 
 # =========================
-# ROUTER PRINCIPAL
+# ROUTER PRINCIPAL CON CONTAINER FIJO
 # =========================
 menu_actual = None
 for group, options in groups.items():
@@ -811,72 +816,73 @@ for group, options in groups.items():
         menu_actual = val
         break
 
-if menu_actual == "🏠 Inicio":
-    mostrar_inicio()
+with main_container:
+    if menu_actual == "🏠 Inicio":
+        mostrar_inicio()
 
-elif "Chat (Chainlit)" in menu_actual:
-    mostrar_chat_chainlit()
+    elif "Chat (Chainlit)" in menu_actual:
+        mostrar_chat_chainlit()
 
-elif menu_actual == "🛒 Compras IA":
-    mostrar_resumen_compras_rotativo()
-    Compras_IA()
+    elif menu_actual == "🛒 Compras IA":
+        mostrar_resumen_compras_rotativo()
+        Compras_IA()
 
-    # Panel de debug general (última consulta)
-    if st.session_state.get("DEBUG_SQL", False):
-        with st.expander("🛠 Debug (última consulta)", expanded=True):
-            st.subheader("Interpretación")
-            st.json(st.session_state.get("DBG_INT_LAST", {}))
+        # Panel de debug general (última consulta)
+        if st.session_state.get("DEBUG_SQL", False):
+            with st.expander("🛠 Debug (última consulta)", expanded=True):
+                st.subheader("Interpretación")
+                st.json(st.session_state.get("DBG_INT_LAST", {}))
 
-            st.subheader("SQL ejecutado")
-            st.write("Origen:", st.session_state.get("DBG_SQL_LAST_TAG"))
-            st.write("Params:", st.session_state.get("DBG_SQL_LAST_PARAMS", []))
+                st.subheader("SQL ejecutado")
+                st.write("Origen:", st.session_state.get("DBG_SQL_LAST_TAG"))
+                st.write("Params:", st.session_state.get("DBG_SQL_LAST_PARAMS", []))
 
-            st.subheader("Resultado")
-            st.write("Filas:", st.session_state.get("DBG_SQL_ROWS"))
-            st.write("Columnas:", st.session_state.get("DBG_SQL_COLS", []))
+                st.subheader("Resultado")
+                st.write("Filas:", st.session_state.get("DBG_SQL_ROWS"))
+                st.write("Columnas:", st.session_state.get("DBG_SQL_COLS", []))
 
-elif menu_actual == "🔍 Debug SQL factura":
-    mostrar_debug_sql_factura()
+    elif menu_actual == "🔍 Debug SQL factura":
+        mostrar_debug_sql_factura()
 
-elif menu_actual == "📦 Stock IA":
-    mostrar_resumen_stock_rotativo(dias_vencer=30)  # Cambiado a 30 días
-    mostrar_stock_ia()
+    elif menu_actual == "📦 Stock IA":
+        mostrar_resumen_stock_rotativo(dias_vencer=30)  # Cambiado a 30 días
+        mostrar_stock_ia()
 
-elif menu_actual == "🔎 Buscador IA":
-    mostrar_buscador_ia()
+    elif menu_actual == "🔎 Buscador IA":
+        mostrar_buscador_ia()
 
-elif menu_actual == "📥 Ingreso de comprobantes":
-    mostrar_ingreso_comprobantes()
+    elif menu_actual == "📥 Ingreso de comprobantes":
+        mostrar_ingreso_comprobantes()
 
-elif menu_actual == "📊 Dashboard":
-    mostrar_dashboard()
+    elif menu_actual == "📊 Dashboard":
+        mostrar_dashboard()
 
-elif menu_actual == "📄 Pedidos internos":
-    mostrar_pedidos_internos()
+    elif menu_actual == "📄 Pedidos internos":
+        mostrar_pedidos_internos()
 
-elif menu_actual == "🧾 Baja de stock":
-    mostrar_baja_stock()
+    elif menu_actual == "🧾 Baja de stock":
+        mostrar_baja_stock()
 
-elif menu_actual == "📈 Indicadores (Power BI)":
-    mostrar_indicadores_ia()
+    elif menu_actual == "📈 Indicadores (Power BI)":
+        mostrar_indicadores_ia()
 
-elif menu_actual == "📦 Órdenes de compra":
-    mostrar_ordenes_compra()
+    elif menu_actual == "📦 Órdenes de compra":
+        mostrar_ordenes_compra()
 
-elif menu_actual == "📒 Ficha de stock":
-    mostrar_ficha_stock()
+    elif menu_actual == "📒 Ficha de stock":
+        mostrar_ficha_stock()
 
-elif menu_actual == "📚 Artículos":
-    mostrar_articulos()
+    elif menu_actual == "📚 Artículos":
+        mostrar_articulos()
 
-elif menu_actual == "🏬 Depósitos":
-    mostrar_depositos()
+    elif menu_actual == "🏬 Depósitos":
+        mostrar_depositos()
 
-elif menu_actual == "🧩 Familias":
-    mostrar_familias()
+    elif menu_actual == "🧩 Familias":
+        mostrar_familias()
 
-elif menu_actual == "📑 Comprobantes":
-    mostrar_menu_comprobantes()
+    elif menu_actual == "📑 Comprobantes":
+        mostrar_menu_comprobantes()
 
 # Marca visual para saber que el orquestador está cargado
 # st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
