@@ -2,6 +2,7 @@
 # 📥 MÓDULO: INGRESO DE COMPROBANTES - FERTI CHAT (REDISEÑO v2)
 # Archivo: ingreso_comprobantes_redesign.py
 # FIXES: Línea blanca, proveedor gigante, vencimiento, session_state
+# ADDED: Botones ➕ y ✖ para agregar/limpiar línea de artículo
 # =====================================================================
 
 import streamlit as st
@@ -62,6 +63,7 @@ def _load_custom_css():
         --text-primary: #2C3E50;
         --text-secondary: #5A6C7D;
         --success: #27AE60;
+        --danger: #E74C3C;
         --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
         --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
@@ -169,6 +171,11 @@ def _load_custom_css():
     .stSuccess {
         background-color: rgba(39, 174, 96, 0.1) !important;
         border-color: var(--success) !important;
+    }
+
+    /* Botón agregar verde */
+    div[data-testid="column"]:has(button[kind="secondary"]):nth-of-type(2) button {
+        background: var(--success) !important;
     }
 
     /* Responsive */
@@ -680,6 +687,63 @@ def mostrar_ingreso_comprobantes():
                 st.date_input(" ", value=venc_value, key="comp_venc_date")
             else:
                 st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
+
+    # =========================================
+    # BOTONES ➕ y ✖ PARA AGREGAR/LIMPIAR LÍNEA
+    # =========================================
+    st.markdown("")  # Pequeño espacio
+    col_spacer, col_add, col_clear = st.columns([6, 1, 1])
+    
+    with col_add:
+        btn_add = st.button("➕", key="btn_add_item", help="Agregar artículo a la lista", use_container_width=True)
+    
+    with col_clear:
+        btn_clear = st.button("✖", key="btn_clear_item", help="Limpiar línea actual", use_container_width=True)
+
+    # Lógica del botón AGREGAR
+    if btn_add:
+        if not st.session_state["comp_articulo_sel"]:
+            st.warning("Seleccioná un artículo primero.")
+        else:
+            art_row = art_label_to_row.get(st.session_state["comp_articulo_sel"], {})
+            iva_tipo = _map_iva_tipo_from_articulo_row(art_row) if art_row else "22%"
+            iva_rate = _iva_rate_from_tipo(iva_tipo)
+            
+            calc = _calc_linea(
+                st.session_state["comp_cantidad"],
+                st.session_state["comp_precio"],
+                iva_rate,
+                st.session_state["comp_desc"]
+            )
+            
+            nuevo_item = {
+                "rid": st.session_state["comp_next_rid"],
+                "articulo": _articulo_desc_from_row(art_row) if art_row else st.session_state["comp_articulo_sel"],
+                "articulo_id": art_row.get("id") if art_row else None,
+                "cantidad": st.session_state["comp_cantidad"],
+                "moneda": st.session_state["comp_moneda"],
+                "precio_unit_sin_iva": st.session_state["comp_precio"],
+                "iva_tipo": iva_tipo,
+                "iva_rate": iva_rate,
+                "descuento_pct": st.session_state["comp_desc"],
+                "descuento_monto": calc["descuento_monto"],
+                "subtotal_sin_iva": calc["subtotal_sin_iva"],
+                "iva_monto": calc["iva_monto"],
+                "total_con_iva": calc["total_con_iva"],
+                "lote": st.session_state["comp_lote"] if st.session_state["comp_has_lote"] else "",
+                "vencimiento": str(st.session_state["comp_venc_date"]) if st.session_state["comp_has_venc"] else "",
+                "🗑": False
+            }
+            
+            st.session_state["comp_items"].append(nuevo_item)
+            st.session_state["comp_next_rid"] += 1
+            st.session_state["comp_reset_line"] = True
+            st.rerun()
+
+    # Lógica del botón LIMPIAR
+    if btn_clear:
+        st.session_state["comp_reset_line"] = True
+        st.rerun()
 
     # Autocargar precio/IVA al cambiar artículo
     if st.session_state["comp_articulo_sel"] != st.session_state["comp_articulo_prev"]:
