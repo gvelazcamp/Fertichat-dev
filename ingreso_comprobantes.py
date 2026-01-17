@@ -643,7 +643,7 @@ def mostrar_ingreso_comprobantes():
     st.caption("Agregar artículo")
 
     # Fila compacta: Artículo | Cantidad | Precio | IVA | Desc | Lote | Vencimiento | Botones
-    art, cant, prec, iva, desc, lote, venc, btn = st.columns([2, 1, 1, 1, 1, 1.5, 1.5, 0.6])
+    art, cant, prec, iva, desc, lote, venc, btn = st.columns([2, 1, 1, 1, 1, 1.5, 1.5, 0.5])
 
     with art:
         st.selectbox("Artículo", articulos_options, key="comp_articulo_sel")
@@ -683,14 +683,14 @@ def mostrar_ingreso_comprobantes():
 
     with btn:
         st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-        col_minus, col_plus = st.columns(2)
-        with col_minus:
-            if st.button("−", key="btn_remove_item", help="Quitar"):
+        col_m, col_p = st.columns(2)
+        with col_m:
+            if st.button("−", key="btn_minus_art"):
                 if st.session_state["comp_items"]:
                     st.session_state["comp_items"].pop()
                     st.rerun()
-        with col_plus:
-            if st.button("+", key="btn_add_item", help="Agregar"):
+        with col_p:
+            if st.button("+", key="btn_plus_art"):
                 if not st.session_state["comp_articulo_sel"]:
                     st.error("Seleccioná un artículo.")
                 else:
