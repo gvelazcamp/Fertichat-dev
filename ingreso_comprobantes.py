@@ -659,7 +659,7 @@ def mostrar_ingreso_comprobantes():
     st.caption("Agregar artículo")
 
     # Fila compacta: Artículo | Cantidad | Precio | IVA | Desc | Lote | Vencimiento | Botones
-    art, cant, prec, iva, desc, lote, venc, btn_col = st.columns([2.5, 1, 1, 0.8, 1, 1.2, 1.2, 0.7])
+    art, cant, prec, iva, desc, lote, venc, btn_col = st.columns([2.5, 1, 1, 0.8, 1, 1.1, 1.1, 0.7])
 
     with art:
         st.selectbox("Artículo", articulos_options, key="comp_articulo_sel")
@@ -679,27 +679,21 @@ def mostrar_ingreso_comprobantes():
         st.number_input("Desc.%", min_value=0.0, max_value=100.0, step=0.5, key="comp_desc")
 
     with lote:
-        c_chk, c_inp = st.columns([0.4, 0.6])
-        with c_chk:
-            st.checkbox("Lote", key="comp_has_lote")
-        with c_inp:
-            lote_value = "" if not st.session_state["comp_has_lote"] else st.session_state.get("comp_lote", "")
-            st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"])
+        st.checkbox("Lote", key="comp_has_lote")
+        lote_value = "" if not st.session_state["comp_has_lote"] else st.session_state.get("comp_lote", "")
+        st.text_input(" ", value=lote_value, key="comp_lote", disabled=not st.session_state["comp_has_lote"], label_visibility="collapsed")
 
     with venc:
-        c_chk, c_inp = st.columns([0.4, 0.6])
-        with c_chk:
-            st.checkbox("Venc.", key="comp_has_venc")
-        with c_inp:
-            if st.session_state["comp_has_venc"]:
-                venc_value = st.session_state.get("comp_venc_date", date.today())
-                st.date_input(" ", value=venc_value, key="comp_venc_date")
-            else:
-                st.text_input(" ", value="", disabled=True, key="comp_venc_disabled")
+        st.checkbox("Venc.", key="comp_has_venc")
+        if st.session_state["comp_has_venc"]:
+            venc_value = st.session_state.get("comp_venc_date", date.today())
+            st.date_input(" ", value=venc_value, key="comp_venc_date", label_visibility="collapsed")
+        else:
+            st.text_input(" ", value="", disabled=True, key="comp_venc_disabled", label_visibility="collapsed")
 
     # Botones ➕ y ✖ compactos en la misma fila
     with btn_col:
-        st.markdown("<p style='font-size:12px; margin-bottom:5px;'>&nbsp;</p>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 26px'></div>", unsafe_allow_html=True)
         c_add, c_clear = st.columns(2)
         with c_add:
             btn_add = st.button("➕", key="btn_add_item", help="Agregar", use_container_width=True)
