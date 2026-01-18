@@ -2142,36 +2142,49 @@ def Compras_IA():
         # ==========================================
         st.markdown("""
         <style>
-        /* ===============================
-           CARD COMPARATIVAS (SOLO SECCIÓN)
-           =============================== */
+        /* =====================================================
+           1️⃣ OCULTAR TÍTULO VIEJO: "📊 Comparativas"
+           ===================================================== */
 
-        /* Contenedor tipo card blanca */
-        section[data-testid="stMain"] .comparativas-card {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 20px 22px;
-            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+        /* Oculta cualquier h3/h4 que tenga el emoji 📊 */
+        section[data-testid="stMain"] h3:has(span:contains("📊")),
+        section[data-testid="stMain"] h4:has(span:contains("📊")),
+        section[data-testid="stMain"] h3:has(svg + span),
+        section[data-testid="stMain"] h3:has(span:contains("Comparativas")) {
+            display: none !important;
         }
 
-        /* ===============================
-           TÍTULO + ICONO AZUL LINE
-           =============================== */
-        section[data-testid="stMain"] .comparativas-title {
+
+        /* =====================================================
+           2️⃣ ELIMINAR BLOQUE BLANCO DUPLICADO ARRIBA
+           (container fantasma de Streamlit)
+           ===================================================== */
+
+        /* Card vacía que queda arriba del título */
+        section[data-testid="stMain"] > div:has(> div:empty) {
+            display: none !important;
+        }
+
+
+        /* =====================================================
+           3️⃣ ESTILO DEFINITIVO PARA "Filtros de Comparación"
+           ===================================================== */
+
+        .comparativas-title {
             display: flex;
             align-items: center;
             gap: 10px;
             margin-bottom: 14px;
         }
 
-        /* Icono tipo chart (line, azul corporativo) */
-        section[data-testid="stMain"] .comparativas-title::before {
+        /* Icono azul line */
+        .comparativas-title::before {
             content: "";
             width: 22px;
             height: 22px;
-            display: inline-block;
             background-color: #2563eb;
+            display: inline-block;
+
             mask: url("data:image/svg+xml;utf8,\
             <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
             <path d='M9 11H7v8h2v-8zm4-4h-2v12h2V7zm4-4h-2v16h2V3z'/>\
@@ -2182,48 +2195,10 @@ def Compras_IA():
             </svg>") no-repeat center;
         }
 
-        /* Texto del título */
-        section[data-testid="stMain"] .comparativas-title span {
+        .comparativas-title span {
             font-size: 1.15rem;
             font-weight: 600;
             color: #1e293b;
-        }
-
-        /* ===============================
-           LABELS
-           =============================== */
-        section[data-testid="stMain"] label {
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #475569;
-        }
-
-        /* ===============================
-           PILLS (Meses / Años)
-           =============================== */
-        section[data-testid="stMain"] span[data-baseweb="tag"] {
-            background-color: #1e40af !important;
-            color: white !important;
-            border-radius: 6px !important;
-            font-weight: 500;
-        }
-
-        /* ===============================
-           BOTÓN PRIMARIO
-           =============================== */
-        section[data-testid="stMain"] button[kind="primary"] {
-            background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
-            border-radius: 8px !important;
-            font-weight: 600 !important;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
-        }
-
-        /* ===============================
-           BOTÓN SECUNDARIO
-           =============================== */
-        section[data-testid="stMain"] button[kind="secondary"] {
-            border-radius: 8px !important;
-            border: 1.5px solid #e5e7eb !important;
         }
         </style>
         """, unsafe_allow_html=True)
