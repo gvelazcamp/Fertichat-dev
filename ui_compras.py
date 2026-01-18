@@ -1255,7 +1255,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     num_periodos = len(periodos)
     
     # ==========================================
-    # CSS Moderno (restante) - AGREGAR ESPACIADO
+    # CSS Moderno (restante) - AGREGAR ESPACIADO Y ALTURA UNIFORME
     # ==========================================
     st.markdown("""
     <style>
@@ -1522,8 +1522,16 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             margin-bottom: 20px !important;  /* Espacio entre tarjetas y gráfico */
         }
         
+        /* INTERLINEADO ENTRE BOTONES Y TARJETAS */
         .comparison-wrapper {
+            margin-top: 40px !important;  /* Más espacio arriba */
             margin-bottom: 20px !important;  /* Espacio entre gráfico y siguiente */
+        }
+        
+        /* ALTURA UNIFORME ENTRE GRÁFICA Y TOP 5 */
+        .comparison-wrapper .stColumns {
+            display: flex !important;
+            align-items: stretch !important;  /* Hace que las columnas tengan la misma altura */
         }
     </style>
     """, unsafe_allow_html=True)
@@ -1728,7 +1736,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                     st.error(f"Error: {str(e)}")
             
             with col_top5:
-                st.markdown("#### 📊 Top 5 Comprados")
+                st.markdown("#### 📊 Top 5 Períodos Más Comprados")
                 
                 # ✅ TOP 5 PERÍODOS: Si hay artículos seleccionados, mostrar top períodos para ese artículo
                 articulos_sel = st.session_state.get("art_multi", [])
