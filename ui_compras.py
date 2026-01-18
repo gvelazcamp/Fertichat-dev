@@ -1117,174 +1117,278 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             background: #f9fafb;
             border-color: #9ca3af;
         }
-        
-        /* Header con gradiente */
-        div[data-testid="stMarkdownContainer"] > div:first-child {
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            padding: 2rem 2.5rem;
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Barra de acciones
+    col_actions_left, col_actions_right = st.columns([3, 1])
+    with col_actions_left:
+        st.markdown("""
+        <div class="action-bar">
+            <div class="action-left">
+                <button class="btn-action">📊 CSV</button>
+                <button class="btn-action">📥 Excel</button>
+                <button class="btn-action">💾 Guardar vista</button>
+            </div>
+            <div class="action-right">
+                <button class="btn-action">🔍 Filtros</button>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # CSS Moderno (restante)
+    st.markdown("""
+    <style>
+        /* ==========================================
+           HEADER CON TÍTULO Y METADATA
+           ========================================== */
+        .dash-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 16px;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 16px rgba(30, 64, 175, 0.2);
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
         }
         
-        /* Grid de cards de tipos */
-        .stColumns {
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+        .dash-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
         
-        /* Cards de tipo de comparativa */
-        div[data-testid="column"] > div {
-            background: rgba(255, 255, 255, 0.98);
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 1.5rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            height: 100%;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-        
-        div[data-testid="column"] > div:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
-            transform: translateY(-4px);
-        }
-        
-        /* Card seleccionada */
-        div[data-testid="column"] > div.selected {
-            border-color: #2563eb;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(59, 130, 246, 0.08) 100%);
-            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.2);
-        }
-        
-        /* Iconos SVG en cards */
-        svg {
-            width: 48px;
-            height: 48px;
-            margin-bottom: 1rem;
-            display: block;
-        }
-        
-        /* Título de card */
-        h3 {
-            color: #1e293b;
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin: 0 0 0.5rem 0;
-        }
-        
-        /* Descripción de card */
-        p {
-            color: #64748b;
+        .dash-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 20px;
             font-size: 0.9rem;
-            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        
+        .dash-meta {
+            font-size: 0.85rem;
+            opacity: 0.9;
             margin: 0;
         }
         
-        /* Sección de filtros */
-        .stExpander {
+        /* ==========================================
+           TARJETAS DE MÉTRICAS (4 columnas)
+           ========================================== */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 32px;  /* ← Aumentado de 16px a 32px para más separación */
+            margin-bottom: 24px;
+        }
+        
+        .metric-card {
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
         }
         
-        /* Header del expander */
-        div[data-testid="stExpander"] > details > summary {
-            background: linear-gradient(to right, #f8fafc, #f1f5f9);
-            padding: 1rem 1.5rem;
+        .metric-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        .metric-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin: 0 0 8px 0;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 0;
+        }
+        
+        /* ==========================================
+           CARD PROVEEDOR DESTACADO (para 1 proveedor)
+           ========================================== */
+        .single-provider-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 32px 28px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            text-align: center;
+        }
+        
+        .single-provider-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .single-provider-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }
+        
+        .single-provider-detail {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin: 0;
+        }
+        
+        /* ==========================================
+           CARD PROVEEDOR PRINCIPAL
+           ========================================== */
+        .provider-card {
+            background: white;
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
-            font-weight: 600;
-            color: #1e40af;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
         
-        /* Multiselect */
-        div[data-baseweb="select"] {
+        .provider-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .provider-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 8px;
-            border-color: #d1d5db;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            font-weight: 700;
         }
         
-        div[data-baseweb="select"]:hover {
-            border-color: #3b82f6;
+        .provider-info {
+            flex: 1;
         }
         
-        /* Pills de selección */
-        span[data-baseweb="tag"] {
-            background: #2563eb !important;
-            color: white !important;
-            border-radius: 6px;
-            padding: 0.25rem 0.75rem;
-            font-size: 0.875rem;
+        .provider-name {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 0 0 2px 0;
         }
         
-        /* Botón Comparar */
-        button[kind="primary"] {
-            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 10px !important;
-            padding: 0.75rem 2.5rem !important;
-            font-weight: 600 !important;
-            font-size: 1rem !important;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
-            transition: all 0.3s ease !important;
+        .provider-subtitle {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin: 0;
         }
         
-        button[kind="primary"]:hover {
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4) !important;
-            transform: translateY(-2px) !important;
+        .provider-amount {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #111827;
+            text-align: right;
         }
         
-        /* Botón Limpiar */
-        button[kind="secondary"] {
-            background: white !important;
-            color: #64748b !important;
-            border: 2px solid #e5e7eb !important;
-            border-radius: 10px !important;
-            padding: 0.75rem 2rem !important;
-            font-weight: 600 !important;
-            transition: all 0.3s ease !important;
+        .provider-amount-sub {
+            font-size: 0.8rem;
+            color: #6b7280;
+            text-align: right;
+            margin-top: 2px;
         }
         
-        button[kind="secondary"]:hover {
-            border-color: #cbd5e1 !important;
-            background: #f8fafc !important;
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 8px 0;
         }
         
-        /* Badges informativos */
-        .stAlert {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 10px;
-            padding: 1rem 1.5rem;
-            color: #1e40af;
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
         }
         
-        /* Divisores */
-        hr {
-            border: none;
-            border-top: 2px solid #e5e7eb;
-            margin: 2rem 0;
+        /* ==========================================
+           TABS Y BOTONES
+           ========================================== */
+        .btn-export {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
         
-        /* Responsivo para móvil */
+        .btn-export:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+        
+        /* ==========================================
+           RESPONSIVE (MOBILE)
+           ========================================== */
         @media (max-width: 768px) {
-            div[data-testid="column"] {
-                min-width: 100% !important;
-                margin-bottom: 1rem;
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
             }
-            .comp-header {
-                padding: 1.5rem !important;
+            
+            .metric-value {
+                font-size: 1.4rem;
             }
-            h2 {
-                font-size: 1.5rem !important;
+            
+            .provider-header {
+                flex-direction: column;
+                align-items: flex-start;
             }
-            button {
-                width: 100%;
-                margin-bottom: 0.5rem;
+            
+            .provider-amount {
+                text-align: left;
+                margin-top: 8px;
+            }
+            
+            .dash-title {
+                font-size: 1.2rem;
+            }
+            
+            .action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .action-left, .action-right {
+                justify-content: center;
             }
         }
     </style>
@@ -1296,8 +1400,14 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     
     # HEADER
     st.markdown(f"""
-    <div class="comp-header">
-        <h2>📊 {titulo}</h2>
+    <div class="dash-header">
+        <h2 class="dash-title">📊 {titulo}</h2>
+        <div class="dash-badge">
+            ✅ Resultado: Se encontraron {len(df)} registros
+        </div>
+        <p class="dash-meta">
+            📅 Última actualización: {datetime.now().strftime("%d/%m/%Y %H:%M")}
+        </p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1305,6 +1415,89 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     # Formatear totales
     total_uyu_fmt = f"$ {total_uyu/1_000_000:.2f}M" if total_uyu >= 1_000_000 else f"$ {total_uyu:,.0f}".replace(",", ".")
     total_usd_fmt = f"U$S {total_usd/1_000:.0f}K" if total_usd >= 1_000 else f"U$S {total_usd:,.0f}"
+    
+    st.markdown(f"""
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <p class="metric-label">Total UYU 💰</p>
+            <p class="metric-value">{total_uyu_fmt}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Suma de {len(periodos)} período(s)
+            </p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Total USD 💵</p>
+            <p class="metric-value">{total_usd_fmt}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Suma de {len(periodos)} período(s)
+            </p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Registros 📄</p>
+            <p class="metric-value">{num_registros}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                {len(df_pesos) if 'Moneda' in df.columns and not df_pesos.empty else 0} en pesos, {len(df_usd) if 'Moneda' in df.columns and not df_usd.empty else 0} en USD
+            </p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Proveedores 🏭</p>
+            <p class="metric-value">{num_proveedores}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Comparando {', '.join(map(str, periodos[:3]))}{"..." if len(periodos) > 3 else ""}
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ==========================================
+    # CARD DESTACADA PARA 1 PROVEEDOR
+    # ==========================================
+    if num_proveedores == 1 and 'Proveedor' in df.columns:
+        prov_name = df['Proveedor'].iloc[0]
+        iniciales = "".join([p[0] for p in prov_name.split()[:2]]).upper()
+        
+        st.markdown(f"""
+        <div class="single-provider-card">
+            <div class="single-provider-icon">{iniciales}</div>
+            <h3 class="single-provider-name">{prov_name}</h3>
+            <p class="single-provider-detail">
+                Comparación de {len(periodos)} períodos | Total: {total_uyu_fmt}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # PROVEEDOR PRINCIPAL (si hay más de 1)
+    elif num_proveedores > 1 and 'Proveedor' in df.columns and not df.empty:
+        # Calcular proveedor con mayor monto
+        df_prov = df.groupby('Proveedor').sum(numeric_only=True)
+        top_prov = df_prov.sum(axis=1).idxmax()
+        top_monto = df_prov.sum(axis=1).max()
+        top_porc = (top_monto / df.sum(numeric_only=True).sum()) * 100
+        
+        # Iniciales para el ícono
+        iniciales = "".join([p[0] for p in top_prov.split()[:2]]).upper()
+        
+        st.markdown(f"""
+        <div class="provider-card">
+            <div class="provider-header">
+                <div class="provider-icon">{iniciales}</div>
+                <div class="provider-info">
+                    <p class="provider-name">{top_prov}</p>
+                    <p class="provider-subtitle">Principal Proveedor</p>
+                </div>
+                <div>
+                    <p class="provider-amount">$ {top_monto:,.2f}</p>
+                    <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {top_porc}%"></div>
+            </div>
+            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+                Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
     
     # TABS CON DATOS
     tabs = st.tabs(["📊 Vista General", "💵 Pesos (UYU)", "💰 Dólares (USD)", "📈 Gráfico", "📋 Tabla"])
@@ -1542,21 +1735,21 @@ def Compras_IA():
        HEADER MÁS COMPACTO
        ======================================== */
     .fc-header-modern,
-    .comp-header {
+    .dash-header {
         padding: 12px 16px !important;  /* Más pequeño */
         margin-bottom: 16px !important;
         border-radius: 10px !important;
     }
     
     .fc-title-modern,
-    .comp-title {
+    .dash-title {
         font-size: 1rem !important;  /* Más pequeño */
         margin-bottom: 4px !important;
         font-weight: 700 !important;
     }
     
     .fc-badge-modern,
-    .comp-badge {
+    .dash-badge {
         font-size: 0.7rem !important;  /* Más pequeño */
         padding: 3px 8px !important;
         border-radius: 10px !important;
@@ -1564,7 +1757,7 @@ def Compras_IA():
     }
     
     .fc-meta-modern,
-    .comp-meta {
+    .dash-meta {
         font-size: 0.7rem !important;  /* Más pequeño */
         margin: 0 !important;
         line-height: 1.2 !important;
@@ -1944,273 +2137,32 @@ def Compras_IA():
         st.rerun()
 
     with tab_comparativas:
-        # New modern design for comparativas with additional CSS
-        st.markdown("""
-        <style>
-        /* Header con gradiente */
-        div[data-testid="stMarkdownContainer"] > div:first-child {
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            padding: 2rem 2.5rem;
-            border-radius: 16px;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 16px rgba(30, 64, 175, 0.2);
-        }
-
-        /* Grid de cards de tipos */
-        .stColumns {
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        /* Cards de tipo de comparativa */
-        div[data-testid="column"] > div {
-            background: rgba(255, 255, 255, 0.98);
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 1.5rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            height: 100%;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        div[data-testid="column"] > div:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
-            transform: translateY(-4px);
-        }
-
-        /* Card seleccionada */
-        div[data-testid="column"] > div.selected {
-            border-color: #2563eb;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(59, 130, 246, 0.08) 100%);
-            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.2);
-        }
-
-        /* Iconos SVG en cards */
-        svg {
-            width: 48px;
-            height: 48px;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
-        /* Título de card */
-        h3 {
-            color: #1e293b;
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin: 0 0 0.5rem 0;
-        }
-
-        /* Descripción de card */
-        p {
-            color: #64748b;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            margin: 0;
-        }
-
-        /* Sección de filtros */
-        .stExpander {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        /* Header del expander */
-        div[data-testid="stExpander"] > details > summary {
-            background: linear-gradient(to right, #f8fafc, #f1f5f9);
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
-            font-weight: 600;
-            color: #1e40af;
-        }
-
-        /* Multiselect */
-        div[data-baseweb="select"] {
-            border-radius: 8px;
-            border-color: #d1d5db;
-        }
-
-        div[data-baseweb="select"]:hover {
-            border-color: #3b82f6;
-        }
-
-        /* Pills de selección */
-        span[data-baseweb="tag"] {
-            background: #2563eb !important;
-            color: white !important;
-            border-radius: 6px;
-            padding: 0.25rem 0.75rem;
-            font-size: 0.875rem;
-        }
-
-        /* Botón Comparar */
-        button[kind="primary"] {
-            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 10px !important;
-            padding: 0.75rem 2.5rem !important;
-            font-weight: 600 !important;
-            font-size: 1rem !important;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
-            transition: all 0.3s ease !important;
-        }
-
-        button[kind="primary"]:hover {
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4) !important;
-            transform: translateY(-2px) !important;
-        }
-
-        /* Botón Limpiar */
-        button[kind="secondary"] {
-            background: white !important;
-            color: #64748b !important;
-            border: 2px solid #e5e7eb !important;
-            border-radius: 10px !important;
-            padding: 0.75rem 2rem !important;
-            font-weight: 600 !important;
-            transition: all 0.3s ease !important;
-        }
-
-        button[kind="secondary"]:hover {
-            border-color: #cbd5e1 !important;
-            background: #f8fafc !important;
-        }
-
-        /* Badges informativos */
-        .stAlert {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 10px;
-            padding: 1rem 1.5rem;
-            color: #1e40af;
-        }
-
-        /* Divisores */
-        hr {
-            border: none;
-            border-top: 2px solid #e5e7eb;
-            margin: 2rem 0;
-        }
-
-        /* Solo para la sección de comparativas - SIN tocar sidebar */
-
-        /* Mejorar el selectbox de tipo de consulta */
-        section[data-testid="stMain"] div[data-baseweb="select"] {
-            border-radius: 8px;
-            transition: all 0.2s ease;
-        }
-
-        section[data-testid="stMain"] div[data-baseweb="select"]:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 1px #3b82f6;
-        }
-
-        /* Mejorar multiselects */
-        section[data-testid="stMain"] div[data-baseweb="select"] > div {
-            border-radius: 8px;
-        }
-
-        /* Pills de selección más bonitas */
-        section[data-testid="stMain"] span[data-baseweb="tag"] {
-            background-color: #2563eb !important;
-            border-radius: 6px !important;
-            padding: 4px 12px !important;
-            font-size: 0.875rem !important;
-        }
-
-        /* Botón de cerrar en pills */
-        section[data-testid="stMain"] span[data-baseweb="tag"] > span {
-            color: white !important;
-        }
-
-        /* Mejorar botón Comparar */
-        section[data-testid="stMain"] button[kind="primary"] {
-            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
-            border: none !important;
-            border-radius: 8px !important;
-            padding: 0.6rem 2rem !important;
-            font-weight: 600 !important;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
-            transition: all 0.3s ease !important;
-        }
-
-        section[data-testid="stMain"] button[kind="primary"]:hover {
-            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
-            transform: translateY(-2px) !important;
-        }
-
-        /* Mejorar botón Limpiar */
-        section[data-testid="stMain"] button[kind="secondary"] {
-            border-radius: 8px !important;
-            padding: 0.6rem 1.5rem !important;
-            font-weight: 500 !important;
-            border: 1.5px solid #e5e7eb !important;
-            transition: all 0.2s ease !important;
-        }
-
-        section[data-testid="stMain"] button[kind="secondary"]:hover {
-            border-color: #cbd5e1 !important;
-            background-color: #f8fafc !important;
-        }
-
-        /* Mejorar hover en selectbox options */
-        section[data-testid="stMain"] li[role="option"]:hover {
-            background-color: #eff6ff !important;
-        }
-
-        /* Responsivo para móvil */
-        @media (max-width: 768px) {
-            div[data-testid="column"] {
-                min-width: 100% !important;
-                margin-bottom: 1rem;
-            }
-            .comp-header {
-                padding: 1.5rem !important;
-            }
-            h2 {
-                font-size: 1.5rem !important;
-            }
-            button {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
         st.markdown("### 📊 Menú Comparativas Fáciles")
         st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
-        # Tipo de consulta selectbox
+        # Agregado: Submenús Compras y Comparativas
         tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
 
         if tipo_consulta == "Compras":
             st.markdown("#### 🛒 Consultas de Compras")
-
+            
             anio_compras = st.selectbox("Año", options=[2023, 2024, 2025, 2026], index=2, key="anio_compras")
             mes_compras = st.selectbox("Mes", options=month_names + ["Todos"], index=len(month_names), key="mes_compras")
             proveedor_compras = st.selectbox("Proveedor", options=["Todos"] + prov_options[:50], index=0, key="proveedor_compras")
-
+            
             # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
             if "compras_resultado" in st.session_state:
                 df_guardado = st.session_state["compras_resultado"]
                 titulo_guardado = st.session_state.get("compras_titulo", "Compras")
-
+                
                 render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
-
+                
                 # Botón para limpiar
                 if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
                     del st.session_state["compras_resultado"]
                     del st.session_state["compras_titulo"]
                     st.rerun()
-
+            
             if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
                 # ✅ PAUSAR AUTOREFRESH AL PRESIONAR BOTÓN DE BÚSQUEDA
                 st.session_state["pause_autorefresh"] = True
@@ -2227,12 +2179,12 @@ def Compras_IA():
                             df = sqlq_compras.get_compras_por_mes_excel(mes_code)
                         else:
                             df = sqlq_compras.get_detalle_compras_proveedor_mes(proveedor_compras, mes_code)
-
+                    
                     if df is not None and not df.empty:
                         # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
                         st.session_state["compras_resultado"] = df
                         st.session_state["compras_titulo"] = "Compras"
-
+                        
                         render_dashboard_compras_vendible(df, titulo="Compras")
                     elif df is not None:
                         st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
@@ -2244,7 +2196,7 @@ def Compras_IA():
             st.session_state["pause_autorefresh"] = True
 
             st.markdown("#### 📊 Comparativas")
-
+            
             # ✅ PROVEEDORES (ancho completo, sin columnas)
             proveedores_disponibles = prov_options  # Ya tiene todos los proveedores
             proveedores_sel = st.multiselect(
@@ -2254,12 +2206,12 @@ def Compras_IA():
                 key="comparativas_proveedores_multi",
                 help="Dejá vacío para comparar TODOS. Escribí para filtrar y seleccioná con Enter."
             )
-
+            
             if proveedores_sel:
                 proveedores = proveedores_sel
             else:
                 proveedores = None
-
+            
             meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
             anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
             # Generar combinaciones
@@ -2277,14 +2229,14 @@ def Compras_IA():
                 else:
                     # ✅ PAUSAR AUTOREFRESH
                     st.session_state.comparativa_activa = True
-
+                    
                     with st.spinner("Comparando..."):
                         try:
                             df = sqlq_comparativas.comparar_compras(
                                 anios=anios,
                                 proveedores=proveedores
                             )
-
+                            
                             if df is not None and not df.empty:
                                 # ✅ CONSTRUIR TÍTULO CON PROVEEDOR
                                 titulo_provs = ""
@@ -2300,31 +2252,31 @@ def Compras_IA():
                                         titulo_provs = f"{len(proveedores_sel)} proveedores - "
                                 else:
                                     titulo_provs = "Todos los proveedores - "
-
+                                
                                 # ✅ GUARDAR EN SESSION_STATE
                                 st.session_state["comparativa_resultado"] = df
                                 st.session_state["comparativa_titulo"] = f"{titulo_provs}Comparación {' vs '.join(map(str, anios))}"
                                 st.session_state["comparativa_activa"] = True
-
+                                
                                 st.success(f"✅ Comparación lista - {len(df)} filas")
                             else:
                                 st.warning("No se encontraron datos")
                         except Exception as e:
                             st.error(f"❌ Error: {e}")
                             st.exception(e)
-
+            
             # ✅ MOSTRAR RESULTADO GUARDADO (persiste entre refreshes)
             if "comparativa_resultado" in st.session_state:
                 df_guardado = st.session_state["comparativa_resultado"]
                 titulo_guardado = st.session_state.get("comparativa_titulo", "Comparación")
-
+                
                 # Botón para limpiar
                 if st.button("🗑️ Limpiar resultados", key="btn_limpiar_comparativa"):
                     del st.session_state["comparativa_resultado"]
                     del st.session_state["comparativa_titulo"]
                     st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
                     st.rerun()
-
+                
                 # Mostrar dashboard con datos guardados
                 render_dashboard_comparativas_moderno(
                     df_guardado,
