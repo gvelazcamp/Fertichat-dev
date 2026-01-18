@@ -1202,13 +1202,29 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     total_usd = 0
     
     if 'Moneda' in df.columns and cols_periodos:
-        df_pesos = df[df['Moneda'] == '$']
-        df_usd = df[df['Moneda'].isin(['U$S', 'USD', 'U$$'])]
+        # ✅ FIX: Buscar TODAS las variaciones de pesos y dólares
+        df['Moneda_norm'] = df['Moneda'].astype(str).str.strip().str.upper()
+        
+        # Pesos: $, UYU, PESO
+        df_pesos = df[df['Moneda_norm'].str.contains(r'^\$|UYU|PESO', regex=True, na=False) & 
+                      ~df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+        
+        # Dólares: U$S, USD, US$, U$
+        df_usd = df[df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
         
         if not df_pesos.empty:
-            total_uyu = df_pesos[cols_periodos].sum().sum()
+            for col in cols_periodos:
+                try:
+                    total_uyu += pd.to_numeric(df_pesos[col], errors='coerce').fillna(0).sum()
+                except:
+                    pass
+        
         if not df_usd.empty:
-            total_usd = df_usd[cols_periodos].sum().sum()
+            for col in cols_periodos:
+                try:
+                    total_usd += pd.to_numeric(df_usd[col], errors='coerce').fillna(0).sum()
+                except:
+                    pass
         
         print(f"🐛 DEBUG: Total UYU: {total_uyu}, Total USD: {total_usd}")
     
