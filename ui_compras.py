@@ -41,30 +41,34 @@ def get_unique_articulos():
         return []
 
 # =========================
-# NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA - CORREGIDA
+# NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
 # =========================
 def get_top_5_articulos(anios, meses=None, proveedores=None):
     """
-    ✅ CORREGIDA: Devuelve Top 5 artículos por monto total para el período seleccionado.
+    ✅ MODIFICADO: Ahora acepta filtro por proveedores
+    Devuelve Top 5 artículos por monto total para el período seleccionado.
     - anios: lista de int (ej: [2025] o [2024,2025])
     - meses: lista de str opcional (ej: ["2024-11", "2025-11"] o None)
-    - proveedores: lista de str opcional (ej: ["PROVEEDOR A"] o None) ← NUEVO
+    - proveedores: lista de str opcional (ej: ["PROVEEDOR A"] o None)
     """
+
     if not anios:
         return None
 
+    # -------------------------
+    # WHERE por período
+    # -------------------------
     where_clauses = []
     params = []
 
-    # Filtro de años
     where_clauses.append('"Año" = ANY(%s)')
     params.append(tuple(anios))
 
-    # Filtro de meses si existe
     if meses:
         meses_int = []
         for m in meses:
             try:
+                # Formato: "2024-11" -> extraer mes como int
                 mes_num = int(m.split('-')[1])
                 meses_int.append(mes_num)
             except:
@@ -87,7 +91,9 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
 
     where_sql = " AND ".join(where_clauses)
 
-    # SQL TOP 5 con Moneda
+    # -------------------------
+    # SQL TOP 5
+    # -------------------------
     sql = f"""
         WITH montos AS (
             SELECT
@@ -98,20 +104,23 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
                         -1 * CAST(
                             REPLACE(
                                 REPLACE(
-                                    REPLACE(
-                                        SUBSTRING(TRIM(REPLACE("Monto Neto",' ','')),2,
-                                        LENGTH(TRIM(REPLACE("Monto Neto",' ','')))-2),
-                                    '.',''),
-                                ',','.'),
-                            '$','') AS NUMERIC
+                                    SUBSTRING(
+                                        REPLACE("Monto Neto",' ',''), 2,
+                                        LENGTH(REPLACE("Monto Neto",' ','')) - 2
+                                    ),
+                                    '.',''
+                                ),
+                                ',','.'
+                            ) AS NUMERIC
                         )
                     ELSE
                         CAST(
                             REPLACE(
                                 REPLACE(
-                                    REPLACE(TRIM(REPLACE("Monto Neto",' ','')),'.',''),
-                                ',','.'),
-                            '$','') AS NUMERIC
+                                    REPLACE("Monto Neto",' ',''),'.',''
+                                ),
+                                ',','.'
+                            ) AS NUMERIC
                         )
                 END AS monto_num
             FROM chatbot_raw
@@ -195,27 +204,32 @@ def inicializar_historial():
 
 
 # =========================
-# TOTALES - CORREGIDA PARA MONEDA CORRECTA
+# TOTALES
 # =========================
 def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
     """
-    ✅ CORREGIDA: Devuelve totales por moneda detectando correctamente USD vs UYU
-    Itera fila por fila y suma columnas numéricas según moneda de cada fila
+    ✅ CORREGIDO: Devuelve totales por moneda detectando correctamente USD vs UYU
+    - Lee la columna "Moneda" fila por fila
+    - Detecta USD: U$S, USD, US$, U$, dolar, dólar
+    - Detecta UYU: $, UYU, peso, pesos, ARS
     """
     if df is None or len(df) == 0:
         return {"Pesos": 0, "USD": 0}
 
+    # Buscar columna de moneda
     col_moneda = None
     for col in df.columns:
         if col.lower() in ["moneda", "currency"]:
             col_moneda = col
             break
 
+    # Buscar columnas numéricas (períodos como "2024", "2025", "2024-11", etc)
     numeric_cols = []
     for col in df.columns:
         if col != col_moneda and pd.api.types.is_numeric_dtype(df[col]):
             numeric_cols.append(col)
     
+    # Si no hay columna de moneda, asumir todo en UYU
     if not col_moneda:
         total_general = 0
         for col in numeric_cols:
@@ -225,14 +239,14 @@ def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
     try:
         totales = {"Pesos": 0, "USD": 0}
         
-        # ✅ ITERAR FILA POR FILA
+        # Iterar por cada fila y sumar según su moneda
         for idx, row in df.iterrows():
             moneda_str = str(row[col_moneda]).strip().upper()
             
             # Detectar USD
             es_usd = any(x in moneda_str for x in ["USD", "U$S", "US$", "U$", "DOLAR", "DÓLAR"])
             
-            # Sumar columnas numéricas de esta fila
+            # Sumar las columnas numéricas de esta fila
             suma_fila = 0
             for col in numeric_cols:
                 val = row[col]
@@ -1092,7 +1106,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         return
     
     # ==========================================
-    # CALCULAR MÉTRICAS CORRECTAMENTE - SIN FALLBACK
+    # CALCULAR MÉTRICAS CORRECTAMENTE
     # ==========================================
     
     print(f"🐛 DEBUG: Columnas del DataFrame: {df.columns.tolist()}")
@@ -1109,7 +1123,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     
     print(f"🐛 DEBUG: Columnas de períodos detectadas: {cols_periodos}")
     
-    # Calcular totales por moneda - SIN FALLBACK
+    # Calcular totales por moneda - SEPARAR CORRECTAMENTE SIN FALLBACK
     total_uyu = 0
     total_usd = 0
     
@@ -1528,12 +1542,12 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             # 📊 FIX 3: WRAPPER PARA BLOQUE GRÁFICO + TOP5
             st.markdown('<div class="comparison-wrapper" style="margin-bottom:20px;">', unsafe_allow_html=True)  # Espacio
             
-            # 📊 FIX #3: GRÁFICO INTELIGENTE SEGÚN CANTIDAD
+            # 📊 FILA 2: GRÁFICO (50%) + TOP 5 (50%) - ✅ Alineado con 2 columnas arriba
             col_graph, col_top5 = st.columns(2)  # ✅ Cambiado a st.columns(2) para igual ancho
             
             with col_graph:
+                # ✅ FIX #3: GRÁFICO INTELIGENTE SEGÚN CANTIDAD DE ENTIDADES
                 if len(df) == 1:
-                    # 🎯 1 SOLO ARTÍCULO/PROVEEDOR
                     st.markdown("#### 📊 Comparación de Períodos")
                 else:
                     st.markdown("#### 📊 Comparación")
@@ -1541,16 +1555,17 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 try:
                     import plotly.graph_objects as go
                     
+                    entity_col = 'Articulo' if es_articulos else 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
+                    
                     if len(df) == 1:
-                        # ✅ GRÁFICO SIMPLE: Solo 2 barras (Período 1 vs Período 2)
+                        # ✅ 1 SOLO ARTÍCULO/PROVEEDOR: Gráfico simple de períodos
                         fig = go.Figure()
                         fig.add_trace(go.Bar(
                             name=str(p1),
                             x=['Período 1'],
                             y=[total_p1],
                             marker_color='#667eea',
-                            text=[f'${total_p1/1_000_000:.1f}M' if total_p1 >= 1_000_000 
-                                  else f'${total_p1:,.0f}'.replace(",", ".")],
+                            text=[f'${total_p1/1_000_000:.1f}M' if total_p1 >= 1_000_000 else f'${total_p1:,.0f}'.replace(",", ".")],
                             textposition='outside'
                         ))
                         fig.add_trace(go.Bar(
@@ -1558,8 +1573,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                             x=['Período 2'],
                             y=[total_p2],
                             marker_color='#764ba2',
-                            text=[f'${total_p2/1_000_000:.1f}M' if total_p2 >= 1_000_000 
-                                  else f'${total_p2:,.0f}'.replace(",", ".")],
+                            text=[f'${total_p2/1_000_000:.1f}M' if total_p2 >= 1_000_000 else f'${total_p2:,.0f}'.replace(",", ".")],
                             textposition='outside'
                         ))
                         
@@ -1572,7 +1586,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                             margin=dict(t=20, b=30, l=50, r=20)
                         )
                     else:
-                        # ✅ GRÁFICO MÚLTIPLE: Top 8 entidades
+                        # ✅ MÚLTIPLES ENTIDADES: Top 8 con barras agrupadas
                         df_graph = df.copy()
                         df_graph['Total'] = df_graph[periodos_validos].sum(axis=1)
                         df_graph = df_graph.nlargest(8, 'Total')
@@ -1615,27 +1629,31 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             with col_top5:
                 st.markdown("#### 📊 Top 5 Artículos")
                 
-                # ✅ LLAMADA AUTOMÁTICA con contexto
-                anios_ctx = st.session_state.get("anios_sel", [2024, 2025])
-                meses_ctx = st.session_state.get("meses_multi", [])
-                proveedores_ctx = st.session_state.get("comparativas_proveedores_multi", [])
-                
-                df_top5 = get_top_5_articulos(
-                    anios=anios_ctx,
-                    meses=meses_ctx if meses_ctx else None,
-                    proveedores=proveedores_ctx if proveedores_ctx else None  # ← NUEVO
-                )
-                
-                if df_top5 is not None and not df_top5.empty:
-                    # Mostrar tabla con MONEDA incluida
-                    df_display = df_top5[['Articulo', 'Moneda', 'total']].copy()
-                    df_display['total'] = df_display['total'].apply(
-                        lambda x: f"${float(x):,.0f}".replace(",", ".")
+                # ✅ TOP 5 ARTÍCULOS CON FILTRO DE PROVEEDORES
+                try:
+                    # Obtener contexto de session_state
+                    anios_ctx = st.session_state.get("anios_sel", [2024, 2025])
+                    meses_ctx = st.session_state.get("meses_multi", [])
+                    proveedores_ctx = st.session_state.get("comparativas_proveedores_multi", [])
+                    
+                    df_top5 = get_top_5_articulos(
+                        anios=anios_ctx,
+                        meses=meses_ctx if meses_ctx else None,
+                        proveedores=proveedores_ctx if proveedores_ctx else None
                     )
-                    df_display.columns = ['Artículo', 'Moneda', 'Total']
-                    st.dataframe(df_display, use_container_width=True, hide_index=True, height=300)
-                else:
-                    st.info("No hay datos para el período seleccionado")
+                    
+                    if df_top5 is None or df_top5.empty:
+                        st.info("No hay datos para el período seleccionado")
+                    else:
+                        # Mostrar tabla con Moneda incluida
+                        df_display = df_top5[['Articulo', 'Moneda', 'total']].copy()
+                        df_display['total'] = df_display['total'].apply(
+                            lambda x: f"${float(x):,.0f}".replace(",", ".")
+                        )
+                        df_display.columns = ['Artículo', 'Moneda', 'Total']
+                        st.dataframe(df_display, use_container_width=True, hide_index=True, height=300)
+                except Exception as e:
+                    st.error(f"Error técnico: {str(e)}")
             
             # Cerrar wrapper gráfico + top5
             st.markdown('</div>', unsafe_allow_html=True)
