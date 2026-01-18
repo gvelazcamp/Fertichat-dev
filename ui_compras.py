@@ -1507,14 +1507,67 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             dif_fmt = f"${abs(diferencia)/1_000_000:.2f}M" if abs(diferencia) >= 1_000_000 else f"${abs(diferencia):,.0f}".replace(",", ".")
             signo = "+" if diferencia > 0 else "-"
             
-            st.markdown(f"""
-            <div style="background: {color_bg}; border-radius: 20px; padding: 40px; text-align: center; color: white; margin-bottom: 30px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
-                <p style="margin: 0; font-size: 3rem; margin-bottom: 10px;">{icono}</p>
-                <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600; opacity: 0.95; letter-spacing: 2px;">{titulo}</h2>
-                <h1 style="margin: 20px 0 10px 0; font-size: 4.5rem; font-weight: 800; line-height: 1;">{variacion_pct:+.1f}%</h1>
-                <p style="margin: 0; font-size: 1.3rem; font-weight: 500; opacity: 0.9;">{signo}{dif_fmt} vs {p1}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            # 📊 2 CARDS: CRECIMIENTO (MÁS CHICA) + TOP 5 ARTÍCULOS
+            col_crec, col_top5 = st.columns([1, 1])
+            
+            with col_crec:
+                # CARD DE CRECIMIENTO (MÁS CHICA)
+                st.markdown(f"""
+                <div style="background: {color_bg}; border-radius: 16px; padding: 28px; text-align: center; color: white; box-shadow: 0 6px 20px rgba(0,0,0,0.1); height: 320px; display: flex; flex-direction: column; justify-content: center;">
+                    <p style="margin: 0; font-size: 2.5rem; margin-bottom: 8px;">{icono}</p>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; opacity: 0.95; letter-spacing: 1.5px;">{titulo}</h3>
+                    <h1 style="margin: 16px 0 8px 0; font-size: 3.5rem; font-weight: 800; line-height: 1;">{variacion_pct:+.1f}%</h1>
+                    <p style="margin: 0; font-size: 1.1rem; font-weight: 500; opacity: 0.9;">{signo}{dif_fmt} vs {p1}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col_top5:
+                # CARD DE TOP 5 ARTÍCULOS CON SELECTBOX
+                st.markdown("""
+                <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); height: 320px; border: 2px solid #e5e7eb; overflow-y: auto;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 1.1rem; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 8px;">
+                        📊 Top 5 Artículos
+                    </h3>
+                """, unsafe_allow_html=True)
+                
+                # Selectbox para elegir período
+                periodo_top5 = st.selectbox(
+                    "Ver período:",
+                    options=periodos_validos,
+                    index=1,  # Por defecto el más reciente
+                    key="periodo_top5_select",
+                    label_visibility="collapsed"
+                )
+                
+                # Calcular Top 5 artículos del período seleccionado
+                entity_col_top5 = 'Articulo' if 'Articulo' in df.columns else 'Proveedor'
+                
+                if periodo_top5 in df.columns and entity_col_top5 in df.columns:
+                    df_top5 = df.nlargest(5, periodo_top5)[[entity_col_top5, periodo_top5]].copy()
+                    
+                    # Mostrar Top 5 con estilo
+                    for idx, row in df_top5.iterrows():
+                        nombre = row[entity_col_top5]
+                        valor = row[periodo_top5]
+                        
+                        # Acortar nombre si es muy largo
+                        nombre_corto = nombre[:35] + "..." if len(str(nombre)) > 35 else nombre
+                        
+                        # Formatear valor
+                        valor_fmt = f"${valor/1_000_000:.2f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
+                        
+                        st.markdown(f"""
+                        <div style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.82rem; color: #374151; font-weight: 500;">{nombre_corto}</span>
+                                <span style="font-size: 0.88rem; color: #10b981; font-weight: 700;">{valor_fmt}</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("No hay datos disponibles")
+                
+                st.markdown("</div>", unsafe_allow_html=True)
             
             # 📊 COMPARACIÓN VISUAL CON GRÁFICO
             st.markdown("### 📊 Comparación de Períodos")
@@ -1626,9 +1679,8 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 </div>
                 """, unsafe_allow_html=True)
             
-            # 📋 TABLA RESUMIDA (opcional, más compacta)
+            # 📋 TABLA RESUMIDA (SIN TÍTULO)
             st.markdown("---")
-            st.markdown("### 📋 Detalle Comparativo")
             
             entity_col = 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
             cols_tabla = [entity_col, p1, p2]
