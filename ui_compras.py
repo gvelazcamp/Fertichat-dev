@@ -8,7 +8,7 @@ from utils_openai import responder_con_openai
 import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
 import sql_facturas as sqlq_facturas
-from sql_core import get_unique_proveedores, get_unique_articulos  # Agregado
+from sql_core import get_unique_proveedores, get_unique_articulos, ejecutar_consulta  # Agregado ejecutar_consulta
 
 # Temporary fix for get_unique functions
 def get_unique_proveedores():
@@ -39,6 +39,33 @@ def get_unique_articulos():
         return df['art'].tolist() if not df.empty else []
     except:
         return []
+
+# =========================
+# NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
+# =========================
+def get_top_5_articulos(periodos):
+    """
+    Función exclusiva para obtener Top 5 artículos por períodos.
+    Lee directo desde chatbot_raw, sin filtros de proveedor.
+    """
+    if not periodos:
+        return pd.DataFrame()
+    
+    # Crear placeholders para la query
+    placeholders = ', '.join(['%s'] * len(periodos))
+    
+    sql = f'''
+        SELECT "Articulo", SUM("Total") AS total
+        FROM chatbot_raw
+        WHERE "Mes" IN ({placeholders})
+        AND "Articulo" IS NOT NULL AND "Articulo" != ''
+        GROUP BY "Articulo"
+        ORDER BY total DESC
+        LIMIT 5
+    '''
+    
+    df = ejecutar_consulta(sql, periodos)
+    return df if df is not None else pd.DataFrame()
 
 # =========================
 # CONVERSIÓN DE MESES A NOMBRES
@@ -1568,51 +1595,27 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             with col_top5:
                 st.markdown("#### 📊 Top 5 Artículos")  # ✅ Siempre mostrar, como contexto
                 
-                # ✅ TOP 5 ARTÍCULOS - DESACOPLADO: Query independiente usando get_compras_multiples
+                # ✅ TOP 5 ARTÍCULOS - DESACOPLADO: Query independiente usando get_top_5_articulos
                 try:
-                    # Obtener datos sin filtro de proveedor para Top 5 independiente
-                    df_all_for_top5 = sqlq_compras.get_compras_multiples(
-                        proveedores=None,  # Sin filtro de proveedor
-                        meses=meses if meses else None,
-                        anios=anios if not meses else None,  # Si hay meses, no usar años
-                        limite=10000  # Límite alto para capturar más datos
-                    )
+                    df_top5 = get_top_5_articulos(periodos_validos)
                     
-                    if df_all_for_top5 is not None and not df_all_for_top5.empty and 'Articulo' in df_all_for_top5.columns:
-                        # Agregar columna Total sumando los períodos válidos, pero como get_compras_multiples no tiene períodos como columnas,
-                        # necesitamos agrupar por artículo y sumar totales.
-                        # Asumiendo que get_compras_multiples devuelve datos con 'Total' o similar.
-                        # Si no hay 'Total', usar alguna columna numérica, como 'Monto' o similar.
-                        if 'Total' in df_all_for_top5.columns:
-                            top_art = df_all_for_top5.groupby('Articulo')['Total'].sum().nlargest(5).reset_index()
-                        else:
-                            # Si no hay 'Total', usar alguna columna numérica, como 'Monto' o similar.
-                            numeric_cols = df_all_for_top5.select_dtypes(include='number').columns
-                            if numeric_cols:
-                                top_art = df_all_for_top5.groupby('Articulo')[numeric_cols[0]].sum().nlargest(5).reset_index()
-                                top_art.columns = ['Articulo', 'Total']  # Renombrar
-                            else:
-                                top_art = pd.DataFrame()  # Vacío si no hay numéricos
+                    if df_top5 is not None and not df_top5.empty:
+                        container_html = '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
+                        st.markdown(container_html, unsafe_allow_html=True)
                         
-                        if not top_art.empty:
-                            container_html = '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
-                            st.markdown(container_html, unsafe_allow_html=True)
+                        for idx, row in df_top5.iterrows():
+                            nombre = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
+                            valor = row['total']
+                            valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
                             
-                            for idx, row in top_art.iterrows():
-                                nombre = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
-                                valor = row['Total']
-                                valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
-                                
-                                item_html = f'<div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre}</span><span style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">{valor_fmt}</span></div>'
-                                st.markdown(item_html, unsafe_allow_html=True)
-                            
-                            st.markdown("</div>", unsafe_allow_html=True)
-                        else:
-                            st.info("Sin artículos disponibles")
+                            item_html = f'<div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre}</span><span style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">{valor_fmt}</span></div>'
+                            st.markdown(item_html, unsafe_allow_html=True)
+                        
+                        st.markdown("</div>", unsafe_allow_html=True)
                     else:
-                        st.info("Sin artículos disponibles")
+                        st.info("No hay datos en el período")
                 except Exception as e:
-                    st.info("Sin artículos disponibles")
+                    st.info("No hay datos en el período")
                     # Opcional: st.error(f"Error calculando Top 5: {str(e)}")
             
             # Cerrar wrapper gráfico + top5
@@ -2246,7 +2249,6 @@ def Compras_IA():
                 "df": respuesta_df,
                 "tipo": tipo,
                 "pregunta": pregunta,
-                "timestamp": datetime.now().timestamp(),
             }
         )
 
