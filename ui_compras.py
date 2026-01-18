@@ -1563,7 +1563,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         fig.update_layout(
                             xaxis_title="",
                             yaxis_title="Monto",
-                            height=280,
+                            height=400,
                             template="plotly_white",
                             showlegend=True,
                             barmode='group',
@@ -1597,7 +1597,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         fig.update_layout(
                             xaxis_title="",
                             yaxis_title="Monto",
-                            height=280,
+                            height=400,
                             template="plotly_white",
                             showlegend=True,
                             barmode='group',
@@ -1660,24 +1660,6 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         st.warning(f"Error: {str(e)}")
                 else:
                     st.info("Sin datos disponibles")
-            
-            
-            # 📋 TABLA RESUMIDA
-            st.markdown("---")
-            
-            entity_col = 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
-            cols_tabla = [entity_col, p1, p2]
-            if 'Diferencia' in df.columns:
-                cols_tabla.append('Diferencia')
-            
-            df_tabla = df[cols_tabla].copy()
-            
-            # Formatear números
-            for col in [p1, p2, 'Diferencia']:
-                if col in df_tabla.columns:
-                    df_tabla[col] = df_tabla[col].apply(lambda x: f"${x:,.0f}".replace(",", ".") if pd.notna(x) and isinstance(x, (int, float)) else str(x))
-            
-            st.dataframe(df_tabla, use_container_width=True, height=100)
         
         else:
             st.info("⚠️ Se requieren al menos 2 períodos para generar el análisis comparativo.")
