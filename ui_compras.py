@@ -61,8 +61,9 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
     where_clauses = []
     params = []
 
-    where_clauses.append('"Año" = ANY(%s)')
-    params.append(tuple(anios))
+    # ✅ FIX: Usar IN en lugar de ANY para compatibilidad
+    anios_str = ', '.join(str(int(a)) for a in anios)
+    where_clauses.append(f'"Año" IN ({anios_str})')
 
     # ✅ FIX: Solo agregar filtro de meses si realmente hay meses
     if meses and len(meses) > 0:
@@ -78,11 +79,11 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
             except:
                 pass
         if meses_int:
-            where_clauses.append('"Mes"::int = ANY(%s)')
-            params.append(tuple(meses_int))
+            meses_str = ', '.join(str(m) for m in meses_int)
+            where_clauses.append(f'"Mes"::int IN ({meses_str})')
 
     # ✅ Filtro de proveedores
-    if proveedores:
+    if proveedores and len(proveedores) > 0:
         prov_clauses = []
         for p in proveedores:
             p_norm = p.strip().lower()
