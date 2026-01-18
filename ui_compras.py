@@ -47,11 +47,11 @@ def get_top_5_articulos(anios, meses=None):
     """
     Devuelve Top 5 artículos por monto total para el período seleccionado.
     - anios: lista de int (ej: [2025] o [2024,2025])
-    - meses: lista de str o int opcional (ej: ['02'] o [2])
+    - meses: lista de int opcional (ej: [11] o None)
     """
 
     if not anios:
-        return pd.DataFrame()
+        return None
 
     # -------------------------
     # WHERE por período
@@ -63,10 +63,8 @@ def get_top_5_articulos(anios, meses=None):
     params.append(tuple(anios))
 
     if meses:
-        # normalizo meses a int
-        meses_int = [int(m) for m in meses]
-        where_clauses.append('"Mes"::int = ANY(%s)')  # FIX: Cast "Mes" to int for matching
-        params.append(tuple(meses_int))
+        where_clauses.append('"Mes"::int = ANY(%s)')  # FIX: Cast "Mes" to int
+        params.append(tuple(meses))
 
     where_sql = " AND ".join(where_clauses)
 
@@ -118,7 +116,7 @@ def get_top_5_articulos(anios, meses=None):
         return df if df is not None else pd.DataFrame()
     except Exception as e:
         print("❌ Error Top 5 Artículos:", e)
-        return pd.DataFrame()
+        return None
 
 # =========================
 # CONVERSIÓN DE MESES A NOMBRES
@@ -897,17 +895,17 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                         <p class="provider-name">{top_prov}</p>
                         <p class="provider-subtitle">Principal Proveedor</p>
                     </div>
-                    <div>
-                        <p class="provider-amount">$ {top_monto:,.2f}</p>
-                        <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
-                    </div>
+                <div>
+                    <p class="provider-amount">$ {top_monto:,.2f}</p>
+                    <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
                 </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: {top_porc}%"></div>
-                </div>
-                <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
-                    {top_porc:.1f}% del total
-                </p>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {top_porc}%"></div>
+            </div>
+            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+                {top_porc:.1f}% del total
+            </p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -1585,15 +1583,20 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 
                 # ✅ TOP 5 ARTÍCULOS - DESACOPLADO: Query independiente usando get_top_5_articulos
                 try:
-                    # Extraer anios y meses únicos de periodos_validos
-                    anios_unique = list(set(int(p.split('-')[0]) for p in periodos_validos if '-' in p and p.split('-')[0].isdigit()))
+                    # Normalizar años y meses antes de la query
+                    anios_unique = [int(p.split('-')[0]) for p in periodos_validos if '-' in p and p.split('-')[0].isdigit()]
+                    anios_unique = list(set(anios_unique)) if anios_unique else []
                     meses_unique = None
                     if all('-' in p for p in periodos_validos):
                         meses_unique = list(set(int(p.split('-')[1]) for p in periodos_validos if '-' in p and p.split('-')[1].isdigit()))
                     
                     df_top5 = get_top_5_articulos(anios_unique, meses_unique)
                     
-                    if df_top5 is not None and not df_top5.empty:
+                    if df_top5 is None:
+                        st.error("❌ Error calculando Top 5 Artículos")
+                    elif df_top5.empty:
+                        st.info("No hay datos en el período")
+                    else:
                         container_html = '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
                         st.markdown(container_html, unsafe_allow_html=True)
                         
@@ -1606,11 +1609,8 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                             st.markdown(item_html, unsafe_allow_html=True)
                         
                         st.markdown("</div>", unsafe_allow_html=True)
-                    else:
-                        st.info("No hay datos en el período")
                 except Exception as e:
-                    st.info("No hay datos en el período")
-                    # Opcional: st.error(f"Error calculando Top 5: {str(e)}")
+                    st.error(f"Error: {str(e)}")
             
             # Cerrar wrapper gráfico + top5
             st.markdown('</div>', unsafe_allow_html=True)
