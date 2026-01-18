@@ -2009,7 +2009,7 @@ def Compras_IA():
         # TIPS / EJEMPLOS (CAJA AMARILLA ANTES DEL INPUT)
         # =========================
         tips_html = """
-        <div style=
+        <div style="
             background: rgba(255, 243, 205, 0.85);
             border: 1px solid rgba(245, 158, 11, 0.30);
             border-left: 4px solid rgba(245, 158, 11, 0.75);
@@ -2017,7 +2017,7 @@ def Compras_IA():
             padding: 12px 16px;
             margin: 16px 0 12px 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        >
+        ">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                 <span style="font-size: 18px;">💡</span>
                 <span style="font-size: 14px; font-weight: 700; color: rgb(234, 88, 12);">Ejemplos de preguntas:</span>
@@ -2224,20 +2224,24 @@ def Compras_IA():
 
             # Botón comparar
             if st.button("🔍 Comparar", key="btn_comparar_anios"):
-                if len(anios) < 2:
-                    st.error("Seleccioná al menos 2 años para comparar")
+                # ✅ VALIDAR: necesitamos al menos 2 períodos (años O meses)
+                tiene_anios = len(anios) >= 2
+                tiene_meses = len(meses) >= 2
+                
+                if not tiene_anios and not tiene_meses:
+                    st.error("Seleccioná al menos 2 años O al menos 2 combinaciones de mes-año para comparar")
                 else:
                     # ✅ PAUSAR AUTOREFRESH
                     st.session_state.comparativa_activa = True
                     
                     with st.spinner("Comparando..."):
                         try:
-                            # ✅ FIX: Agregar articulos y meses al llamado
+                            # ✅ PASAR TODOS LOS PARÁMETROS RELEVANTES
                             df = sqlq_comparativas.comparar_compras(
-                                anios=anios,
-                                meses=meses,
+                                anios=anios if not meses else None,  # Si hay meses, no usar años
+                                meses=meses if meses else None,       # Pasar meses si hay
                                 proveedores=proveedores,
-                                articulos=articulos
+                                articulos=articulos if articulos else None  # Pasar artículos si hay
                             )
                             
                             if df is not None and not df.empty:
