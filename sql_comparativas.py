@@ -161,7 +161,7 @@ def comparar_compras(
           {prov_where}
           {art_where}
         GROUP BY {select_col}, TRIM("Moneda")
-        ORDER BY {group_by_col}, Moneda
+        ORDER BY "{group_by_col}", Moneda
         LIMIT {limite}
     """
 
