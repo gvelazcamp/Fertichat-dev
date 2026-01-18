@@ -86,9 +86,11 @@ def comparar_compras(
             )
             params.append(t)
         else:
+            # ✅ FIX: Tratar "Año" como texto, no castear a int
             cols.append(
-                f"""SUM(CASE WHEN "Año"::int = {int(t)} THEN {total_expr} ELSE 0 END) AS "{t}" """
+                f"""SUM(CASE WHEN TRIM("Año") = %s THEN {total_expr} ELSE 0 END) AS "{t}" """
             )
+            params.append(str(t))
 
     cols_sql = ",\n            ".join(cols)
     diff_sql = ""
@@ -101,14 +103,19 @@ def comparar_compras(
             """
             params.extend([t2, t1])
         else:
+            # ✅ FIX: Usar TRIM("Año") = %s para diff
             diff_sql = f""",
-                (SUM(CASE WHEN "Año"::int = {int(t2)} THEN {total_expr} ELSE 0 END) -
-                 SUM(CASE WHEN "Año"::int = {int(t1)} THEN {total_expr} ELSE 0 END)) AS Diferencia
+                (SUM(CASE WHEN TRIM("Año") = %s THEN {total_expr} ELSE 0 END) -
+                 SUM(CASE WHEN TRIM("Año") = %s THEN {total_expr} ELSE 0 END)) AS Diferencia
             """
+            params.extend([str(t2), str(t1)])
 
     # ✅ FIX: Agregar params para tiempo_where antes de filtros
     if usar_meses:
         params.extend(tiempos_sorted)
+    else:
+        # ✅ FIX: Para años, usar TRIM("Año") IN con params
+        params.extend([str(t) for t in tiempos_sorted])
 
     prov_where = ""
     if proveedores:
@@ -140,8 +147,9 @@ def comparar_compras(
         tiempo_placeholders = ", ".join(["%s"] * len(tiempos_sorted))
         tiempo_where = f'TRIM("{tiempo_col}") IN ({tiempo_placeholders})'
     else:
-        tiempo_placeholders = ", ".join(str(int(y)) for y in tiempos_sorted)
-        tiempo_where = f'"{tiempo_col}"::int IN ({tiempo_placeholders})'
+        # ✅ FIX: Para años, usar TRIM IN con placeholders
+        tiempo_placeholders = ", ".join(["%s"] * len(tiempos_sorted))
+        tiempo_where = f'TRIM("{tiempo_col}") IN ({tiempo_placeholders})'
 
     # ✅ FIX: Determinar modo explícito (SQL)
     modo_articulos = articulos is not None and len(articulos) > 0
