@@ -230,16 +230,28 @@ def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
             break
 
     # Buscar columnas numéricas (períodos como "2024", "2025", "2024-11", etc)
+    # TAMBIÉN incluir columnas que PARECEN años/períodos aunque sean object
     numeric_cols = []
     for col in df.columns:
-        if col != col_moneda and pd.api.types.is_numeric_dtype(df[col]):
+        # Excluir columnas obvias que NO son períodos
+        if col in [col_moneda, 'Articulo', 'Proveedor', 'Cliente / Proveedor', 'Diferencia']:
+            continue
+        
+        # Si es numérica, incluirla
+        if pd.api.types.is_numeric_dtype(df[col]):
+            numeric_cols.append(col)
+        # Si el nombre parece un año o período, incluirla
+        elif isinstance(col, str) and (col.isdigit() or '-' in col):
             numeric_cols.append(col)
     
     # Si no hay columna de moneda, asumir todo en UYU
     if not col_moneda:
         total_general = 0
         for col in numeric_cols:
-            total_general += df[col].sum()
+            try:
+                total_general += pd.to_numeric(df[col], errors='coerce').fillna(0).sum()
+            except:
+                pass
         return {"Pesos": float(total_general), "USD": 0}
 
     try:
@@ -255,12 +267,13 @@ def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
             # Sumar las columnas numéricas de esta fila
             suma_fila = 0
             for col in numeric_cols:
-                val = row[col]
-                if pd.notna(val):
-                    try:
+                try:
+                    val = row[col]
+                    if pd.notna(val):
+                        # Convertir a float (puede venir como string)
                         suma_fila += float(val)
-                    except:
-                        pass
+                except:
+                    pass
             
             # Acumular en el total correcto
             if es_usd:
@@ -272,6 +285,8 @@ def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
 
     except Exception as e:
         print(f"❌ Error calculando totales: {e}")
+        import traceback
+        traceback.print_exc()
         return {"Pesos": 0, "USD": 0}
 
 
