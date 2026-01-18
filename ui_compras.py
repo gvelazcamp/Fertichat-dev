@@ -1491,203 +1491,171 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             diferencia = total_p2 - total_p1
             variacion_pct = ((total_p2 / total_p1 - 1) * 100) if total_p1 != 0 else 0
             
-            # 🎨 CARD GRANDE CON EL NÚMERO IMPACTANTE
+            # 🎨 DETERMINAR COLOR Y ESTILO
             if variacion_pct > 0:
                 color_bg = "linear-gradient(135deg, #10b981 0%, #059669 100%)"
                 icono = "🚀"
-                titulo = "CRECIMIENTO"
                 color_texto = "#10b981"
             else:
                 color_bg = "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
                 icono = "📉"
-                titulo = "DISMINUCIÓN"
                 color_texto = "#ef4444"
             
             # Formatear diferencia
             dif_fmt = f"${abs(diferencia)/1_000_000:.2f}M" if abs(diferencia) >= 1_000_000 else f"${abs(diferencia):,.0f}".replace(",", ".")
             signo = "+" if diferencia > 0 else "-"
             
-            # 📊 2 CARDS: CRECIMIENTO (MÁS COMPACTA) + TOP 5 ARTÍCULOS
-            col_crec, col_top5 = st.columns([1, 1])
+            # 📊 FILA 1: 2 CARDS ARRIBA (CRECIMIENTO EN $ + VARIACIÓN EN %)
+            col_crec, col_var = st.columns(2)
             
             with col_crec:
-                # CARD DE CRECIMIENTO (MÁS COMPACTA)
                 st.markdown(f"""
-                <div style="background: {color_bg}; border-radius: 12px; padding: 18px; text-align: center; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.08); height: 180px; display: flex; flex-direction: column; justify-content: center;">
-                    <p style="margin: 0; font-size: 1.8rem; margin-bottom: 4px;">{icono}</p>
-                    <h3 style="margin: 0; font-size: 0.85rem; font-weight: 600; opacity: 0.95; letter-spacing: 1px;">{titulo}</h3>
-                    <h1 style="margin: 10px 0 4px 0; font-size: 2.5rem; font-weight: 800; line-height: 1;">{variacion_pct:+.1f}%</h1>
-                    <p style="margin: 0; font-size: 0.85rem; font-weight: 500; opacity: 0.9;">{signo}{dif_fmt} vs {p1}</p>
+                <div style="background: {color_bg}; border-radius: 12px; padding: 20px; text-align: center; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.08); height: 140px; display: flex; flex-direction: column; justify-content: center;">
+                    <p style="margin: 0; font-size: 2rem; margin-bottom: 6px;">{icono}</p>
+                    <h3 style="margin: 0; font-size: 0.85rem; font-weight: 600; opacity: 0.95; letter-spacing: 1px;">CRECIMIENTO</h3>
+                    <h1 style="margin: 10px 0 4px 0; font-size: 2.8rem; font-weight: 800; line-height: 1;">{signo}{dif_fmt}</h1>
+                    <p style="margin: 0; font-size: 0.8rem; font-weight: 500; opacity: 0.9;">vs {p1}</p>
                 </div>
                 """, unsafe_allow_html=True)
             
-            with col_top5:
-                # CARD DE TOP 5 ARTÍCULOS (MÁS COMPACTA)
-                st.markdown("""
-                <div style="background: white; border-radius: 12px; padding: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); height: 180px; border: 2px solid #e5e7eb; overflow-y: auto;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 0.9rem; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 6px;">
-                        📊 Top 5 Artículos
-                    </h3>
+            with col_var:
+                st.markdown(f"""
+                <div style="background: white; border: 2px solid {color_texto}; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); height: 140px; display: flex; flex-direction: column; justify-content: center;">
+                    <p style="margin: 0; font-size: 2rem; margin-bottom: 6px;">📈</p>
+                    <h3 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #6b7280; letter-spacing: 1px;">VARIACIÓN</h3>
+                    <h1 style="margin: 10px 0 4px 0; font-size: 2.8rem; font-weight: 800; line-height: 1; color: {color_texto};">{variacion_pct:+.1f}%</h1>
+                    <p style="margin: 0; font-size: 0.8rem; font-weight: 500; color: #6b7280;">Cambio total</p>
+                </div>
                 """, unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # 📊 FILA 2: GRÁFICO (IZQUIERDA) + TOP 5 (DERECHA)
+            col_graph, col_top5 = st.columns([1.2, 0.8])
+            
+            with col_graph:
+                st.markdown("#### 📊 Comparación")
                 
-                # Selectbox para elegir período (más compacto)
+                try:
+                    import plotly.graph_objects as go
+                    
+                    entity_col = 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
+                    
+                    if len(df) == 1:
+                        fig = go.Figure()
+                        fig.add_trace(go.Bar(
+                            name=str(p1),
+                            x=['Período 1'],
+                            y=[total_p1],
+                            marker_color='#667eea',
+                            text=[f'${total_p1/1_000_000:.1f}M' if total_p1 >= 1_000_000 else f'${total_p1:,.0f}'.replace(",", ".")],
+                            textposition='outside'
+                        ))
+                        fig.add_trace(go.Bar(
+                            name=str(p2),
+                            x=['Período 2'],
+                            y=[total_p2],
+                            marker_color='#764ba2',
+                            text=[f'${total_p2/1_000_000:.1f}M' if total_p2 >= 1_000_000 else f'${total_p2:,.0f}'.replace(",", ".")],
+                            textposition='outside'
+                        ))
+                        
+                        fig.update_layout(
+                            xaxis_title="",
+                            yaxis_title="Monto",
+                            height=280,
+                            template="plotly_white",
+                            showlegend=True,
+                            barmode='group',
+                            margin=dict(t=20, b=30, l=50, r=20)
+                        )
+                    else:
+                        df_graph = df.copy()
+                        df_graph['Total'] = df_graph[periodos_validos].sum(axis=1)
+                        df_graph = df_graph.nlargest(8, 'Total')
+                        
+                        fig = go.Figure()
+                        fig.add_trace(go.Bar(
+                            name=str(p1),
+                            x=df_graph[entity_col],
+                            y=df_graph[p1].astype(float),
+                            marker_color='#667eea',
+                            text=df_graph[p1].apply(lambda x: f'${float(x)/1_000_000:.1f}M' if x >= 1_000_000 else f'${float(x):,.0f}'.replace(",", ".") if pd.notna(x) else "0"),
+                            textposition='outside',
+                            textfont=dict(size=10)
+                        ))
+                        fig.add_trace(go.Bar(
+                            name=str(p2),
+                            x=df_graph[entity_col],
+                            y=df_graph[p2].astype(float),
+                            marker_color='#764ba2',
+                            text=df_graph[p2].apply(lambda x: f'${float(x)/1_000_000:.1f}M' if x >= 1_000_000 else f'${float(x):,.0f}'.replace(",", ".") if pd.notna(x) else "0"),
+                            textposition='outside',
+                            textfont=dict(size=10)
+                        ))
+                        
+                        fig.update_layout(
+                            xaxis_title="",
+                            yaxis_title="Monto",
+                            height=280,
+                            template="plotly_white",
+                            showlegend=True,
+                            barmode='group',
+                            xaxis={'tickangle': -45, 'tickfont': {'size': 9}},
+                            margin=dict(t=20, b=50, l=50, r=20)
+                        )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+            
+            with col_top5:
+                st.markdown("#### 📊 Top 5 Artículos")
+                
                 periodo_top5 = st.selectbox(
-                    "Ver período:",
+                    "Período:",
                     options=periodos_validos,
                     index=1,
                     key="periodo_top5_select",
                     label_visibility="collapsed"
                 )
                 
-                # Calcular Top 5 artículos del período seleccionado
-                entity_col_top5 = 'Articulo' if 'Articulo' in df.columns else 'Proveedor'
-                
-                if periodo_top5 in df.columns and entity_col_top5 in df.columns:
+                # ✅ CORREGIR: Buscar columna Articulo específicamente
+                if 'Articulo' in df.columns and periodo_top5 in df.columns:
                     try:
                         df_calc = df.copy()
                         df_calc[periodo_top5] = pd.to_numeric(df_calc[periodo_top5], errors='coerce').fillna(0)
                         df_calc = df_calc[df_calc[periodo_top5] > 0]
                         
                         if len(df_calc) > 0:
-                            df_top5 = df_calc.nlargest(min(5, len(df_calc)), periodo_top5)[[entity_col_top5, periodo_top5]].copy()
+                            # ✅ AGRUPAR POR ARTÍCULO (sumar si hay duplicados)
+                            df_art = df_calc.groupby('Articulo')[periodo_top5].sum().reset_index()
+                            df_top5 = df_art.nlargest(5, periodo_top5)
                             
                             for idx, row in df_top5.iterrows():
-                                nombre = row[entity_col_top5]
+                                nombre = row['Articulo']
                                 valor = row[periodo_top5]
-                                nombre_corto = str(nombre)[:30] + "..." if len(str(nombre)) > 30 else str(nombre)
+                                nombre_corto = str(nombre)[:28] + "..." if len(str(nombre)) > 28 else str(nombre)
                                 valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
                                 
                                 st.markdown(f"""
-                                <div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6;">
+                                <div style="padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre_corto}</span>
-                                        <span style="font-size: 0.75rem; color: #10b981; font-weight: 700;">{valor_fmt}</span>
+                                        <span style="font-size: 0.72rem; color: #374151; font-weight: 500;">{nombre_corto}</span>
+                                        <span style="font-size: 0.76rem; color: #10b981; font-weight: 700;">{valor_fmt}</span>
                                     </div>
                                 </div>
                                 """, unsafe_allow_html=True)
                         else:
                             st.info("Sin datos")
-                    except Exception:
-                        st.warning("Error al cargar")
+                    except Exception as e:
+                        st.warning(f"Error: {str(e)}")
                 else:
-                    st.info("Sin datos")
-                
-                st.markdown("</div>", unsafe_allow_html=True)
+                    st.info("No hay artículos disponibles")
             
-            st.markdown("<br>", unsafe_allow_html=True)
             
-            # 📊 COMPARACIÓN VISUAL CON GRÁFICO (MÁS COMPACTO)
-            st.markdown("### 📊 Comparación de Períodos")
-            
-            try:
-                import plotly.graph_objects as go
-                
-                # Preparar datos para el gráfico
-                entity_col = 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
-                
-                # Si hay un solo proveedor/artículo, hacer gráfico de barras simple
-                if len(df) == 1:
-                    fig = go.Figure()
-                    fig.add_trace(go.Bar(
-                        name=str(p1),
-                        x=['Período 1'],
-                        y=[total_p1],
-                        marker_color='#667eea',
-                        text=[f'${total_p1:,.0f}'.replace(",", ".")],
-                        textposition='outside'
-                    ))
-                    fig.add_trace(go.Bar(
-                        name=str(p2),
-                        x=['Período 2'],
-                        y=[total_p2],
-                        marker_color='#764ba2',
-                        text=[f'${total_p2:,.0f}'.replace(",", ".")],
-                        textposition='outside'
-                    ))
-                    
-                    fig.update_layout(
-                        title=f"Comparación {p1} vs {p2}",
-                        xaxis_title="",
-                        yaxis_title="Monto",
-                        height=280,
-                        template="plotly_white",
-                        showlegend=True,
-                        barmode='group',
-                        margin=dict(t=50, b=30, l=50, r=30)
-                    )
-                else:
-                    # Múltiples proveedores: Top 10
-                    df_graph = df.copy()
-                    df_graph['Total'] = df_graph[periodos_validos].sum(axis=1)
-                    df_graph = df_graph.nlargest(10, 'Total')
-                    
-                    fig = go.Figure()
-                    fig.add_trace(go.Bar(
-                        name=str(p1),
-                        x=df_graph[entity_col],
-                        y=df_graph[p1].astype(float),
-                        marker_color='#667eea',
-                        text=df_graph[p1].apply(lambda x: f'${float(x):,.0f}'.replace(",", ".") if pd.notna(x) else "0"),
-                        textposition='outside'
-                    ))
-                    fig.add_trace(go.Bar(
-                        name=str(p2),
-                        x=df_graph[entity_col],
-                        y=df_graph[p2].astype(float),
-                        marker_color='#764ba2',
-                        text=df_graph[p2].apply(lambda x: f'${float(x):,.0f}'.replace(",", ".") if pd.notna(x) else "0"),
-                        textposition='outside'
-                    ))
-                    
-                    fig.update_layout(
-                        title=f"Top 10 - Comparación {p1} vs {p2}",
-                        xaxis_title=entity_col,
-                        yaxis_title="Monto",
-                        height=300,
-                        template="plotly_white",
-                        showlegend=True,
-                        barmode='group',
-                        xaxis={'tickangle': -45},
-                        margin=dict(t=50, b=50, l=50, r=30)
-                    )
-                
-                st.plotly_chart(fig, use_container_width=True)
-                
-            except Exception as e:
-                st.error(f"Error al generar gráfico: {str(e)}")
-            
-            # 💎 3 MÉTRICAS CLAVE EN CARDS (MÁS COMPACTAS)
-            st.markdown("---")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.markdown(f"""
-                <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; border: 2px solid {color_texto}; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 120px; display: flex; flex-direction: column; justify-content: center;">
-                    <p style="margin: 0; font-size: 2rem;">{icono}</p>
-                    <p style="margin: 8px 0 0 0; font-size: 1.6rem; font-weight: 700; color: {color_texto};">{variacion_pct:+.1f}%</p>
-                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #6b7280; font-weight: 600;">VARIACIÓN TOTAL</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col2:
-                st.markdown(f"""
-                <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; border: 2px solid #3b82f6; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 120px; display: flex; flex-direction: column; justify-content: center;">
-                    <p style="margin: 0; font-size: 2rem;">📄</p>
-                    <p style="margin: 8px 0 0 0; font-size: 1.6rem; font-weight: 700; color: #111827;">{num_registros}</p>
-                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #6b7280; font-weight: 600;">REGISTROS</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col3:
-                st.markdown(f"""
-                <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; border: 2px solid #8b5cf6; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 120px; display: flex; flex-direction: column; justify-content: center;">
-                    <p style="margin: 0; font-size: 2rem;">📅</p>
-                    <p style="margin: 8px 0 0 0; font-size: 1.1rem; font-weight: 700; color: #111827;">{p1} vs {p2}</p>
-                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #6b7280; font-weight: 600;">PERÍODOS</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # 📋 TABLA RESUMIDA (MÁS COMPACTA)
+            # 📋 TABLA RESUMIDA
             st.markdown("---")
             
             entity_col = 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
@@ -1702,7 +1670,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 if col in df_tabla.columns:
                     df_tabla[col] = df_tabla[col].apply(lambda x: f"${x:,.0f}".replace(",", ".") if pd.notna(x) and isinstance(x, (int, float)) else str(x))
             
-            st.dataframe(df_tabla, use_container_width=True, height=180)
+            st.dataframe(df_tabla, use_container_width=True, height=100)
         
         else:
             st.info("⚠️ Se requieren al menos 2 períodos para generar el análisis comparativo.")
