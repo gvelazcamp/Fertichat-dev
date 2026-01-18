@@ -1091,30 +1091,23 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     
     print(f"🐛 DEBUG: Columnas de períodos detectadas: {cols_periodos}")
     
-    # Calcular totales por moneda
-    if 'Moneda' in df.columns:
-        df_pesos = df[df['Moneda'] == '$'].copy()
-        df_usd = df[df['Moneda'].isin(['U$S', 'USD', 'U$$'])].copy()
+    # Calcular totales por moneda - SEPARAR CORRECTAMENTE
+    total_uyu = 0
+    total_usd = 0
+    
+    if 'Moneda' in df.columns and cols_periodos:
+        df_pesos = df[df['Moneda'] == '$']
+        df_usd = df[df['Moneda'].isin(['U$S', 'USD', 'U$$'])]
         
-        # Sumar SOLO las columnas de períodos
-        if cols_periodos:
-            total_uyu = df_pesos[cols_periodos].sum().sum() if not df_pesos.empty and len(cols_periodos) > 0 else 0
-            total_usd = df_usd[cols_periodos].sum().sum() if not df_usd.empty and len(cols_periodos) > 0 else 0
-        else:
-            total_uyu = 0
-            total_usd = 0
+        if not df_pesos.empty:
+            total_uyu = df_pesos[cols_periodos].sum().sum()
+        if not df_usd.empty:
+            total_usd = df_usd[cols_periodos].sum().sum()
         
         print(f"🐛 DEBUG: Total UYU: {total_uyu}, Total USD: {total_usd}")
-        
-        # Si ambos son 0, intentar sumar todo
-        if total_uyu == 0 and total_usd == 0 and len(cols_periodos) > 0:
-            total_uyu = df[cols_periodos].sum().sum()
     else:
-        # Sin columna moneda: asumir todo UYU
-        if cols_periodos:
-            total_uyu = df[cols_periodos].sum().sum()
-        else:
-            total_uyu = 0
+        # Sin columna Moneda o sin períodos: asumir 0 para ambos
+        total_uyu = 0
         total_usd = 0
     
     # Determinar si es comparación de artículos (basado en entrada)
