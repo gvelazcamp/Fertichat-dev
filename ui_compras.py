@@ -64,20 +64,24 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
     where_clauses.append('"Año" = ANY(%s)')
     params.append(tuple(anios))
 
-    if meses:
+    # ✅ FIX: Solo agregar filtro de meses si realmente hay meses
+    if meses and len(meses) > 0:
         meses_int = []
         for m in meses:
             try:
                 # Formato: "2024-11" -> extraer mes como int
-                mes_num = int(m.split('-')[1])
-                meses_int.append(mes_num)
+                if isinstance(m, str) and '-' in m:
+                    mes_num = int(m.split('-')[1])
+                    meses_int.append(mes_num)
+                elif isinstance(m, int):
+                    meses_int.append(m)
             except:
                 pass
         if meses_int:
             where_clauses.append('"Mes"::int = ANY(%s)')
             params.append(tuple(meses_int))
 
-    # ✅ NUEVO: Filtro de proveedores
+    # ✅ Filtro de proveedores
     if proveedores:
         prov_clauses = []
         for p in proveedores:
@@ -141,6 +145,8 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
         return df if df is not None else pd.DataFrame()
     except Exception as e:
         print("❌ Error Top 5 Artículos:", e)
+        import traceback
+        traceback.print_exc()
         return None
 
 # =========================
@@ -1629,31 +1635,41 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             with col_top5:
                 st.markdown("#### 📊 Top 5 Artículos")
                 
-                # ✅ TOP 5 ARTÍCULOS CON FILTRO DE PROVEEDORES
-                try:
-                    # Obtener contexto de session_state
-                    anios_ctx = st.session_state.get("anios_sel", [2024, 2025])
-                    meses_ctx = st.session_state.get("meses_multi", [])
-                    proveedores_ctx = st.session_state.get("comparativas_proveedores_multi", [])
-                    
-                    df_top5 = get_top_5_articulos(
-                        anios=anios_ctx,
-                        meses=meses_ctx if meses_ctx else None,
-                        proveedores=proveedores_ctx if proveedores_ctx else None
-                    )
-                    
-                    if df_top5 is None or df_top5.empty:
-                        st.info("No hay datos para el período seleccionado")
-                    else:
-                        # Mostrar tabla con Moneda incluida
-                        df_display = df_top5[['Articulo', 'Moneda', 'total']].copy()
-                        df_display['total'] = df_display['total'].apply(
-                            lambda x: f"${float(x):,.0f}".replace(",", ".")
+                # ✅ TOP 5 ARTÍCULOS: Solo mostrar cuando NO hay artículos seleccionados
+                articulos_sel = st.session_state.get("art_multi", [])
+                
+                if articulos_sel and len(articulos_sel) > 0:
+                    # Si hay artículos seleccionados, no tiene sentido mostrar Top 5
+                    st.info("Top 5 no disponible cuando hay artículos específicos seleccionados")
+                else:
+                    try:
+                        # Obtener contexto de session_state
+                        anios_ctx = st.session_state.get("anios_sel", [2024, 2025])
+                        meses_ctx = st.session_state.get("meses_multi", [])
+                        proveedores_ctx = st.session_state.get("comparativas_proveedores_multi", [])
+                        
+                        # ✅ FIX: Pasar meses SOLO si hay meses seleccionados explícitamente
+                        # Si solo hay años (sin meses específicos), pasar None
+                        meses_param = meses_ctx if meses_ctx and len(meses_ctx) > 0 else None
+                        
+                        df_top5 = get_top_5_articulos(
+                            anios=anios_ctx,
+                            meses=meses_param,
+                            proveedores=proveedores_ctx if proveedores_ctx else None
                         )
-                        df_display.columns = ['Artículo', 'Moneda', 'Total']
-                        st.dataframe(df_display, use_container_width=True, hide_index=True, height=300)
-                except Exception as e:
-                    st.error(f"Error técnico: {str(e)}")
+                        
+                        if df_top5 is None or df_top5.empty:
+                            st.info("No hay datos para el período seleccionado")
+                        else:
+                            # Mostrar tabla con Moneda incluida
+                            df_display = df_top5[['Articulo', 'Moneda', 'total']].copy()
+                            df_display['total'] = df_display['total'].apply(
+                                lambda x: f"${float(x):,.0f}".replace(",", ".")
+                            )
+                            df_display.columns = ['Artículo', 'Moneda', 'Total']
+                            st.dataframe(df_display, use_container_width=True, hide_index=True, height=300)
+                    except Exception as e:
+                        st.error(f"Error Top 5: {str(e)}")
             
             # Cerrar wrapper gráfico + top5
             st.markdown('</div>', unsafe_allow_html=True)
