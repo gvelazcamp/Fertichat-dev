@@ -1741,17 +1741,19 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         meses_ctx = st.session_state.get("meses_multi", [])
                         proveedores_ctx = st.session_state.get("comparativas_proveedores_multi", [])
                         
-                        # ✅ FIX: Convertir meses de formato "2024-11" a solo el número del mes
-                        meses_param = None
+                        # ✅ FIX: Si hay meses, usar SOLO los años únicos de esos meses
                         if meses_ctx and len(meses_ctx) > 0:
-                            meses_param = meses_ctx  # Ya están en formato "2024-11"
+                            # Extraer años únicos de los meses (ej: ["2024-11", "2025-11"] -> [2024, 2025])
+                            anios_unicos = list(set([int(m.split('-')[0]) for m in meses_ctx if '-' in m]))
+                            anios_ctx = anios_unicos if anios_unicos else anios_ctx
                         
-                        # ✅ FIX CRÍTICO: Pasar proveedores correctamente
-                        proveedores_param = None
-                        if proveedores_ctx and len(proveedores_ctx) > 0:
-                            proveedores_param = proveedores_ctx
+                        # ✅ Pasar meses SOLO si hay selección explícita
+                        meses_param = meses_ctx if meses_ctx and len(meses_ctx) > 0 else None
                         
-                        print(f"🐛 DEBUG Top5: años={anios_ctx}, meses={meses_param}, provs={proveedores_param}")
+                        # ✅ Pasar proveedores correctamente
+                        proveedores_param = proveedores_ctx if proveedores_ctx and len(proveedores_ctx) > 0 else None
+                        
+                        print(f"🛠 DEBUG Top5: años={anios_ctx}, meses={meses_param}, provs={proveedores_param}")
                         
                         df_top5 = get_top_5_articulos(
                             anios=anios_ctx,
