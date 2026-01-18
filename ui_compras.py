@@ -1483,19 +1483,43 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         
         # 1️⃣ TABLA COMPARATIVA (lado a lado con los períodos)
         if len(periodos) >= 2:
-            # Mostrar tabla con todos los períodos + diferencia
-            cols_mostrar = ['Proveedor' if 'Proveedor' in df.columns else 'Articulo', 'Moneda'] + periodos
+            # Determinar columna de entidad (Proveedor o Articulo)
+            entity_col = None
+            if 'Proveedor' in df.columns:
+                entity_col = 'Proveedor'
+            elif 'Articulo' in df.columns:
+                entity_col = 'Articulo'
+            
+            # Construir lista de columnas que SÍ existen
+            cols_mostrar = []
+            if entity_col:
+                cols_mostrar.append(entity_col)
+            if 'Moneda' in df.columns:
+                cols_mostrar.append('Moneda')
+            
+            # Agregar columnas de períodos que existan
+            for p in periodos:
+                if p in df.columns:
+                    cols_mostrar.append(p)
+            
+            # Agregar Diferencia si existe
             if 'Diferencia' in df.columns:
                 cols_mostrar.append('Diferencia')
             
-            df_vista = df[cols_mostrar].copy()
+            print(f"🐛 DEBUG Vista General: cols_mostrar = {cols_mostrar}")
             
-            # Formatear números con separador de miles
-            for col in periodos + (['Diferencia'] if 'Diferencia' in df.columns else []):
-                if col in df_vista.columns:
-                    df_vista[col] = df_vista[col].apply(lambda x: f"${x:,.0f}".replace(",", ".") if pd.notna(x) else "-")
-            
-            st.dataframe(df_vista, use_container_width=True, height=300)
+            # Crear vista solo con columnas que existen
+            if cols_mostrar:
+                df_vista = df[cols_mostrar].copy()
+                
+                # Formatear números con separador de miles
+                for col in cols_mostrar:
+                    if col not in [entity_col, 'Moneda'] and col in df_vista.columns:
+                        df_vista[col] = df_vista[col].apply(lambda x: f"${x:,.0f}".replace(",", ".") if pd.notna(x) and isinstance(x, (int, float)) else str(x))
+                
+                st.dataframe(df_vista, use_container_width=True, height=300)
+            else:
+                st.warning("No hay columnas disponibles para mostrar")
             
             # 2️⃣ GRÁFICO DE BARRAS COMPARATIVO
             st.markdown("---")
@@ -1504,46 +1528,48 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             try:
                 import plotly.graph_objects as go
                 
-                # Preparar datos para el gráfico
-                entity_col = 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
-                
-                # Top 10 por total (sumar todos los períodos)
-                df_top = df.copy()
-                df_top['Total'] = df_top[periodos].sum(axis=1)
-                df_top = df_top.nlargest(10, 'Total')
-                
-                # Crear gráfico de barras agrupadas
-                fig = go.Figure()
-                
-                colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe']
-                for idx, periodo in enumerate(periodos):
-                    fig.add_trace(go.Bar(
-                        name=str(periodo),
-                        x=df_top[entity_col],
-                        y=df_top[periodo],
-                        marker_color=colors[idx % len(colors)]
-                    ))
-                
-                fig.update_layout(
-                    barmode='group',
-                    title=f"Top 10 - Comparación entre períodos",
-                    xaxis_title=entity_col,
-                    yaxis_title="Monto",
-                    height=400,
-                    template="plotly_white",
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=1.02,
-                        xanchor="right",
-                        x=1
+                # Verificar que tengamos entidad y períodos válidos
+                if not entity_col or len([p for p in periodos if p in df.columns]) < 2:
+                    st.info("No hay suficientes datos para generar el gráfico")
+                else:
+                    # Top 10 por total (sumar todos los períodos válidos)
+                    periodos_validos = [p for p in periodos if p in df.columns]
+                    df_top = df.copy()
+                    df_top['Total'] = df_top[periodos_validos].sum(axis=1)
+                    df_top = df_top.nlargest(10, 'Total')
+                    
+                    # Crear gráfico de barras agrupadas
+                    fig = go.Figure()
+                    
+                    colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe']
+                    for idx, periodo in enumerate(periodos_validos):
+                        fig.add_trace(go.Bar(
+                            name=str(periodo),
+                            x=df_top[entity_col],
+                            y=df_top[periodo],
+                            marker_color=colors[idx % len(colors)]
+                        ))
+                    
+                    fig.update_layout(
+                        barmode='group',
+                        title=f"Top 10 - Comparación entre períodos",
+                        xaxis_title=entity_col,
+                        yaxis_title="Monto",
+                        height=400,
+                        template="plotly_white",
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="right",
+                            x=1
+                        )
                     )
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
+                    
+                    st.plotly_chart(fig, use_container_width=True)
                 
             except Exception as e:
-                st.info(f"📊 Gráfico no disponible: {e}")
+                st.info(f"📊 Gráfico no disponible: {str(e)}")
             
             # 3️⃣ MÉTRICAS CLAVE
             st.markdown("---")
@@ -1553,9 +1579,10 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             
             with col1:
                 # Calcular variación promedio
-                if len(periodos) == 2 and 'Diferencia' in df.columns:
-                    p1_total = df[periodos[0]].sum()
-                    p2_total = df[periodos[1]].sum()
+                periodos_validos = [p for p in periodos if p in df.columns]
+                if len(periodos_validos) == 2 and 'Diferencia' in df.columns:
+                    p1_total = df[periodos_validos[0]].sum()
+                    p2_total = df[periodos_validos[1]].sum()
                     variacion = ((p2_total / p1_total - 1) * 100) if p1_total != 0 else 0
                     color = "green" if variacion > 0 else "red"
                     icono = "📈" if variacion > 0 else "📉"
@@ -1582,7 +1609,8 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             
             with col3:
                 # Período analizado
-                periodo_texto = " vs ".join(map(str, periodos))
+                periodos_validos = [p for p in periodos if p in df.columns]
+                periodo_texto = " vs ".join(map(str, periodos_validos))
                 st.markdown(f"""
                 <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
                     <p style="margin: 0; font-size: 2.5rem;">📅</p>
