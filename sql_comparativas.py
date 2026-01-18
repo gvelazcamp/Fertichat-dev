@@ -139,10 +139,14 @@ def comparar_compras(
         tiempo_placeholders = ", ".join(str(int(y)) for y in tiempos_sorted)
         tiempo_where = f'"{tiempo_col}"::int IN ({tiempo_placeholders})'
 
-    # ✅ FIX: Determinar modo de comparación correctamente
+    # ✅ FIX: Determinar modo explícito (SQL)
     modo_articulos = articulos is not None and len(articulos) > 0
     group_by_col = "Articulo" if modo_articulos else "Proveedor"
-    select_col = f'TRIM("Articulo")' if modo_articulos else 'TRIM("Cliente / Proveedor")'
+    select_col = (
+        'TRIM("Articulo")'
+        if modo_articulos
+        else 'TRIM("Cliente / Proveedor")'
+    )
 
     # ===== DETERMINAR LÍMITE =====
     # ✅ FIX: Ajustar límite basado en modo (artículos vs proveedores)
@@ -153,9 +157,10 @@ def comparar_compras(
     else:
         limite = 1000  # Proveedores específicos
 
+    # ✅ FIX 2: Cambiar el SELECT y alias con comillas dobles
     sql = f"""
         SELECT
-            {select_col} AS {group_by_col},
+            {select_col} AS "{group_by_col}",
             TRIM("Moneda") AS Moneda,
             {cols_sql}
             {diff_sql}
