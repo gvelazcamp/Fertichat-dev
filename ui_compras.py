@@ -2142,211 +2142,125 @@ def Compras_IA():
         # ==========================================
         st.markdown("""
         <style>
-        /* ==============================================
-           MENÚ COMPARATIVAS - DISEÑO PROFESIONAL
-           ============================================== */
+        /* =====================================================
+           CARD PRINCIPAL – FILTROS
+           ===================================================== */
+        .comparativas-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 24px 26px;
+            margin-top: 12px;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+        }
 
-        /* Header con título y selector de tipo */
+        /* =====================================================
+           HEADER DE LA CARD
+           ===================================================== */
         .comparativas-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
+            justify-content: space-between;
+            margin-bottom: 18px;
         }
 
         .comparativas-title-section {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
-        /* Icono SVG azul */
         .comparativas-title-section svg {
-            width: 24px;
-            height: 24px;
+            width: 26px;
+            height: 26px;
             fill: #2563eb;
         }
 
         .comparativas-title-section h4 {
             margin: 0;
-            font-size: 1.2rem;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Badge derecha */
+        .comparativas-badge {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: #ffffff;
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: 0.85rem;
             font-weight: 600;
-            color: #1e293b;
         }
 
-        /* Selector "Comparativas" arriba a la derecha */
-        section[data-testid="stMain"] div[data-baseweb="select"]:first-of-type {
-            max-width: 180px;
+        /* =====================================================
+           CAMPOS (ESPACIADO)
+           ===================================================== */
+        .comparativas-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
         }
 
-        /* Subtítulo descriptivo */
-        section[data-testid="stMain"] > div > div > div > p:first-of-type {
-            color: #64748b;
-            font-size: 0.9rem;
-            margin-bottom: 1.5rem;
-        }
-
-        /* Labels de los campos */
+        /* Labels */
         section[data-testid="stMain"] label {
+            font-size: 0.9rem;
             font-weight: 500;
-            color: #334155;
-            font-size: 0.95rem;
-            margin-bottom: 0.5rem;
+            color: #475569;
         }
 
-        /* Selectboxes y multiselects */
-        section[data-testid="stMain"] div[data-baseweb="select"] {
-            border-radius: 8px;
-            border: 1.5px solid #e2e8f0;
-            transition: all 0.2s ease;
-        }
-
-        section[data-testid="stMain"] div[data-baseweb="select"]:hover {
-            border-color: #3b82f6;
-        }
-
-        section[data-testid="stMain"] div[data-baseweb="select"]:focus-within {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        /* Pills de selección (2024, 2025, 30G ANA PROFILE, etc) */
+        /* =====================================================
+           PILLS (meses / años / artículos)
+           ===================================================== */
         section[data-testid="stMain"] span[data-baseweb="tag"] {
-            background-color: #1e40af !important;
-            color: white !important;
-            border-radius: 6px !important;
-            padding: 5px 12px !important;
-            font-size: 0.875rem !important;
-            font-weight: 500 !important;
+            background: #1e40af !important;
+            color: #ffffff !important;
+            border-radius: 8px !important;
+            font-weight: 500;
         }
 
-        section[data-testid="stMain"] span[data-baseweb="tag"] svg {
-            color: white !important;
-            opacity: 0.9;
+        /* =====================================================
+           ZONA DE ACCIONES (COMPARAR / LIMPIAR)
+           ===================================================== */
+        .comparativas-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 18px;
         }
 
-        section[data-testid="stMain"] span[data-baseweb="tag"]:hover svg {
-            opacity: 1;
-        }
-
-        /* ==============================================
-           BOTONES PRINCIPALES (Comparar y Limpiar)
-           ============================================== */
-
-        /* Container de botones principales */
-        section[data-testid="stMain"] .row-widget.stButton {
-            display: inline-block;
-            margin-right: 12px;
-        }
-
-        /* Botón Comparar - Azul con gradiente */
+        /* Botón principal */
         section[data-testid="stMain"] button[kind="primary"] {
-            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 8px !important;
-            padding: 0.6rem 2rem !important;
+            background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+            border-radius: 10px !important;
             font-weight: 600 !important;
-            font-size: 0.95rem !important;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
-            transition: all 0.3s ease !important;
-            min-width: 140px !important;
+            padding: 0.55rem 1.2rem !important;
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
         }
 
-        section[data-testid="stMain"] button[kind="primary"]:hover {
-            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
-            transform: translateY(-2px) !important;
-        }
-
-        /* Botón Limpiar resultados - Gris suave */
+        /* Botón secundario */
         section[data-testid="stMain"] button[kind="secondary"] {
-            background: white !important;
-            color: #64748b !important;
+            border-radius: 10px !important;
             border: 1.5px solid #e5e7eb !important;
-            border-radius: 8px !important;
-            padding: 0.6rem 1.5rem !important;
-            font-weight: 500 !important;
-            font-size: 0.95rem !important;
-            transition: all 0.2s ease !important;
-            min-width: 180px !important;
+            padding: 0.55rem 1.2rem !important;
         }
 
-        section[data-testid="stMain"] button[kind="secondary"]:hover {
-            background: #f8fafc !important;
-            border-color: #cbd5e1 !important;
-        }
-
-        /* ==============================================
-           BOTONES SECUNDARIOS (CSV, Excel, Guardar, Filtros)
-           ============================================== */
-
-        /* Separación entre botones principales y secundarios */
-        section[data-testid="stMain"] .stButton + .stButton + .stButton {
-            margin-top: 1.5rem;
-        }
-
-        /* Botones secundarios más pequeños */
-        section[data-testid="stMain"] button:not([kind="primary"]):not([kind="secondary"]) {
-            background: white !important;
-            color: #64748b !important;
-            border: 1px solid #e5e7eb !important;
-            border-radius: 6px !important;
-            padding: 0.4rem 0.9rem !important;
-            font-size: 0.85rem !important;
-            font-weight: 500 !important;
-            transition: all 0.2s ease !important;
-            margin-right: 8px !important;
-        }
-
-        section[data-testid="stMain"] button:not([kind="primary"]):not([kind="secondary"]):hover {
-            background: #f9fafb !important;
-            border-color: #cbd5e1 !important;
-        }
-
-        /* Espaciado entre campos del formulario */
-        section[data-testid="stMain"] div[data-testid="stVerticalBlock"] > div {
-            margin-bottom: 1rem;
-        }
-
-        /* Mejorar dropdown options hover */
-        section[data-testid="stMain"] li[role="option"]:hover {
-            background-color: #eff6ff !important;
-        }
-
-        /* ==============================================
-           RESPONSIVE MOBILE
-           ============================================== */
-        @media (max-width: 768px) {
-            .comparativas-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
-            }
-            
-            section[data-testid="stMain"] div[data-baseweb="select"]:first-of-type {
-                max-width: 100%;
-            }
-            
-            section[data-testid="stMain"] button {
-                width: 100% !important;
-                margin-bottom: 0.5rem !important;
-                margin-right: 0 !important;
-            }
-        }
-
-        /* ==============================================
-           OCULTAR ELEMENTOS INNECESARIOS
-           ============================================== */
-
-        /* Ocultar título duplicado de Streamlit */
-        section[data-testid="stMain"] h3:has(span:contains("Comparativas")),
-        section[data-testid="stMain"] h4:has(span:contains("Comparativas")) {
-            display: none !important;
+        /* =====================================================
+           BARRA INFERIOR (CSV / EXCEL / GUARDAR)
+           ===================================================== */
+        .comparativas-footer {
+            margin-top: 18px;
+            padding-top: 14px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         </style>
         """, unsafe_allow_html=True)
 
         # HTML Header
+        st.markdown('<div class="comparativas-card">', unsafe_allow_html=True)
+
         st.markdown("""
         <div class="comparativas-header">
             <div class="comparativas-title-section">
@@ -2355,11 +2269,27 @@ def Compras_IA():
                 </svg>
                 <h4>Filtros de Comparación</h4>
             </div>
+            <div class="comparativas-badge">Comparativas</div>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("Selecciona opciones y compara proveedores, meses y años directamente.")
+        st.markdown('<div class="comparativas-fields">', unsafe_allow_html=True)
+        # selectbox / multiselect / etc
+        st.markdown('</div>', unsafe_allow_html=True)
 
+        st.markdown('<div class="comparativas-actions">', unsafe_allow_html=True)
+        # Comparar / Limpiar
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="comparativas-footer">', unsafe_allow_html=True)
+        # CSV / Excel / Guardar
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # ==========================================
+        # CONTENIDO ORIGINAL (SIN CAMBIOS)
+        # ==========================================
         # Selector de tipo de consulta (Comparativas) - arriba a la derecha
         tipo_consulta = st.selectbox("", options=["Comparativas"], index=0, key="tipo_consulta", label_visibility="collapsed")
 
