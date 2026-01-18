@@ -1117,7 +1117,9 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             total_uyu = 0
         total_usd = 0
     
-    # Determinar si es comparación de proveedores o artículos
+    # Determinar si es comparación de artículos (basado en entrada)
+    # Nota: Aquí asumimos que si 'articulos' fue seleccionado en la UI, es artículos
+    # Pero como no tenemos acceso directo, usamos la estructura del DF
     es_articulos = 'Articulo' in df.columns and 'Proveedor' not in df.columns
     entidad = 'Artículos' if es_articulos else 'Proveedores'
     entidad_singular = 'Artículo' if es_articulos else 'Proveedor'
@@ -1603,11 +1605,22 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 # ✅ TOP 5 ARTÍCULOS - DESACOPLADO: Query independiente usando get_top_5_articulos
                 try:
                     # Normalizar años y meses antes de la query
-                    anios_unique = [int(p.split('-')[0]) for p in periodos_validos if '-' in p and p.split('-')[0].isdigit()]
-                    anios_unique = list(set(anios_unique)) if anios_unique else []
+                    anios_unique = []
                     meses_unique = None
-                    if all('-' in p for p in periodos_validos):
-                        meses_unique = list(set(int(p.split('-')[1]) for p in periodos_validos if '-' in p and p.split('-')[1].isdigit()))
+                    for p in periodos_validos:
+                        if '-' in p:
+                            parts = p.split('-')
+                            if len(parts) >= 2 and parts[0].isdigit():
+                                anios_unique.append(int(parts[0]))
+                            if len(parts) >= 2 and parts[1].isdigit():
+                                if meses_unique is None:
+                                    meses_unique = []
+                                meses_unique.append(int(parts[1]))
+                        elif p.isdigit():
+                            anios_unique.append(int(p))
+                    
+                    anios_unique = list(set(anios_unique)) if anios_unique else []
+                    meses_unique = list(set(meses_unique)) if meses_unique else None
                     
                     df_top5 = get_top_5_articulos(anios_unique, meses_unique)
                     
@@ -2437,7 +2450,14 @@ def Compras_IA():
                             )
                             
                             if df is not None and not df.empty:
-                                # ✅ CONSTRUIR TÍTULO CON PROVEEDOR
+                                # ✅ CONSTRUIR TÍTULO CON ENTIDAD CORRECTA
+                                if articulos:
+                                    entidad_titulo = 'Artículos'
+                                    todos_entidad_titulo = "Todos los artículos"
+                                else:
+                                    entidad_titulo = 'Proveedores'
+                                    todos_entidad_titulo = "Todos los proveedores"
+                                
                                 titulo_provs = ""
                                 if proveedores_sel:
                                     if len(proveedores_sel) == 1:
@@ -2450,7 +2470,7 @@ def Compras_IA():
                                         # Más de 3: mostrar cantidad
                                         titulo_provs = f"{len(proveedores_sel)} proveedores - "
                                 else:
-                                    titulo_provs = f"{todos_entidad} - "
+                                    titulo_provs = f"{todos_entidad_titulo} - "
                                 
                                 # ✅ GUARDAR EN SESSION_STATE
                                 st.session_state["comparativa_resultado"] = df
