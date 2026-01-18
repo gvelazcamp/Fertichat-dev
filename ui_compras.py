@@ -2232,9 +2232,11 @@ def Compras_IA():
                     
                     with st.spinner("Comparando..."):
                         try:
+                            # ✅ FIX: Agregar articulos al llamado
                             df = sqlq_comparativas.comparar_compras(
                                 anios=anios,
-                                proveedores=proveedores
+                                proveedores=proveedores,
+                                articulos=articulos
                             )
                             
                             if df is not None and not df.empty:
