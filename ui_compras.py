@@ -634,22 +634,26 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            padding: 14px 18px !important;
+            margin-bottom: 24px !important;  /* ← MÁS ESPACIO ENTRE CARDS (antes 12px) */
+            min-height: 120px !important;  /* ← MÁS BAJA (antes 140px) */
+            display: flex !important;
+            flex-direction: column !important;
+            box-sizing: border-box !important;
         }
         
         .resumen-title {
-            font-size: 1rem;
-            font-weight: 700;
-            margin: 0 0 8px 0;
+            font-size: 0.8rem !important;  /* Un poco más pequeño */
+            font-weight: 700 !important;
+            margin: 0 0 6px 0 !important;
             color: #374151;
         }
         
         .resumen-text {
-            font-size: 0.9rem;
+            font-size: 0.7rem !important;  /* Un poco más pequeño */
             color: #6b7280;
-            margin: 0;
+            margin: 0 !important;
+            line-height: 1.3 !important;  /* Menos interlineado */
         }
         
         /* ==========================================
@@ -659,9 +663,12 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
+            padding: 16px !important;
+            margin-bottom: 24px !important;  /* ← MÁS ESPACIO */
+            min-height: 120px !important;  /* ← MÁS BAJA */
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex !important;
+            flex-direction: column !important;
         }
         
         .provider-header {
@@ -768,6 +775,11 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         .fc-export-btn {
             text-align: right;
             margin-bottom: 8px;
+        }
+        
+        /* Ajuste para Top 5 Artículos más largo */
+        .top5-card {
+            min-height: 260px !important;  /* Hacerlo más largo para alinear con Actividad */
         }
         """ + (".fc-metrics-grid { display: none !important; }" if hide_metrics else "") + """
         </style>
@@ -942,42 +954,11 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
                         items_html += f'<span class="numero-badge">{idx}</span>{art_short} — {monto_fmt}<br>'
                     
                     st.markdown(f"""
-                    <div class="resumen-card">
+                    <div class="resumen-card top5-card">
                         <h4 class="resumen-title">📊 Top 5 Artículos</h4>
                         <p class="resumen-text">{items_html}</p>
                     </div>
                     """, unsafe_allow_html=True)
-            
-            # CARD 4: PRINCIPAL PROVEEDOR
-            if proveedores > 1 and col_proveedor:
-                df_prov = df_view.groupby(col_proveedor)["__total_num__"].sum().sort_values(ascending=False)
-                top_prov = df_prov.index[0]
-                top_monto = df_prov.iloc[0]
-                top_porc = (top_monto / df_view["__total_num__"].sum()) * 100
-                
-                iniciales = "".join([p[0] for p in top_prov.split()[:2]]).upper()
-                
-                st.markdown(f"""
-                <div class="provider-card">
-                    <div class="provider-header">
-                        <div class="provider-icon">{iniciales}</div>
-                        <div class="provider-info">
-                            <p class="provider-name">{top_prov}</p>
-                            <p class="provider-subtitle">Principal Proveedor</p>
-                        </div>
-                        <div>
-                            <p class="provider-amount">$ {top_monto:,.2f}</p>
-                            <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
-                        </div>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: {top_porc}%"></div>
-                    </div>
-                    <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
-                        {top_porc:.1f}% del total
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
 
     with tab_uyu:
         # Calcular total UYU
