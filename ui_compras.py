@@ -2307,7 +2307,8 @@ def Compras_IA():
                         try:
                             df = sqlq_comparativas.comparar_compras(
                                 anios=anios,
-                                proveedores=proveedores
+                                proveedores=proveedores,
+                                articulos=articulos  # ← AGREGADO: Pasar artículos seleccionados
                             )
                             
                             if df is not None and not df.empty:
