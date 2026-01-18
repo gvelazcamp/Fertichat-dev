@@ -1520,12 +1520,11 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         fig.update_layout(
                             xaxis_title="",
                             yaxis_title="Monto",
-                            height=350,
                             template="plotly_white",
                             showlegend=True,
                             barmode='group',
                             margin=dict(t=20, b=30, l=50, r=20)
-                        )
+                        )  # ✅ Quitada height para automático, mismo ancho que crecimiento (50%)
                     else:
                         df_graph = df.copy()
                         df_graph['Total'] = df_graph[periodos_validos].sum(axis=1)
@@ -1554,13 +1553,12 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         fig.update_layout(
                             xaxis_title="",
                             yaxis_title="Monto",
-                            height=350,
                             template="plotly_white",
                             showlegend=True,
                             barmode='group',
                             xaxis={'tickangle': -45, 'tickfont': {'size': 9}},
                             margin=dict(t=20, b=50, l=50, r=20)
-                        )
+                        )  # ✅ Quitada height para automático, mismo ancho que crecimiento (50%)
                     
                     st.plotly_chart(fig, use_container_width=True)
                     
@@ -1570,33 +1568,47 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             with col_top5:
                 st.markdown("#### 📊 Top 5 Artículos")  # ✅ Siempre mostrar, como contexto
                 
-                # ✅ TOP 5 ARTÍCULOS - DESACOPLADO: Query independiente solo por períodos
+                # ✅ TOP 5 ARTÍCULOS - DESACOPLADO: Query independiente usando get_compras_multiples
                 try:
                     # Obtener datos sin filtro de proveedor para Top 5 independiente
-                    df_all_for_top5 = sqlq_comparativas.comparar_compras(
-                        anios=anios if not meses else None,
-                        meses=meses if meses else None,
+                    df_all_for_top5 = sqlq_compras.get_compras_multiples(
                         proveedores=None,  # Sin filtro de proveedor
-                        articulos=None     # Sin filtro de artículos
+                        meses=meses if meses else None,
+                        anios=anios if not meses else None,  # Si hay meses, no usar años
+                        limite=10000  # Límite alto para capturar más datos
                     )
                     
                     if df_all_for_top5 is not None and not df_all_for_top5.empty and 'Articulo' in df_all_for_top5.columns:
-                        # Calcular Top 5 artículos sumando los períodos válidos
-                        df_all_for_top5['Total'] = df_all_for_top5[periodos_validos].sum(axis=1)
-                        top_art = df_all_for_top5.nlargest(5, 'Total')
+                        # Agregar columna Total sumando los períodos válidos, pero como get_compras_multiples no tiene períodos como columnas,
+                        # necesitamos agrupar por artículo y sumar totales.
+                        # Asumiendo que get_compras_multiples devuelve datos con 'Total' o similar.
+                        # Si no hay 'Total', usar alguna columna numérica, como 'Monto' o similar.
+                        if 'Total' in df_all_for_top5.columns:
+                            top_art = df_all_for_top5.groupby('Articulo')['Total'].sum().nlargest(5).reset_index()
+                        else:
+                            # Si no hay 'Total', usar alguna columna numérica, como 'Monto' o similar.
+                            numeric_cols = df_all_for_top5.select_dtypes(include='number').columns
+                            if numeric_cols:
+                                top_art = df_all_for_top5.groupby('Articulo')[numeric_cols[0]].sum().nlargest(5).reset_index()
+                                top_art.columns = ['Articulo', 'Total']  # Renombrar
+                            else:
+                                top_art = pd.DataFrame()  # Vacío si no hay numéricos
                         
-                        container_html = '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
-                        st.markdown(container_html, unsafe_allow_html=True)
-                        
-                        for idx, row in top_art.iterrows():
-                            nombre = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
-                            valor = row['Total']
-                            valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
+                        if not top_art.empty:
+                            container_html = '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
+                            st.markdown(container_html, unsafe_allow_html=True)
                             
-                            item_html = f'<div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre}</span><span style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">{valor_fmt}</span></div>'
-                            st.markdown(item_html, unsafe_allow_html=True)
-                        
-                        st.markdown("</div>", unsafe_allow_html=True)
+                            for idx, row in top_art.iterrows():
+                                nombre = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
+                                valor = row['Total']
+                                valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
+                                
+                                item_html = f'<div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre}</span><span style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">{valor_fmt}</span></div>'
+                                st.markdown(item_html, unsafe_allow_html=True)
+                            
+                            st.markdown("</div>", unsafe_allow_html=True)
+                        else:
+                            st.info("Sin artículos disponibles")
                     else:
                         st.info("Sin artículos disponibles")
                 except Exception as e:
