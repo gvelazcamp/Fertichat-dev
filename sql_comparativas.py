@@ -241,7 +241,7 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
         if isinstance(proveedor, (list, tuple)):
             if len(proveedor) > 0:
                 prov_clauses = ['LOWER(TRIM("Cliente / Proveedor")) LIKE %s' for _ in proveedor]
-                prov_where = "AND (" + " OR '.join(prov_clauses) + ")"
+                prov_where = "AND (" + " OR ".join(prov_clauses) + ")"
                 prov_param = [f"%{p.strip().lower()}%" for p in proveedor if p.strip()]
         else:
             prov_norm = str(proveedor).strip().lower()
