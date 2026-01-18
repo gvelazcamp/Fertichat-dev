@@ -1039,34 +1039,52 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     # CALCULAR MÉTRICAS CORRECTAMENTE
     # ==========================================
     
-    # Identificar columnas numéricas (años/meses: 2024, 2025, 2024-11, etc)
-    # Excluir "Diferencia" para no contar doble
-    cols_numericas = [c for c in df.columns if c not in ['Proveedor', 'Moneda', 'Diferencia'] and pd.api.types.is_numeric_dtype(df[c])]
+    print(f"🐛 DEBUG: Columnas del DataFrame: {df.columns.tolist()}")
+    
+    # Identificar columnas de períodos (años como 2024, 2025 o meses como 2024-11)
+    # Excluir 'Proveedor', 'Articulo', 'Moneda', 'Diferencia'
+    cols_periodos = []
+    for c in df.columns:
+        # Es un período si es número (2024, 2025) o tiene guión (2024-11)
+        if pd.api.types.is_numeric_dtype(df[c]) and c not in ['Diferencia']:
+            cols_periodos.append(c)
+        elif isinstance(c, str) and ('-' in c or c.isdigit()) and c not in ['Proveedor', 'Articulo', 'Moneda', 'Cliente / Proveedor']:
+            cols_periodos.append(c)
+    
+    print(f"🐛 DEBUG: Columnas de períodos detectadas: {cols_periodos}")
     
     # Calcular totales por moneda
     if 'Moneda' in df.columns:
-        df_pesos = df[df['Moneda'] == '$']
-        df_usd = df[df['Moneda'].isin(['U$S', 'USD', 'U$$'])]
+        df_pesos = df[df['Moneda'] == '$'].copy()
+        df_usd = df[df['Moneda'].isin(['U$S', 'USD', 'U$$'])].copy()
         
-        # Sumar SOLO las columnas de años/meses (no la diferencia)
-        total_uyu = df_pesos[cols_numericas].sum().sum() if not df_pesos.empty else 0
-        total_usd = df_usd[cols_numericas].sum().sum() if not df_usd.empty else 0
-        
-        # ✅ FIX: Si no hay separación por moneda, sumar todo como UYU
-        if total_uyu == 0 and total_usd == 0:
-            total_uyu = df[cols_numericas].sum().sum()
+        # Sumar SOLO las columnas de períodos
+        if cols_periodos:
+            total_uyu = df_pesos[cols_periodos].sum().sum() if not df_pesos.empty and len(cols_periodos) > 0 else 0
+            total_usd = df_usd[cols_periodos].sum().sum() if not df_usd.empty and len(cols_periodos) > 0 else 0
+        else:
+            total_uyu = 0
             total_usd = 0
+        
+        print(f"🐛 DEBUG: Total UYU: {total_uyu}, Total USD: {total_usd}")
+        
+        # Si ambos son 0, intentar sumar todo
+        if total_uyu == 0 and total_usd == 0 and len(cols_periodos) > 0:
+            total_uyu = df[cols_periodos].sum().sum()
     else:
         # Sin columna moneda: asumir todo UYU
-        total_uyu = df[cols_numericas].sum().sum()
+        if cols_periodos:
+            total_uyu = df[cols_periodos].sum().sum()
+        else:
+            total_uyu = 0
         total_usd = 0
     
     # Número de proveedores y registros
-    num_proveedores = df['Proveedor'].nunique() if 'Proveedor' in df.columns else 0
+    num_proveedores = df['Proveedor'].nunique() if 'Proveedor' in df.columns else (df['Articulo'].nunique() if 'Articulo' in df.columns else 0)
     num_registros = len(df)
     
     # Identificar qué años/meses se están comparando
-    periodos = [c for c in cols_numericas if c.isdigit() or '-' in str(c)]
+    periodos = cols_periodos
     num_periodos = len(periodos)
     
     # ==========================================
