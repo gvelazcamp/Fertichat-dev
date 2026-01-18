@@ -1091,7 +1091,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     
     print(f"🐛 DEBUG: Columnas de períodos detectadas: {cols_periodos}")
     
-    # Calcular totales por moneda - SEPARAR CORRECTAMENTE
+    # Calcular totales por moneda - SEPARAR CORRECTAMENTE SIN FALLBACK
     total_uyu = 0
     total_usd = 0
     
@@ -1105,10 +1105,6 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             total_usd = df_usd[cols_periodos].sum().sum()
         
         print(f"🐛 DEBUG: Total UYU: {total_uyu}, Total USD: {total_usd}")
-    else:
-        # Sin columna Moneda o sin períodos: asumir 0 para ambos
-        total_uyu = 0
-        total_usd = 0
     
     # Determinar si es comparación de artículos (basado en entrada)
     # Nota: Aquí asumimos que si 'articulos' fue seleccionado en la UI, es artículos
