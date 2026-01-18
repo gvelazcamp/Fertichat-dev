@@ -1276,15 +1276,12 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 min-width: 100% !important;
                 margin-bottom: 1rem;
             }
-            
             .comp-header {
                 padding: 1.5rem !important;
             }
-            
             h2 {
                 font-size: 1.5rem !important;
             }
-            
             button {
                 width: 100%;
                 margin-bottom: 0.5rem;
@@ -1947,7 +1944,7 @@ def Compras_IA():
         st.rerun()
 
     with tab_comparativas:
-        # New modern design for comparativas
+        # New modern design for comparativas with additional CSS
         st.markdown("""
         <style>
         /* Header con gradiente */
@@ -2100,6 +2097,72 @@ def Compras_IA():
             border: none;
             border-top: 2px solid #e5e7eb;
             margin: 2rem 0;
+        }
+
+        /* Solo para la sección de comparativas - SIN tocar sidebar */
+
+        /* Mejorar el selectbox de tipo de consulta */
+        section[data-testid="stMain"] div[data-baseweb="select"] {
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        section[data-testid="stMain"] div[data-baseweb="select"]:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 1px #3b82f6;
+        }
+
+        /* Mejorar multiselects */
+        section[data-testid="stMain"] div[data-baseweb="select"] > div {
+            border-radius: 8px;
+        }
+
+        /* Pills de selección más bonitas */
+        section[data-testid="stMain"] span[data-baseweb="tag"] {
+            background-color: #2563eb !important;
+            border-radius: 6px !important;
+            padding: 4px 12px !important;
+            font-size: 0.875rem !important;
+        }
+
+        /* Botón de cerrar en pills */
+        section[data-testid="stMain"] span[data-baseweb="tag"] > span {
+            color: white !important;
+        }
+
+        /* Mejorar botón Comparar */
+        section[data-testid="stMain"] button[kind="primary"] {
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 0.6rem 2rem !important;
+            font-weight: 600 !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        section[data-testid="stMain"] button[kind="primary"]:hover {
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
+            transform: translateY(-2px) !important;
+        }
+
+        /* Mejorar botón Limpiar */
+        section[data-testid="stMain"] button[kind="secondary"] {
+            border-radius: 8px !important;
+            padding: 0.6rem 1.5rem !important;
+            font-weight: 500 !important;
+            border: 1.5px solid #e5e7eb !important;
+            transition: all 0.2s ease !important;
+        }
+
+        section[data-testid="stMain"] button[kind="secondary"]:hover {
+            border-color: #cbd5e1 !important;
+            background-color: #f8fafc !important;
+        }
+
+        /* Mejorar hover en selectbox options */
+        section[data-testid="stMain"] li[role="option"]:hover {
+            background-color: #eff6ff !important;
         }
 
         /* Responsivo para móvil */
