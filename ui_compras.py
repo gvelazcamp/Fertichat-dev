@@ -1201,9 +1201,16 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     total_uyu = 0
     total_usd = 0
     
-    if 'Moneda' in df.columns and cols_periodos:
+    # ✅ FIX: Buscar columna "Moneda" o "moneda" (case insensitive)
+    col_moneda = None
+    for col in df.columns:
+        if col.lower() == 'moneda':
+            col_moneda = col
+            break
+    
+    if col_moneda and cols_periodos:
         # ✅ FIX: Buscar TODAS las variaciones de pesos y dólares
-        df['Moneda_norm'] = df['Moneda'].astype(str).str.strip().str.upper()
+        df['Moneda_norm'] = df[col_moneda].astype(str).str.strip().str.upper()
         
         # Pesos: $, UYU, PESO
         df_pesos = df[df['Moneda_norm'].str.contains(r'^\$|UYU|PESO', regex=True, na=False) & 
@@ -1762,11 +1769,23 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             st.info("⚠️ Se requieren al menos 2 períodos para generar el análisis comparativo.")
     
     with tabs[1]:
-        df_pesos = df[df['Moneda'] == '$'] if 'Moneda' in df.columns else df
+        # ✅ FIX: Usar col_moneda encontrada antes (case insensitive)
+        if col_moneda:
+            df['Moneda_norm'] = df[col_moneda].astype(str).str.strip().str.upper()
+            df_pesos = df[df['Moneda_norm'].str.contains(r'^\$|UYU|PESO', regex=True, na=False) & 
+                          ~df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+        else:
+            df_pesos = df
         st.dataframe(df_pesos, use_container_width=True, height=400)
     
     with tabs[2]:
-        df_usd = df[df['Moneda'].isin(['U$S', 'USD'])] if 'Moneda' in df.columns else pd.DataFrame()
+        # ✅ FIX: Usar col_moneda encontrada antes (case insensitive)
+        if col_moneda:
+            df['Moneda_norm'] = df[col_moneda].astype(str).str.strip().str.upper()
+            df_usd = df[df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+        else:
+            df_usd = pd.DataFrame()
+        
         if not df_usd.empty:
             st.dataframe(df_usd, use_container_width=True, height=400)
         else:
