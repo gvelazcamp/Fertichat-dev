@@ -61,9 +61,9 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
     where_clauses = []
     params = []
 
-    # ✅ FIX: Usar IN en lugar de ANY para compatibilidad
+    # ✅ FIX: Usar IN en lugar de ANY para compatibilidad, con casting a INT
     anios_str = ', '.join(str(int(a)) for a in anios)
-    where_clauses.append(f'"Año"::int IN ({anios_str})')  # ← AGREGADO ::int
+    where_clauses.append(f'"Año"::int IN ({anios_str})')
 
     # ✅ FIX: Solo agregar filtro de meses si realmente hay meses
     if meses and len(meses) > 0:
@@ -130,13 +130,16 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
                 END AS monto_num
             FROM chatbot_raw
             WHERE {where_sql}
+                AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''  -- Filtrar artículos vacíos
         )
         SELECT
             "Articulo",
             "Moneda",
             SUM(monto_num) AS total
         FROM montos
+        WHERE monto_num IS NOT NULL AND monto_num > 0  -- Filtrar montos inválidos
         GROUP BY "Articulo", "Moneda"
+        HAVING SUM(monto_num) > 0  -- Solo grupos con total > 0
         ORDER BY total DESC
         LIMIT 5
     """
