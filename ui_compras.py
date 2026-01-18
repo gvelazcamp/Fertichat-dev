@@ -1507,34 +1507,34 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             dif_fmt = f"${abs(diferencia)/1_000_000:.2f}M" if abs(diferencia) >= 1_000_000 else f"${abs(diferencia):,.0f}".replace(",", ".")
             signo = "+" if diferencia > 0 else "-"
             
-            # 📊 2 CARDS: CRECIMIENTO (MÁS CHICA) + TOP 5 ARTÍCULOS
+            # 📊 2 CARDS: CRECIMIENTO (MÁS COMPACTA) + TOP 5 ARTÍCULOS
             col_crec, col_top5 = st.columns([1, 1])
             
             with col_crec:
-                # CARD DE CRECIMIENTO (MÁS CHICA)
+                # CARD DE CRECIMIENTO (MÁS COMPACTA)
                 st.markdown(f"""
-                <div style="background: {color_bg}; border-radius: 16px; padding: 28px; text-align: center; color: white; box-shadow: 0 6px 20px rgba(0,0,0,0.1); height: 320px; display: flex; flex-direction: column; justify-content: center;">
-                    <p style="margin: 0; font-size: 2.5rem; margin-bottom: 8px;">{icono}</p>
-                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; opacity: 0.95; letter-spacing: 1.5px;">{titulo}</h3>
-                    <h1 style="margin: 16px 0 8px 0; font-size: 3.5rem; font-weight: 800; line-height: 1;">{variacion_pct:+.1f}%</h1>
-                    <p style="margin: 0; font-size: 1.1rem; font-weight: 500; opacity: 0.9;">{signo}{dif_fmt} vs {p1}</p>
+                <div style="background: {color_bg}; border-radius: 12px; padding: 18px; text-align: center; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.08); height: 180px; display: flex; flex-direction: column; justify-content: center;">
+                    <p style="margin: 0; font-size: 1.8rem; margin-bottom: 4px;">{icono}</p>
+                    <h3 style="margin: 0; font-size: 0.85rem; font-weight: 600; opacity: 0.95; letter-spacing: 1px;">{titulo}</h3>
+                    <h1 style="margin: 10px 0 4px 0; font-size: 2.5rem; font-weight: 800; line-height: 1;">{variacion_pct:+.1f}%</h1>
+                    <p style="margin: 0; font-size: 0.85rem; font-weight: 500; opacity: 0.9;">{signo}{dif_fmt} vs {p1}</p>
                 </div>
                 """, unsafe_allow_html=True)
             
             with col_top5:
-                # CARD DE TOP 5 ARTÍCULOS CON SELECTBOX
+                # CARD DE TOP 5 ARTÍCULOS (MÁS COMPACTA)
                 st.markdown("""
-                <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); height: 320px; border: 2px solid #e5e7eb; overflow-y: auto;">
-                    <h3 style="margin: 0 0 12px 0; font-size: 1.1rem; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 8px;">
+                <div style="background: white; border-radius: 12px; padding: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); height: 180px; border: 2px solid #e5e7eb; overflow-y: auto;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 0.9rem; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 6px;">
                         📊 Top 5 Artículos
                     </h3>
                 """, unsafe_allow_html=True)
                 
-                # Selectbox para elegir período
+                # Selectbox para elegir período (más compacto)
                 periodo_top5 = st.selectbox(
                     "Ver período:",
                     options=periodos_validos,
-                    index=1,  # Por defecto el más reciente
+                    index=1,
                     key="periodo_top5_select",
                     label_visibility="collapsed"
                 )
@@ -1544,47 +1544,39 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 
                 if periodo_top5 in df.columns and entity_col_top5 in df.columns:
                     try:
-                        # Asegurar que la columna del período sea numérica
                         df_calc = df.copy()
                         df_calc[periodo_top5] = pd.to_numeric(df_calc[periodo_top5], errors='coerce').fillna(0)
-                        
-                        # Filtrar valores válidos (mayores a 0)
                         df_calc = df_calc[df_calc[periodo_top5] > 0]
                         
                         if len(df_calc) > 0:
-                            # Tomar top 5
                             df_top5 = df_calc.nlargest(min(5, len(df_calc)), periodo_top5)[[entity_col_top5, periodo_top5]].copy()
                             
-                            # Mostrar Top 5 con estilo
                             for idx, row in df_top5.iterrows():
                                 nombre = row[entity_col_top5]
                                 valor = row[periodo_top5]
-                                
-                                # Acortar nombre si es muy largo
-                                nombre_corto = str(nombre)[:35] + "..." if len(str(nombre)) > 35 else str(nombre)
-                                
-                                # Formatear valor
-                                valor_fmt = f"${valor/1_000_000:.2f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
+                                nombre_corto = str(nombre)[:30] + "..." if len(str(nombre)) > 30 else str(nombre)
+                                valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
                                 
                                 st.markdown(f"""
-                                <div style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
+                                <div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="font-size: 0.82rem; color: #374151; font-weight: 500;">{nombre_corto}</span>
-                                        <span style="font-size: 0.88rem; color: #10b981; font-weight: 700;">{valor_fmt}</span>
+                                        <span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre_corto}</span>
+                                        <span style="font-size: 0.75rem; color: #10b981; font-weight: 700;">{valor_fmt}</span>
                                     </div>
                                 </div>
                                 """, unsafe_allow_html=True)
                         else:
-                            st.info("No hay datos con valores positivos")
-                    
-                    except Exception as e:
-                        st.warning(f"No se pueden mostrar los datos: {str(e)}")
+                            st.info("Sin datos")
+                    except Exception:
+                        st.warning("Error al cargar")
                 else:
-                    st.info("No hay datos disponibles")
+                    st.info("Sin datos")
                 
                 st.markdown("</div>", unsafe_allow_html=True)
             
-            # 📊 COMPARACIÓN VISUAL CON GRÁFICO
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # 📊 COMPARACIÓN VISUAL CON GRÁFICO (MÁS COMPACTO)
             st.markdown("### 📊 Comparación de Períodos")
             
             try:
@@ -1617,10 +1609,11 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         title=f"Comparación {p1} vs {p2}",
                         xaxis_title="",
                         yaxis_title="Monto",
-                        height=400,
+                        height=280,
                         template="plotly_white",
                         showlegend=True,
-                        barmode='group'
+                        barmode='group',
+                        margin=dict(t=50, b=30, l=50, r=30)
                     )
                 else:
                     # Múltiples proveedores: Top 10
@@ -1650,51 +1643,51 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         title=f"Top 10 - Comparación {p1} vs {p2}",
                         xaxis_title=entity_col,
                         yaxis_title="Monto",
-                        height=450,
+                        height=300,
                         template="plotly_white",
                         showlegend=True,
                         barmode='group',
-                        xaxis={'tickangle': -45}
+                        xaxis={'tickangle': -45},
+                        margin=dict(t=50, b=50, l=50, r=30)
                     )
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
             except Exception as e:
                 st.error(f"Error al generar gráfico: {str(e)}")
-                st.info("💡 Mostrando tabla de comparación como alternativa")
             
-            # 💎 3 MÉTRICAS CLAVE EN CARDS
+            # 💎 3 MÉTRICAS CLAVE EN CARDS (MÁS COMPACTAS)
             st.markdown("---")
             col1, col2, col3 = st.columns(3)
             
             with col1:
                 st.markdown(f"""
-                <div style="background: white; border-radius: 16px; padding: 24px; text-align: center; border: 2px solid {color_texto}; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
-                    <p style="margin: 0; font-size: 2.8rem;">{icono}</p>
-                    <p style="margin: 12px 0 0 0; font-size: 2.2rem; font-weight: 700; color: {color_texto};">{variacion_pct:+.1f}%</p>
-                    <p style="margin: 6px 0 0 0; font-size: 0.9rem; color: #6b7280; font-weight: 600;">VARIACIÓN TOTAL</p>
+                <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; border: 2px solid {color_texto}; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 120px; display: flex; flex-direction: column; justify-content: center;">
+                    <p style="margin: 0; font-size: 2rem;">{icono}</p>
+                    <p style="margin: 8px 0 0 0; font-size: 1.6rem; font-weight: 700; color: {color_texto};">{variacion_pct:+.1f}%</p>
+                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #6b7280; font-weight: 600;">VARIACIÓN TOTAL</p>
                 </div>
                 """, unsafe_allow_html=True)
             
             with col2:
                 st.markdown(f"""
-                <div style="background: white; border-radius: 16px; padding: 24px; text-align: center; border: 2px solid #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
-                    <p style="margin: 0; font-size: 2.8rem;">📄</p>
-                    <p style="margin: 12px 0 0 0; font-size: 2.2rem; font-weight: 700; color: #111827;">{num_registros}</p>
-                    <p style="margin: 6px 0 0 0; font-size: 0.9rem; color: #6b7280; font-weight: 600;">REGISTROS</p>
+                <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; border: 2px solid #3b82f6; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 120px; display: flex; flex-direction: column; justify-content: center;">
+                    <p style="margin: 0; font-size: 2rem;">📄</p>
+                    <p style="margin: 8px 0 0 0; font-size: 1.6rem; font-weight: 700; color: #111827;">{num_registros}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #6b7280; font-weight: 600;">REGISTROS</p>
                 </div>
                 """, unsafe_allow_html=True)
             
             with col3:
                 st.markdown(f"""
-                <div style="background: white; border-radius: 16px; padding: 24px; text-align: center; border: 2px solid #8b5cf6; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
-                    <p style="margin: 0; font-size: 2.8rem;">📅</p>
-                    <p style="margin: 12px 0 0 0; font-size: 1.4rem; font-weight: 700; color: #111827;">{p1} vs {p2}</p>
-                    <p style="margin: 6px 0 0 0; font-size: 0.9rem; color: #6b7280; font-weight: 600;">PERÍODOS</p>
+                <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; border: 2px solid #8b5cf6; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 120px; display: flex; flex-direction: column; justify-content: center;">
+                    <p style="margin: 0; font-size: 2rem;">📅</p>
+                    <p style="margin: 8px 0 0 0; font-size: 1.1rem; font-weight: 700; color: #111827;">{p1} vs {p2}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #6b7280; font-weight: 600;">PERÍODOS</p>
                 </div>
                 """, unsafe_allow_html=True)
             
-            # 📋 TABLA RESUMIDA (SIN TÍTULO)
+            # 📋 TABLA RESUMIDA (MÁS COMPACTA)
             st.markdown("---")
             
             entity_col = 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
@@ -1709,7 +1702,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 if col in df_tabla.columns:
                     df_tabla[col] = df_tabla[col].apply(lambda x: f"${x:,.0f}".replace(",", ".") if pd.notna(x) and isinstance(x, (int, float)) else str(x))
             
-            st.dataframe(df_tabla, use_container_width=True, height=250)
+            st.dataframe(df_tabla, use_container_width=True, height=180)
         
         else:
             st.info("⚠️ Se requieren al menos 2 períodos para generar el análisis comparativo.")
