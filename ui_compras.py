@@ -1501,8 +1501,9 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             }
             
             .action-bar {
-                flex-direction: column;
-                align-items: stretch;
+                flex-wrap: nowrap !important;
+                height: 48px !important;  /* Altura máxima de la barra */
+                gap: 8px !important;  /* Separación uniforme */
             }
             
             .action-left, .action-right {
@@ -1740,14 +1741,22 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         meses_ctx = st.session_state.get("meses_multi", [])
                         proveedores_ctx = st.session_state.get("comparativas_proveedores_multi", [])
                         
-                        # ✅ FIX: Pasar meses SOLO si hay meses seleccionados explícitamente
-                        # Si solo hay años (sin meses específicos), pasar None
-                        meses_param = meses_ctx if meses_ctx and len(meses_ctx) > 0 else None
+                        # ✅ FIX: Convertir meses de formato "2024-11" a solo el número del mes
+                        meses_param = None
+                        if meses_ctx and len(meses_ctx) > 0:
+                            meses_param = meses_ctx  # Ya están en formato "2024-11"
+                        
+                        # ✅ FIX CRÍTICO: Pasar proveedores correctamente
+                        proveedores_param = None
+                        if proveedores_ctx and len(proveedores_ctx) > 0:
+                            proveedores_param = proveedores_ctx
+                        
+                        print(f"🐛 DEBUG Top5: años={anios_ctx}, meses={meses_param}, provs={proveedores_param}")
                         
                         df_top5 = get_top_5_articulos(
                             anios=anios_ctx,
                             meses=meses_param,
-                            proveedores=proveedores_ctx if proveedores_ctx else None
+                            proveedores=proveedores_param
                         )
                         
                         if df_top5 is None or df_top5.empty:
@@ -1762,6 +1771,8 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                             st.dataframe(df_display, use_container_width=True, hide_index=True, height=300)
                     except Exception as e:
                         st.error(f"Error Top 5: {str(e)}")
+                        import traceback
+                        st.code(traceback.format_exc())
             
             # Cerrar wrapper gráfico + top5
             st.markdown('</div>', unsafe_allow_html=True)
