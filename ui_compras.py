@@ -2265,7 +2265,10 @@ def Compras_IA():
             # ✅ PAUSAR AUTOREFRESH EN COMPARATIVAS
             st.session_state["pause_autorefresh"] = True
 
-            st.markdown("#### 📊 Comparativas")
+            st.markdown(
+                '<div class="comparativas-title"><span>Comparativas</span></div>',
+                unsafe_allow_html=True
+            )
             
             # ✅ PROVEEDORES (ancho completo, sin columnas)
             proveedores_disponibles = prov_options  # Ya tiene todos los proveedores
