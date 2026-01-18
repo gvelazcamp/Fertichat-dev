@@ -2138,136 +2138,50 @@ def Compras_IA():
 
     with tab_comparativas:
         # ==========================================
-        # CSS PROFESIONAL PARA EL MENÚ COMPARATIVAS
+        # CSS PROFESIONAL PARA EL MENÚ COMPARATIVAS (SOLO MEJORAS SUTILES)
         # ==========================================
         st.markdown("""
         <style>
-        /* Header del Menú Comparativas */
-        section[data-testid="stMain"] h3 {
-            color: #1e293b;
-            font-weight: 600;
-            font-size: 1.4rem;
-            margin-bottom: 0.5rem;
-        }
+        /* SOLO mejoras sutiles - SIN cambiar fondos ni tamaños */
 
-        /* Subtítulo descriptivo */
-        section[data-testid="stMain"] p {
-            color: #64748b;
-            font-size: 0.95rem;
-            margin-bottom: 1.5rem;
-        }
-
-        /* Título "Filtros de Comparación" */
-        section[data-testid="stMain"] h4 {
-            color: #1e293b;
-            font-weight: 600;
-            font-size: 1.15rem;
-            margin-top: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        /* Labels de los campos */
-        section[data-testid="stMain"] label {
-            font-weight: 500;
-            color: #334155;
-            font-size: 0.95rem;
-        }
-
-        /* Mejorar selectboxes */
-        section[data-testid="stMain"] div[data-baseweb="select"] {
-            border-radius: 8px;
-            border-color: #d1d5db;
-            transition: all 0.2s ease;
-        }
-
-        section[data-testid="stMain"] div[data-baseweb="select"]:hover {
-            border-color: #3b82f6;
-        }
-
-        section[data-testid="stMain"] div[data-baseweb="select"]:focus-within {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        /* Pills de selección (Noviembre, 2024, 2025) */
+        /* Pills azules profesionales (Noviembre, 2024, 2025, 30G ANA PROFILE) */
         section[data-testid="stMain"] span[data-baseweb="tag"] {
             background-color: #1e40af !important;
             color: white !important;
             border-radius: 6px !important;
-            padding: 5px 12px !important;
-            font-size: 0.875rem !important;
             font-weight: 500 !important;
         }
 
-        /* Botón X en las pills */
-        section[data-testid="stMain"] span[data-baseweb="tag"] svg {
-            color: white !important;
-            opacity: 0.9;
-        }
-
-        section[data-testid="stMain"] span[data-baseweb="tag"]:hover svg {
-            opacity: 1;
-        }
-
-        /* Botón Comparar - azul con gradiente */
+        /* Botón Comparar con gradiente */
         section[data-testid="stMain"] button[kind="primary"] {
             background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
-            color: white !important;
             border: none !important;
             border-radius: 8px !important;
-            padding: 0.65rem 2rem !important;
             font-weight: 600 !important;
-            font-size: 1rem !important;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
             transition: all 0.3s ease !important;
         }
 
         section[data-testid="stMain"] button[kind="primary"]:hover {
-            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4) !important;
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
             transform: translateY(-2px) !important;
         }
 
-        /* Botón Limpiar resultados - gris suave */
+        /* Botón Limpiar resultados más sutil */
         section[data-testid="stMain"] button[kind="secondary"] {
-            background: white !important;
-            color: #64748b !important;
-            border: 1.5px solid #e5e7eb !important;
             border-radius: 8px !important;
-            padding: 0.65rem 1.5rem !important;
-            font-weight: 500 !important;
-            font-size: 0.95rem !important;
+            border: 1.5px solid #e5e7eb !important;
             transition: all 0.2s ease !important;
         }
 
         section[data-testid="stMain"] button[kind="secondary"]:hover {
-            background: #f8fafc !important;
+            background-color: #f8fafc !important;
             border-color: #cbd5e1 !important;
         }
 
-        /* Espaciado entre campos */
-        section[data-testid="stMain"] div[data-testid="stVerticalBlock"] > div {
-            margin-bottom: 1rem;
-        }
-
-        /* Container con fondo suave */
-        section[data-testid="stMain"] div[data-testid="stVerticalBlock"] {
-            background: #f8fafc;
-            padding: 1.5rem;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-        }
-
-        /* Mejorar dropdown options hover */
-        section[data-testid="stMain"] li[role="option"]:hover {
-            background-color: #eff6ff !important;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            section[data-testid="stMain"] button {
-                width: 100% !important;
-                margin-bottom: 0.5rem !important;
-            }
+        /* Hover suave en selectboxes */
+        section[data-testid="stMain"] div[data-baseweb="select"]:hover {
+            border-color: #3b82f6 !important;
         }
         </style>
         """, unsafe_allow_html=True)
