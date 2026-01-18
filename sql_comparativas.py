@@ -60,6 +60,7 @@ def comparar_compras(
 ) -> pd.DataFrame:
     """
     🎯 FUNCIÓN UNIVERSAL DE COMPARATIVAS
+    Compara proveedores o artículos entre años o meses.
     """
     if not anios and not meses:
         print("⚠️ comparar_compras: Se requiere anios o meses")
@@ -76,40 +77,34 @@ def comparar_compras(
 
     total_expr = _sql_total_num_expr_general()
 
+    # ✅ USAR FILTER en lugar de CASE WHEN para mejor performance
     cols = []
-    params: List = []
-
     for t in tiempos_sorted:
         if usar_meses:
-            cols.append(
-                f"""SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) AS "{t}" """
-            )
-            params.append(t)
+            cols.append(f"""SUM({total_expr}) FILTER (WHERE TRIM("Mes") = '{t}') AS "{t}" """)
         else:
-            # ✅ FIX: Tratar "Año" como texto, no castear a int
-            cols.append(
-                f"""SUM(CASE WHEN TRIM("Año") = %s THEN {total_expr} ELSE 0 END) AS "{t}" """
-            )
-            params.append(str(t))
+            # ✅ Año es INTEGER en la BD
+            cols.append(f"""SUM({total_expr}) FILTER (WHERE "Año" = {int(t)}) AS "{t}" """)
 
     cols_sql = ",\n            ".join(cols)
+    
     diff_sql = ""
     if len(tiempos_sorted) == 2:
         t1, t2 = tiempos_sorted[0], tiempos_sorted[1]
         if usar_meses:
             diff_sql = f""",
-                (SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END) -
-                 SUM(CASE WHEN TRIM("Mes") = %s THEN {total_expr} ELSE 0 END)) AS Diferencia
+                (SUM({total_expr}) FILTER (WHERE TRIM("Mes") = '{t2}') -
+                 SUM({total_expr}) FILTER (WHERE TRIM("Mes") = '{t1}')) AS Diferencia
             """
-            params.extend([t2, t1])
         else:
-            # ✅ FIX: Usar TRIM("Año") = %s para diff
             diff_sql = f""",
-                (SUM(CASE WHEN TRIM("Año") = %s THEN {total_expr} ELSE 0 END) -
-                 SUM(CASE WHEN TRIM("Año") = %s THEN {total_expr} ELSE 0 END)) AS Diferencia
+                (SUM({total_expr}) FILTER (WHERE "Año" = {int(t2)}) -
+                 SUM({total_expr}) FILTER (WHERE "Año" = {int(t1)})) AS Diferencia
             """
-            params.extend([str(t2), str(t1)])
 
+    # ✅ CONSTRUIR FILTROS
+    params: List = []
+    
     prov_where = ""
     if proveedores:
         prov_clauses = []
@@ -122,7 +117,6 @@ def comparar_compras(
         if prov_clauses:
             prov_where = "AND (" + " OR ".join(prov_clauses) + ")"
 
-    # ✅ FIX FINAL: Usar ILIKE normalizado para artículos
     art_where = ""
     if articulos:
         art_clauses = []
@@ -131,34 +125,31 @@ def comparar_compras(
             if a_norm:
                 art_clauses.append('LOWER(TRIM("Articulo")) ILIKE %s')
                 params.append(f"%{a_norm}%")
-
         if art_clauses:
             art_where = "AND (" + " OR ".join(art_clauses) + ")"
 
-    tiempo_col = "Mes" if usar_meses else "Año"
-    # ✅ FIX: Hardcodear los tiempos en IN, no usar %s para evitar duplicados
-    tiempo_placeholders = ", ".join([f"'{str(y)}'" for y in tiempos_sorted])
-    tiempo_where = f'TRIM("{tiempo_col}") IN ({tiempo_placeholders})'
+    # ✅ WHERE tiempo
+    if usar_meses:
+        meses_str = "', '".join(tiempos_sorted)
+        tiempo_where = f"TRIM(\"Mes\") IN ('{meses_str}')"
+    else:
+        anios_str = ", ".join(str(int(a)) for a in tiempos_sorted)
+        tiempo_where = f'"Año" IN ({anios_str})'
 
-    # ✅ FIX: Determinar modo explícito (SQL)
+    # ✅ Determinar si comparar por artículos o proveedores
     modo_articulos = articulos is not None and len(articulos) > 0
     group_by_col = "Articulo" if modo_articulos else "Proveedor"
-    select_col = (
-        'TRIM("Articulo")'
-        if modo_articulos
-        else 'TRIM("Cliente / Proveedor")'
-    )
+    select_col = 'TRIM("Articulo")' if modo_articulos else 'TRIM("Cliente / Proveedor")'
 
-    # ===== DETERMINAR LÍMITE =====
-    # ✅ FIX: Ajustar límite basado en modo (artículos vs proveedores)
+    # ✅ Límite
     if modo_articulos:
-        limite = 1000  # Para artículos, límite más bajo ya que son específicos
+        limite = 1000
     elif proveedores is None or len(proveedores) == 0:
-        limite = 5000  # Todos los proveedores
+        limite = 5000
     else:
-        limite = 1000  # Proveedores específicos
+        limite = 1000
 
-    # ✅ FIX 2: Cambiar el SELECT y alias con comillas dobles
+    # ✅ SQL FINAL
     sql = f"""
         SELECT
             {select_col} AS "{group_by_col}",
@@ -175,7 +166,7 @@ def comparar_compras(
     """
 
     print(f"🐛 DEBUG comparar_compras: Ejecutando con {len(params)} params")
-    print(f"🐛 SQL (primeros 300 chars): {sql[:300]}...")
+    print(f"🐛 SQL (primeros 500 chars): {sql[:500]}...")
 
     df = ejecutar_consulta(sql, tuple(params))
     print(f"🐛 Resultado: {len(df) if df is not None and not df.empty else 0} filas")
