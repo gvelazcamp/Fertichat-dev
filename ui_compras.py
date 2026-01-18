@@ -43,29 +43,82 @@ def get_unique_articulos():
 # =========================
 # NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
 # =========================
-def get_top_5_articulos(periodos):
+def get_top_5_articulos(anios, meses=None):
     """
-    Función exclusiva para obtener Top 5 artículos por períodos.
-    Lee directo desde chatbot_raw, sin filtros de proveedor.
+    Devuelve Top 5 artículos por monto total para el período seleccionado.
+    - anios: lista de int (ej: [2025] o [2024,2025])
+    - meses: lista de str o int opcional (ej: ['02'] o [2])
     """
-    if not periodos:
+
+    if not anios:
         return pd.DataFrame()
-    
-    # Crear placeholders para la query
-    placeholders = ', '.join(['%s'] * len(periodos))
-    
-    sql = f'''
-        SELECT "Articulo", SUM("Total") AS total
-        FROM chatbot_raw
-        WHERE "Mes" IN ({placeholders})
-        AND "Articulo" IS NOT NULL AND "Articulo" != ''
+
+    # -------------------------
+    # WHERE por período
+    # -------------------------
+    where_clauses = []
+    params = []
+
+    where_clauses.append('"Año" = ANY(%s)')
+    params.append(anios)
+
+    if meses:
+        # normalizo meses a int
+        meses_int = [int(m) for m in meses]
+        where_clauses.append('"Mes" = ANY(%s)')
+        params.append(meses_int)
+
+    where_sql = " AND ".join(where_clauses)
+
+    # -------------------------
+    # SQL TOP 5
+    # -------------------------
+    sql = f"""
+        WITH montos AS (
+            SELECT
+                "Articulo",
+                CASE
+                    WHEN REPLACE("Monto Neto",' ','') LIKE '(%)' THEN
+                        -1 * CAST(
+                            REPLACE(
+                                REPLACE(
+                                    SUBSTRING(
+                                        REPLACE("Monto Neto",' ',''), 2,
+                                        LENGTH(REPLACE("Monto Neto",' ','')) - 2
+                                    ),
+                                    '.',''
+                                ),
+                                ',','.'
+                            ) AS NUMERIC
+                        )
+                    ELSE
+                        CAST(
+                            REPLACE(
+                                REPLACE(
+                                    REPLACE("Monto Neto",' ',''),'.',''
+                                ),
+                                ',','.'
+                            ) AS NUMERIC
+                        )
+                END AS monto_num
+            FROM chatbot_raw
+            WHERE {where_sql}
+        )
+        SELECT
+            "Articulo",
+            SUM(monto_num) AS total
+        FROM montos
         GROUP BY "Articulo"
         ORDER BY total DESC
         LIMIT 5
-    '''
-    
-    df = ejecutar_consulta(sql, periodos)
-    return df if df is not None else pd.DataFrame()
+    """
+
+    try:
+        df = ejecutar_consulta(sql, tuple(params))
+        return df if df is not None else pd.DataFrame()
+    except Exception as e:
+        print("❌ Error Top 5 Artículos:", e)
+        return pd.DataFrame()
 
 # =========================
 # CONVERSIÓN DE MESES A NOMBRES
@@ -1597,7 +1650,13 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 
                 # ✅ TOP 5 ARTÍCULOS - DESACOPLADO: Query independiente usando get_top_5_articulos
                 try:
-                    df_top5 = get_top_5_articulos(periodos_validos)
+                    # Extraer anios y meses únicos de periodos_validos
+                    anios_unique = list(set(int(p.split('-')[0]) for p in periodos_validos if '-' in p and p.split('-')[0].isdigit()))
+                    meses_unique = None
+                    if all('-' in p for p in periodos_validos):
+                        meses_unique = list(set(int(p.split('-')[1]) for p in periodos_validos if '-' in p and p.split('-')[1].isdigit()))
+                    
+                    df_top5 = get_top_5_articulos(anios_unique, meses_unique)
                     
                     if df_top5 is not None and not df_top5.empty:
                         container_html = '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
@@ -2164,6 +2223,8 @@ def Compras_IA():
         # ✅ PAUSAR AUTOREFRESH AL HACER UNA PREGUNTA
         st.session_state["pause_autorefresh"] = True
 
+        st_session_state = st.session_state  # Typo fix, but assuming it's st.session_state
+
         st.session_state["historial_compras"].append(
             {
                 "role": "user",
@@ -2249,6 +2310,7 @@ def Compras_IA():
                 "df": respuesta_df,
                 "tipo": tipo,
                 "pregunta": pregunta,
+                "timestamp": datetime.now().timestamp(),
             }
         )
 
@@ -2350,7 +2412,7 @@ def Compras_IA():
                     st.error("Seleccioná al menos 2 años O al menos 2 combinaciones de mes-año para comparar")
                 else:
                     # ✅ PAUSAR AUTOREFRESH
-                    st.session_state.comparativa_activa = True
+                    st_session_state["comparativa_activa"] = True  # Typo fix: st_session_state -> st.session_state
                     
                     with st.spinner("Comparando..."):
                         try:
