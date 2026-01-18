@@ -139,8 +139,14 @@ def comparar_compras(
         tiempo_placeholders = ", ".join(str(int(y)) for y in tiempos_sorted)
         tiempo_where = f'"{tiempo_col}"::int IN ({tiempo_placeholders})'
 
-    group_by_col = "Articulo" if articulos else "Proveedor"
-    select_col = f'TRIM("Articulo")' if articulos else 'TRIM("Cliente / Proveedor")'
+    # Lógica corregida: Si hay artículos Y NO hay proveedores → agrupar por artículo
+    # De lo contrario → agrupar por proveedor
+    if articulos and not proveedores:
+        group_by_col = "Articulo"
+        select_col = 'TRIM("Articulo")'
+    else:
+        group_by_col = "Proveedor"
+        select_col = 'TRIM("Cliente / Proveedor")'
 
     # ===== DETERMINAR LÍMITE =====
     if proveedores is None or len(proveedores) == 0:
