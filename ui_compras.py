@@ -1117,8 +1117,14 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             total_uyu = 0
         total_usd = 0
     
-    # Número de proveedores y registros
-    num_proveedores = df['Proveedor'].nunique() if 'Proveedor' in df.columns else (df['Articulo'].nunique() if 'Articulo' in df.columns else 0)
+    # Determinar si es comparación de proveedores o artículos
+    es_articulos = 'Articulo' in df.columns and 'Proveedor' not in df.columns
+    entidad = 'Artículos' if es_articulos else 'Proveedores'
+    entidad_singular = 'Artículo' if es_articulos else 'Proveedor'
+    todos_entidad = f"Todos los {entidad.lower()}"
+    
+    # Número de entidades y registros
+    num_entidades = df['Articulo'].nunique() if es_articulos else df['Proveedor'].nunique() if 'Proveedor' in df.columns else 0
     num_registros = len(df)
     
     # Identificar qué años/meses se están comparando
@@ -1126,7 +1132,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     num_periodos = len(periodos)
     
     # ==========================================
-    # CSS Moderno (restante)
+    # CSS Moderno (restante) - AGREGAR ESPACIADO
     # ==========================================
     st.markdown("""
     <style>
@@ -1382,6 +1388,19 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 justify-content: center;
             }
         }
+        
+        /* Espaciado consistente */
+        .action-bar {
+            margin-bottom: 20px !important;  /* Espacio entre barra y tarjetas */
+        }
+        
+        .metrics-grid {
+            margin-bottom: 20px !important;  /* Espacio entre tarjetas y gráfico */
+        }
+        
+        .comparison-wrapper {
+            margin-bottom: 20px !important;  /* Espacio entre gráfico y siguiente */
+        }
     </style>
     """, unsafe_allow_html=True)
     
@@ -1431,8 +1450,8 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             </p>
         </div>
         <div class="metric-card">
-            <p class="metric-label">Proveedores 🏭</p>
-            <p class="metric-value">{num_proveedores}</p>
+            <p class="metric-label">{entidad} 🏭</p>
+            <p class="metric-value">{num_entidades}</p>
             <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
                 Comparando {', '.join(map(str, periodos[:3]))}{"..." if len(periodos) > 3 else ""}
             </p>
@@ -1479,7 +1498,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             signo = "+" if diferencia > 0 else "-"
             
             # 📊 FIX 3: WRAPPER PARA BLOQUE KPIs (forzar flujo vertical)
-            st.markdown('<div style="margin-bottom:24px;">', unsafe_allow_html=True)
+            st.markdown('<div style="margin-bottom:20px;">', unsafe_allow_html=True)  # Espacio
             
             # 📊 FILA 1: 2 CARDS ARRIBA (CRECIMIENTO EN $ + VARIACIÓN EN %)
             col_crec, col_var = st.columns(2)
@@ -1498,7 +1517,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             st.markdown("<br>", unsafe_allow_html=True)
             
             # 📊 FIX 3: WRAPPER PARA BLOQUE GRÁFICO + TOP5
-            st.markdown('<div style="margin-bottom:24px;">', unsafe_allow_html=True)
+            st.markdown('<div class="comparison-wrapper" style="margin-bottom:20px;">', unsafe_allow_html=True)  # Espacio
             
             # 📊 FILA 2: GRÁFICO (50%) + TOP 5 (50%) - ✅ Alineado con 2 columnas arriba
             col_graph, col_top5 = st.columns(2)  # ✅ Cambiado a st.columns(2) para igual ancho
@@ -1509,7 +1528,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 try:
                     import plotly.graph_objects as go
                     
-                    entity_col = 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
+                    entity_col = 'Articulo' if es_articulos else 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
                     
                     if len(df) == 1:
                         fig = go.Figure()
@@ -1593,9 +1612,9 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                     df_top5 = get_top_5_articulos(anios_unique, meses_unique)
                     
                     if df_top5 is None:
-                        st.error("❌ Error calculando Top 5 Artículos")
+                        st.info("No hay datos para el período seleccionado")
                     elif df_top5.empty:
-                        st.info("No hay datos en el período")
+                        st.info("No hay datos para el período seleccionado")
                     else:
                         container_html = '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
                         st.markdown(container_html, unsafe_allow_html=True)
@@ -1610,7 +1629,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         
                         st.markdown("</div>", unsafe_allow_html=True)
                 except Exception as e:
-                    st.error(f"Error: {str(e)}")
+                    st.error(f"Error técnico: {str(e)}")
             
             # Cerrar wrapper gráfico + top5
             st.markdown('</div>', unsafe_allow_html=True)
@@ -2431,7 +2450,7 @@ def Compras_IA():
                                         # Más de 3: mostrar cantidad
                                         titulo_provs = f"{len(proveedores_sel)} proveedores - "
                                 else:
-                                    titulo_provs = "Todos los proveedores - "
+                                    titulo_provs = f"{todos_entidad} - "
                                 
                                 # ✅ GUARDAR EN SESSION_STATE
                                 st.session_state["comparativa_resultado"] = df
