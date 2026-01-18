@@ -1128,79 +1128,8 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     num_periodos = len(periodos)
     
     # ==========================================
-    # BARRA DE ACCIONES SUPERIOR (CSV, Excel, Guardar Vista, Filtros)
-    # ==========================================
-    st.markdown("""
-    <style>
-        .action-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            gap: 12px;
-        }
-        
-        .action-left {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .action-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-action {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: white;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            padding: 6px 12px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: #374151;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .btn-action:hover {
-            background: #f9fafb;
-            border-color: #9ca3af;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Barra de acciones - MODIFICADO PARA UNA FILA HORIZONTAL
-    # Usar st.columns con 6 columnas iguales para los 6 botones
-    col_cmp, col_clr, col_csv, col_xls, col_sav, col_flt = st.columns(6)
-    
-    with col_cmp:
-        btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
-    
-    with col_clr:
-        btn_clear = st.button("🗑️ Limpiar resultados", key="btn_limpiar_horizontal", use_container_width=True)
-    
-    with col_csv:
-        btn_csv = st.button("📊 CSV", key="btn_csv_horizontal", use_container_width=True)
-    
-    with col_xls:
-        btn_excel = st.button("📥 Excel", key="btn_excel_horizontal", use_container_width=True)
-    
-    with col_sav:
-        btn_save = st.button("💾 Guardar vista", key="btn_guardar_horizontal", use_container_width=True)
-    
-    with col_flt:
-        btn_filters = st.button("🔍 Filtros", key="btn_filtros_horizontal", use_container_width=True)
-    
     # CSS Moderno (restante)
+    # ==========================================
     st.markdown("""
     <style>
         /* ==========================================
