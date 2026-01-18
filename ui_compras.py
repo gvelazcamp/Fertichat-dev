@@ -1450,60 +1450,106 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     """, unsafe_allow_html=True)
     
     # ==========================================
-    # CARD DESTACADA PARA 1 PROVEEDOR
+    # ❌ TARJETAS DUPLICADAS ELIMINADAS
+    # (Ya no mostramos la tarjeta grande del proveedor porque está en el header)
     # ==========================================
-    if num_proveedores == 1 and 'Proveedor' in df.columns:
-        prov_name = df['Proveedor'].iloc[0]
-        iniciales = "".join([p[0] for p in prov_name.split()[:2]]).upper()
-        
-        st.markdown(f"""
-        <div class="single-provider-card">
-            <div class="single-provider-icon">{iniciales}</div>
-            <h3 class="single-provider-name">{prov_name}</h3>
-            <p class="single-provider-detail">
-                Comparación de {len(periodos)} períodos | Total: {total_uyu_fmt}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # PROVEEDOR PRINCIPAL (si hay más de 1)
-    elif num_proveedores > 1 and 'Proveedor' in df.columns and not df.empty:
-        # Calcular proveedor con mayor monto
-        df_prov = df.groupby('Proveedor').sum(numeric_only=True)
-        top_prov = df_prov.sum(axis=1).idxmax()
-        top_monto = df_prov.sum(axis=1).max()
-        top_porc = (top_monto / df.sum(numeric_only=True).sum()) * 100
-        
-        # Iniciales para el ícono
-        iniciales = "".join([p[0] for p in top_prov.split()[:2]]).upper()
-        
-        st.markdown(f"""
-        <div class="provider-card">
-            <div class="provider-header">
-                <div class="provider-icon">{iniciales}</div>
-                <div class="provider-info">
-                    <p class="provider-name">{top_prov}</p>
-                    <p class="provider-subtitle">Principal Proveedor</p>
-                </div>
-                <div>
-                    <p class="provider-amount">$ {top_monto:,.2f}</p>
-                    <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
-                </div>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: {top_porc}%"></div>
-            </div>
-            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
-                Total: $ {top_monto/1_000_000:.2f}M UYU ({top_porc:.1f}% del total)
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
     
     # TABS CON DATOS
     tabs = st.tabs(["📊 Vista General", "💵 Pesos (UYU)", "💰 Dólares (USD)", "📈 Gráfico", "📋 Tabla"])
     
+    # ==========================================
+    # TAB 1: VISTA GENERAL - RESUMEN EJECUTIVO
+    # ==========================================
     with tabs[0]:
-        st.dataframe(df, use_container_width=True, height=400)
+        st.markdown("### 💼 Resumen Ejecutivo")
+        
+        # 1️⃣ TOTALES CONSOLIDADOS POR MONEDA
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+                        border-radius: 12px; padding: 20px; color: white; text-align: center;">
+                <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">💰 Total Consolidado Pesos</p>
+                <p style="margin: 8px 0 0 0; font-size: 2rem; font-weight: 700;">{total_uyu_fmt}</p>
+                <p style="margin: 4px 0 0 0; font-size: 0.8rem; opacity: 0.8;">Suma de {len(periodos)} período(s)</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
+                        border-radius: 12px; padding: 20px; color: white; text-align: center;">
+                <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">💵 Total Consolidado USD</p>
+                <p style="margin: 8px 0 0 0; font-size: 2rem; font-weight: 700;">{total_usd_fmt}</p>
+                <p style="margin: 4px 0 0 0; font-size: 0.8rem; opacity: 0.8;">Suma de {len(periodos)} período(s)</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # 2️⃣ COMPARATIVA POR PERÍODO (tabla compacta)
+        st.markdown("### 📊 Comparativa por Período")
+        
+        # Calcular totales por período
+        periodos_data = []
+        for periodo in periodos:
+            if periodo in df.columns:
+                total_periodo_pesos = df_pesos[periodo].sum() if 'Moneda' in df.columns and not df_pesos.empty and periodo in df_pesos.columns else 0
+                total_periodo_usd = df_usd[periodo].sum() if 'Moneda' in df.columns and not df_usd.empty and periodo in df_usd.columns else 0
+                periodos_data.append({
+                    'Período': periodo,
+                    'Pesos': f"${total_periodo_pesos:,.0f}".replace(",", "."),
+                    'USD': f"U$S {total_periodo_usd:,.0f}"
+                })
+        
+        if len(periodos) == 2 and periodos_data:
+            # Calcular diferencia y variación %
+            p1_pesos = df_pesos[periodos[0]].sum() if 'Moneda' in df.columns and not df_pesos.empty and periodos[0] in df_pesos.columns else 0
+            p2_pesos = df_pesos[periodos[1]].sum() if 'Moneda' in df.columns and not df_pesos.empty and periodos[1] in df_pesos.columns else 0
+            p1_usd = df_usd[periodos[0]].sum() if 'Moneda' in df.columns and not df_usd.empty and periodos[0] in df_usd.columns else 0
+            p2_usd = df_usd[periodos[1]].sum() if 'Moneda' in df.columns and not df_usd.empty and periodos[1] in df_usd.columns else 0
+            
+            dif_pesos = p2_pesos - p1_pesos
+            dif_usd = p2_usd - p1_usd
+            var_pesos = ((p2_pesos / p1_pesos - 1) * 100) if p1_pesos != 0 else 0
+            var_usd = ((p2_usd / p1_usd - 1) * 100) if p1_usd != 0 else 0
+            
+            periodos_data.append({
+                'Período': '📈 Diferencia',
+                'Pesos': f"${dif_pesos:+,.0f}".replace(",", "."),
+                'USD': f"U$S {dif_usd:+,.0f}"
+            })
+            periodos_data.append({
+                'Período': '📊 Variación %',
+                'Pesos': f"{var_pesos:+.1f}%",
+                'USD': f"{var_usd:+.1f}%"
+            })
+        
+        df_periodos = pd.DataFrame(periodos_data)
+        st.dataframe(df_periodos, use_container_width=True, hide_index=True)
+        
+        st.markdown("---")
+        
+        # 3️⃣ TOP 5 MAYOR CRECIMIENTO (si hay diferencia)
+        if 'Diferencia' in df.columns:
+            st.markdown("### 📈 Top 5 Mayor Crecimiento")
+            df_top_crec = df.nlargest(5, 'Diferencia')[['Proveedor' if 'Proveedor' in df.columns else 'Articulo', 'Moneda', 'Diferencia']].copy()
+            if not df_top_crec.empty:
+                df_top_crec['Diferencia'] = df_top_crec['Diferencia'].apply(lambda x: f"${x:+,.0f}".replace(",", "."))
+                st.dataframe(df_top_crec, use_container_width=True, hide_index=True)
+            else:
+                st.info("No hay datos de crecimiento")
+            
+            st.markdown("---")
+            
+            # 4️⃣ TOP 5 MAYOR CAÍDA
+            st.markdown("### 📉 Top 5 Mayor Caída")
+            df_top_caida = df.nsmallest(5, 'Diferencia')[['Proveedor' if 'Proveedor' in df.columns else 'Articulo', 'Moneda', 'Diferencia']].copy()
+            if not df_top_caida.empty:
+                df_top_caida['Diferencia'] = df_top_caida['Diferencia'].apply(lambda x: f"${x:+,.0f}".replace(",", "."))
+                st.dataframe(df_top_caida, use_container_width=True, hide_index=True)
+            else:
+                st.info("No hay datos de caída")
     
     with tabs[1]:
         df_pesos = df[df['Moneda'] == '$'] if 'Moneda' in df.columns else df
