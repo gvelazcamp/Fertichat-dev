@@ -122,20 +122,18 @@ def comparar_compras(
         if prov_clauses:
             prov_where = "AND (" + " OR ".join(prov_clauses) + ")"
 
-    # ✅ FIX: Cambiar filtro de artículos a IN exacto
+    # ✅ FIX FINAL: Usar ILIKE normalizado para artículos
     art_where = ""
     if articulos:
-        # 🔒 comparación EXACTA normalizada (no LIKE)
-        art_vals = []
+        art_clauses = []
         for a in articulos:
-            a_norm = a.strip()
+            a_norm = a.strip().lower()
             if a_norm:
-                art_vals.append(a_norm)
+                art_clauses.append('LOWER(TRIM("Articulo")) ILIKE %s')
+                params.append(f"%{a_norm}%")
 
-        if art_vals:
-            placeholders = ", ".join(["%s"] * len(art_vals))
-            art_where = f'AND TRIM("Articulo") IN ({placeholders})'
-            params.extend(art_vals)
+        if art_clauses:
+            art_where = "AND (" + " OR ".join(art_clauses) + ")"
 
     tiempo_col = "Mes" if usar_meses else "Año"
     if usar_meses:
