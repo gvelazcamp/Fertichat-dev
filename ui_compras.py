@@ -65,22 +65,10 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
     anios_str = ', '.join(str(int(a)) for a in anios)
     where_clauses.append(f'"Año"::int IN ({anios_str})')
 
-    # ✅ FIX: Solo agregar filtro de meses si realmente hay meses
+    # ✅ FIX: Filtrar por meses usando las cadenas completas (ej. '2024-11')
     if meses and len(meses) > 0:
-        meses_int = []
-        for m in meses:
-            try:
-                # Formato: "2024-11" -> extraer mes como int
-                if isinstance(m, str) and '-' in m:
-                    mes_num = int(m.split('-')[1])
-                    meses_int.append(mes_num)
-                elif isinstance(m, int):
-                    meses_int.append(m)
-            except:
-                pass
-        if meses_int:
-            meses_str = ', '.join(str(m) for m in meses_int)
-            where_clauses.append(f'"Mes"::int IN ({meses_str})')
+        meses_str = ', '.join(f"'{m}'" for m in meses)  # Cadenas con comillas simples
+        where_clauses.append(f'"Mes" IN ({meses_str})')
 
     # ✅ Filtro de proveedores
     if proveedores and len(proveedores) > 0:
