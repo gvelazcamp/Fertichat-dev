@@ -142,6 +142,73 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
         return None
 
 # =========================
+# NUEVA FUNCIÓN PARA TOP 5 PERÍODOS POR ARTÍCULO
+# =========================
+def get_top_5_periodos_por_articulo(articulo, anios, meses=None, proveedores=None):
+    """
+    Devuelve top 5 períodos (meses o años) con más compras de un artículo específico.
+    Si hay meses seleccionados, agrupa por mes; sino, por año.
+    """
+    if not articulo or not anios:
+        return pd.DataFrame()
+
+    # Determinar si agrupar por mes o año
+    group_by = "Mes" if meses and len(meses) > 0 else "Año"
+
+    where_clauses = [f'"Año"::int IN ({", ".join(str(int(a)) for a in anios)})']
+    params = []
+
+    # Filtro por artículo específico
+    where_clauses.append('LOWER(TRIM("Articulo")) LIKE %s')
+    params.append(f"%{articulo.strip().lower()}%")
+
+    # Filtro opcional de meses
+    if meses and len(meses) > 0:
+        meses_str = ', '.join(f"'{m}'" for m in meses)
+        where_clauses.append(f'"Mes" IN ({meses_str})')
+
+    # Filtro opcional de proveedores
+    if proveedores and len(proveedores) > 0:
+        prov_clauses = []
+        for p in proveedores:
+            prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
+            params.append(f"%{p.strip().lower()}%")
+        where_clauses.append("(" + " OR ".join(prov_clauses) + ")")
+
+    where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+
+    sql = f"""
+        WITH montos AS (
+            SELECT
+                "{group_by}",
+                SUM(
+                    CASE
+                        WHEN REPLACE("Monto Neto",' ','') LIKE '(%%)' THEN
+                            -1 * CAST(REPLACE(REPLACE(SUBSTRING(REPLACE("Monto Neto",' ',''), 2, LENGTH(REPLACE("Monto Neto",' ','')) - 2), '.', ''), ',', '.') AS NUMERIC)
+                        ELSE
+                            CAST(REPLACE(REPLACE(REPLACE("Monto Neto",' ',''), '.', ''), ',', '.') AS NUMERIC)
+                    END
+                ) AS total
+            FROM chatbot_raw
+            WHERE {where_sql}
+                AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+            GROUP BY "{group_by}"
+        )
+        SELECT "{group_by}" AS Periodo, total
+        FROM montos
+        WHERE total IS NOT NULL AND total > 0
+        ORDER BY total DESC
+        LIMIT 5
+    """
+
+    try:
+        df = ejecutar_consulta(sql, tuple(params))
+        return df if df is not None else pd.DataFrame()
+    except Exception as e:
+        print(f"❌ Error Top 5 períodos por artículo: {e}")
+        return pd.DataFrame()
+
+# =========================
 # CONVERSIÓN DE MESES A NOMBRES
 # =========================
 def convertir_mes_a_nombre(mes_str):
@@ -1661,15 +1728,43 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                     st.error(f"Error: {str(e)}")
             
             with col_top5:
-                st.markdown("#### 📊 Top 5 Artículos")
+                st.markdown("#### 📊 Top 5 Períodos Más Comprados")
                 
-                # ✅ TOP 5 ARTÍCULOS: Solo mostrar cuando NO hay artículos seleccionados
+                # ✅ TOP 5 PERÍODOS: Si hay artículos seleccionados, mostrar top períodos para ese artículo
                 articulos_sel = st.session_state.get("art_multi", [])
                 
                 if articulos_sel and len(articulos_sel) > 0:
-                    # Si hay artículos seleccionados, no tiene sentido mostrar Top 5
-                    st.info("Top 5 no disponible cuando hay artículos específicos seleccionados")
+                    # Mostrar top períodos para el primer artículo seleccionado
+                    articulo_seleccionado = articulos_sel[0]  # Asumir uno; ajusta si múltiples
+                    try:
+                        # Obtener contexto de session_state
+                        anios_ctx = st.session_state.get("anios_sel", [2024, 2025])
+                        meses_ctx = st.session_state.get("meses_multi", [])
+                        proveedores_ctx = st.session_state.get("comparativas_proveedores_multi", [])
+                        
+                        meses_param = meses_ctx if meses_ctx and len(meses_ctx) > 0 else None
+                        proveedores_param = proveedores_ctx if proveedores_ctx and len(proveedores_ctx) > 0 else None
+                        
+                        df_top_periodos = get_top_5_periodos_por_articulo(
+                            articulo=articulo_seleccionado,
+                            anios=anios_ctx,
+                            meses=meses_param,
+                            proveedores=proveedores_param
+                        )
+                        
+                        if df_top_periodos is None or df_top_periodos.empty:
+                            st.info("No hay datos para los períodos seleccionados")
+                        else:
+                            # Formatear totales
+                            df_display = df_top_periodos.copy()
+                            df_display['total'] = df_display['total'].apply(lambda x: f"${float(x):,.0f}".replace(",", "."))
+                            df_display.columns = ['Período', 'Total Comprado']
+                            st.dataframe(df_display, use_container_width=True, hide_index=True, height=300)
+                            st.caption(f"Top períodos para el artículo: **{articulo_seleccionado}**")
+                    except Exception as e:
+                        st.error(f"Error cargando top períodos: {str(e)}")
                 else:
+                    # Mantener el Top 5 artículos global original
                     try:
                         # Obtener contexto de session_state
                         anios_ctx = st.session_state.get("anios_sel", [2024, 2025])
