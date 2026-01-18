@@ -1543,27 +1543,42 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 entity_col_top5 = 'Articulo' if 'Articulo' in df.columns else 'Proveedor'
                 
                 if periodo_top5 in df.columns and entity_col_top5 in df.columns:
-                    df_top5 = df.nlargest(5, periodo_top5)[[entity_col_top5, periodo_top5]].copy()
+                    try:
+                        # Asegurar que la columna del período sea numérica
+                        df_calc = df.copy()
+                        df_calc[periodo_top5] = pd.to_numeric(df_calc[periodo_top5], errors='coerce').fillna(0)
+                        
+                        # Filtrar valores válidos (mayores a 0)
+                        df_calc = df_calc[df_calc[periodo_top5] > 0]
+                        
+                        if len(df_calc) > 0:
+                            # Tomar top 5
+                            df_top5 = df_calc.nlargest(min(5, len(df_calc)), periodo_top5)[[entity_col_top5, periodo_top5]].copy()
+                            
+                            # Mostrar Top 5 con estilo
+                            for idx, row in df_top5.iterrows():
+                                nombre = row[entity_col_top5]
+                                valor = row[periodo_top5]
+                                
+                                # Acortar nombre si es muy largo
+                                nombre_corto = str(nombre)[:35] + "..." if len(str(nombre)) > 35 else str(nombre)
+                                
+                                # Formatear valor
+                                valor_fmt = f"${valor/1_000_000:.2f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
+                                
+                                st.markdown(f"""
+                                <div style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 0.82rem; color: #374151; font-weight: 500;">{nombre_corto}</span>
+                                        <span style="font-size: 0.88rem; color: #10b981; font-weight: 700;">{valor_fmt}</span>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.info("No hay datos con valores positivos")
                     
-                    # Mostrar Top 5 con estilo
-                    for idx, row in df_top5.iterrows():
-                        nombre = row[entity_col_top5]
-                        valor = row[periodo_top5]
-                        
-                        # Acortar nombre si es muy largo
-                        nombre_corto = nombre[:35] + "..." if len(str(nombre)) > 35 else nombre
-                        
-                        # Formatear valor
-                        valor_fmt = f"${valor/1_000_000:.2f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
-                        
-                        st.markdown(f"""
-                        <div style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-size: 0.82rem; color: #374151; font-weight: 500;">{nombre_corto}</span>
-                                <span style="font-size: 0.88rem; color: #10b981; font-weight: 700;">{valor_fmt}</span>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    except Exception as e:
+                        st.warning(f"No se pueden mostrar los datos: {str(e)}")
                 else:
                     st.info("No hay datos disponibles")
                 
