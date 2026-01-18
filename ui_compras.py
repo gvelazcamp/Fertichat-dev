@@ -2009,7 +2009,7 @@ def Compras_IA():
         # TIPS / EJEMPLOS (CAJA AMARILLA ANTES DEL INPUT)
         # =========================
         tips_html = """
-        <div style="
+        <div style=
             background: rgba(255, 243, 205, 0.85);
             border: 1px solid rgba(245, 158, 11, 0.30);
             border-left: 4px solid rgba(245, 158, 11, 0.75);
@@ -2017,7 +2017,7 @@ def Compras_IA():
             padding: 12px 16px;
             margin: 16px 0 12px 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        ">
+        >
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                 <span style="font-size: 18px;">💡</span>
                 <span style="font-size: 14px; font-weight: 700; color: rgb(234, 88, 12);">Ejemplos de preguntas:</span>
@@ -2232,9 +2232,10 @@ def Compras_IA():
                     
                     with st.spinner("Comparando..."):
                         try:
-                            # ✅ FIX: Agregar articulos al llamado
+                            # ✅ FIX: Agregar articulos y meses al llamado
                             df = sqlq_comparativas.comparar_compras(
                                 anios=anios,
+                                meses=meses,
                                 proveedores=proveedores,
                                 articulos=articulos
                             )
