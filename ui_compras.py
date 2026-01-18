@@ -2142,52 +2142,98 @@ def Compras_IA():
         # ==========================================
         st.markdown("""
         <style>
-        /* SOLO mejoras sutiles - SIN cambiar fondos ni tamaños */
+        /* ===============================
+           CARD COMPARATIVAS (SOLO SECCIÓN)
+           =============================== */
 
-        /* Pills azules profesionales (Noviembre, 2024, 2025, 30G ANA PROFILE) */
+        /* Contenedor tipo card blanca */
+        section[data-testid="stMain"] .comparativas-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px 22px;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+        }
+
+        /* ===============================
+           TÍTULO + ICONO AZUL LINE
+           =============================== */
+        section[data-testid="stMain"] .comparativas-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        /* Icono tipo chart (line, azul corporativo) */
+        section[data-testid="stMain"] .comparativas-title::before {
+            content: "";
+            width: 22px;
+            height: 22px;
+            display: inline-block;
+            background-color: #2563eb;
+            mask: url("data:image/svg+xml;utf8,\
+            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+            <path d='M9 11H7v8h2v-8zm4-4h-2v12h2V7zm4-4h-2v16h2V3z'/>\
+            </svg>") no-repeat center;
+            -webkit-mask: url("data:image/svg+xml;utf8,\
+            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+            <path d='M9 11H7v8h2v-8zm4-4h-2v12h2V7zm4-4h-2v16h2V3z'/>\
+            </svg>") no-repeat center;
+        }
+
+        /* Texto del título */
+        section[data-testid="stMain"] .comparativas-title span {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* ===============================
+           LABELS
+           =============================== */
+        section[data-testid="stMain"] label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        /* ===============================
+           PILLS (Meses / Años)
+           =============================== */
         section[data-testid="stMain"] span[data-baseweb="tag"] {
             background-color: #1e40af !important;
             color: white !important;
             border-radius: 6px !important;
-            font-weight: 500 !important;
+            font-weight: 500;
         }
 
-        /* Botón Comparar con gradiente */
+        /* ===============================
+           BOTÓN PRIMARIO
+           =============================== */
         section[data-testid="stMain"] button[kind="primary"] {
-            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
-            border: none !important;
+            background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
             border-radius: 8px !important;
             font-weight: 600 !important;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
-            transition: all 0.3s ease !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
         }
 
-        section[data-testid="stMain"] button[kind="primary"]:hover {
-            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
-            transform: translateY(-2px) !important;
-        }
-
-        /* Botón Limpiar resultados más sutil */
+        /* ===============================
+           BOTÓN SECUNDARIO
+           =============================== */
         section[data-testid="stMain"] button[kind="secondary"] {
             border-radius: 8px !important;
             border: 1.5px solid #e5e7eb !important;
-            transition: all 0.2s ease !important;
-        }
-
-        section[data-testid="stMain"] button[kind="secondary"]:hover {
-            background-color: #f8fafc !important;
-            border-color: #cbd5e1 !important;
-        }
-
-        /* Hover suave en selectboxes */
-        section[data-testid="stMain"] div[data-baseweb="select"]:hover {
-            border-color: #3b82f6 !important;
         }
         </style>
         """, unsafe_allow_html=True)
 
-        st.markdown("### 📊 Menú Comparativas Fáciles")
-        st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
+        st.markdown('<div class="comparativas-card">', unsafe_allow_html=True)
+
+        st.markdown(
+            '<div class="comparativas-title"><span>Filtros de Comparación</span></div>',
+            unsafe_allow_html=True
+        )
 
         # Agregado: Submenús Compras y Comparativas
         tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
@@ -2331,6 +2377,8 @@ def Compras_IA():
                     df_guardado,
                     titulo=titulo_guardado
                 )
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
         # Botón para reanudar auto-refresh (opcional, si se pausa)
         if st.session_state.get("pause_autorefresh", False):
