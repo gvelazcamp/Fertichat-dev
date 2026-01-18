@@ -2440,8 +2440,10 @@ def Compras_IA():
 
             with col_btn2:
                 if st.button("🗑️ Limpiar resultados", key="btn_limpiar", type="secondary"):
-                    del st.session_state.get("comparativa_resultado", {})
-                    del st.session_state.get("comparativa_titulo", {})
+                    if "comparativa_resultado" in st.session_state:
+                        del st.session_state["comparativa_resultado"]
+                    if "comparativa_titulo" in st.session_state:
+                        del st.session_state["comparativa_titulo"]
                     st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
                     st.rerun()
 
