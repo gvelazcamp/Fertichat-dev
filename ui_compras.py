@@ -1472,28 +1472,12 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             col_crec, col_var = st.columns(2)
             
             with col_crec:
-                st.markdown(f"""
-                <div style="background: {color_bg}; border-radius: 8px; padding: 12px 16px;  /* ✅ Reducido padding interno */
-                     text-align: center; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
-                     /* ❌ Eliminada altura fija → altura automática */
-                     display: flex; flex-direction: column; justify-content: center;">
-                    <h3 style="margin: 0; font-size: 0.75rem; font-weight: 600; opacity: 0.95; letter-spacing: 1px;">CRECIMIENTO</h3>
-                    <h1 style="margin: 6px 0 2px 0; font-size: 1.5rem; font-weight: 800; line-height: 1;">{signo}{dif_fmt}</h1>  {/* ✅ Reducido font-size */}
-                    <p style="margin: 0; font-size: 0.7rem; font-weight: 500; opacity: 0.9;">vs {p1}</p>
-                </div>
-                """, unsafe_allow_html=True)
+                card_html = f'<div style="background: {color_bg}; border-radius: 8px; padding: 12px 16px; text-align: center; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: center;"><h3 style="margin: 0; font-size: 0.75rem; font-weight: 600; opacity: 0.95; letter-spacing: 1px;">CRECIMIENTO</h3><h1 style="margin: 6px 0 2px 0; font-size: 1.5rem; font-weight: 800; line-height: 1;">{signo}{dif_fmt}</h1><p style="margin: 0; font-size: 0.7rem; font-weight: 500; opacity: 0.9;">vs {p1}</p></div>'
+                st.markdown(card_html, unsafe_allow_html=True)
             
             with col_var:
-                st.markdown(f"""
-                <div style="background: white; border: 2px solid {color_texto}; border-radius: 8px; padding: 12px 16px;  /* ✅ Reducido padding interno */
-                     text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
-                     /* ❌ Eliminada altura fija → altura automática */
-                     display: flex; flex-direction: column; justify-content: center;">
-                    <h3 style="margin: 0; font-size: 0.75rem; font-weight: 600; color: #6b7280; letter-spacing: 1px;">VARIACIÓN</h3>
-                    <h1 style="margin: 6px 0 2px 0; font-size: 1.5rem; font-weight: 800; line-height: 1; color: {color_texto};">{variacion_pct:+.1f}%</h1>  {/* ✅ Reducido font-size */}
-                    <p style="margin: 0; font-size: 0.7rem; font-weight: 500; color: #6b7280;">Cambio total</p>
-                </div>
-                """, unsafe_allow_html=True)
+                card_html = f'<div style="background: white; border: 2px solid {color_texto}; border-radius: 8px; padding: 12px 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: center;"><h3 style="margin: 0; font-size: 0.75rem; font-weight: 600; color: #6b7280; letter-spacing: 1px;">VARIACIÓN</h3><h1 style="margin: 6px 0 2px 0; font-size: 1.5rem; font-weight: 800; line-height: 1; color: {color_texto};">{variacion_pct:+.1f}%</h1><p style="margin: 0; font-size: 0.7rem; font-weight: 500; color: #6b7280;">Cambio total</p></div>'
+                st.markdown(card_html, unsafe_allow_html=True)
             
             # Cerrar wrapper KPIs
             st.markdown('</div>', unsafe_allow_html=True)
@@ -1594,21 +1578,16 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                     df_art['Total'] = df_art[periodos_validos].sum(axis=1)
                     top_art = df_art.nlargest(5, 'Total')
                     
-                    st.markdown("""
-                    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    """, unsafe_allow_html=True)
+                    container_html = '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
+                    st.markdown(container_html, unsafe_allow_html=True)
                     
                     for idx, row in top_art.iterrows():
                         nombre = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
                         valor = row['Total']
                         valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
                         
-                        st.markdown(f"""
-                        <div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre}</span>
-                            <span style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">{valor_fmt}</span>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        item_html = f'<div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre}</span><span style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">{valor_fmt}</span></div>'
+                        st.markdown(item_html, unsafe_allow_html=True)
                     
                     st.markdown("</div>", unsafe_allow_html=True)
                 else:
