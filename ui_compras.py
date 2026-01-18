@@ -1611,7 +1611,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                     st.error(f"Error: {str(e)}")
             
             with col_top5:
-                st.markdown("#### 📊 Top 5 Artículos")
+                st.markdown("#### 📊 Top 5")
                 
                 periodo_top5 = st.selectbox(
                     "Período:",
@@ -1621,20 +1621,27 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                     label_visibility="collapsed"
                 )
                 
-                # ✅ CORREGIR: Buscar columna Articulo específicamente
-                if 'Articulo' in df.columns and periodo_top5 in df.columns:
+                # ✅ Detectar si tenemos Articulo o Proveedor
+                if 'Articulo' in df.columns:
+                    entity_top5 = 'Articulo'
+                elif 'Proveedor' in df.columns:
+                    entity_top5 = 'Proveedor'
+                else:
+                    entity_top5 = None
+                
+                if entity_top5 and periodo_top5 in df.columns:
                     try:
                         df_calc = df.copy()
                         df_calc[periodo_top5] = pd.to_numeric(df_calc[periodo_top5], errors='coerce').fillna(0)
                         df_calc = df_calc[df_calc[periodo_top5] > 0]
                         
                         if len(df_calc) > 0:
-                            # ✅ AGRUPAR POR ARTÍCULO (sumar si hay duplicados)
-                            df_art = df_calc.groupby('Articulo')[periodo_top5].sum().reset_index()
-                            df_top5 = df_art.nlargest(5, periodo_top5)
+                            # Agrupar por entidad y sumar
+                            df_grouped = df_calc.groupby(entity_top5)[periodo_top5].sum().reset_index()
+                            df_top5 = df_grouped.nlargest(5, periodo_top5)
                             
                             for idx, row in df_top5.iterrows():
-                                nombre = row['Articulo']
+                                nombre = row[entity_top5]
                                 valor = row[periodo_top5]
                                 nombre_corto = str(nombre)[:28] + "..." if len(str(nombre)) > 28 else str(nombre)
                                 valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
@@ -1652,7 +1659,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                     except Exception as e:
                         st.warning(f"Error: {str(e)}")
                 else:
-                    st.info("No hay artículos disponibles")
+                    st.info("Sin datos disponibles")
             
             
             # 📋 TABLA RESUMIDA
