@@ -63,7 +63,7 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
 
     # ✅ FIX: Usar IN en lugar de ANY para compatibilidad
     anios_str = ', '.join(str(int(a)) for a in anios)
-    where_clauses.append(f'"Año" IN ({anios_str})')
+    where_clauses.append(f'"Año"::int IN ({anios_str})')  # ← AGREGADO ::int
 
     # ✅ FIX: Solo agregar filtro de meses si realmente hay meses
     if meses and len(meses) > 0:
