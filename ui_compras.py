@@ -146,14 +146,14 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
 # =========================
 def get_top_5_periodos_por_articulo(articulo, anios, meses=None, proveedores=None):
     """
-    Devuelve top 5 períodos (meses o años) con más compras de un artículo específico.
-    Si hay meses seleccionados, agrupa por mes; sino, por año.
+    Devuelve top 5 períodos (meses) con más compras de un artículo específico.
+    Siempre agrupa por mes cuando hay artículos seleccionados.
     """
     if not articulo or not anios:
         return pd.DataFrame()
 
-    # Determinar si agrupar por mes o año
-    group_by = "Mes" if meses and len(meses) > 0 else "Año"
+    # Determinar si agrupar por mes o año - MODIFICADO: Siempre por mes
+    group_by = "Mes"  # Siempre agrupar por mes cuando hay artículos seleccionados
 
     where_clauses = [f'"Año"::int IN ({", ".join(str(int(a)) for a in anios)})']
     params = []
