@@ -1362,7 +1362,6 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             .metrics-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 12px;
-            }
             
             .metric-value {
                 font-size: 1.4rem;
@@ -1646,13 +1645,6 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         _dbg_set_result(df)
         return df
 
-    elif tipo == "comparar_proveedores_anios":
-        df = sqlq_comparativas.get_comparacion_proveedores_anios(
-            parametros["proveedores"], parametros["anios"], parametros["label1"], parametros["label2"]
-        )
-        _dbg_set_result(df)
-        return df
-
     # AGREGADO: Comparación multi proveedores multi meses
     elif tipo == "comparar_proveedores_meses_multi":
         df = sqlq_comparativas.get_comparacion_proveedores_meses_multi(
@@ -1914,6 +1906,130 @@ def Compras_IA():
             font-size: 1rem !important;
         }
     }
+    
+    /* =====================================================
+       CARD PRINCIPAL – FILTROS
+       ===================================================== */
+    .comparativas-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 24px 26px;
+        margin-top: 12px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    /* =====================================================
+       HEADER DE LA CARD
+       ===================================================== */
+    .comparativas-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+    }
+
+    .comparativas-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .comparativas-title span {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    /* Icono azul line */
+    .comparativas-title::before {
+        content: "";
+        width: 26px;
+        height: 26px;
+        background-color: #2563eb;
+        display: inline-block;
+        mask: url("data:image/svg+xml;utf8,\
+        <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+        <path d='M9 11H7v8h2v-8zm4-4h-2v12h2V7zm4-4h-2v16h2V3z'/>\
+        </svg>") no-repeat center;
+        -webkit-mask: url("data:image/svg+xml;utf8,\
+        <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+        <path d='M9 11H7v8h2v-8zm4-4h-2v12h2V7zm4-4h-2v16h2V3z'/>\
+        </svg>") no-repeat center;
+    }
+
+    /* Badge derecha */
+    .comparativas-badge {
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: #ffffff;
+        padding: 6px 14px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    /* =====================================================
+       CAMPOS (ESPACIADO)
+       ===================================================== */
+    .comparativas-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    /* Labels */
+    section[data-testid="stMain"] label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #475569;
+    }
+
+    /* =====================================================
+       PILLS (meses / años / artículos)
+       ===================================================== */
+    section[data-testid="stMain"] span[data-baseweb="tag"] {
+        background: #1e40af !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        font-weight: 500;
+    }
+
+    /* =====================================================
+       ZONA DE ACCIONES (COMPARAR / LIMPIAR)
+       ===================================================== */
+    .comparativas-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 18px;
+    }
+
+    /* Botón principal */
+    section[data-testid="stMain"] button[kind="primary"] {
+        background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        padding: 0.55rem 1.2rem !important;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
+    }
+
+    /* Botón secundario */
+    section[data-testid="stMain"] button[kind="secondary"] {
+        border-radius: 10px !important;
+        border: 1.5px solid #e5e7eb !important;
+        padding: 0.55rem 1.2rem !important;
+    }
+
+    /* =====================================================
+       BARRA INFERIOR (CSV / EXCEL / GUARDAR)
+       ===================================================== */
+    .comparativas-footer {
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -2137,9 +2253,20 @@ def Compras_IA():
         st.rerun()
 
     with tab_comparativas:
-        st.markdown("### 📊 Menú Comparativas Fáciles")
-        st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
+        # st.markdown("### 📊 Menú Comparativas Fáciles")  # Removed as per user request
+        # st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")  # Removed as per user request
 
+        st.markdown('<div class="comparativas-card">', unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="comparativas-header">
+            <div class="comparativas-title"><span>Filtros de Comparación</span></div>
+            <div class="comparativas-badge">Comparativas</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div class="comparativas-fields">', unsafe_allow_html=True)
+        
         # Agregado: Submenús Compras y Comparativas
         tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
 
@@ -2223,7 +2350,7 @@ def Compras_IA():
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
             # Botón comparar
-            if st.button("🔍 Comparar", key="btn_comparar_anios"):
+            if st.button("Comparar", key="btn_comparar_anios"):
                 if len(anios) < 2:
                     st.error("Seleccioná al menos 2 años para comparar")
                 else:
@@ -2271,7 +2398,7 @@ def Compras_IA():
                 titulo_guardado = st.session_state.get("comparativa_titulo", "Comparación")
                 
                 # Botón para limpiar
-                if st.button("🗑️ Limpiar resultados", key="btn_limpiar_comparativa"):
+                if st.button("Limpiar resultados", key="btn_limpiar_comparativa"):
                     del st.session_state["comparativa_resultado"]
                     del st.session_state["comparativa_titulo"]
                     st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
@@ -2282,6 +2409,23 @@ def Compras_IA():
                     df_guardado,
                     titulo=titulo_guardado
                 )
+
+        st.markdown('</div>', unsafe_allow_html=True)  # Close comparativas-fields
+
+        st.markdown('<div class="comparativas-actions">', unsafe_allow_html=True)
+        # Actions like buttons are already inside the if/elif above
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="comparativas-footer">', unsafe_allow_html=True)
+        # CSV / Excel / Guardar buttons
+        st.markdown("""
+        <button class="btn-action">CSV</button>
+        <button class="btn-action">Excel</button>
+        <button class="btn-action">Guardar vista</button>
+        """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)  # Close comparativas-card
 
         # Botón para reanudar auto-refresh (opcional, si se pausa)
         if st.session_state.get("pause_autorefresh", False):
