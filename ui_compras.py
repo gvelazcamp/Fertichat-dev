@@ -1922,20 +1922,25 @@ def Compras_IA():
     /* =====================================================
        HEADER DE LA CARD
        ===================================================== */
+    .comparativas-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+    }
+
     .comparativas-title {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-bottom: 18px;
+        gap: 10px;
     }
 
     .comparativas-title::before {
         content: "";
-        width: 26px;
-        height: 26px;
+        width: 22px;
+        height: 22px;
         background-color: #2563eb;
         display: inline-block;
-
         mask: url("data:image/svg+xml;utf8,\
         <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
         <path d='M9 11H7v8h2v-8zm4-4h-2v12h2V7zm4-4h-2v16h2V3z'/>\
@@ -1946,10 +1951,64 @@ def Compras_IA():
         </svg>") no-repeat center;
     }
 
-    .comparativas-title span {
-        font-size: 1.35rem;
+    .comparativas-title span{
+        font-size: 1.25rem;
         font-weight: 700;
         color: #0f172a;
+    }
+
+    .comparativas-badge {
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: #fff;
+        padding: 6px 14px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
+    /* =====================================================
+       A) MATAR EL "COSO BLANCO" (HEADER VACÍO / CARD FANTASMA)
+       ===================================================== */
+
+    /* Si estás usando .comparativas-card y te queda un bloque vacío arriba,
+       esto lo oculta SOLO si está vacío o solo tiene el header */
+    section[data-testid="stMain"] .comparativas-card:has(.comparativas-title):not(:has(label)) {
+        padding-top: 16px !important;
+    }
+
+    /* Si hay un contenedor blanco extra ANTES de tu card */
+    section[data-testid="stMain"] > div:has(.comparativas-card) > div:first-child:empty {
+        display: none !important;
+    }
+
+    /* Si el "coso blanco" es una stContainer sin contenido útil */
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:has(> div:empty) {
+        display: none !important;
+    }
+
+    /* =====================================================
+       B) BOTONES "COMPARAR" + "LIMPIAR" EN LA MISMA FILA
+       (aunque Streamlit los haya apilado)
+       ===================================================== */
+
+    /* Tomo el bloque que contiene ambos botones y lo convierto en fila */
+    section[data-testid="stMain"] div:has(> .stButton) .stButton {
+        display: inline-block !important;
+        margin-right: 12px !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Evita que cada botón ocupe toda la fila */
+    section[data-testid="stMain"] .stButton > button {
+        width: auto !important;
+    }
+
+    /* Ajuste de gap visual */
+    section[data-testid="stMain"] div:has(> .stButton) {
+        display: flex !important;
+        gap: 12px !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
     }
 
     /* =====================================================
@@ -2236,10 +2295,13 @@ def Compras_IA():
     with tab_comparativas:
         st.markdown('<div class="comparativas-card">', unsafe_allow_html=True)
 
-        st.markdown(
-            '<div class="comparativas-title"><span>Filtros de Comparación</span></div>',
-            unsafe_allow_html=True
-        )
+        # Added header with badge
+        st.markdown("""
+        <div class="comparativas-header">
+          <div class="comparativas-title"><span>Filtros de Comparación</span></div>
+          <div class="comparativas-badge">Comparativas</div>
+        </div>
+        """, unsafe_allow_html=True)
 
         # Removed tipo_consulta selectbox and Compras logic, keeping only Comparativas
 
