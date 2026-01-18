@@ -214,10 +214,65 @@ def inicializar_historial():
 # =========================
 def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
     """
-    ✅ CORREGIDO: Devuelve totales por moneda detectando correctamente USD vs UYU
+    Devuelve totales por moneda (para el CHAT de compras normales):
+    - Pesos: UYU / $ / pesos / ARS (pero excluye USD/U$S)
+    - USD: USD / U$S / US$
+    """
+    if df is None or len(df) == 0:
+        return {"Pesos": 0, "USD": 0}
+
+    col_moneda = None
+    for col in df.columns:
+        if col.lower() in ["moneda", "currency"]:
+            col_moneda = col
+            break
+
+    col_total = None
+    for col in df.columns:
+        if col.lower() in ["total", "monto", "importe", "valor", "monto_neto"]:
+            col_total = col
+            break
+
+    if not col_moneda or not col_total:
+        return None
+
+    try:
+        df_calc = df.copy()
+
+        df_calc[col_total] = (
+            df_calc[col_total]
+            .astype(str)
+            .str.replace(".", "", regex=False)
+            .str.replace(",", ".", regex=False)
+            .str.replace("$", "", regex=False)
+            .str.strip()
+        )
+        df_calc[col_total] = pd.to_numeric(df_calc[col_total], errors="coerce").fillna(0)
+
+        mon = df_calc[col_moneda].astype(str)
+
+        # USD (incluye U$S)
+        usd_mask = mon.str.contains(r"USD|U\$S|US\$|U\$|dolar|dólar", case=False, na=False)
+
+        # Pesos (UYU/$/pesos) pero excluyendo USD (porque U$S contiene $)
+        pesos_mask = mon.str.contains(r"UYU|\$|peso|ARS", case=False, na=False) & (~usd_mask)
+
+        totales = {}
+        totales["Pesos"] = df_calc.loc[pesos_mask, col_total].sum()
+        totales["USD"] = df_calc.loc[usd_mask, col_total].sum()
+
+        return totales
+
+    except Exception as e:
+        print(f"Error calculando totales: {e}")
+        return None
+
+
+def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
+    """
+    ✅ PARA COMPARATIVAS: Devuelve totales por moneda detectando correctamente USD vs UYU
     - Lee la columna "Moneda" fila por fila
-    - Detecta USD: U$S, USD, US$, U$, dolar, dólar
-    - Detecta UYU: $, UYU, peso, pesos, ARS
+    - Suma las columnas de períodos (ej: "2024", "2025", "2024-11")
     """
     if df is None or len(df) == 0:
         return {"Pesos": 0, "USD": 0}
@@ -229,8 +284,7 @@ def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
             col_moneda = col
             break
 
-    # Buscar columnas numéricas (períodos como "2024", "2025", "2024-11", etc)
-    # TAMBIÉN incluir columnas que PARECEN años/períodos aunque sean object
+    # Buscar columnas de períodos (excluir columnas que NO son períodos)
     numeric_cols = []
     for col in df.columns:
         # Excluir columnas obvias que NO son períodos
@@ -270,7 +324,6 @@ def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
                 try:
                     val = row[col]
                     if pd.notna(val):
-                        # Convertir a float (puede venir como string)
                         suma_fila += float(val)
                 except:
                     pass
@@ -284,7 +337,7 @@ def calcular_totales_por_moneda(df: pd.DataFrame) -> dict:
         return totales
 
     except Exception as e:
-        print(f"❌ Error calculando totales: {e}")
+        print(f"❌ Error calculando totales comparativas: {e}")
         import traceback
         traceback.print_exc()
         return {"Pesos": 0, "USD": 0}
