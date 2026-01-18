@@ -105,7 +105,7 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
                 "Articulo",
                 "Moneda",
                 CASE
-                    WHEN REPLACE("Monto Neto",' ','') LIKE '(%)' THEN
+                    WHEN REPLACE("Monto Neto",' ','') LIKE '(%%)' THEN
                         -1 * CAST(
                             REPLACE(
                                 REPLACE(
