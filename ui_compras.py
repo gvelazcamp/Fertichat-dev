@@ -882,139 +882,102 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
     )
 
-    def _render_resumen_top_proveedores(df_tab: pd.DataFrame, etiqueta: str):
-        """Solo se usa cuando HAY columna de proveedor"""
-        if df_tab is None or df_tab.empty:
-            st.info(f"Sin resultados en {etiqueta}.")
-            return
-
-        if not col_proveedor:
-            st.caption("No hay columna de proveedor para resumir.")
-            return
-
-        # Top proveedores con total (tabla chica)
-        top = (
-            df_tab.groupby(col_proveedor)["__total_num__"]
-            .sum()
-            .sort_values(ascending=False)
-        )
-
-        total_val = float(df_tab["__total_num__"].sum()) if "__total_num__" in df_tab.columns else 0.0
-
-        if len(top) > 0 and total_val:
-            prov_top = str(top.index[0])
-            share = float(top.iloc[0]) / total_val * 100.0
-            st.markdown(
-                f"**Resumen:** principal proveedor **{prov_top}** con **{share:.1f}%** del total en {etiqueta}."
-            )
-        else:
-            st.caption("No hay totales suficientes para generar resumen.")
-
-        df_top = top.head(10).reset_index()
-        df_top.columns = [col_proveedor, "Total"]
-
-        # Formato de Total para que se vea prolijo (LATAM)
-        df_top["Total"] = df_top["Total"].apply(
-            lambda x: f"{float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
-
-        st.dataframe(df_top, use_container_width=True, hide_index=True, height=260)
-        st.caption("Detalle completo solo en la pestaña **Tabla**.")
-
-    def _render_tabla_simple(df_tab: pd.DataFrame, etiqueta: str):
-        """Muestra tabla simple sin agrupar (para casos sin proveedor)"""
-        if df_tab is None or df_tab.empty:
-            st.info(f"Sin resultados en {etiqueta}.")
-            return
-
-        # Preparar columnas para mostrar
-        pref = []
-        for c in [col_moneda, col_total, _find_col(df_tab, ["anio", "año"]), _find_col(df_tab, ["total_facturas"])]:
-            if c and c in df_tab.columns:
-                pref.append(c)
-        resto = [c for c in df_tab.columns if c not in pref and not str(c).startswith("__")]
-        show_cols = pref + resto
-
-        df_show = df_tab[show_cols].copy()
-        
-        # Formato LATAM para columna de total
-        if col_total and col_total in df_show.columns:
-            df_show[col_total] = df_show[col_total].apply(
-                lambda x: f"{_safe_to_float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            )
-
-        st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
-
     with tab_all:
-        st.markdown(f"""
-        <div class="resumen-card">
-            <h4 class="resumen-title">📅 Período Analizado</h4>
-            <p class="resumen-text">{rango_txt if rango_txt else 'Sin datos de fecha'}</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # 📊 GRID 2x2 DE CARDS
+        col1, col2 = st.columns(2)
         
-        # ACTIVIDAD EN EL TIEMPO
-        if col_fecha and not df_f.empty:
-            df_f['fecha_dt'] = pd.to_datetime(df_f[col_fecha], errors='coerce')
-            df_f['fecha_str'] = df_f['fecha_dt'].dt.strftime('%d/%m')
-            gasto_diario = df_f.groupby('fecha_str')['__total_num__'].sum()
-            if col_nro:
-                facturas_diario = df_f.groupby('fecha_str')[col_nro].nunique()
-            else:
-                facturas_diario = df_f.groupby('fecha_str').size()
+        with col1:
+            # CARD 1: PERÍODO ANALIZADO
+            st.markdown(f"""
+            <div class="resumen-card">
+                <h4 class="resumen-title">📅 Período Analizado</h4>
+                <p class="resumen-text">{rango_txt if rango_txt else 'Sin datos de fecha'}</p>
+            </div>
+            """, unsafe_allow_html=True)
             
-            if not gasto_diario.empty:
-                dia_mayor_gasto = gasto_diario.idxmax()
-                mayor_gasto = gasto_diario.max()
+            # CARD 3: ACTIVIDAD EN EL TIEMPO
+            if col_fecha and not df_f.empty:
+                df_f['fecha_dt'] = pd.to_datetime(df_f[col_fecha], errors='coerce')
+                df_f['fecha_str'] = df_f['fecha_dt'].dt.strftime('%d/%m')
+                gasto_diario = df_f.groupby('fecha_str')['__total_num__'].sum()
+                if col_nro:
+                    facturas_diario = df_f.groupby('fecha_str')[col_nro].nunique()
+                else:
+                    facturas_diario = df_f.groupby('fecha_str').size()
                 
-                dia_mas_facturas = facturas_diario.idxmax()
-                mas_facturas = facturas_diario.max()
+                if not gasto_diario.empty:
+                    dia_mayor_gasto = gasto_diario.idxmax()
+                    mayor_gasto = gasto_diario.max()
+                    
+                    dia_mas_facturas = facturas_diario.idxmax()
+                    mas_facturas = facturas_diario.max()
+                    
+                    promedio_diario = gasto_diario.mean()
+                    
+                    st.markdown(f"""
+                    <div class="resumen-card">
+                        <h4 class="resumen-title">⏰ Actividad en el Tiempo</h4>
+                        <p class="resumen-text">
+                            Día con mayor gasto: {dia_mayor_gasto} — {_fmt_compact_money(mayor_gasto, "UYU")}<br>
+                            Día con más facturas: {dia_mas_facturas} — {mas_facturas} facturas<br>
+                            Promedio diario: {_fmt_compact_money(promedio_diario, "UYU")}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        with col2:
+            # CARD 2: TOP 5 ARTÍCULOS
+            if col_articulo:
+                top_art = (
+                    df_f.groupby(col_articulo)["__total_num__"]
+                    .sum()
+                    .sort_values(ascending=False)
+                ).head(5)
                 
-                promedio_diario = gasto_diario.mean()
+                if len(top_art) > 0:
+                    items_html = ""
+                    for idx, (art, monto) in enumerate(top_art.items(), 1):
+                        art_short = _shorten_text(art, 40)
+                        monto_fmt = _fmt_compact_money(monto, "UYU")
+                        items_html += f'<span class="numero-badge">{idx}</span>{art_short} — {monto_fmt}<br>'
+                    
+                    st.markdown(f"""
+                    <div class="resumen-card">
+                        <h4 class="resumen-title">📊 Top 5 Artículos</h4>
+                        <p class="resumen-text">{items_html}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            # CARD 4: PRINCIPAL PROVEEDOR
+            if proveedores > 1 and col_proveedor:
+                df_prov = df_view.groupby(col_proveedor)["__total_num__"].sum().sort_values(ascending=False)
+                top_prov = df_prov.index[0]
+                top_monto = df_prov.iloc[0]
+                top_porc = (top_monto / df_view["__total_num__"].sum()) * 100
+                
+                iniciales = "".join([p[0] for p in top_prov.split()[:2]]).upper()
                 
                 st.markdown(f"""
-                <div class="resumen-card">
-                    <h4 class="resumen-title">⏰ Actividad en el Tiempo</h4>
-                    <p class="resumen-text">
-                        Día con mayor gasto: {dia_mayor_gasto} — {_fmt_compact_money(mayor_gasto, "UYU")}<br>
-                        Día con más facturas: {dia_mas_facturas} — {mas_facturas} facturas<br>
-                        Promedio diario: {_fmt_compact_money(promedio_diario, "UYU")}
+                <div class="provider-card">
+                    <div class="provider-header">
+                        <div class="provider-icon">{iniciales}</div>
+                        <div class="provider-info">
+                            <p class="provider-name">{top_prov}</p>
+                            <p class="provider-subtitle">Principal Proveedor</p>
+                        </div>
+                        <div>
+                            <p class="provider-amount">$ {top_monto:,.2f}</p>
+                            <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {top_porc}%"></div>
+                    </div>
+                    <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+                        {top_porc:.1f}% del total
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
-        
-        # PRINCIPAL PROVEEDOR (si hay más de 1)
-        if proveedores > 1 and col_proveedor:
-            # Calcular proveedor con mayor monto
-            df_prov = df_view.groupby(col_proveedor)["__total_num__"].sum().sort_values(ascending=False)
-            top_prov = df_prov.index[0]
-            top_monto = df_prov.iloc[0]
-            top_porc = (top_monto / df_view["__total_num__"].sum()) * 100
-            
-            # Iniciales para el ícono
-            iniciales = "".join([p[0] for p in top_prov.split()[:2]]).upper()
-            
-            st.markdown(f"""
-            <div class="provider-card">
-                <div class="provider-header">
-                    <div class="provider-icon">{iniciales}</div>
-                    <div class="provider-info">
-                        <p class="provider-name">{top_prov}</p>
-                        <p class="provider-subtitle">Principal Proveedor</p>
-                    </div>
-                <div>
-                    <p class="provider-amount">$ {top_monto:,.2f}</p>
-                    <p class="provider-amount-sub">$ {top_monto/1_000_000:.2f}M UYU</p>
-                </div>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: {top_porc}%"></div>
-            </div>
-            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #6b7280;">
-                {top_porc:.1f}% del total
-            </p>
-            </div>
-            """, unsafe_allow_html=True)
 
     with tab_uyu:
         # Calcular total UYU
