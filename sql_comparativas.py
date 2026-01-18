@@ -106,6 +106,10 @@ def comparar_compras(
                  SUM(CASE WHEN "Año"::int = {int(t1)} THEN {total_expr} ELSE 0 END)) AS Diferencia
             """
 
+    # ✅ FIX: Agregar params para tiempo_where antes de filtros
+    if usar_meses:
+        params.extend(tiempos_sorted)
+
     prov_where = ""
     if proveedores:
         prov_clauses = []
@@ -133,7 +137,6 @@ def comparar_compras(
     tiempo_col = "Mes" if usar_meses else "Año"
     if usar_meses:
         tiempo_placeholders = ", ".join(["%s"] * len(tiempos_sorted))
-        params.extend(tiempos_sorted)
         tiempo_where = f'TRIM("{tiempo_col}") IN ({tiempo_placeholders})'
     else:
         tiempo_placeholders = ", ".join(str(int(y)) for y in tiempos_sorted)
