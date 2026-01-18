@@ -1728,7 +1728,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                     st.error(f"Error: {str(e)}")
             
             with col_top5:
-                st.markdown("#### 📊 Top 5 Períodos Más Comprados")
+                st.markdown("#### 📊 Top 5 Comprados")
                 
                 # ✅ TOP 5 PERÍODOS: Si hay artículos seleccionados, mostrar top períodos para ese artículo
                 articulos_sel = st.session_state.get("art_multi", [])
