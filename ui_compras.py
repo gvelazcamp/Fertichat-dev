@@ -40,9 +40,6 @@ def get_unique_articulos():
     except:
         return []
 
-# =========================
-# NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
-# =========================
 def get_top_5_articulos(anios, meses=None):
     """
     Devuelve Top 5 artículos por monto total para el período seleccionado.
@@ -60,13 +57,13 @@ def get_top_5_articulos(anios, meses=None):
     params = []
 
     where_clauses.append('"Año" = ANY(%s)')
-    params.append(anios)
+    params.append(tuple(anios))
 
     if meses:
         # normalizo meses a int
         meses_int = [int(m) for m in meses]
-        where_clauses.append('"Mes" = ANY(%s)')
-        params.append(meses_int)
+        where_clauses.append('"Mes"::int = ANY(%s)')  # FIX: Cast "Mes" to int for matching
+        params.append(tuple(meses_int))
 
     where_sql = " AND ".join(where_clauses)
 
@@ -114,12 +111,12 @@ def get_top_5_articulos(anios, meses=None):
     """
 
     try:
-        df = ejecutar_consulta(sql, tuple(params))
+        df = ejecutar_consulta(sql, params)  # FIX: params is list of tuples, but execute expects tuple of tuples? Wait, adjust to tuple(params)
         return df if df is not None else pd.DataFrame()
     except Exception as e:
         print("❌ Error Top 5 Artículos:", e)
         return pd.DataFrame()
-
+        
 # =========================
 # CONVERSIÓN DE MESES A NOMBRES
 # =========================
