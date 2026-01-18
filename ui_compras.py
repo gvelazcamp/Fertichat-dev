@@ -1473,25 +1473,25 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             
             with col_crec:
                 st.markdown(f"""
-                <div style="background: {color_bg}; border-radius: 12px; padding: 20px; text-align: center; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
-                     min-height: 140px;  /* ✅ FIX 1: Cambiado de height a min-height */
+                <div style="background: {color_bg}; border-radius: 8px; padding: 12px 16px;  /* ✅ Reducido padding interno */
+                     text-align: center; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
+                     /* ❌ Eliminada altura fija → altura automática */
                      display: flex; flex-direction: column; justify-content: center;">
-                    <p style="margin: 0; font-size: 2rem; margin-bottom: 6px;">{icono}</p>
-                    <h3 style="margin: 0; font-size: 0.85rem; font-weight: 600; opacity: 0.95; letter-spacing: 1px;">CRECIMIENTO</h3>
-                    <h1 style="margin: 10px 0 4px 0; font-size: 2.8rem; font-weight: 800; line-height: 1;">{signo}{dif_fmt}</h1>
-                    <p style="margin: 0; font-size: 0.8rem; font-weight: 500; opacity: 0.9;">vs {p1}</p>
+                    <h3 style="margin: 0; font-size: 0.75rem; font-weight: 600; opacity: 0.95; letter-spacing: 1px;">CRECIMIENTO</h3>
+                    <h1 style="margin: 6px 0 2px 0; font-size: 1.5rem; font-weight: 800; line-height: 1;">{signo}{dif_fmt}</h1>  {/* ✅ Reducido font-size */}
+                    <p style="margin: 0; font-size: 0.7rem; font-weight: 500; opacity: 0.9;">vs {p1}</p>
                 </div>
                 """, unsafe_allow_html=True)
             
             with col_var:
                 st.markdown(f"""
-                <div style="background: white; border: 2px solid {color_texto}; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
-                     min-height: 140px;  /* ✅ FIX 1: Cambiado de height a min-height */
+                <div style="background: white; border: 2px solid {color_texto}; border-radius: 8px; padding: 12px 16px;  /* ✅ Reducido padding interno */
+                     text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
+                     /* ❌ Eliminada altura fija → altura automática */
                      display: flex; flex-direction: column; justify-content: center;">
-                    <p style="margin: 0; font-size: 2rem; margin-bottom: 6px;">📈</p>
-                    <h3 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #6b7280; letter-spacing: 1px;">VARIACIÓN</h3>
-                    <h1 style="margin: 10px 0 4px 0; font-size: 2.8rem; font-weight: 800; line-height: 1; color: {color_texto};">{variacion_pct:+.1f}%</h1>
-                    <p style="margin: 0; font-size: 0.8rem; font-weight: 500; color: #6b7280;">Cambio total</p>
+                    <h3 style="margin: 0; font-size: 0.75rem; font-weight: 600; color: #6b7280; letter-spacing: 1px;">VARIACIÓN</h3>
+                    <h1 style="margin: 6px 0 2px 0; font-size: 1.5rem; font-weight: 800; line-height: 1; color: {color_texto};">{variacion_pct:+.1f}%</h1>  {/* ✅ Reducido font-size */}
+                    <p style="margin: 0; font-size: 0.7rem; font-weight: 500; color: #6b7280;">Cambio total</p>
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -1503,8 +1503,8 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             # 📊 FIX 3: WRAPPER PARA BLOQUE GRÁFICO + TOP5
             st.markdown('<div style="margin-bottom:24px;">', unsafe_allow_html=True)
             
-            # 📊 FILA 2: GRÁFICO (IZQUIERDA) + TOP 5 (DERECHA)
-            col_graph, col_top5 = st.columns([1.2, 0.8])
+            # 📊 FILA 2: GRÁFICO (70%) + TOP 5 (30%) - ✅ Proporción ajustada
+            col_graph, col_top5 = st.columns([1.4, 0.6])  # ✅ Cambiado a 1.4:0.6 para 70%:30%
             
             with col_graph:
                 st.markdown("#### 📊 Comparación")
@@ -1536,7 +1536,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         fig.update_layout(
                             xaxis_title="",
                             yaxis_title="Monto",
-                            height=400,
+                            height=350,  # ✅ Reducido height para compacto
                             template="plotly_white",
                             showlegend=True,
                             barmode='group',
@@ -1570,7 +1570,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         fig.update_layout(
                             xaxis_title="",
                             yaxis_title="Monto",
-                            height=400,
+                            height=350,  # ✅ Reducido height para compacto
                             template="plotly_white",
                             showlegend=True,
                             barmode='group',
@@ -1584,55 +1584,35 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                     st.error(f"Error: {str(e)}")
             
             with col_top5:
-                st.markdown("#### 📊 Top 5")
+                st.markdown("#### 📊 Top 5 Artículos")  # ✅ Siempre mostrar, como contexto
                 
-                periodo_top5 = st.selectbox(
-                    "Período:",
-                    options=periodos_validos,
-                    index=1,
-                    key="periodo_top5_select",
-                    label_visibility="collapsed"
-                )
-                
-                # ✅ Detectar si tenemos Articulo o Proveedor
+                # ✅ TOP 5 ARTÍCULOS - SIEMPRE, aunque se seleccione proveedor
+                # Usarlo como información de apoyo, neutra
                 if 'Articulo' in df.columns:
-                    entity_top5 = 'Articulo'
-                elif 'Proveedor' in df.columns:
-                    entity_top5 = 'Proveedor'
-                else:
-                    entity_top5 = None
-                
-                if entity_top5 and periodo_top5 in df.columns:
-                    try:
-                        df_calc = df.copy()
-                        df_calc[periodo_top5] = pd.to_numeric(df_calc[periodo_top5], errors='coerce').fillna(0)
-                        df_calc = df_calc[df_calc[periodo_top5] > 0]
+                    # Calcular Top 5 artículos SIEMPRE (no filtrar por proveedor)
+                    df_art = df.copy()
+                    df_art['Total'] = df_art[periodos_validos].sum(axis=1)
+                    top_art = df_art.nlargest(5, 'Total')
+                    
+                    st.markdown("""
+                    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    """, unsafe_allow_html=True)
+                    
+                    for idx, row in top_art.iterrows():
+                        nombre = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
+                        valor = row['Total']
+                        valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
                         
-                        if len(df_calc) > 0:
-                            # Agrupar por entidad y sumar
-                            df_grouped = df_calc.groupby(entity_top5)[periodo_top5].sum().reset_index()
-                            df_top5 = df_grouped.nlargest(5, periodo_top5)
-                            
-                            for idx, row in df_top5.iterrows():
-                                nombre = row[entity_top5]
-                                valor = row[periodo_top5]
-                                nombre_corto = str(nombre)[:28] + "..." if len(str(nombre)) > 28 else str(nombre)
-                                valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
-                                
-                                st.markdown(f"""
-                                <div style="padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="font-size: 0.72rem; color: #374151; font-weight: 500;">{nombre_corto}</span>
-                                        <span style="font-size: 0.76rem; color: #10b981; font-weight: 700;">{valor_fmt}</span>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                        else:
-                            st.info("Sin datos")
-                    except Exception as e:
-                        st.warning(f"Error: {str(e)}")
+                        st.markdown(f"""
+                        <div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre}</span>
+                            <span style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">{valor_fmt}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.markdown("</div>", unsafe_allow_html=True)
                 else:
-                    st.info("Sin datos disponibles")
+                    st.info("Sin artículos disponibles")
             
             # Cerrar wrapper gráfico + top5
             st.markdown('</div>', unsafe_allow_html=True)
