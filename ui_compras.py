@@ -1908,6 +1908,28 @@ def Compras_IA():
     }
     
     /* =====================================================
+       BADGE TIPO CONSULTA (COMPRAS / COMPARATIVAS)
+       ===================================================== */
+    .tipo-consulta-badge {
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: #ffffff;
+        padding: 6px 14px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.22);
+        user-select: none;
+    }
+
+    /* Versión más suave si querés aún menos contraste */
+    .tipo-consulta-badge.soft {
+        background: #eff6ff;
+        color: #2563eb;
+        border: 1px solid #dbeafe;
+        box-shadow: none;
+    }
+    
+    /* =====================================================
        CARD PRINCIPAL – FILTROS
        ===================================================== */
     .comparativas-card {
@@ -1983,6 +2005,11 @@ def Compras_IA():
 
     /* Si el "coso blanco" es una stContainer sin contenido útil */
     section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:has(> div:empty) {
+        display: none !important;
+    }
+
+    /* Ocultar el div específico mencionado por el usuario */
+    .stElementContainer.element-container.st-emotion-cache-3pwa5w.e12zf7d51[data-testid="stElementContainer"][data-stale="false"][width="100%"][height="auto"][overflow="visible"] {
         display: none !important;
     }
 
