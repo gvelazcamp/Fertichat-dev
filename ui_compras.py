@@ -761,8 +761,6 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         st.dataframe(df_show, use_container_width=True, hide_index=True, height=320)
 
     with tab_all:
-        # Resumen ejecutivo - REMOVIDO col_top PARA EVITAR DUPLICACIÓN VISUAL
-        # Eliminé la columna col_top y el Top 5 artículos duplicado que competía con KPIs
         st.markdown(f"""
         <div class="resumen-card">
             <h4 class="resumen-title">📅 Período Analizado</h4>
@@ -1467,12 +1465,17 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             dif_fmt = f"${abs(diferencia)/1_000_000:.2f}M" if abs(diferencia) >= 1_000_000 else f"${abs(diferencia):,.0f}".replace(",", ".")
             signo = "+" if diferencia > 0 else "-"
             
+            # 📊 FIX 3: WRAPPER PARA BLOQUE KPIs (forzar flujo vertical)
+            st.markdown('<div style="margin-bottom:24px;">', unsafe_allow_html=True)
+            
             # 📊 FILA 1: 2 CARDS ARRIBA (CRECIMIENTO EN $ + VARIACIÓN EN %)
             col_crec, col_var = st.columns(2)
             
             with col_crec:
                 st.markdown(f"""
-                <div style="background: {color_bg}; border-radius: 12px; padding: 20px; text-align: center; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.08); height: 140px; display: flex; flex-direction: column; justify-content: center;">
+                <div style="background: {color_bg}; border-radius: 12px; padding: 20px; text-align: center; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+                     min-height: 140px;  /* ✅ FIX 1: Cambiado de height a min-height */
+                     display: flex; flex-direction: column; justify-content: center;">
                     <p style="margin: 0; font-size: 2rem; margin-bottom: 6px;">{icono}</p>
                     <h3 style="margin: 0; font-size: 0.85rem; font-weight: 600; opacity: 0.95; letter-spacing: 1px;">CRECIMIENTO</h3>
                     <h1 style="margin: 10px 0 4px 0; font-size: 2.8rem; font-weight: 800; line-height: 1;">{signo}{dif_fmt}</h1>
@@ -1482,7 +1485,9 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             
             with col_var:
                 st.markdown(f"""
-                <div style="background: white; border: 2px solid {color_texto}; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); height: 140px; display: flex; flex-direction: column; justify-content: center;">
+                <div style="background: white; border: 2px solid {color_texto}; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+                     min-height: 140px;  /* ✅ FIX 1: Cambiado de height a min-height */
+                     display: flex; flex-direction: column; justify-content: center;">
                     <p style="margin: 0; font-size: 2rem; margin-bottom: 6px;">📈</p>
                     <h3 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #6b7280; letter-spacing: 1px;">VARIACIÓN</h3>
                     <h1 style="margin: 10px 0 4px 0; font-size: 2.8rem; font-weight: 800; line-height: 1; color: {color_texto};">{variacion_pct:+.1f}%</h1>
@@ -1490,7 +1495,13 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 </div>
                 """, unsafe_allow_html=True)
             
+            # Cerrar wrapper KPIs
+            st.markdown('</div>', unsafe_allow_html=True)
+            
             st.markdown("<br>", unsafe_allow_html=True)
+            
+            # 📊 FIX 3: WRAPPER PARA BLOQUE GRÁFICO + TOP5
+            st.markdown('<div style="margin-bottom:24px;">', unsafe_allow_html=True)
             
             # 📊 FILA 2: GRÁFICO (IZQUIERDA) + TOP 5 (DERECHA)
             col_graph, col_top5 = st.columns([1.2, 0.8])
@@ -1622,6 +1633,9 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         st.warning(f"Error: {str(e)}")
                 else:
                     st.info("Sin datos disponibles")
+            
+            # Cerrar wrapper gráfico + top5
+            st.markdown('</div>', unsafe_allow_html=True)
         
         else:
             st.info("⚠️ Se requieren al menos 2 períodos para generar el análisis comparativo.")
