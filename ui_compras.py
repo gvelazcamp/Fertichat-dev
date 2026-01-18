@@ -1487,8 +1487,8 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             # 📊 FIX 3: WRAPPER PARA BLOQUE GRÁFICO + TOP5
             st.markdown('<div style="margin-bottom:24px;">', unsafe_allow_html=True)
             
-            # 📊 FILA 2: GRÁFICO (70%) + TOP 5 (30%) - ✅ Proporción ajustada
-            col_graph, col_top5 = st.columns([1.4, 0.6])  # ✅ Cambiado a 1.4:0.6 para 70%:30%
+            # 📊 FILA 2: GRÁFICO (50%) + TOP 5 (50%) - ✅ Alineado con 2 columnas arriba
+            col_graph, col_top5 = st.columns(2)  # ✅ Cambiado a st.columns(2) para igual ancho
             
             with col_graph:
                 st.markdown("#### 📊 Comparación")
@@ -1520,7 +1520,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         fig.update_layout(
                             xaxis_title="",
                             yaxis_title="Monto",
-                            height=350,  # ✅ Reducido height para compacto
+                            height=350,
                             template="plotly_white",
                             showlegend=True,
                             barmode='group',
@@ -1554,7 +1554,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         fig.update_layout(
                             xaxis_title="",
                             yaxis_title="Monto",
-                            height=350,  # ✅ Reducido height para compacto
+                            height=350,
                             template="plotly_white",
                             showlegend=True,
                             barmode='group',
@@ -1570,28 +1570,38 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             with col_top5:
                 st.markdown("#### 📊 Top 5 Artículos")  # ✅ Siempre mostrar, como contexto
                 
-                # ✅ TOP 5 ARTÍCULOS - SIEMPRE, aunque se seleccione proveedor
-                # Usarlo como información de apoyo, neutra
-                if 'Articulo' in df.columns:
-                    # Calcular Top 5 artículos SIEMPRE (no filtrar por proveedor)
-                    df_art = df.copy()
-                    df_art['Total'] = df_art[periodos_validos].sum(axis=1)
-                    top_art = df_art.nlargest(5, 'Total')
+                # ✅ TOP 5 ARTÍCULOS - DESACOPLADO: Query independiente solo por períodos
+                try:
+                    # Obtener datos sin filtro de proveedor para Top 5 independiente
+                    df_all_for_top5 = sqlq_comparativas.comparar_compras(
+                        anios=anios if not meses else None,
+                        meses=meses if meses else None,
+                        proveedores=None,  # Sin filtro de proveedor
+                        articulos=None     # Sin filtro de artículos
+                    )
                     
-                    container_html = '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
-                    st.markdown(container_html, unsafe_allow_html=True)
-                    
-                    for idx, row in top_art.iterrows():
-                        nombre = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
-                        valor = row['Total']
-                        valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
+                    if df_all_for_top5 is not None and not df_all_for_top5.empty and 'Articulo' in df_all_for_top5.columns:
+                        # Calcular Top 5 artículos sumando los períodos válidos
+                        df_all_for_top5['Total'] = df_all_for_top5[periodos_validos].sum(axis=1)
+                        top_art = df_all_for_top5.nlargest(5, 'Total')
                         
-                        item_html = f'<div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre}</span><span style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">{valor_fmt}</span></div>'
-                        st.markdown(item_html, unsafe_allow_html=True)
-                    
-                    st.markdown("</div>", unsafe_allow_html=True)
-                else:
+                        container_html = '<div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
+                        st.markdown(container_html, unsafe_allow_html=True)
+                        
+                        for idx, row in top_art.iterrows():
+                            nombre = str(row['Articulo'])[:25] + "..." if len(str(row['Articulo'])) > 25 else str(row['Articulo'])
+                            valor = row['Total']
+                            valor_fmt = f"${valor/1_000_000:.1f}M" if valor >= 1_000_000 else f"${valor:,.0f}".replace(",", ".")
+                            
+                            item_html = f'<div style="padding: 4px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 0.7rem; color: #374151; font-weight: 500;">{nombre}</span><span style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">{valor_fmt}</span></div>'
+                            st.markdown(item_html, unsafe_allow_html=True)
+                        
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    else:
+                        st.info("Sin artículos disponibles")
+                except Exception as e:
                     st.info("Sin artículos disponibles")
+                    # Opcional: st.error(f"Error calculando Top 5: {str(e)}")
             
             # Cerrar wrapper gráfico + top5
             st.markdown('</div>', unsafe_allow_html=True)
