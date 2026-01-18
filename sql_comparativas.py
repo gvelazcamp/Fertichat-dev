@@ -110,13 +110,6 @@ def comparar_compras(
             """
             params.extend([str(t2), str(t1)])
 
-    # ✅ FIX: Agregar params para tiempo_where antes de filtros
-    if usar_meses:
-        params.extend(tiempos_sorted)
-    else:
-        # ✅ FIX: Para años, usar TRIM("Año") IN con params
-        params.extend([str(t) for t in tiempos_sorted])
-
     prov_where = ""
     if proveedores:
         prov_clauses = []
@@ -143,13 +136,9 @@ def comparar_compras(
             art_where = "AND (" + " OR ".join(art_clauses) + ")"
 
     tiempo_col = "Mes" if usar_meses else "Año"
-    if usar_meses:
-        tiempo_placeholders = ", ".join(["%s"] * len(tiempos_sorted))
-        tiempo_where = f'TRIM("{tiempo_col}") IN ({tiempo_placeholders})'
-    else:
-        # ✅ FIX: Para años, usar TRIM IN con placeholders
-        tiempo_placeholders = ", ".join(["%s"] * len(tiempos_sorted))
-        tiempo_where = f'TRIM("{tiempo_col}") IN ({tiempo_placeholders})'
+    # ✅ FIX: Hardcodear los tiempos en IN, no usar %s para evitar duplicados
+    tiempo_placeholders = ", ".join([f"'{str(y)}'" for y in tiempos_sorted])
+    tiempo_where = f'TRIM("{tiempo_col}") IN ({tiempo_placeholders})'
 
     # ✅ FIX: Determinar modo explícito (SQL)
     modo_articulos = articulos is not None and len(articulos) > 0
@@ -252,7 +241,7 @@ def get_comparacion_proveedor_meses(*args, **kwargs) -> pd.DataFrame:
         if isinstance(proveedor, (list, tuple)):
             if len(proveedor) > 0:
                 prov_clauses = ['LOWER(TRIM("Cliente / Proveedor")) LIKE %s' for _ in proveedor]
-                prov_where = "AND (" + " OR ".join(prov_clauses) + ")"
+                prov_where = "AND (" + " OR '.join(prov_clauses) + ")"
                 prov_param = [f"%{p.strip().lower()}%" for p in proveedor if p.strip()]
         else:
             prov_norm = str(proveedor).strip().lower()
