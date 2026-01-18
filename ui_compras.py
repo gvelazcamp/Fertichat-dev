@@ -1476,98 +1476,123 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     tabs = st.tabs(["📊 Vista General", "💵 Pesos (UYU)", "💰 Dólares (USD)", "📈 Gráfico", "📋 Tabla"])
     
     # ==========================================
-    # TAB 1: VISTA GENERAL - RESUMEN EJECUTIVO
+    # TAB 1: VISTA GENERAL - DASHBOARD EJECUTIVO
     # ==========================================
     with tabs[0]:
-        st.markdown("### 💼 Resumen Ejecutivo")
+        st.markdown("### 📊 Análisis Comparativo")
         
-        # 1️⃣ TOTALES CONSOLIDADOS POR MONEDA
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown(f"""
-            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-                        border-radius: 12px; padding: 20px; color: white; text-align: center;">
-                <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">💰 Total Consolidado Pesos</p>
-                <p style="margin: 8px 0 0 0; font-size: 2rem; font-weight: 700;">{total_uyu_fmt}</p>
-                <p style="margin: 4px 0 0 0; font-size: 0.8rem; opacity: 0.8;">Suma de {len(periodos)} período(s)</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
-                        border-radius: 12px; padding: 20px; color: white; text-align: center;">
-                <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">💵 Total Consolidado USD</p>
-                <p style="margin: 8px 0 0 0; font-size: 2rem; font-weight: 700;">{total_usd_fmt}</p>
-                <p style="margin: 4px 0 0 0; font-size: 0.8rem; opacity: 0.8;">Suma de {len(periodos)} período(s)</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("---")
-        
-        # 2️⃣ COMPARATIVA POR PERÍODO (tabla compacta)
-        st.markdown("### 📊 Comparativa por Período")
-        
-        # Calcular totales por período
-        periodos_data = []
-        for periodo in periodos:
-            if periodo in df.columns:
-                total_periodo_pesos = df_pesos[periodo].sum() if 'Moneda' in df.columns and not df_pesos.empty and periodo in df_pesos.columns else 0
-                total_periodo_usd = df_usd[periodo].sum() if 'Moneda' in df.columns and not df_usd.empty and periodo in df_usd.columns else 0
-                periodos_data.append({
-                    'Período': periodo,
-                    'Pesos': f"${total_periodo_pesos:,.0f}".replace(",", "."),
-                    'USD': f"U$S {total_periodo_usd:,.0f}"
-                })
-        
-        if len(periodos) == 2 and periodos_data:
-            # Calcular diferencia y variación %
-            p1_pesos = df_pesos[periodos[0]].sum() if 'Moneda' in df.columns and not df_pesos.empty and periodos[0] in df_pesos.columns else 0
-            p2_pesos = df_pesos[periodos[1]].sum() if 'Moneda' in df.columns and not df_pesos.empty and periodos[1] in df_pesos.columns else 0
-            p1_usd = df_usd[periodos[0]].sum() if 'Moneda' in df.columns and not df_usd.empty and periodos[0] in df_usd.columns else 0
-            p2_usd = df_usd[periodos[1]].sum() if 'Moneda' in df.columns and not df_usd.empty and periodos[1] in df_usd.columns else 0
+        # 1️⃣ TABLA COMPARATIVA (lado a lado con los períodos)
+        if len(periodos) >= 2:
+            # Mostrar tabla con todos los períodos + diferencia
+            cols_mostrar = ['Proveedor' if 'Proveedor' in df.columns else 'Articulo', 'Moneda'] + periodos
+            if 'Diferencia' in df.columns:
+                cols_mostrar.append('Diferencia')
             
-            dif_pesos = p2_pesos - p1_pesos
-            dif_usd = p2_usd - p1_usd
-            var_pesos = ((p2_pesos / p1_pesos - 1) * 100) if p1_pesos != 0 else 0
-            var_usd = ((p2_usd / p1_usd - 1) * 100) if p1_usd != 0 else 0
+            df_vista = df[cols_mostrar].copy()
             
-            periodos_data.append({
-                'Período': '📈 Diferencia',
-                'Pesos': f"${dif_pesos:+,.0f}".replace(",", "."),
-                'USD': f"U$S {dif_usd:+,.0f}"
-            })
-            periodos_data.append({
-                'Período': '📊 Variación %',
-                'Pesos': f"{var_pesos:+.1f}%",
-                'USD': f"{var_usd:+.1f}%"
-            })
-        
-        df_periodos = pd.DataFrame(periodos_data)
-        st.dataframe(df_periodos, use_container_width=True, hide_index=True)
-        
-        st.markdown("---")
-        
-        # 3️⃣ TOP 5 MAYOR CRECIMIENTO (si hay diferencia)
-        if 'Diferencia' in df.columns:
-            st.markdown("### 📈 Top 5 Mayor Crecimiento")
-            df_top_crec = df.nlargest(5, 'Diferencia')[['Proveedor' if 'Proveedor' in df.columns else 'Articulo', 'Moneda', 'Diferencia']].copy()
-            if not df_top_crec.empty:
-                df_top_crec['Diferencia'] = df_top_crec['Diferencia'].apply(lambda x: f"${x:+,.0f}".replace(",", "."))
-                st.dataframe(df_top_crec, use_container_width=True, hide_index=True)
-            else:
-                st.info("No hay datos de crecimiento")
+            # Formatear números con separador de miles
+            for col in periodos + (['Diferencia'] if 'Diferencia' in df.columns else []):
+                if col in df_vista.columns:
+                    df_vista[col] = df_vista[col].apply(lambda x: f"${x:,.0f}".replace(",", ".") if pd.notna(x) else "-")
             
+            st.dataframe(df_vista, use_container_width=True, height=300)
+            
+            # 2️⃣ GRÁFICO DE BARRAS COMPARATIVO
             st.markdown("---")
+            st.markdown("### 📈 Comparación Visual")
             
-            # 4️⃣ TOP 5 MAYOR CAÍDA
-            st.markdown("### 📉 Top 5 Mayor Caída")
-            df_top_caida = df.nsmallest(5, 'Diferencia')[['Proveedor' if 'Proveedor' in df.columns else 'Articulo', 'Moneda', 'Diferencia']].copy()
-            if not df_top_caida.empty:
-                df_top_caida['Diferencia'] = df_top_caida['Diferencia'].apply(lambda x: f"${x:+,.0f}".replace(",", "."))
-                st.dataframe(df_top_caida, use_container_width=True, hide_index=True)
-            else:
-                st.info("No hay datos de caída")
+            try:
+                import plotly.graph_objects as go
+                
+                # Preparar datos para el gráfico
+                entity_col = 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
+                
+                # Top 10 por total (sumar todos los períodos)
+                df_top = df.copy()
+                df_top['Total'] = df_top[periodos].sum(axis=1)
+                df_top = df_top.nlargest(10, 'Total')
+                
+                # Crear gráfico de barras agrupadas
+                fig = go.Figure()
+                
+                colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe']
+                for idx, periodo in enumerate(periodos):
+                    fig.add_trace(go.Bar(
+                        name=str(periodo),
+                        x=df_top[entity_col],
+                        y=df_top[periodo],
+                        marker_color=colors[idx % len(colors)]
+                    ))
+                
+                fig.update_layout(
+                    barmode='group',
+                    title=f"Top 10 - Comparación entre períodos",
+                    xaxis_title=entity_col,
+                    yaxis_title="Monto",
+                    height=400,
+                    template="plotly_white",
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    )
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+            except Exception as e:
+                st.info(f"📊 Gráfico no disponible: {e}")
+            
+            # 3️⃣ MÉTRICAS CLAVE
+            st.markdown("---")
+            st.markdown("### 🎯 Métricas Clave")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                # Calcular variación promedio
+                if len(periodos) == 2 and 'Diferencia' in df.columns:
+                    p1_total = df[periodos[0]].sum()
+                    p2_total = df[periodos[1]].sum()
+                    variacion = ((p2_total / p1_total - 1) * 100) if p1_total != 0 else 0
+                    color = "green" if variacion > 0 else "red"
+                    icono = "📈" if variacion > 0 else "📉"
+                    
+                    st.markdown(f"""
+                    <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
+                        <p style="margin: 0; font-size: 2.5rem;">{icono}</p>
+                        <p style="margin: 8px 0 0 0; font-size: 1.8rem; font-weight: 700; color: {color};">{variacion:+.1f}%</p>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #6b7280;">Variación Total</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.info("Variación: N/A")
+            
+            with col2:
+                # Registros analizados
+                st.markdown(f"""
+                <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
+                    <p style="margin: 0; font-size: 2.5rem;">📄</p>
+                    <p style="margin: 8px 0 0 0; font-size: 1.8rem; font-weight: 700; color: #111827;">{num_registros}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #6b7280;">Registros Analizados</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col3:
+                # Período analizado
+                periodo_texto = " vs ".join(map(str, periodos))
+                st.markdown(f"""
+                <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
+                    <p style="margin: 0; font-size: 2.5rem;">📅</p>
+                    <p style="margin: 8px 0 0 0; font-size: 1.2rem; font-weight: 700; color: #111827;">{periodo_texto}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #6b7280;">Períodos Comparados</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        else:
+            st.info("Se requieren al menos 2 períodos para generar el análisis comparativo.")
     
     with tabs[1]:
         df_pesos = df[df['Moneda'] == '$'] if 'Moneda' in df.columns else df
