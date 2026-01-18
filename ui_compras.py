@@ -1940,7 +1940,7 @@ def Compras_IA():
     art_options = get_unique_articulos()[:100]
 
     # TABS PRINCIPALES: Chat IA + Comparativas
-    tab_chat, tab_comparativas = st.tabs(["💬Compras", "Filtros de Comparación"])
+    tab_chat, tab_comparativas = st.tabs(["💬Compras", "📊 Comparativas"])
 
     with tab_chat:
         # BOTÓN LIMPIAR (solo en chat)
@@ -2137,165 +2137,65 @@ def Compras_IA():
         st.rerun()
 
     with tab_comparativas:
-        # ==========================================
-        # CSS PROFESIONAL PARA EL MENÚ COMPARATIVAS
-        # ==========================================
-        st.markdown("""
-        <style>
-        /* =====================================================
-           CARD PRINCIPAL – FILTROS
-           ===================================================== */
-        .comparativas-card {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 16px;
-            padding: 24px 26px;
-            margin-top: 12px;
-            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-        }
+        st.markdown("### 📊 Menú Comparativas Fáciles")
+        st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
-        /* =====================================================
-           HEADER DE LA CARD
-           ===================================================== */
-        .comparativas-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 18px;
-        }
+        # Agregado: Submenús Compras y Comparativas
+        tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
 
-        .comparativas-title-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        if tipo_consulta == "Compras":
+            st.markdown("#### 🛒 Consultas de Compras")
+            
+            anio_compras = st.selectbox("Año", options=[2023, 2024, 2025, 2026], index=2, key="anio_compras")
+            mes_compras = st.selectbox("Mes", options=month_names + ["Todos"], index=len(month_names), key="mes_compras")
+            proveedor_compras = st.selectbox("Proveedor", options=["Todos"] + prov_options[:50], index=0, key="proveedor_compras")
+            
+            # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
+            if "compras_resultado" in st.session_state:
+                df_guardado = st.session_state["compras_resultado"]
+                titulo_guardado = st.session_state.get("compras_titulo", "Compras")
+                
+                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
+                
+                # Botón para limpiar
+                if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
+                    del st.session_state["compras_resultado"]
+                    del st.session_state["compras_titulo"]
+                    st.rerun()
+            
+            if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
+                # ✅ PAUSAR AUTOREFRESH AL PRESIONAR BOTÓN DE BÚSQUEDA
+                st.session_state["pause_autorefresh"] = True
 
-        .comparativas-title-section svg {
-            width: 26px;
-            height: 26px;
-            fill: #2563eb;
-        }
+                try:
+                    if mes_compras == "Todos":
+                        if proveedor_compras == "Todos":
+                            df = sqlq_compras.get_compras_anio(anio_compras)
+                        else:
+                            df = sqlq_facturas.get_facturas_proveedor(proveedores=[proveedor_compras], anios=[anio_compras])
+                    else:
+                        mes_code = f"{anio_compras}-{month_num[mes_compras]}"
+                        if proveedor_compras == "Todos":
+                            df = sqlq_compras.get_compras_por_mes_excel(mes_code)
+                        else:
+                            df = sqlq_compras.get_detalle_compras_proveedor_mes(proveedor_compras, mes_code)
+                    
+                    if df is not None and not df.empty:
+                        # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
+                        st.session_state["compras_resultado"] = df
+                        st.session_state["compras_titulo"] = "Compras"
+                        
+                        render_dashboard_compras_vendible(df, titulo="Compras")
+                    elif df is not None:
+                        st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
+                except Exception as e:
+                    st.error(f"❌ Error en búsqueda: {e}")
 
-        .comparativas-title-section h4 {
-            margin: 0;
-            font-size: 1.35rem;
-            font-weight: 700;
-            color: #0f172a;
-        }
-
-        /* Badge derecha */
-        .comparativas-badge {
-            background: linear-gradient(135deg, #2563eb, #3b82f6);
-            color: #ffffff;
-            padding: 6px 14px;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        /* =====================================================
-           CAMPOS (ESPACIADO)
-           ===================================================== */
-        .comparativas-fields {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        /* Labels */
-        section[data-testid="stMain"] label {
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #475569;
-        }
-
-        /* =====================================================
-           PILLS (meses / años / artículos)
-           ===================================================== */
-        section[data-testid="stMain"] span[data-baseweb="tag"] {
-            background: #1e40af !important;
-            color: #ffffff !important;
-            border-radius: 8px !important;
-            font-weight: 500;
-        }
-
-        /* =====================================================
-           ZONA DE ACCIONES (COMPARAR / LIMPIAR)
-           ===================================================== */
-        .comparativas-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 18px;
-        }
-
-        /* Botón principal */
-        section[data-testid="stMain"] button[kind="primary"] {
-            background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
-            border-radius: 10px !important;
-            font-weight: 600 !important;
-            padding: 0.55rem 1.2rem !important;
-            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
-        }
-
-        /* Botón secundario */
-        section[data-testid="stMain"] button[kind="secondary"] {
-            border-radius: 10px !important;
-            border: 1.5px solid #e5e7eb !important;
-            padding: 0.55rem 1.2rem !important;
-        }
-
-        /* =====================================================
-           BARRA INFERIOR (CSV / EXCEL / GUARDAR)
-           ===================================================== */
-        .comparativas-footer {
-            margin-top: 18px;
-            padding-top: 14px;
-            border-top: 1px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        # HTML Header
-        st.markdown('<div class="comparativas-card">', unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="comparativas-header">
-            <div class="comparativas-title-section">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M9 11H7v8h2v-8zm4-4h-2v12h2V7zm4-4h-2v16h2V3z"/>
-                </svg>
-                <h4>Filtros de Comparación</h4>
-            </div>
-            <div class="comparativas-badge">Comparativas</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown('<div class="comparativas-fields">', unsafe_allow_html=True)
-        # selectbox / multiselect / etc
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="comparativas-actions">', unsafe_allow_html=True)
-        # Comparar / Limpiar
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="comparativas-footer">', unsafe_allow_html=True)
-        # CSV / Excel / Guardar
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # ==========================================
-        # CONTENIDO ORIGINAL (SIN CAMBIOS)
-        # ==========================================
-        # Selector de tipo de consulta (Comparativas) - arriba a la derecha
-        tipo_consulta = st.selectbox("", options=["Comparativas"], index=0, key="tipo_consulta", label_visibility="collapsed")
-
-        if tipo_consulta == "Comparativas":
+        elif tipo_consulta == "Comparativas":
             # ✅ PAUSAR AUTOREFRESH EN COMPARATIVAS
             st.session_state["pause_autorefresh"] = True
+
+            st.markdown("#### 📊 Comparativas")
             
             # ✅ PROVEEDORES (ancho completo, sin columnas)
             proveedores_disponibles = prov_options  # Ya tiene todos los proveedores
@@ -2322,77 +2222,60 @@ def Compras_IA():
             st.session_state["meses_multi"] = meses
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
-            # Botones principales (en columnas para que queden lado a lado)
-            col_btn1, col_btn2, col_resto = st.columns([1.2, 1.5, 3])
-            with col_btn1:
-                if st.button("🔍 Comparar", key="btn_comparar", type="primary"):
-                    if len(anios) < 2:
-                        st.error("Seleccioná al menos 2 años para comparar")
-                    else:
-                        # ✅ PAUSAR AUTOREFRESH
-                        st.session_state.comparativa_activa = True
-                        
-                        with st.spinner("Comparando..."):
-                            try:
-                                df = sqlq_comparativas.comparar_compras(
-                                    anios=anios,
-                                    proveedores=proveedores,
-                                    articulos=articulos  # ← AGREGADO: Pasar artículos seleccionados
-                                )
-                                
-                                if df is not None and not df.empty:
-                                    # ✅ CONSTRUIR TÍTULO CON PROVEEDOR
-                                    titulo_provs = ""
-                                    if proveedores_sel:
-                                        if len(proveedores_sel) == 1:
-                                            # Un solo proveedor: mostrar nombre completo
-                                            titulo_provs = f"{proveedores_sel[0]} - "
-                                        elif len(proveedores_sel) <= 3:
-                                            # 2-3 proveedores: mostrar todos
-                                            titulo_provs = f"{', '.join(proveedores_sel)} - "
-                                        else:
-                                            # Más de 3: mostrar cantidad
-                                            titulo_provs = f"{len(proveedores_sel)} proveedores - "
+            # Botón comparar
+            if st.button("🔍 Comparar", key="btn_comparar_anios"):
+                if len(anios) < 2:
+                    st.error("Seleccioná al menos 2 años para comparar")
+                else:
+                    # ✅ PAUSAR AUTOREFRESH
+                    st.session_state.comparativa_activa = True
+                    
+                    with st.spinner("Comparando..."):
+                        try:
+                            df = sqlq_comparativas.comparar_compras(
+                                anios=anios,
+                                proveedores=proveedores
+                            )
+                            
+                            if df is not None and not df.empty:
+                                # ✅ CONSTRUIR TÍTULO CON PROVEEDOR
+                                titulo_provs = ""
+                                if proveedores_sel:
+                                    if len(proveedores_sel) == 1:
+                                        # Un solo proveedor: mostrar nombre completo
+                                        titulo_provs = f"{proveedores_sel[0]} - "
+                                    elif len(proveedores_sel) <= 3:
+                                        # 2-3 proveedores: mostrar todos
+                                        titulo_provs = f"{', '.join(proveedores_sel)} - "
                                     else:
-                                        titulo_provs = "Todos los proveedores - "
-                                    
-                                    # ✅ GUARDAR EN SESSION_STATE
-                                    st.session_state["comparativa_resultado"] = df
-                                    st.session_state["comparativa_titulo"] = f"{titulo_provs}Comparación {' vs '.join(map(str, anios))}"
-                                    st.session_state["comparativa_activa"] = True
-                                    
-                                    st.success(f"✅ Comparación lista - {len(df)} filas")
+                                        # Más de 3: mostrar cantidad
+                                        titulo_provs = f"{len(proveedores_sel)} proveedores - "
                                 else:
-                                    st.warning("No se encontraron datos")
-                            except Exception as e:
-                                st.error(f"❌ Error: {e}")
-                                st.exception(e)
-
-            with col_btn2:
-                if st.button("🗑️ Limpiar resultados", key="btn_limpiar", type="secondary"):
-                    if "comparativa_resultado" in st.session_state:
-                        del st.session_state["comparativa_resultado"]
-                    if "comparativa_titulo" in st.session_state:
-                        del st.session_state["comparativa_titulo"]
-                    st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
-                    st.rerun()
-
-            # Espacio y botones secundarios
-            st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-
-            col_csv, col_excel, col_guardar, col_filtros = st.columns([1, 1, 1.2, 5])
-            with col_csv:
-                st.button("📊 CSV")
-            with col_excel:
-                st.button("📥 Excel")
-            with col_guardar:
-                st.button("💾 Guardar vista")
-            # col_filtros queda vacío para empujar "Filtros" a la derecha si lo necesitás
+                                    titulo_provs = "Todos los proveedores - "
+                                
+                                # ✅ GUARDAR EN SESSION_STATE
+                                st.session_state["comparativa_resultado"] = df
+                                st.session_state["comparativa_titulo"] = f"{titulo_provs}Comparación {' vs '.join(map(str, anios))}"
+                                st.session_state["comparativa_activa"] = True
+                                
+                                st.success(f"✅ Comparación lista - {len(df)} filas")
+                            else:
+                                st.warning("No se encontraron datos")
+                        except Exception as e:
+                            st.error(f"❌ Error: {e}")
+                            st.exception(e)
             
             # ✅ MOSTRAR RESULTADO GUARDADO (persiste entre refreshes)
             if "comparativa_resultado" in st.session_state:
                 df_guardado = st.session_state["comparativa_resultado"]
                 titulo_guardado = st.session_state.get("comparativa_titulo", "Comparación")
+                
+                # Botón para limpiar
+                if st.button("🗑️ Limpiar resultados", key="btn_limpiar_comparativa"):
+                    del st.session_state["comparativa_resultado"]
+                    del st.session_state["comparativa_titulo"]
+                    st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
+                    st.rerun()
                 
                 # Mostrar dashboard con datos guardados
                 render_dashboard_comparativas_moderno(
