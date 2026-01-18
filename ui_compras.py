@@ -94,7 +94,7 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
         if prov_clauses:
             where_clauses.append("(" + " OR ".join(prov_clauses) + ")")
 
-    where_sql = " AND ".join(where_clauses)
+    where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
     # -------------------------
     # SQL TOP 5
