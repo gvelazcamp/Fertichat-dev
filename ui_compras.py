@@ -1178,21 +1178,27 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     </style>
     """, unsafe_allow_html=True)
     
-    # Barra de acciones
-    col_actions_left, col_actions_right = st.columns([3, 1])
-    with col_actions_left:
-        st.markdown("""
-        <div class="action-bar">
-            <div class="action-left">
-                <button class="btn-action">📊 CSV</button>
-                <button class="btn-action">📥 Excel</button>
-                <button class="btn-action">💾 Guardar vista</button>
-            </div>
-            <div class="action-right">
-                <button class="btn-action">🔍 Filtros</button>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    # Barra de acciones - MODIFICADO PARA UNA FILA HORIZONTAL
+    # Usar st.columns con 6 columnas iguales para los 6 botones
+    col_cmp, col_clr, col_csv, col_xls, col_sav, col_flt = st.columns(6)
+    
+    with col_cmp:
+        btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
+    
+    with col_clr:
+        btn_clear = st.button("🗑️ Limpiar resultados", key="btn_limpiar_horizontal", use_container_width=True)
+    
+    with col_csv:
+        btn_csv = st.button("📊 CSV", key="btn_csv_horizontal", use_container_width=True)
+    
+    with col_xls:
+        btn_excel = st.button("📥 Excel", key="btn_excel_horizontal", use_container_width=True)
+    
+    with col_sav:
+        btn_save = st.button("💾 Guardar vista", key="btn_guardar_horizontal", use_container_width=True)
+    
+    with col_flt:
+        btn_filters = st.button("🔍 Filtros", key="btn_filtros_horizontal", use_container_width=True)
     
     # CSS Moderno (restante)
     st.markdown("""
@@ -1542,7 +1548,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 color_texto = "#ef4444"
             
             # Formatear diferencia
-            dif_fmt = f"${abs(diferencia)/1_000_000:.2f}M" if abs(diferencia) >= 1_000_000 else f"${abs(diferencia):,.0f}".replace(",", ".")
+            dif_fmt = f"${abs(diferencia)/1_000_000:.1f}M" if abs(diferencia) >= 1_000_000 else f"${abs(diferencia):,.0f}".replace(",", ".")
             signo = "+" if diferencia > 0 else "-"
             
             # 📊 FIX 3: WRAPPER PARA BLOQUE KPIs (forzar flujo vertical)
@@ -2402,8 +2408,29 @@ def Compras_IA():
             st.session_state["meses_multi"] = meses
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
-            # Botón comparar
-            if st.button("🔍 Comparar", key="btn_comparar_anios"):
+            # Barra de acciones en una sola fila horizontal
+            col_cmp, col_clr, col_csv, col_xls, col_sav, col_flt = st.columns(6)
+            
+            with col_cmp:
+                btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
+            
+            with col_clr:
+                btn_clear = st.button("🗑️ Limpiar resultados", key="btn_limpiar_horizontal", use_container_width=True)
+            
+            with col_csv:
+                btn_csv = st.button("📊 CSV", key="btn_csv_horizontal", use_container_width=True)
+            
+            with col_xls:
+                btn_excel = st.button("📥 Excel", key="btn_excel_horizontal", use_container_width=True)
+            
+            with col_sav:
+                btn_save = st.button("💾 Guardar vista", key="btn_guardar_horizontal", use_container_width=True)
+            
+            with col_flt:
+                btn_filters = st.button("🔍 Filtros", key="btn_filtros_horizontal", use_container_width=True)
+
+            # Botón comparar (oculto, pero funcionalidad en el botón de arriba)
+            if btn_compare:
                 # ✅ VALIDAR: necesitamos al menos 2 períodos (años O meses)
                 tiene_anios = len(anios) >= 2
                 tiene_meses = len(meses) >= 2
@@ -2457,8 +2484,8 @@ def Compras_IA():
                 df_guardado = st.session_state["comparativa_resultado"]
                 titulo_guardado = st.session_state.get("comparativa_titulo", "Comparación")
                 
-                # Botón para limpiar
-                if st.button("🗑️ Limpiar resultados", key="btn_limpiar_comparativa"):
+                # Botón para limpiar (oculto, funcionalidad en botón de arriba)
+                if btn_clear:
                     del st.session_state["comparativa_resultado"]
                     del st.session_state["comparativa_titulo"]
                     st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
