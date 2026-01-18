@@ -2263,7 +2263,7 @@ def Compras_IA():
     prov_options = get_unique_proveedores()  # ✅ Sin límite
     print(f"🐛 Proveedores disponibles: {len(prov_options)}")  # Debug
 
-    art_options = get_unique_articulos()[:100]
+    art_options = get_unique_articulos()  # ✅ CAMBIO: TODOS LOS ARTÍCULOS (sin [:100])
 
     # TABS PRINCIPALES: Chat IA + Comparativas
     tab_chat, tab_comparativas = st.tabs(["💬Compras", "📊 Comparativas"])
