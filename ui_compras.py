@@ -1697,6 +1697,13 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         # ✅ Pasar proveedores correctamente
                         proveedores_param = proveedores_ctx if proveedores_ctx and len(proveedores_ctx) > 0 else None
                         
+                        # --- NORMALIZAR PROVEEDORES PARA TOP 5 ---
+                        if proveedores_param:
+                            if isinstance(proveedores_param, str):
+                                proveedores_param = [proveedores_param]
+                            elif not isinstance(proveedores_param, (list, tuple)):
+                                proveedores_param = []
+                        
                         print(f"🛠 DEBUG Top5: años={anios_ctx}, meses={meses_param}, provs={proveedores_param}")
                         
                         df_top5 = get_top_5_articulos(
@@ -2365,7 +2372,6 @@ def Compras_IA():
                 "df": respuesta_df,
                 "tipo": tipo,
                 "pregunta": pregunta,
-                "timestamp": datetime.now().timestamp(),
             }
         )
 
