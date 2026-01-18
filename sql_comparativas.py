@@ -139,17 +139,16 @@ def comparar_compras(
         tiempo_placeholders = ", ".join(str(int(y)) for y in tiempos_sorted)
         tiempo_where = f'"{tiempo_col}"::int IN ({tiempo_placeholders})'
 
-    # Lógica corregida: Si hay artículos Y NO hay proveedores → agrupar por artículo
-    # De lo contrario → agrupar por proveedor
-    if articulos and not proveedores:
-        group_by_col = "Articulo"
-        select_col = 'TRIM("Articulo")'
-    else:
-        group_by_col = "Proveedor"
-        select_col = 'TRIM("Cliente / Proveedor")'
+    # ✅ FIX: Determinar modo de comparación correctamente
+    modo_articulos = articulos is not None and len(articulos) > 0
+    group_by_col = "Articulo" if modo_articulos else "Proveedor"
+    select_col = f'TRIM("Articulo")' if modo_articulos else 'TRIM("Cliente / Proveedor")'
 
     # ===== DETERMINAR LÍMITE =====
-    if proveedores is None or len(proveedores) == 0:
+    # ✅ FIX: Ajustar límite basado en modo (artículos vs proveedores)
+    if modo_articulos:
+        limite = 1000  # Para artículos, límite más bajo ya que son específicos
+    elif proveedores is None or len(proveedores) == 0:
         limite = 5000  # Todos los proveedores
     else:
         limite = 1000  # Proveedores específicos
