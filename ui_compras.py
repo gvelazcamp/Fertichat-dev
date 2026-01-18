@@ -2138,137 +2138,234 @@ def Compras_IA():
 
     with tab_comparativas:
         # ==========================================
-        # CSS PROFESIONAL PARA EL MENÚ COMPARATIVAS (SOLO MEJORAS SUTILES)
+        # CSS PROFESIONAL PARA EL MENÚ COMPARATIVAS
         # ==========================================
         st.markdown("""
         <style>
-        /* =====================================================
-           1️⃣ OCULTAR TÍTULO VIEJO: "📊 Comparativas"
-           ===================================================== */
+        /* ==============================================
+           MENÚ COMPARATIVAS - DISEÑO PROFESIONAL
+           ============================================== */
 
-        /* Oculta cualquier h3/h4 que tenga el emoji 📊 */
-        section[data-testid="stMain"] h3:has(span:contains("📊")),
-        section[data-testid="stMain"] h4:has(span:contains("📊")),
-        section[data-testid="stMain"] h3:has(svg + span),
-        section[data-testid="stMain"] h3:has(span:contains("Comparativas")) {
-            display: none !important;
+        /* Header con título y selector de tipo */
+        .comparativas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
         }
 
-
-        /* =====================================================
-           2️⃣ ELIMINAR BLOQUE BLANCO DUPLICADO ARRIBA
-           (container fantasma de Streamlit)
-           ===================================================== */
-
-        /* Card vacía que queda arriba del título */
-        section[data-testid="stMain"] > div:has(> div:empty) {
-            display: none !important;
-        }
-
-
-        /* =====================================================
-           3️⃣ ESTILO DEFINITIVO PARA "Filtros de Comparación"
-           ===================================================== */
-
-        .comparativas-title {
+        .comparativas-title-section {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 14px;
         }
 
-        /* Icono azul line */
-        .comparativas-title::before {
-            content: "";
-            width: 22px;
-            height: 22px;
-            background-color: #2563eb;
-            display: inline-block;
-
-            mask: url("data:image/svg+xml;utf8,\
-            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-            <path d='M9 11H7v8h2v-8zm4-4h-2v12h2V7zm4-4h-2v16h2V3z'/>\
-            </svg>") no-repeat center;
-            -webkit-mask: url("data:image/svg+xml;utf8,\
-            <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-            <path d='M9 11H7v8h2v-8zm4-4h-2v12h2V7zm4-4h-2v16h2V3z'/>\
-            </svg>") no-repeat center;
+        /* Icono SVG azul */
+        .comparativas-title-section svg {
+            width: 24px;
+            height: 24px;
+            fill: #2563eb;
         }
 
-        .comparativas-title span {
-            font-size: 1.15rem;
+        .comparativas-title-section h4 {
+            margin: 0;
+            font-size: 1.2rem;
             font-weight: 600;
             color: #1e293b;
+        }
+
+        /* Selector "Comparativas" arriba a la derecha */
+        section[data-testid="stMain"] div[data-baseweb="select"]:first-of-type {
+            max-width: 180px;
+        }
+
+        /* Subtítulo descriptivo */
+        section[data-testid="stMain"] > div > div > div > p:first-of-type {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Labels de los campos */
+        section[data-testid="stMain"] label {
+            font-weight: 500;
+            color: #334155;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Selectboxes y multiselects */
+        section[data-testid="stMain"] div[data-baseweb="select"] {
+            border-radius: 8px;
+            border: 1.5px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+
+        section[data-testid="stMain"] div[data-baseweb="select"]:hover {
+            border-color: #3b82f6;
+        }
+
+        section[data-testid="stMain"] div[data-baseweb="select"]:focus-within {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Pills de selección (2024, 2025, 30G ANA PROFILE, etc) */
+        section[data-testid="stMain"] span[data-baseweb="tag"] {
+            background-color: #1e40af !important;
+            color: white !important;
+            border-radius: 6px !important;
+            padding: 5px 12px !important;
+            font-size: 0.875rem !important;
+            font-weight: 500 !important;
+        }
+
+        section[data-testid="stMain"] span[data-baseweb="tag"] svg {
+            color: white !important;
+            opacity: 0.9;
+        }
+
+        section[data-testid="stMain"] span[data-baseweb="tag"]:hover svg {
+            opacity: 1;
+        }
+
+        /* ==============================================
+           BOTONES PRINCIPALES (Comparar y Limpiar)
+           ============================================== */
+
+        /* Container de botones principales */
+        section[data-testid="stMain"] .row-widget.stButton {
+            display: inline-block;
+            margin-right: 12px;
+        }
+
+        /* Botón Comparar - Azul con gradiente */
+        section[data-testid="stMain"] button[kind="primary"] {
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 0.6rem 2rem !important;
+            font-weight: 600 !important;
+            font-size: 0.95rem !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+            transition: all 0.3s ease !important;
+            min-width: 140px !important;
+        }
+
+        section[data-testid="stMain"] button[kind="primary"]:hover {
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
+            transform: translateY(-2px) !important;
+        }
+
+        /* Botón Limpiar resultados - Gris suave */
+        section[data-testid="stMain"] button[kind="secondary"] {
+            background: white !important;
+            color: #64748b !important;
+            border: 1.5px solid #e5e7eb !important;
+            border-radius: 8px !important;
+            padding: 0.6rem 1.5rem !important;
+            font-weight: 500 !important;
+            font-size: 0.95rem !important;
+            transition: all 0.2s ease !important;
+            min-width: 180px !important;
+        }
+
+        section[data-testid="stMain"] button[kind="secondary"]:hover {
+            background: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        /* ==============================================
+           BOTONES SECUNDARIOS (CSV, Excel, Guardar, Filtros)
+           ============================================== */
+
+        /* Separación entre botones principales y secundarios */
+        section[data-testid="stMain"] .stButton + .stButton + .stButton {
+            margin-top: 1.5rem;
+        }
+
+        /* Botones secundarios más pequeños */
+        section[data-testid="stMain"] button:not([kind="primary"]):not([kind="secondary"]) {
+            background: white !important;
+            color: #64748b !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 6px !important;
+            padding: 0.4rem 0.9rem !important;
+            font-size: 0.85rem !important;
+            font-weight: 500 !important;
+            transition: all 0.2s ease !important;
+            margin-right: 8px !important;
+        }
+
+        section[data-testid="stMain"] button:not([kind="primary"]):not([kind="secondary"]):hover {
+            background: #f9fafb !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        /* Espaciado entre campos del formulario */
+        section[data-testid="stMain"] div[data-testid="stVerticalBlock"] > div {
+            margin-bottom: 1rem;
+        }
+
+        /* Mejorar dropdown options hover */
+        section[data-testid="stMain"] li[role="option"]:hover {
+            background-color: #eff6ff !important;
+        }
+
+        /* ==============================================
+           RESPONSIVE MOBILE
+           ============================================== */
+        @media (max-width: 768px) {
+            .comparativas-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            section[data-testid="stMain"] div[data-baseweb="select"]:first-of-type {
+                max-width: 100%;
+            }
+            
+            section[data-testid="stMain"] button {
+                width: 100% !important;
+                margin-bottom: 0.5rem !important;
+                margin-right: 0 !important;
+            }
+        }
+
+        /* ==============================================
+           OCULTAR ELEMENTOS INNECESARIOS
+           ============================================== */
+
+        /* Ocultar título duplicado de Streamlit */
+        section[data-testid="stMain"] h3:has(span:contains("Comparativas")),
+        section[data-testid="stMain"] h4:has(span:contains("Comparativas")) {
+            display: none !important;
         }
         </style>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="comparativas-card">', unsafe_allow_html=True)
+        # HTML Header
+        st.markdown("""
+        <div class="comparativas-header">
+            <div class="comparativas-title-section">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 11H7v8h2v-8zm4-4h-2v12h2V7zm4-4h-2v16h2V3z"/>
+                </svg>
+                <h4>Filtros de Comparación</h4>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.markdown(
-            '<div class="comparativas-title"><span>Filtros de Comparación</span></div>',
-            unsafe_allow_html=True
-        )
+        st.markdown("Selecciona opciones y compara proveedores, meses y años directamente.")
 
-        # Agregado: Submenús Compras y Comparativas
-        tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
+        # Selector de tipo de consulta (Comparativas) - arriba a la derecha
+        tipo_consulta = st.selectbox("", options=["Comparativas"], index=0, key="tipo_consulta", label_visibility="collapsed")
 
-        if tipo_consulta == "Compras":
-            st.markdown("#### 🛒 Consultas de Compras")
-            
-            anio_compras = st.selectbox("Año", options=[2023, 2024, 2025, 2026], index=2, key="anio_compras")
-            mes_compras = st.selectbox("Mes", options=month_names + ["Todos"], index=len(month_names), key="mes_compras")
-            proveedor_compras = st.selectbox("Proveedor", options=["Todos"] + prov_options[:50], index=0, key="proveedor_compras")
-            
-            # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
-            if "compras_resultado" in st.session_state:
-                df_guardado = st.session_state["compras_resultado"]
-                titulo_guardado = st.session_state.get("compras_titulo", "Compras")
-                
-                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
-                
-                # Botón para limpiar
-                if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
-                    del st.session_state["compras_resultado"]
-                    del st.session_state["compras_titulo"]
-                    st.rerun()
-            
-            if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
-                # ✅ PAUSAR AUTOREFRESH AL PRESIONAR BOTÓN DE BÚSQUEDA
-                st.session_state["pause_autorefresh"] = True
-
-                try:
-                    if mes_compras == "Todos":
-                        if proveedor_compras == "Todos":
-                            df = sqlq_compras.get_compras_anio(anio_compras)
-                        else:
-                            df = sqlq_facturas.get_facturas_proveedor(proveedores=[proveedor_compras], anios=[anio_compras])
-                    else:
-                        mes_code = f"{anio_compras}-{month_num[mes_compras]}"
-                        if proveedor_compras == "Todos":
-                            df = sqlq_compras.get_compras_por_mes_excel(mes_code)
-                        else:
-                            df = sqlq_compras.get_detalle_compras_proveedor_mes(proveedor_compras, mes_code)
-                    
-                    if df is not None and not df.empty:
-                        # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
-                        st.session_state["compras_resultado"] = df
-                        st.session_state["compras_titulo"] = "Compras"
-                        
-                        render_dashboard_compras_vendible(df, titulo="Compras")
-                    elif df is not None:
-                        st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
-                except Exception as e:
-                    st.error(f"❌ Error en búsqueda: {e}")
-
-        elif tipo_consulta == "Comparativas":
+        if tipo_consulta == "Comparativas":
             # ✅ PAUSAR AUTOREFRESH EN COMPARATIVAS
             st.session_state["pause_autorefresh"] = True
-
-            st.markdown(
-                '<div class="comparativas-title"><span>Comparativas</span></div>',
-                unsafe_allow_html=True
-            )
             
             # ✅ PROVEEDORES (ancho completo, sin columnas)
             proveedores_disponibles = prov_options  # Ya tiene todos los proveedores
@@ -2295,69 +2392,81 @@ def Compras_IA():
             st.session_state["meses_multi"] = meses
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
-            # Botón comparar
-            if st.button("🔍 Comparar", key="btn_comparar_anios"):
-                if len(anios) < 2:
-                    st.error("Seleccioná al menos 2 años para comparar")
-                else:
-                    # ✅ PAUSAR AUTOREFRESH
-                    st.session_state.comparativa_activa = True
-                    
-                    with st.spinner("Comparando..."):
-                        try:
-                            df = sqlq_comparativas.comparar_compras(
-                                anios=anios,
-                                proveedores=proveedores,
-                                articulos=articulos  # ← AGREGADO: Pasar artículos seleccionados
-                            )
-                            
-                            if df is not None and not df.empty:
-                                # ✅ CONSTRUIR TÍTULO CON PROVEEDOR
-                                titulo_provs = ""
-                                if proveedores_sel:
-                                    if len(proveedores_sel) == 1:
-                                        # Un solo proveedor: mostrar nombre completo
-                                        titulo_provs = f"{proveedores_sel[0]} - "
-                                    elif len(proveedores_sel) <= 3:
-                                        # 2-3 proveedores: mostrar todos
-                                        titulo_provs = f"{', '.join(proveedores_sel)} - "
+            # Botones principales (en columnas para que queden lado a lado)
+            col_btn1, col_btn2, col_resto = st.columns([1.2, 1.5, 3])
+            with col_btn1:
+                if st.button("🔍 Comparar", key="btn_comparar", type="primary"):
+                    if len(anios) < 2:
+                        st.error("Seleccioná al menos 2 años para comparar")
+                    else:
+                        # ✅ PAUSAR AUTOREFRESH
+                        st.session_state.comparativa_activa = True
+                        
+                        with st.spinner("Comparando..."):
+                            try:
+                                df = sqlq_comparativas.comparar_compras(
+                                    anios=anios,
+                                    proveedores=proveedores,
+                                    articulos=articulos  # ← AGREGADO: Pasar artículos seleccionados
+                                )
+                                
+                                if df is not None and not df.empty:
+                                    # ✅ CONSTRUIR TÍTULO CON PROVEEDOR
+                                    titulo_provs = ""
+                                    if proveedores_sel:
+                                        if len(proveedores_sel) == 1:
+                                            # Un solo proveedor: mostrar nombre completo
+                                            titulo_provs = f"{proveedores_sel[0]} - "
+                                        elif len(proveedores_sel) <= 3:
+                                            # 2-3 proveedores: mostrar todos
+                                            titulo_provs = f"{', '.join(proveedores_sel)} - "
+                                        else:
+                                            # Más de 3: mostrar cantidad
+                                            titulo_provs = f"{len(proveedores_sel)} proveedores - "
                                     else:
-                                        # Más de 3: mostrar cantidad
-                                        titulo_provs = f"{len(proveedores_sel)} proveedores - "
+                                        titulo_provs = "Todos los proveedores - "
+                                    
+                                    # ✅ GUARDAR EN SESSION_STATE
+                                    st.session_state["comparativa_resultado"] = df
+                                    st.session_state["comparativa_titulo"] = f"{titulo_provs}Comparación {' vs '.join(map(str, anios))}"
+                                    st.session_state["comparativa_activa"] = True
+                                    
+                                    st.success(f"✅ Comparación lista - {len(df)} filas")
                                 else:
-                                    titulo_provs = "Todos los proveedores - "
-                                
-                                # ✅ GUARDAR EN SESSION_STATE
-                                st.session_state["comparativa_resultado"] = df
-                                st.session_state["comparativa_titulo"] = f"{titulo_provs}Comparación {' vs '.join(map(str, anios))}"
-                                st.session_state["comparativa_activa"] = True
-                                
-                                st.success(f"✅ Comparación lista - {len(df)} filas")
-                            else:
-                                st.warning("No se encontraron datos")
-                        except Exception as e:
-                            st.error(f"❌ Error: {e}")
-                            st.exception(e)
+                                    st.warning("No se encontraron datos")
+                            except Exception as e:
+                                st.error(f"❌ Error: {e}")
+                                st.exception(e)
+
+            with col_btn2:
+                if st.button("🗑️ Limpiar resultados", key="btn_limpiar", type="secondary"):
+                    del st.session_state.get("comparativa_resultado", {})
+                    del st.session_state.get("comparativa_titulo", {})
+                    st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
+                    st.rerun()
+
+            # Espacio y botones secundarios
+            st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+
+            col_csv, col_excel, col_guardar, col_filtros = st.columns([1, 1, 1.2, 5])
+            with col_csv:
+                st.button("📊 CSV")
+            with col_excel:
+                st.button("📥 Excel")
+            with col_guardar:
+                st.button("💾 Guardar vista")
+            # col_filtros queda vacío para empujar "Filtros" a la derecha si lo necesitás
             
             # ✅ MOSTRAR RESULTADO GUARDADO (persiste entre refreshes)
             if "comparativa_resultado" in st.session_state:
                 df_guardado = st.session_state["comparativa_resultado"]
                 titulo_guardado = st.session_state.get("comparativa_titulo", "Comparación")
                 
-                # Botón para limpiar
-                if st.button("🗑️ Limpiar resultados", key="btn_limpiar_comparativa"):
-                    del st.session_state["comparativa_resultado"]
-                    del st.session_state["comparativa_titulo"]
-                    st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
-                    st.rerun()
-                
                 # Mostrar dashboard con datos guardados
                 render_dashboard_comparativas_moderno(
                     df_guardado,
                     titulo=titulo_guardado
                 )
-
-        st.markdown('</div>', unsafe_allow_html=True)
 
         # Botón para reanudar auto-refresh (opcional, si se pausa)
         if st.session_state.get("pause_autorefresh", False):
