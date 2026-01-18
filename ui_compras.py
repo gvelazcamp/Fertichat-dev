@@ -40,6 +40,9 @@ def get_unique_articulos():
     except:
         return []
 
+# =========================
+# NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
+# =========================
 def get_top_5_articulos(anios, meses=None):
     """
     Devuelve Top 5 artículos por monto total para el período seleccionado.
@@ -111,12 +114,12 @@ def get_top_5_articulos(anios, meses=None):
     """
 
     try:
-        df = ejecutar_consulta(sql, params)  # FIX: params is list of tuples, but execute expects tuple of tuples? Wait, adjust to tuple(params)
+        df = ejecutar_consulta(sql, tuple(params))
         return df if df is not None else pd.DataFrame()
     except Exception as e:
         print("❌ Error Top 5 Artículos:", e)
         return pd.DataFrame()
-        
+
 # =========================
 # CONVERSIÓN DE MESES A NOMBRES
 # =========================
@@ -2334,8 +2337,11 @@ def Compras_IA():
             st.session_state["meses_multi"] = meses
             articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
-            # Barra de acciones en una sola fila horizontal
-            col_cmp, col_clr, col_csv, col_xls, col_sav, col_flt = st.columns(6)
+            # Separar la barra del formulario
+            st.markdown('<div style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 16px;"></div>', unsafe_allow_html=True)
+
+            # Barra de acciones en una sola fila horizontal - MODIFICADA
+            col_cmp, col_clr, col_csv, col_xls, col_sav = st.columns([2, 1, 1, 1, 1])  # Primary larger
             
             with col_cmp:
                 btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
@@ -2351,9 +2357,20 @@ def Compras_IA():
             
             with col_sav:
                 btn_save = st.button("💾 Guardar vista", key="btn_guardar_horizontal", use_container_width=True)
-            
-            with col_flt:
-                btn_filters = st.button("🔍 Filtros", key="btn_filtros_horizontal", use_container_width=True)
+
+            # CSS adicional para botones secundarios más pequeños y sin wrap
+            st.markdown("""
+            <style>
+            .btn-action.secondary {
+                padding: 4px 8px !important;  /* Más pequeño */
+                font-size: 0.8rem !important;
+                opacity: 0.8 !important;  /* Menos contraste */
+            }
+            .action-bar {
+                flex-wrap: nowrap !important;  /* No wrap */
+            }
+            </style>
+            """, unsafe_allow_html=True)
 
             # Botón comparar (oculto, pero funcionalidad en el botón de arriba)
             if btn_compare:
@@ -2365,7 +2382,7 @@ def Compras_IA():
                     st.error("Seleccioná al menos 2 años O al menos 2 combinaciones de mes-año para comparar")
                 else:
                     # ✅ PAUSAR AUTOREFRESH
-                    st_session_state["comparativa_activa"] = True  # Typo fix: st_session_state -> st.session_state
+                    st.session_state["comparativa_activa"] = True
                     
                     with st.spinner("Comparando..."):
                         try:
