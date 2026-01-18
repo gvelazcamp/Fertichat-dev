@@ -2453,7 +2453,7 @@ def Compras_IA():
             else:
                 proveedores = None
             
-            meses_sel = st.multiselect("Meses", options=month_names, default=["Noviembre"], key="meses_sel")
+            meses_sel = st.multiselect("Meses", options=month_names, default=[], key="meses_sel")
             anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
             # Generar combinaciones
             meses = []
