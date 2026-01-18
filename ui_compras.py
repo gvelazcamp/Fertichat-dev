@@ -2341,7 +2341,7 @@ def Compras_IA():
             st.markdown('<div style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 16px;"></div>', unsafe_allow_html=True)
 
             # Barra de acciones en una sola fila horizontal - MODIFICADA
-            col_cmp, col_clr, col_csv, col_xls, col_sav = st.columns([2, 1, 1, 1, 1])  # Primary larger
+            col_cmp, col_clr, col_csv, col_xls = st.columns(4)  # Equal size for all buttons
             
             with col_cmp:
                 btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
@@ -2354,20 +2354,43 @@ def Compras_IA():
             
             with col_xls:
                 btn_excel = st.button("📥 Excel", key="btn_excel_horizontal", use_container_width=True)
-            
-            with col_sav:
-                btn_save = st.button("💾 Guardar vista", key="btn_guardar_horizontal", use_container_width=True)
 
-            # CSS adicional para botones secundarios más pequeños y sin wrap
+            # CSS adicional para ajustar botones
             st.markdown("""
             <style>
-            .btn-action.secondary {
-                padding: 4px 8px !important;  /* Más pequeño */
-                font-size: 0.8rem !important;
-                opacity: 0.8 !important;  /* Menos contraste */
-            }
+            /* Barra de acciones compacta */
             .action-bar {
-                flex-wrap: nowrap !important;  /* No wrap */
+                flex-wrap: nowrap !important;
+                height: 48px !important;  /* Altura máxima de la barra */
+                gap: 8px !important;  /* Separación uniforme */
+            }
+            
+            /* Botones compactos */
+            .stButton button {
+                height: 36px !important;  /* Altura objetivo */
+                padding: 6px 12px !important;  /* Padding vertical y horizontal reducido */
+                font-size: 0.85rem !important;  /* Tamaño de fuente */
+                white-space: nowrap !important;  /* Texto en una línea */
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 6px !important;
+            }
+            
+            /* Íconos más pequeños */
+            .stButton button span {
+                font-size: 14px !important;  /* Tamaño de íconos reducido */
+            }
+            
+            /* Botón primario "Comparar" menos prominente */
+            .stButton button[data-testid*="btn_comparar_horizontal"] {
+                font-weight: 600 !important;  /* Menos bold */
+                padding: 6px 14px !important;  /* Un poco más padding horizontal pero no vertical */
+            }
+            
+            /* Asegurar que todos los botones tengan el mismo ancho si es necesario */
+            .stButton {
+                flex: 1 !important;
             }
             </style>
             """, unsafe_allow_html=True)
