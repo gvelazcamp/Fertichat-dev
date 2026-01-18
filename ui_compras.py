@@ -1940,7 +1940,7 @@ def Compras_IA():
     art_options = get_unique_articulos()[:100]
 
     # TABS PRINCIPALES: Chat IA + Comparativas
-    tab_chat, tab_comparativas = st.tabs(["💬Compras", "📊 Comparativas"])
+    tab_chat, tab_comparativas = st.tabs(["💬Compras", "Filtros de Comparación"])
 
     with tab_chat:
         # BOTÓN LIMPIAR (solo en chat)
