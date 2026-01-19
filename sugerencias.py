@@ -22,15 +22,6 @@ from config import DEBUG_MODE
 from sql_compras import get_compras_anio, get_total_compras_anio  # Importar funciones necesarias
 
 # =========================
-# CONFIGURACIÓN DE LA PÁGINA
-# =========================
-st.set_page_config(
-    page_title="Sugerencia de pedidos - Fertichat",
-    page_icon="📋",
-    layout="wide"
-)
-
-# =========================
 # FUNCIONES DE DATOS Y LÓGICA
 # =========================
 
@@ -141,9 +132,9 @@ def main():
     # Aplicar estilos CSS
     apply_css_sugerencias()
     
-    # Título de la página
+    # Título de la página - CAMBIADO A "Sugerencia de pedidos"
     render_title(
-        "📋 Sugerencia de pedidos preciso con sus importes",
+        "Sugerencia de pedidos",
         "Sistema inteligente de recomendaciones de compra basado en consumo histórico"
     )
     
