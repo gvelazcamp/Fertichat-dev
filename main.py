@@ -924,7 +924,7 @@ with main_container:
         mostrar_menu_comprobantes()
 
     # ← CONDICIÓN PARA SUGERENCIAS
-    elif st.session_state.pagina == "📋 Sugerencia de pedidos preciso con sus importes":
+    elif st.session_state.pagina == "📋 Sugerencia de pedidos":
         try:
             import pages.sugerencias
             pages.sugerencias.main()
