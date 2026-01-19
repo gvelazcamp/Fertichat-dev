@@ -94,7 +94,7 @@ def get_datos_sugerencias(anio: int) -> pd.DataFrame:
     
     # Seleccionar columnas relevantes
     columnas = ['producto', 'proveedor', 'stock_actual', 'stock_minimo', 
-                'consumo_diario', 'ultima_compra', 'lote_minimo', 'unidad']
+                'consumo_diario', 'ultima_compra', 'lote_minimo', 'unidad', 'Cantidad']
     
     return df_agrupado[columnas]
 
@@ -141,7 +141,7 @@ def main():
     except:
         pass
     
-    # Título de la página - CAMBIADO A st.title
+    # Título de la página
     st.title("Sugerencia de pedidos")
     st.write("Sistema inteligente de recomendaciones de compra basado en consumo histórico")
     
@@ -190,7 +190,7 @@ def main():
         axis=1
     )
     
-    # Alertas basadas en datos reales - CAMBIADO A st.metric EN COLUMNAS
+    # Alertas basadas en datos reales
     st.subheader("Resumen de situación")
     urgente = len(df[df['urgencia'] == 'urgente'])
     proximo = len(df[df['urgencia'] == 'proximo'])
@@ -233,14 +233,14 @@ def main():
                 
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    st.metric("Stock actual", f"{r['stock_actual']} {r['unidad']}")
+                    st.metric("Compras anuales", f"{r['Cantidad']:.0f} {r['unidad']}")
                 with col2:
-                    st.metric("Consumo diario", f"{r['consumo_diario']} {r['unidad']}")
+                    compras_mensuales = r['Cantidad'] / 12
+                    st.metric("Compras mensuales", f"{compras_mensuales:.1f} {r['unidad']}")
                 with col3:
-                    dias = "∞" if r['dias_stock'] == float("inf") else f"{r['dias_stock']}"
-                    st.metric("Días restantes", f"{dias} días")
+                    st.metric("Compra sugerida", f"{r['cantidad_sugerida']} {r['unidad']}")
                 with col4:
-                    st.metric("Cantidad sugerida", f"{r['cantidad_sugerida']} {r['unidad']}")
+                    st.metric("Stock actual", f"{r['stock_actual']} {r['unidad']}")
             
             st.divider()
         
