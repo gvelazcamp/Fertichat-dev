@@ -13,7 +13,7 @@ from ui_sugerencias import (
     render_title,
     render_section_title,
     render_card,
-    render_alert_grid,
+    render_alert_grid,        # (queda importado por compatibilidad, no lo usamos acá)
     render_sugerencia_card,
     render_actions,
     render_divider
@@ -94,10 +94,10 @@ def get_datos_sugerencias(anio: int) -> pd.DataFrame:
 def get_mock_alerts(df_sugerencias: pd.DataFrame):
     if df_sugerencias.empty:
         return [
-            {"title": "Artículos críticos", "value": "0", "subtitle": "Necesitan pedido urgente", "class": "fc-urgente"},
-            {"title": "Próximos a agotarse", "value": "0", "subtitle": "Pedir en los próximos 7 días", "class": "fc-proximo"},
-            {"title": "Para planificar", "value": "0", "subtitle": "Sugerencias para stock óptimo", "class": "fc-planificar"},
-            {"title": "Stock saludable", "value": "0", "subtitle": "No requieren acción inmediata", "class": "fc-saludable"}
+            {"title": "URGENTE", "value": "0", "subtitle": "0–3 días", "class": "fc-urgente"},
+            {"title": "PRÓXIMAMENTE", "value": "0", "subtitle": "4–7 días", "class": "fc-proximo"},
+            {"title": "PLANIFICAR", "value": "0", "subtitle": "8–15 días", "class": "fc-planificar"},
+            {"title": "STOCK SALUDABLE", "value": "0", "subtitle": "> 15 días", "class": "fc-saludable"},
         ]
 
     urgente = len(df_sugerencias[df_sugerencias['urgencia'] == 'urgente'])
@@ -106,16 +106,26 @@ def get_mock_alerts(df_sugerencias: pd.DataFrame):
     saludable = len(df_sugerencias[df_sugerencias['urgencia'] == 'saludable'])
 
     return [
-        {"title": "Artículos críticos", "value": str(urgente), "subtitle": "Necesitan pedido urgente", "class": "fc-urgente"},
-        {"title": "Próximos a agotarse", "value": str(proximo), "subtitle": "Pedir en los próximos 7 días", "class": "fc-proximo"},
-        {"title": "Para planificar", "value": str(planificar), "subtitle": "Sugerencias para stock óptimo", "class": "fc-planificar"},
-        {"title": "Stock saludable", "value": str(saludable), "subtitle": "No requieren acción inmediata", "class": "fc-saludable"}
+        {"title": "URGENTE", "value": str(urgente), "subtitle": "0–3 días", "class": "fc-urgente"},
+        {"title": "PRÓXIMAMENTE", "value": str(proximo), "subtitle": "4–7 días", "class": "fc-proximo"},
+        {"title": "PLANIFICAR", "value": str(planificar), "subtitle": "8–15 días", "class": "fc-planificar"},
+        {"title": "STOCK SALUDABLE", "value": str(saludable), "subtitle": "> 15 días", "class": "fc-saludable"},
     ]
 
 def filtrar_sugerencias(sugerencias: pd.DataFrame, filtro_urgencia: str):
     if filtro_urgencia == "Todas":
         return sugerencias
     return sugerencias[sugerencias['urgencia'] == filtro_urgencia.lower()]
+
+def _fmt_fecha(x) -> str:
+    try:
+        if pd.isna(x):
+            return "-"
+        if hasattr(x, "strftime"):
+            return x.strftime("%Y-%m-%d")
+        return str(x)
+    except Exception:
+        return str(x)
 
 # =========================
 # LÓGICA PRINCIPAL DE LA PÁGINA
@@ -127,41 +137,35 @@ def main():
 
     # Header
     render_title(
-        "Sugerencia de pedidos",
-        "Sistema inteligente de recomendaciones de compra basado en consumo histórico"
+        "Sistema de Sugerencias Inteligentes",
+        "Optimiza tus pedidos de inventario"
     )
 
-    # -------------------------
-    # FILTROS
-    # -------------------------
+    # =========================
+    # FILTRO PRINCIPAL (AÑO)
+    # =========================
     render_section_title("Filtros y opciones")
-    col1, col2, col3 = st.columns([1, 1, 2])
+    colA, colB, colC = st.columns([1, 1, 2])
 
-    with col1:
+    with colA:
         anio_seleccionado = st.selectbox(
             "Año de análisis:",
             [2025, 2024, 2023],
             key="anio_seleccionado"
         )
-
-    with col2:
-        filtro_urgencia = st.selectbox(
-            "Filtrar por urgencia:",
-            ["Todas", "Urgente", "Próximo", "Planificar", "Saludable"],
-            key="filtro_urgencia"
-        )
-
-    with col3:
+    with colB:
+        st.write("")
+    with colC:
         st.write("")
 
     render_divider()
 
-    # -------------------------
+    # =========================
     # DATOS
-    # -------------------------
+    # =========================
     df = get_datos_sugerencias(anio_seleccionado)
 
-    if df.empty:
+    if df is None or df.empty:
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado}.")
         return
 
@@ -170,9 +174,7 @@ def main():
         lambda r: calcular_dias_stock(r["stock_actual"], r["consumo_diario"]),
         axis=1
     )
-
     df["urgencia"] = df["dias_stock"].apply(clasificar_urgencia)
-
     df["cantidad_sugerida"] = df.apply(
         lambda r: calcular_cantidad_sugerida(
             consumo_diario=r["consumo_diario"],
@@ -183,69 +185,127 @@ def main():
         axis=1
     )
 
-    # -------------------------
-    # RESUMEN (4 CARDS)
-    # -------------------------
-    render_section_title("Resumen de situación")
+    # =========================
+    # DASHBOARD DE ALERTAS (SIEMPRE EN FILA)
+    # =========================
+    render_section_title("Dashboard de Alertas")
     alerts = get_mock_alerts(df)
-    render_alert_grid(alerts)
+
+    a1, a2, a3, a4 = st.columns(4, gap="small")
+    cols_alert = [a1, a2, a3, a4]
+
+    for i, a in enumerate(alerts[:4]):
+        with cols_alert[i]:
+            # Card de alerta (1 por columna) -> SIEMPRE al lado
+            st.markdown(
+                f"""
+                <div class="fc-alert {a.get("class","")}">
+                    <div class="t">{a.get("title","")}</div>
+                    <div class="v">{a.get("value","")}</div>
+                    <div class="s">{a.get("subtitle","")}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
     render_divider()
 
     # =========================
-    # SUGERENCIAS (LISTADO)
+    # LAYOUT: FILTROS IZQ + LISTA DER
     # =========================
-    render_section_title("Sugerencias de pedido")
+    col_filters, col_list = st.columns([1, 3], gap="large")
 
-    df_filtrado = filtrar_sugerencias(df, filtro_urgencia)
+    # ---- Filtros (izquierda) ----
+    with col_filters:
+        render_section_title("Filtros")
 
-    if df_filtrado.empty:
-        st.info("No hay sugerencias que cumplan con los criterios de filtro.")
-    else:
-        # Orden sugerido: urgentes primero, luego próximos, etc.
-        orden = {"urgente": 0, "proximo": 1, "planificar": 2, "saludable": 3}
-        df_filtrado = df_filtrado.copy()
-        df_filtrado["_ord"] = df_filtrado["urgencia"].map(orden).fillna(9)
-        df_filtrado = df_filtrado.sort_values(["_ord", "producto"]).drop(columns=["_ord"])
+        # Urgencia (principal del panel)
+        filtro_urgencia = st.selectbox(
+            "Urgencia:",
+            ["Todas", "Urgente", "Próximo", "Planificar", "Saludable"],
+            key="filtro_urgencia"
+        )
 
-        for _, r in df_filtrado.iterrows():
-            with st.container():
-                st.write(f"**{r['producto']}**")
-                st.caption(f"Proveedor: {r['proveedor']} | Última compra: {r['ultima_compra']}")
+        # Proveedor (desde datos)
+        proveedores = ["Todos"] + sorted(
+            [str(x) for x in df["proveedor"].dropna().unique().tolist()]
+        )
+        proveedor_sel = st.selectbox(
+            "Proveedores:",
+            proveedores,
+            key="proveedor_sel"
+        )
 
-                badge_text = {
-                    "urgente": "🚨 Urgente",
-                    "proximo": "⚠️ Próximo",
-                    "planificar": "📅 Planificar",
-                    "saludable": "✅ Saludable"
-                }.get(r["urgencia"], "✅ Saludable")
-                st.info(badge_text)
+        # Categoría (solo si existe columna; si no, queda deshabilitado)
+        if "categoria" in df.columns:
+            categorias = ["Todos"] + sorted([str(x) for x in df["categoria"].dropna().unique().tolist()])
+            categoria_sel = st.selectbox("Categoría:", categorias, key="categoria_sel")
+        else:
+            st.selectbox("Categoría:", ["(no disponible)"], key="categoria_sel_disabled", disabled=True)
+            categoria_sel = "(no disponible)"
 
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Compras anuales", f"{r['Cantidad']:.0f} {r['unidad']}")
-                with col2:
-                    compras_mensuales = r['Cantidad'] / 12
-                    st.metric("Compras mensuales", f"{compras_mensuales:.1f} {r['unidad']}")
-                with col3:
-                    st.metric("Compra sugerida", f"{r['cantidad_sugerida']} {r['unidad']}")
-                with col4:
-                    st.metric("Stock actual", f"{r['stock_actual']} {r['unidad']}")
+        # Búsqueda por artículo
+        q_art = st.text_input("Buscar artículo:", value="", key="q_articulo")
 
-            # ✅ Antes tenías: st.divider()  (eso te dibuja la “línea blanca”)
-            # st.divider()
+    # ---- Aplicar filtros (sobre df) ----
+    df_scope = df.copy()
 
-            # ✅ Si querés separación visual, dejá solo un espaciado:
-            st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    # Proveedor
+    if proveedor_sel != "Todos":
+        df_scope = df_scope[df_scope["proveedor"].astype(str) == str(proveedor_sel)]
 
-    # -------------------------
+    # Categoría (si existe)
+    if "categoria" in df_scope.columns and categoria_sel != "Todos":
+        df_scope = df_scope[df_scope["categoria"].astype(str) == str(categoria_sel)]
+
+    # Búsqueda
+    if q_art.strip():
+        qq = q_art.strip().lower()
+        df_scope = df_scope[df_scope["producto"].astype(str).str.lower().str.contains(qq, na=False)]
+
+    # Para la lista: además aplicar urgencia
+    df_filtrado = df_scope.copy()
+    df_filtrado = filtrar_sugerencias(df_filtrado, filtro_urgencia)
+
+    # =========================
+    # LISTADO (derecha) - CARDS
+    # =========================
+    with col_list:
+        render_section_title("Sugerencias de pedido")
+
+        if df_filtrado.empty:
+            st.info("No hay sugerencias que cumplan con los criterios de filtro.")
+        else:
+            # Orden sugerido: urgentes primero, luego próximos, etc.
+            orden = {"urgente": 0, "proximo": 1, "planificar": 2, "saludable": 3}
+            df_filtrado = df_filtrado.copy()
+            df_filtrado["_ord"] = df_filtrado["urgencia"].map(orden).fillna(9)
+            df_filtrado = df_filtrado.sort_values(["_ord", "producto"]).drop(columns=["_ord"])
+
+            for _, r in df_filtrado.iterrows():
+                compras_anuales = float(r.get("Cantidad", 0) or 0)
+                compras_mensuales = round(compras_anuales / 12, 2)
+
+                render_sugerencia_card(
+                    producto=str(r.get("producto", "")),
+                    proveedor=str(r.get("proveedor", "")),
+                    ultima_compra=_fmt_fecha(r.get("ultima_compra", "")),
+                    urgencia=str(r.get("urgencia", "saludable")),
+                    compras_anuales=round(compras_anuales, 2),
+                    compras_mensuales=compras_mensuales,
+                    compra_sugerida=float(r.get("cantidad_sugerida", 0) or 0),
+                    stock_actual=float(r.get("stock_actual", 0) or 0),
+                    unidad=str(r.get("unidad", "un"))
+                )
+
+    # =========================
     # ACCIONES (como tu versión)
-    # -------------------------
+    # =========================
     render_divider()
     render_section_title("Acciones")
 
-    total_cantidad = df_filtrado["cantidad_sugerida"].sum() if not df_filtrado.empty else 0
-    total_productos = len(df_filtrado) if not df_filtrado.empty else 0
+    total_cantidad = df_filtrado["cantidad_sugerida"].sum() if df_filtrado is not None and not df_filtrado.empty else 0
+    total_productos = len(df_filtrado) if df_filtrado is not None and not df_filtrado.empty else 0
 
     info_html = f"""
     <p><strong>Total sugerido:</strong> {total_cantidad:.1f} unidades en {total_productos} productos</p>
