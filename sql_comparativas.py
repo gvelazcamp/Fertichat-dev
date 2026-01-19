@@ -778,7 +778,7 @@ def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
 def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
     """
     Devuelve el histórico real de precios unitarios por artículo.
-    Parsea Monto Neto correctamente, calcula precio_unitario = monto / cantidad.
+    Parsea Monto Neto correctamente, ahora más robusto para espacios y símbolos.
     """
     sql = """
         WITH base AS (
@@ -788,44 +788,45 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
                 "Nro. Comprobante",
                 "Cantidad",
                 "Moneda",
-                -- Parsing idéntico al de los ejemplos
+                -- Parsing ROBUSTO: Maneja espacios, símbolos, paréntesis, y separadores mixtos
                 CASE
-                    WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
-                        -1 * CAST(
-                            REPLACE(
-                                REPLACE(
-                                    SUBSTRING(REPLACE("Monto Neto", ' ', ''), 2, LENGTH(REPLACE("Monto Neto", ' ', '')) - 2),
-                                    '.', ''
+                    WHEN TRIM(REPLACE("Monto Neto", ' ', '')) LIKE '(%%)' THEN
+                        -1 * COALESCE(CAST(
+                            REGEXP_REPLACE(
+                                REGEXP_REPLACE(
+                                    SUBSTRING(TRIM(REPLACE("Monto Neto", ' ', '')), 2, LENGTH(TRIM(REPLACE("Monto Neto", ' ', ''))) - 2),
+                                    '[^0-9,.-]', '', 'g'  -- Elimina cualquier símbolo no numérico
                                 ),
-                                ',', '.'
+                                ',', '.', 'g'  -- Convierte coma a punto decimal
                             ) AS NUMERIC
-                        )
+                        ), 0)
                     ELSE
-                        CAST(
-                            REPLACE(
-                                REPLACE(
-                                    REPLACE("Monto Neto", ' ', ''), '.', ''
+                        COALESCE(CAST(
+                            REGEXP_REPLACE(
+                                REGEXP_REPLACE(
+                                    TRIM(REPLACE("Monto Neto", ' ', '')),  -- Elimina espacios
+                                    '[^0-9,.-]', '', 'g'  -- Elimina símbolos de moneda y otros
                                 ),
-                                ',', '.'
+                                ',', '.', 'g'  -- Convierte coma a punto decimal
                             ) AS NUMERIC
-                        )
+                        ), 0)
                 END AS monto_num
             FROM chatbot_raw
             WHERE
-                LOWER(TRIM("Articulo")) LIKE LOWER(%s)  -- LIKE flexible, case insensitive
+                LOWER(TRIM("Articulo")) LIKE LOWER(%s)
                 AND "Cantidad" IS NOT NULL
-                AND TRIM("Cantidad") <> ''  -- Evitar vacíos
-                AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''  -- Filtros estándar
+                AND TRIM("Cantidad") <> ''
+                AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
         )
         SELECT
             "Fecha",
             Proveedor,
             "Nro. Comprobante",
             "Cantidad",
-            ROUND(monto_num / "Cantidad", 2) AS precio_unitario,  -- Sin CAST extra, asume Cantidad numérico
+            ROUND(monto_num / "Cantidad", 2) AS precio_unitario,
             Moneda
         FROM base
-        WHERE monto_num IS NOT NULL AND monto_num > 0  -- Solo montos válidos y positivos
+        WHERE monto_num IS NOT NULL AND monto_num > 0
         ORDER BY "Fecha" ASC;
     """
     return ejecutar_consulta(sql, (f"%{articulo_like.strip().lower()}%",))
