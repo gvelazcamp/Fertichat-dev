@@ -818,24 +818,27 @@ def get_analisis_variacion_articulos(proveedor, anios):
     anio1, anio2 = sorted(anios)  # ej. 2024, 2025
     
     sql = f"""
-        WITH base AS (
+        WITH montos AS (
             SELECT
-                TRIM("Articulo") AS "Articulo",
+                LOWER(TRIM("Articulo")) AS "Articulo",
                 "Moneda",
                 "Año",
-                SUM(
-                    CASE
-                        WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
-                            -1 * CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
-                        ELSE
-                            CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
-                    END
-                ) AS total_anio
+                CASE
+                    WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
+                        -1 * CAST(REPLACE(REPLACE(SUBSTRING(REPLACE("Monto Neto", ' ', ''), 2, LENGTH(REPLACE("Monto Neto", ' ', '')) - 2), '.', ''), ',', '.') AS NUMERIC)
+                    ELSE
+                        CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
+                END AS monto_num
             FROM chatbot_raw
             WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
                 AND "Año"::int IN ({anio1}, {anio2})
                 AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
-            GROUP BY TRIM("Articulo"), "Moneda", "Año"
+        ),
+        base AS (
+            SELECT "Articulo", "Moneda", "Año", SUM(monto_num) AS total_anio
+            FROM montos
+            WHERE monto_num IS NOT NULL
+            GROUP BY "Articulo", "Moneda", "Año"
         )
         SELECT
             COALESCE(b1."Articulo", b2."Articulo") AS "Articulo",
@@ -858,7 +861,7 @@ def get_analisis_variacion_articulos(proveedor, anios):
         var = row['Variación']
         total_2024 = row[f'Total {anio1}']
         total_2025 = row[f'Total {anio2}']
-        if var == 0:
+        if var == 0 and total_2024 > 0 and total_2025 > 0:
             return "Sin Cambio", "—"
         if total_2024 == 0 and total_2025 > 0:
             return "Nuevo", "🔺 Nuevo"
