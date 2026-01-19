@@ -778,7 +778,7 @@ def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
 def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
     """
     Devuelve el histórico real de precios unitarios por artículo.
-    Parsea Monto Neto con el método simple que funciona.
+    Parsea Monto Neto y castea Cantidad.
     """
     sql = """
         WITH base AS (
@@ -788,7 +788,7 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
                 "Nro. Comprobante",
                 "Cantidad",
                 "Moneda",
-                -- Parsing SIMPLE que funciona (como en los ejemplos)
+                -- Parsing simple
                 CASE
                     WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
                         -1 * CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
@@ -800,6 +800,7 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
                 LOWER(TRIM("Articulo")) LIKE LOWER(%s)
                 AND "Cantidad" IS NOT NULL
                 AND TRIM("Cantidad") <> ''
+                AND CAST("Cantidad" AS NUMERIC) > 0  -- Castea y filtra > 0
                 AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
         )
         SELECT
@@ -807,7 +808,7 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
             Proveedor,
             "Nro. Comprobante",
             "Cantidad",
-            ROUND(monto_num / "Cantidad", 2) AS precio_unitario,
+            ROUND(monto_num / CAST("Cantidad" AS NUMERIC), 2) AS precio_unitario,  -- Castea en división
             Moneda
         FROM base
         WHERE monto_num IS NOT NULL AND monto_num > 0
