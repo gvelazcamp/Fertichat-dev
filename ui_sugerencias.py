@@ -1,76 +1,76 @@
 # =========================
-# UI_SUGERENCIAS.PY - ESTILOS Y HELPERS UI PARA SUGERENCIAS DE PEDIDOS
+# ui_sugerencias.py - UI + CSS (CARDS CORPORATIVAS)
 # =========================
 
 import streamlit as st
 
-# =========================
-# CSS PARA SUGERENCIAS DE PEDIDOS
-# =========================
 CSS_SUGERENCIAS_PEDIDOS = """
 <style>
 /* =========================
    FERTICHAT · SUGERENCIAS (CORPORATIVO)
-   SOLO CSS (Streamlit)
    ========================= */
 
-/* --- Layout base Streamlit --- */
-.main .block-container{
-    padding-top: 1.2rem;
-    padding-bottom: 2.2rem;
-    max-width: 1180px;
-}
-section[data-testid="stSidebar"]{
-    border-right: 1px solid rgba(15,23,42,0.08);
-    background: #ffffff;
+:root{
+    --fc-bg: #f6f8fb;
+    --fc-card: #ffffff;
+    --fc-border: rgba(15,23,42,0.10);
+    --fc-text: #0f172a;
+    --fc-muted: rgba(15,23,42,0.70);
+
+    --fc-blue: #2563eb;
+    --fc-blue-2: #1d4ed8;
+
+    --fc-red: #ef4444;
+    --fc-amber: #f59e0b;
+    --fc-green: #22c55e;
+    --fc-sky: #0ea5e9;
 }
 
-/* --- Tipografía y títulos --- */
+/* --- Container --- */
+.main .block-container{
+    max-width: 1180px;
+    padding-top: 1.2rem;
+    padding-bottom: 2.0rem;
+}
+
+/* --- Títulos --- */
 .fc-title{
-    font-size: 1.55rem;
-    font-weight: 700;
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--fc-text);
     letter-spacing: -0.02em;
     margin: 0;
-    color: #0f172a;
 }
 .fc-subtitle{
-    font-size: 0.95rem;
-    color: rgba(15,23,42,0.72);
-    margin-top: 0.35rem;
-    margin-bottom: 0.75rem;
+    font-size: 0.98rem;
+    color: var(--fc-muted);
+    margin: 0.25rem 0 1.0rem 0;
 }
 .fc-section-title{
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0 0 0.6rem 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--fc-text);
+    margin: 0.6rem 0 0.6rem 0;
 }
 
-/* --- Cards generales --- */
+/* --- Divider --- */
+.fc-divider{
+    height: 1px;
+    background: rgba(15,23,42,0.08);
+    margin: 1rem 0;
+    border-radius: 999px;
+}
+
+/* --- Cards base --- */
 .fc-card{
-    background: #ffffff;
-    border: 1px solid rgba(15,23,42,0.10);
-    border-radius: 14px;
+    background: var(--fc-card);
+    border: 1px solid var(--fc-border);
+    border-radius: 16px;
     padding: 14px 14px;
-    box-shadow: 0 8px 22px rgba(15,23,42,0.06);
-}
-.fc-card + .fc-card{ margin-top: 0.75rem; }
-
-/* --- Card info (análisis) --- */
-.fc-info{
-    border-left: 6px solid rgba(37,99,235,0.85);
-    background: linear-gradient(180deg, rgba(37,99,235,0.06) 0%, rgba(255,255,255,1) 55%);
-}
-.fc-info p{
-    margin: 0.2rem 0;
-    color: rgba(15,23,42,0.78);
-    font-size: 0.93rem;
-}
-.fc-info strong{
-    color: #0f172a;
+    box-shadow: 0 10px 26px rgba(15,23,42,0.06);
 }
 
-/* --- Grid para Alertas (4 cards) --- */
+/* --- Alert Grid --- */
 .fc-alert-grid{
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -84,77 +84,59 @@ section[data-testid="stSidebar"]{
 }
 
 .fc-alert{
-    border-radius: 14px;
+    border-radius: 16px;
     padding: 14px 14px;
-    border: 1px solid rgba(15,23,42,0.10);
-    box-shadow: 0 8px 22px rgba(15,23,42,0.06);
-    color: #0f172a;
-    background: #ffffff;
+    border: 1px solid var(--fc-border);
+    box-shadow: 0 10px 26px rgba(15,23,42,0.06);
+    background: var(--fc-card);
 }
-.fc-alert .k{
-    font-size: 0.80rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+.fc-alert .t{
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    color: rgba(15,23,42,0.75);
+    margin: 0 0 0.35rem 0;
 }
 .fc-alert .v{
-    font-size: 1.55rem;
-    font-weight: 800;
-    margin: 0.15rem 0 0 0;
+    font-size: 1.65rem;
+    font-weight: 900;
+    color: var(--fc-text);
+    margin: 0;
     letter-spacing: -0.02em;
 }
 .fc-alert .s{
-    font-size: 0.90rem;
-    color: rgba(15,23,42,0.75);
-    margin-top: 0.15rem;
+    font-size: 0.92rem;
+    color: rgba(15,23,42,0.70);
+    margin-top: 0.25rem;
 }
 
-/* Variantes de color (sin neon, corporativo) */
+/* Estados */
 .fc-urgente{
-    background: linear-gradient(180deg, rgba(239,68,68,0.10) 0%, rgba(255,255,255,1) 55%);
+    background: linear-gradient(180deg, rgba(239,68,68,0.12) 0%, rgba(255,255,255,1) 60%);
     border-color: rgba(239,68,68,0.22);
 }
 .fc-proximo{
-    background: linear-gradient(180deg, rgba(245,158,11,0.12) 0%, rgba(255,255,255,1) 55%);
+    background: linear-gradient(180deg, rgba(245,158,11,0.14) 0%, rgba(255,255,255,1) 60%);
     border-color: rgba(245,158,11,0.22);
 }
 .fc-planificar{
-    background: linear-gradient(180deg, rgba(34,197,94,0.10) 0%, rgba(255,255,255,1) 55%);
+    background: linear-gradient(180deg, rgba(34,197,94,0.12) 0%, rgba(255,255,255,1) 60%);
     border-color: rgba(34,197,94,0.22);
 }
 .fc-saludable{
-    background: linear-gradient(180deg, rgba(37,99,235,0.08) 0%, rgba(255,255,255,1) 55%);
-    border-color: rgba(37,99,235,0.18);
+    background: linear-gradient(180deg, rgba(14,165,233,0.10) 0%, rgba(255,255,255,1) 60%);
+    border-color: rgba(14,165,233,0.18);
 }
 
-/* --- Panel de filtros tipo card --- */
-.fc-filters{
-    background: #ffffff;
-    border: 1px solid rgba(15,23,42,0.10);
-    border-radius: 14px;
-    padding: 12px 12px;
-    box-shadow: 0 8px 22px rgba(15,23,42,0.06);
-}
-.fc-filters .label{
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: rgba(15,23,42,0.70);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.3rem;
-}
-
-/* --- Cards de sugerencias (listado) --- */
+/* --- Sugerencia Card --- */
 .fc-sug-card{
-    background: #ffffff;
-    border: 1px solid rgba(15,23,42,0.10);
-    border-radius: 16px;
+    background: var(--fc-card);
+    border: 1px solid var(--fc-border);
+    border-radius: 18px;
     padding: 14px 14px;
-    box-shadow: 0 10px 26px rgba(15,23,42,0.07);
+    box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+    margin-bottom: 12px;
 }
 .fc-sug-top{
     display:flex;
@@ -163,38 +145,64 @@ section[data-testid="stSidebar"]{
     gap: 12px;
 }
 .fc-sug-title{
-    font-size: 1.05rem;
-    font-weight: 800;
+    font-size: 1.08rem;
+    font-weight: 900;
+    color: var(--fc-text);
     margin: 0;
-    color: #0f172a;
     letter-spacing: -0.01em;
 }
 .fc-sug-sub{
-    font-size: 0.90rem;
-    color: rgba(15,23,42,0.75);
-    margin: 0.2rem 0 0 0;
+    font-size: 0.92rem;
+    color: rgba(15,23,42,0.74);
+    margin: 0.25rem 0 0 0;
 }
+.fc-sug-meta{
+    font-size: 0.86rem;
+    color: rgba(15,23,42,0.62);
+    margin-top: 0.25rem;
+}
+
+/* Badge */
 .fc-badge{
     display:inline-flex;
     align-items:center;
-    gap: 6px;
-    padding: 6px 10px;
+    gap: 8px;
+    padding: 7px 10px;
     border-radius: 999px;
     font-size: 0.80rem;
-    font-weight: 700;
-    border: 1px solid rgba(15,23,42,0.10);
+    font-weight: 900;
+    border: 1px solid var(--fc-border);
     background: rgba(15,23,42,0.04);
     color: rgba(15,23,42,0.78);
     white-space: nowrap;
 }
-.fc-badge.urgente{ border-color: rgba(239,68,68,0.22); background: rgba(239,68,68,0.10); }
-.fc-badge.proximo{ border-color: rgba(245,158,11,0.22); background: rgba(245,158,11,0.12); }
-.fc-badge.planificar{ border-color: rgba(34,197,94,0.22); background: rgba(34,197,94,0.10); }
-.fc-badge.saludable{ border-color: rgba(37,99,235,0.18); background: rgba(37,99,235,0.10); }
+.fc-badge.urgente{ border-color: rgba(239,68,68,0.22); background: rgba(239,68,68,0.12); }
+.fc-badge.proximo{ border-color: rgba(245,158,11,0.22); background: rgba(245,158,11,0.14); }
+.fc-badge.planificar{ border-color: rgba(34,197,94,0.22); background: rgba(34,197,94,0.12); }
+.fc-badge.saludable{ border-color: rgba(14,165,233,0.18); background: rgba(14,165,233,0.10); }
 
+/* Barra estado (como tu screenshot) */
+.fc-statusbar{
+    margin-top: 10px;
+    border-radius: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(15,23,42,0.08);
+}
+.fc-statusbar.urgente{ background: rgba(239,68,68,0.10); }
+.fc-statusbar.proximo{ background: rgba(245,158,11,0.12); }
+.fc-statusbar.planificar{ background: rgba(34,197,94,0.10); }
+.fc-statusbar.saludable{ background: rgba(14,165,233,0.08); }
+
+.fc-statusbar .label{
+    font-size: 0.86rem;
+    font-weight: 900;
+    color: rgba(15,23,42,0.85);
+}
+
+/* Métricas dentro de la card */
 .fc-sug-grid{
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
     margin-top: 12px;
 }
@@ -206,7 +214,7 @@ section[data-testid="stSidebar"]{
 }
 .fc-metric{
     border: 1px solid rgba(15,23,42,0.08);
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 10px 10px;
     background: rgba(15,23,42,0.02);
 }
@@ -214,161 +222,156 @@ section[data-testid="stSidebar"]{
     font-size: 0.78rem;
     color: rgba(15,23,42,0.68);
     margin: 0;
+    font-weight: 800;
 }
 .fc-metric .v{
-    font-size: 1.02rem;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0.18rem 0 0 0;
+    font-size: 1.12rem;
+    font-weight: 900;
+    color: var(--fc-text);
+    margin: 0.20rem 0 0 0;
+    letter-spacing: -0.01em;
 }
 
-/* --- Barra de acciones (botones) --- */
-.fc-actions{
+/* Botones fake dentro de la card (solo visual) */
+.fc-actions-row{
     display:flex;
-    flex-wrap: wrap;
     gap: 10px;
-    align-items:center;
     margin-top: 12px;
+    flex-wrap: wrap;
 }
-
-/* Streamlit buttons inside container */
-.fc-actions div[data-testid="stButton"] button,
-.fc-primary div[data-testid="stButton"] button{
-    border-radius: 12px !important;
-    padding: 0.55rem 0.85rem !important;
-    font-weight: 700 !important;
-    border: 1px solid rgba(15,23,42,0.12) !important;
-    box-shadow: 0 8px 18px rgba(15,23,42,0.08) !important;
-}
-.fc-primary div[data-testid="stButton"] button{
-    background: linear-gradient(180deg, rgba(37,99,235,1) 0%, rgba(29,78,216,1) 100%) !important;
-    color: #ffffff !important;
-    border-color: rgba(37,99,235,0.55) !important;
-}
-.fc-actions div[data-testid="stButton"] button:hover,
-.fc-primary div[data-testid="stButton"] button:hover{
-    filter: brightness(0.98);
-    transform: translateY(-1px);
-}
-
-/* --- Tabla/df (si usás st.dataframe) --- */
-div[data-testid="stDataFrame"]{
-    border: 1px solid rgba(15,23,42,0.10);
-    border-radius: 14px;
-    overflow: hidden;
-    box-shadow: 0 10px 26px rgba(15,23,42,0.07);
-}
-
-/* --- Inputs/Selects más pro --- */
-div[data-testid="stSelectbox"] > div,
-div[data-testid="stTextInput"] > div,
-div[data-testid="stNumberInput"] > div{
+.fc-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding: 9px 12px;
     border-radius: 12px;
+    border: 1px solid rgba(15,23,42,0.10);
+    background: rgba(15,23,42,0.02);
+    font-weight: 900;
+    font-size: 0.88rem;
+    color: rgba(15,23,42,0.82);
 }
+.fc-btn.primary{
+    background: linear-gradient(180deg, var(--fc-blue) 0%, var(--fc-blue-2) 100%);
+    color: #fff;
+    border-color: rgba(37,99,235,0.45);
+}
+
+/* Inputs */
 label{
     color: rgba(15,23,42,0.72) !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
 }
-
-/* --- Separadores suaves --- */
-.fc-divider{
-    height: 1px;
-    background: rgba(15,23,42,0.08);
-    margin: 0.9rem 0;
-    border-radius: 999px;
+div[data-testid="stSelectbox"] > div,
+div[data-testid="stTextInput"] > div{
+    border-radius: 12px;
 }
 </style>
 """
 
-# =========================
-# FUNCIONES HELPERS UI
-# =========================
+def render_title(titulo: str, subtitulo: str):
+    st.markdown(f'<div class="fc-title">{titulo}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="fc-subtitle">{subtitulo}</div>', unsafe_allow_html=True)
 
-def apply_css_sugerencias():
-    """
-    Aplica los estilos CSS para la página de sugerencias de pedidos.
-    """
-    st.markdown(CSS_SUGERENCIAS_PEDIDOS, unsafe_allow_html=True)
-
-def render_title(title: str, subtitle: str = None):
-    """
-    Renderiza un título con subtítulo opcional usando clases CSS.
-    """
-    st.markdown(f'<h1 class="fc-title">{title}</h1>', unsafe_allow_html=True)
-    if subtitle:
-        st.markdown(f'<p class="fc-subtitle">{subtitle}</p>', unsafe_allow_html=True)
-
-def render_section_title(title: str):
-    """
-    Renderiza un título de sección.
-    """
-    st.markdown(f'<h2 class="fc-section-title">{title}</h2>', unsafe_allow_html=True)
-
-def render_card(content: str, class_name: str = "fc-card"):
-    """
-    Renderiza una card con contenido HTML.
-    """
-    st.markdown(f'<div class="{class_name}">{content}</div>', unsafe_allow_html=True)
-
-def render_alert_grid(alerts: list):
-    """
-    Renderiza una grid de alertas. Cada alerta es un dict con 'title', 'value', 'subtitle', 'class'.
-    """
-    html = '<div class="fc-alert-grid">'
-    for alert in alerts:
-        html += f'''
-        <div class="fc-alert {alert.get('class', '')}">
-            <p class="k">{alert['title']}</p>
-            <p class="v">{alert['value']}</p>
-            <p class="s">{alert['subtitle']}</p>
-        </div>
-        '''
-    html += '</div>'
-    st.markdown(html, unsafe_allow_html=True)
-
-def render_sugerencia_card(title: str, subtitle: str, badge: str, badge_class: str, metrics: list):
-    """
-    Renderiza una card de sugerencia con métricas.
-    """
-    metrics_html = '<div class="fc-sug-grid">'
-    for metric in metrics:
-        metrics_html += f'''
-        <div class="fc-metric">
-            <p class="k">{metric['key']}</p>
-            <p class="v">{metric['value']}</p>
-        </div>
-        '''
-    metrics_html += '</div>'
-
-    html = f'''
-    <div class="fc-sug-card">
-        <div class="fc-sug-top">
-            <div>
-                <h3 class="fc-sug-title">{title}</h3>
-                <p class="fc-sug-sub">{subtitle}</p>
-            </div>
-            <span class="fc-badge {badge_class}">{badge}</span>
-        </div>
-        {metrics_html}
-    </div>
-    '''
-    st.markdown(html, unsafe_allow_html=True)
-
-def render_actions(buttons: list):
-    """
-    Renderiza una barra de acciones con botones. Cada botón es un dict con 'label', 'key', 'primary'.
-    """
-    html = '<div class="fc-actions">'
-    for btn in buttons:
-        class_name = "fc-primary" if btn.get('primary', False) else ""
-        html += f'<div class="{class_name}">{st.button(btn["label"], key=btn["key"])}</div>'
-    html += '</div>'
-    # Nota: st.button dentro de markdown no funciona bien, usar st.columns en lugar.
-
-# Para botones, mejor usar st.columns con st.button directamente, pero como helper, sugerir estructura.
+def render_section_title(titulo: str):
+    st.markdown(f'<div class="fc-section-title">{titulo}</div>', unsafe_allow_html=True)
 
 def render_divider():
-    """
-    Renderiza un separador suave.
-    """
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
+
+def render_card(html: str, extra_class: str = ""):
+    cls = "fc-card"
+    if extra_class:
+        cls = f"{cls} {extra_class}"
+    st.markdown(f'<div class="{cls}">{html}</div>', unsafe_allow_html=True)
+
+def render_alert_grid(alerts: list):
+    st.markdown('<div class="fc-alert-grid">', unsafe_allow_html=True)
+    for a in alerts:
+        title = str(a.get("title", ""))
+        value = str(a.get("value", ""))
+        subtitle = str(a.get("subtitle", ""))
+        css_class = str(a.get("class", "")).strip()
+        st.markdown(
+            f"""
+            <div class="fc-alert {css_class}">
+                <div class="t">{title}</div>
+                <div class="v">{value}</div>
+                <div class="s">{subtitle}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def render_sugerencia_card(
+    producto: str,
+    proveedor: str,
+    ultima_compra: str,
+    urgencia: str,
+    compras_anuales: float,
+    compras_mensuales: float,
+    compra_sugerida: float,
+    stock_actual: float,
+    unidad: str
+):
+    urg = (urgencia or "saludable").strip().lower()
+
+    badge_map = {
+        "urgente": "URGENTE",
+        "proximo": "PRÓXIMAMENTE",
+        "planificar": "PLANIFICAR",
+        "saludable": "STOCK SALUDABLE",
+    }
+    badge_text = badge_map.get(urg, "STOCK SALUDABLE")
+
+    st.markdown('<div class="fc-sug-card">', unsafe_allow_html=True)
+
+    st.markdown(
+        f"""
+        <div class="fc-sug-top">
+            <div>
+                <div class="fc-sug-title">{producto}</div>
+                <div class="fc-sug-sub">Proveedor: <strong>{proveedor}</strong></div>
+                <div class="fc-sug-meta">Última compra: {ultima_compra}</div>
+            </div>
+            <div class="fc-badge {urg}">{badge_text}</div>
+        </div>
+
+        <div class="fc-statusbar {urg}">
+            <span class="label">{badge_text}</span>
+        </div>
+
+        <div class="fc-sug-grid">
+            <div class="fc-metric">
+                <div class="k">Compras anuales</div>
+                <div class="v">{compras_anuales:g} {unidad}</div>
+            </div>
+            <div class="fc-metric">
+                <div class="k">Compras mensuales</div>
+                <div class="v">{compras_mensuales:g} {unidad}</div>
+            </div>
+            <div class="fc-metric">
+                <div class="k">Compra sugerida</div>
+                <div class="v">{compra_sugerida:g} {unidad}</div>
+            </div>
+            <div class="fc-metric">
+                <div class="k">Stock actual</div>
+                <div class="v">{stock_actual:g} {unidad}</div>
+            </div>
+        </div>
+
+        <div class="fc-actions-row">
+            <span class="fc-btn primary">Generar orden</span>
+            <span class="fc-btn">Ajustar cantidad</span>
+            <span class="fc-btn">Ver historial</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def render_actions():
+    # Helper disponible (por compatibilidad). Si lo querés usar en el futuro, lo adaptamos.
+    pass
