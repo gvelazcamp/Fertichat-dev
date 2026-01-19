@@ -778,7 +778,7 @@ def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
 def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
     """
     Devuelve el histórico real de precios unitarios por artículo.
-    Parsea Monto Neto correctamente, ahora con eliminación de separadores de miles.
+    Parsea Monto Neto exactamente como en los ejemplos.
     """
     sql = """
         WITH base AS (
@@ -788,28 +788,12 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
                 "Nro. Comprobante",
                 "Cantidad",
                 "Moneda",
-                -- Parsing ULTRA-ROBUSTO: Maneja todo (espacios, símbolos, paréntesis, múltiples puntos)
+                -- Parsing IDÉNTICO a los ejemplos que funcionan
                 CASE
-                    WHEN TRIM(REPLACE("Monto Neto", ' ', '')) LIKE '(%%)' THEN
-                        -1 * COALESCE(CAST(
-                            REGEXP_REPLACE(
-                                REGEXP_REPLACE(
-                                    SUBSTRING(TRIM(REPLACE("Monto Neto", ' ', '')), 2, LENGTH(TRIM(REPLACE("Monto Neto", ' ', ''))) - 2),
-                                    '[^0-9,.-]', '', 'g'  -- Elimina símbolos
-                                ),
-                                '\\.(?=\\d{3})', '', 'g'  -- Elimina puntos de miles (seguido de 3 dígitos)
-                            ) AS NUMERIC
-                        ), 0)
+                    WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
+                        -1 * CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
                     ELSE
-                        COALESCE(CAST(
-                            REGEXP_REPLACE(
-                                REGEXP_REPLACE(
-                                    TRIM(REPLACE("Monto Neto", ' ', '')),  -- Elimina espacios
-                                    '[^0-9,.-]', '', 'g'  -- Elimina símbolos
-                                ),
-                                '\\.(?=\\d{3})', '', 'g'  -- Elimina puntos de miles
-                            ) AS NUMERIC
-                        ), 0)
+                        CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
                 END AS monto_num
             FROM chatbot_raw
             WHERE
