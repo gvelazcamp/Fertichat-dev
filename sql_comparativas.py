@@ -832,7 +832,7 @@ def get_analisis_variacion_articulos(proveedor, anios):
                     END
                 ) AS total_anio
             FROM chatbot_raw
-            WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+            WHERE LOWER(TRIM("Cliente / Proveedor")) = %s
                 AND "Año"::int IN ({anio1}, {anio2})
                 AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
             GROUP BY "Articulo", "Moneda", "Año"
@@ -846,13 +846,10 @@ def get_analisis_variacion_articulos(proveedor, anios):
         FROM (SELECT * FROM base WHERE "Año" = {anio1}) b1
         FULL OUTER JOIN (SELECT * FROM base WHERE "Año" = {anio2}) b2
             ON b1."Articulo" = b2."Articulo" AND b1."Moneda" = b2."Moneda"
-        WHERE COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0) != 0
-           OR COALESCE(b1.total_anio, 0) = 0
-           OR COALESCE(b2.total_anio, 0) = 0
         ORDER BY ABS(COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0)) DESC
     """
     
-    df = ejecutar_consulta(sql, (f"%{proveedor.strip().lower()}%",))
+    df = ejecutar_consulta(sql, (proveedor.strip().lower(),))
     if df is None or df.empty or len(df.columns) == 0:
         return pd.DataFrame()
 
