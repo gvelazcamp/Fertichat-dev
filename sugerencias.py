@@ -69,6 +69,9 @@ def get_datos_sugerencias(anio: int) -> pd.DataFrame:
         'Fecha': 'max'  # Última fecha de compra
     }).reset_index()
     
+    # Agregar número de compras
+    df_agrupado['numero_compras'] = df_compras.groupby('articulo').size().reset_index(drop=True)
+    
     # Convertir Cantidad a numérico (maneja formatos como "2.000,00")
     df_agrupado['Cantidad'] = pd.to_numeric(
         df_agrupado['Cantidad'].astype(str).str.replace('.', '').str.replace(',', '.'),
@@ -94,7 +97,7 @@ def get_datos_sugerencias(anio: int) -> pd.DataFrame:
     
     # Seleccionar columnas relevantes
     columnas = ['producto', 'proveedor', 'stock_actual', 'stock_minimo', 
-                'consumo_diario', 'ultima_compra', 'lote_minimo', 'unidad', 'Cantidad']
+                'consumo_diario', 'ultima_compra', 'lote_minimo', 'unidad', 'Cantidad', 'numero_compras']
     
     return df_agrupado[columnas]
 
@@ -233,10 +236,10 @@ def main():
                 
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    st.metric("Compras anuales", f"{r['Cantidad']:.0f} {r['unidad']}")
+                    st.metric("Compras anuales", f"{int(r['numero_compras'])}")
                 with col2:
-                    compras_mensuales = r['Cantidad'] / 12
-                    st.metric("Compras mensuales", f"{compras_mensuales:.1f} {r['unidad']}")
+                    compras_mensuales = r['numero_compras'] / 12
+                    st.metric("Compras mensuales", f"{compras_mensuales:.1f}")
                 with col3:
                     st.metric("Compra sugerida", f"{r['cantidad_sugerida']} {r['unidad']}")
                 with col4:
