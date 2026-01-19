@@ -77,7 +77,7 @@ def get_datos_sugerencias(anio: int) -> pd.DataFrame:
     
     # Calcular consumo diario aproximado: total comprado / 365 días
     df_agrupado['consumo_diario'] = df_agrupado['Cantidad'] / 365
-    df_agrupado['consumo_diario'] = df_agrupado['consumo_diario'].round(1)
+    df_agrupado['consumo_diario'] = df_agrupado['consumo_diario'].round(2)  # Cambiado a .round(2) para decimales
     
     # Valores por defecto/estimados
     df_agrupado['stock_actual'] = 0  # No disponible en datos de compras
@@ -136,27 +136,16 @@ def filtrar_sugerencias(sugerencias: pd.DataFrame, filtro_urgencia: str):
 
 def main():
     # Aplicar estilos CSS
-    try:
-        apply_css_sugerencias()
-    except:
-        st.write("CSS no disponible, usando estilo básico.")
+    apply_css_sugerencias()
     
     # Título de la página
-    try:
-        render_title(
-            "Sugerencia de pedidos",
-            "Sistema inteligente de recomendaciones de compra basado en consumo histórico"
-        )
-    except:
-        st.title("Sugerencia de pedidos")
-        st.write("Sistema inteligente de recomendaciones de compra basado en consumo histórico")
+    render_title(
+        "Sugerencia de pedidos",
+        "Sistema inteligente de recomendaciones de compra basado en consumo histórico"
+    )
     
     # Filtros
-    try:
-        render_section_title("Filtros y opciones")
-    except:
-        st.subheader("Filtros y opciones")
-    
+    render_section_title("Filtros y opciones")
     col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
         anio_seleccionado = st.selectbox(
@@ -173,10 +162,7 @@ def main():
     with col3:
         st.write("")  # Espacio
     
-    try:
-        render_divider()
-    except:
-        st.divider()
+    render_divider()
     
     # Obtener datos reales
     df = get_datos_sugerencias(anio_seleccionado)
@@ -203,32 +189,15 @@ def main():
         axis=1
     )
     
-    # Alertas basadas en datos reales
-    try:
-        render_section_title("Resumen de situación")
-        alerts = get_mock_alerts(df)
-        render_alert_grid(alerts)
-    except:
-        st.subheader("Resumen de situación")
-        urgente = len(df[df['urgencia'] == 'urgente'])
-        proximo = len(df[df['urgencia'] == 'proximo'])
-        planificar = len(df[df['urgencia'] == 'planificar'])
-        saludable = len(df[df['urgencia'] == 'saludable'])
-        st.write(f"📦 Artículos críticos: {urgente}")
-        st.write(f"⏰ Próximos a agotarse: {proximo}")
-        st.write(f"📈 Para planificar: {planificar}")
-        st.write(f"✅ Stock saludable: {saludable}")
+    # Alertas basadas en datos reales - QUITADO TRY-EXCEPT PARA QUE RENDERICE
+    render_section_title("Resumen de situación")
+    alerts = get_mock_alerts(df)
+    render_alert_grid(alerts)
     
-    try:
-        render_divider()
-    except:
-        st.divider()
+    render_divider()
     
     # Sugerencias detalladas
-    try:
-        render_section_title("Sugerencias de pedido")
-    except:
-        st.subheader("Sugerencias de pedido")
+    render_section_title("Sugerencias de pedido")
     
     # Filtrar sugerencias
     df_filtrado = filtrar_sugerencias(df, filtro_urgencia)
@@ -237,43 +206,32 @@ def main():
         st.info("No hay sugerencias que cumplan con los criterios de filtro.")
     else:
         for _, r in df_filtrado.iterrows():
-            try:
-                badge_text = {
-                    "urgente": "🚨 Urgente",
-                    "proximo": "⚠️ Próximo",
-                    "planificar": "📅 Planificar",
-                    "saludable": "✅ Saludable"
-                }.get(r["urgencia"], "✅ Saludable")
-                
-                badge_class = r["urgencia"]
-                
-                render_sugerencia_card(
-                    title=f"{r['producto']}",
-                    subtitle=f"Proveedor: {r['proveedor']} | Última compra: {r['ultima_compra']}",
-                    badge=badge_text,
-                    badge_class=badge_class,
-                    metrics=[
-                        {"key": "Stock actual", "value": f"{r['stock_actual']} {r['unidad']}"},
-                        {"key": "Consumo diario", "value": f"{r['consumo_diario']} {r['unidad']}"},
-                        {"key": "Días restantes", "value": f"{r['dias_stock']} días"},
-                        {"key": "Cantidad sugerida", "value": f"{r['cantidad_sugerida']} {r['unidad']}"}
-                    ]
-                )
-            except:
-                # Fallback básico si render_sugerencia_card falla
-                st.write(f"**{r['producto']}** - {r['proveedor']}")
-                st.write(f"Stock actual: {r['stock_actual']}, Consumo diario: {r['consumo_diario']}, Cantidad sugerida: {r['cantidad_sugerida']}")
+            badge_text = {
+                "urgente": "🚨 Urgente",
+                "proximo": "⚠️ Próximo",
+                "planificar": "📅 Planificar",
+                "saludable": "✅ Saludable"
+            }.get(r["urgencia"], "✅ Saludable")
+            
+            badge_class = r["urgencia"]
+            
+            render_sugerencia_card(
+                title=f"{r['producto']}",
+                subtitle=f"Proveedor: {r['proveedor']} | Última compra: {r['ultima_compra']}",
+                badge=badge_text,
+                badge_class=badge_class,
+                metrics=[
+                    {"key": "Stock actual", "value": f"{r['stock_actual']} {r['unidad']}"},
+                    {"key": "Consumo diario", "value": f"{r['consumo_diario']} {r['unidad']}"},
+                    {"key": "Días restantes", "value": f"{r['dias_stock']} días"},
+                    {"key": "Cantidad sugerida", "value": f"{r['cantidad_sugerida']} {r['unidad']}"}
+                ]
+            )
         
-        try:
-            render_divider()
-        except:
-            st.divider()
+        render_divider()
         
         # Acciones finales
-        try:
-            render_section_title("Acciones")
-        except:
-            st.subheader("Acciones")
+        render_section_title("Acciones")
         
         # Calcular totales
         total_cantidad = df_filtrado["cantidad_sugerida"].sum()
@@ -285,11 +243,7 @@ def main():
             <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock estimados.</p>
         </div>
         """
-        
-        try:
-            render_card(info_html, "fc-info")
-        except:
-            st.info(f"Total sugerido: {total_cantidad:.1f} unidades en {total_productos} productos")
+        render_card(info_html, "fc-info")
         
         # Botones de acción
         col1, col2, col3, col4 = st.columns(4)
