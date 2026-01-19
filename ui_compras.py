@@ -1174,13 +1174,12 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 # DASHBOARD COMPARATIVAS MODERNO
 # =========================
 def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Comparativas"):
-    """
-    Dashboard con diseño moderno tipo card (similar a la imagen)
-    """
-    
     if df is None or df.empty:
         st.warning("⚠️ No hay datos para mostrar")
         return
+
+    # ✅ AGREGADO: Convertir 'Total' a numérico para evitar errores en nlargest
+    df['Total'] = pd.to_numeric(df['Total'], errors='coerce').fillna(0)
     
     # ==========================================
     # CALCULAR MÉTRICAS CORRECTAMENTE
