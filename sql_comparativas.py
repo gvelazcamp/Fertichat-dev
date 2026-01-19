@@ -804,7 +804,11 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
     """
     return ejecutar_consulta(sql, (articulo_like.strip(),))
 
-    def get_analisis_variacion_articulos(proveedor, anios):
+# =====================================================================
+# ANÁLISIS DE VARIACIÓN POR ARTÍCULO/MONEDA
+# =====================================================================
+
+def get_analisis_variacion_articulos(proveedor, anios):
     """
     Devuelve análisis de variación por artículo/moneda entre dos años.
     """
