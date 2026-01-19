@@ -1003,13 +1003,14 @@ def get_dashboard_ultimas_compras(anio: int, limite: int = 10) -> pd.DataFrame:
 # =========================
 def get_compras_por_mes_excel(
     anio: int,
-    mes: str,
+    mes: Optional[str] = None,
     proveedor: Optional[str] = None,
     limite: int = 5000
 ) -> pd.DataFrame:
     """
     Wrapper de compatibilidad para el menú de Comparativas Fáciles.
-    NO modifica lógica existente. Reutiliza funciones que ya funcionan.
+    Acepta llamadas con o sin mes.
+    NO modifica lógica existente.
     """
 
     proveedores = []
