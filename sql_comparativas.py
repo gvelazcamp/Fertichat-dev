@@ -852,23 +852,23 @@ def get_analisis_variacion_articulos(proveedor, anios):
         ORDER BY ABS(COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0)) DESC
     """
     
-    df = ejecutar_consulta(sql, (f"%{proveedor.strip().lower()}%",))
-    if df is None:
-        return pd.DataFrame()
-    
-    # Calcular Impacto
-    def calcular_impacto(row):
-        var = row['Variación']
-        total_2024 = row[f'Total {anio1}']
-        total_2025 = row[f'Total {anio2}']
-        if var == 0:
-            return "—"
-        if total_2024 == 0 and total_2025 > 0:
-            return "🔺 Nuevo"
-        if var < 0:
-            pct = abs(var) / total_2024 if total_2024 > 0 else 1
-            return "🔻 Muy alto" if pct > 0.2 else "🔻 Alto"
-        return "—"  # Para positivos, no especificado
-    
-    df['Impacto'] = df.apply(calcular_impacto, axis=1)
-    return df
+     df = ejecutar_consulta(sql, (f"%{proveedor.strip().lower()}%",))
+     if df is None or df.empty or len(df.columns) == 0:
+          return pd.DataFrame()
+
+     # Calcular Impacto
+     def calcular_impacto(row):
+          var = row['Variación']
+          total_2024 = row[f'Total {anio1}']
+          total_2025 = row[f'Total {anio2}']
+          if var == 0:
+               return "—"
+          if total_2024 == 0 and total_2025 > 0:
+               return "🔺 Nuevo"
+          if var < 0:
+               pct = abs(var) / total_2024 if total_2024 > 0 else 1
+               return "🔻 Muy alto" if pct > 0.2 else "🔻 Alto"
+          return "—"  # Para positivos, no especificado
+
+     df['Impacto'] = df.apply(calcular_impacto, axis=1)
+     return df
