@@ -1,5 +1,5 @@
 # =========================
-# SUGERENCIAS.PY - LÓGICA Y DATOS PARA SUGERENCIAS DE PEDIDOS
+# sugerencias.py - LÓGICA + DATOS + UI (CARDS)
 # =========================
 
 import streamlit as st
@@ -56,76 +56,63 @@ def get_datos_sugerencias(anio: int) -> pd.DataFrame:
     Calcula consumo diario basado en compras del año.
     Nota: Stock actual se asume 0 ya que no está en datos de compras.
     """
-    # Obtener todas las compras del año
-    df_compras = get_compras_anio(anio, limite=10000)  # Aumentar límite para más datos
-    
+    df_compras = get_compras_anio(anio, limite=10000)
+
     if df_compras is None or df_compras.empty:
         return pd.DataFrame()
-    
-    # Agrupar por artículo para calcular estadísticas
+
     df_agrupado = df_compras.groupby('articulo').agg({
         'Cantidad': 'sum',
-        'proveedor': 'first',  # Tomar el primer proveedor
-        'Fecha': 'max'  # Última fecha de compra
+        'proveedor': 'first',
+        'Fecha': 'max'
     }).reset_index()
-    
-    # Convertir Cantidad a numérico (maneja formatos como "2.000,00")
+
     df_agrupado['Cantidad'] = pd.to_numeric(
         df_agrupado['Cantidad'].astype(str).str.replace('.', '').str.replace(',', '.'),
         errors='coerce'
     ).fillna(0)
-    
-    # Calcular consumo diario aproximado: total comprado / 365 días
-    df_agrupado['consumo_diario'] = df_agrupado['Cantidad'] / 365
-    df_agrupado['consumo_diario'] = df_agrupado['consumo_diario'].round(2)  # Cambiado a .round(2) para decimales
-    
-    # Valores por defecto/estimados
-    df_agrupado['stock_actual'] = 0  # No disponible en datos de compras
-    df_agrupado['stock_minimo'] = (df_agrupado['consumo_diario'] * 30).round(1)  # 30 días de cobertura mínima
-    df_agrupado['lote_minimo'] = df_agrupado['consumo_diario'] * 7  # Lote mínimo = 1 semana
-    df_agrupado['unidad'] = 'un'  # Unidad por defecto
+
+    df_agrupado['consumo_diario'] = (df_agrupado['Cantidad'] / 365).round(2)
+
+    df_agrupado['stock_actual'] = 0
+    df_agrupado['stock_minimo'] = (df_agrupado['consumo_diario'] * 30).round(1)
+    df_agrupado['lote_minimo'] = df_agrupado['consumo_diario'] * 7
+    df_agrupado['unidad'] = 'un'
     df_agrupado['ultima_compra'] = df_agrupado['Fecha']
-    
-    # Renombrar columnas
+
     df_agrupado = df_agrupado.rename(columns={
         'articulo': 'producto',
         'proveedor': 'proveedor'
     })
-    
-    # Seleccionar columnas relevantes
-    columnas = ['producto', 'proveedor', 'stock_actual', 'stock_minimo', 
-                'consumo_diario', 'ultima_compra', 'lote_minimo', 'unidad', 'Cantidad']
-    
+
+    columnas = [
+        'producto', 'proveedor', 'stock_actual', 'stock_minimo',
+        'consumo_diario', 'ultima_compra', 'lote_minimo', 'unidad', 'Cantidad'
+    ]
     return df_agrupado[columnas]
 
 def get_mock_alerts(df_sugerencias: pd.DataFrame):
-    """
-    Genera datos para las alertas basados en los datos reales.
-    """
     if df_sugerencias.empty:
         return [
-            {"title": "📦 Artículos críticos", "value": "0", "subtitle": "Necesitan pedido urgente", "class": "fc-urgente"},
-            {"title": "⏰ Próximos a agotarse", "value": "0", "subtitle": "Pedir en los próximos 7 días", "class": "fc-proximo"},
-            {"title": "📈 Para planificar", "value": "0", "subtitle": "Sugerencias para stock óptimo", "class": "fc-planificar"},
-            {"title": "✅ Stock saludable", "value": "0", "subtitle": "No requieren acción inmediata", "class": "fc-saludable"}
+            {"title": "Artículos críticos", "value": "0", "subtitle": "Necesitan pedido urgente", "class": "fc-urgente"},
+            {"title": "Próximos a agotarse", "value": "0", "subtitle": "Pedir en los próximos 7 días", "class": "fc-proximo"},
+            {"title": "Para planificar", "value": "0", "subtitle": "Sugerencias para stock óptimo", "class": "fc-planificar"},
+            {"title": "Stock saludable", "value": "0", "subtitle": "No requieren acción inmediata", "class": "fc-saludable"}
         ]
-    
+
     urgente = len(df_sugerencias[df_sugerencias['urgencia'] == 'urgente'])
     proximo = len(df_sugerencias[df_sugerencias['urgencia'] == 'proximo'])
     planificar = len(df_sugerencias[df_sugerencias['urgencia'] == 'planificar'])
     saludable = len(df_sugerencias[df_sugerencias['urgencia'] == 'saludable'])
-    
+
     return [
-        {"title": "📦 Artículos críticos", "value": str(urgente), "subtitle": "Necesitan pedido urgente", "class": "fc-urgente"},
-        {"title": "⏰ Próximos a agotarse", "value": str(proximo), "subtitle": "Pedir en los próximos 7 días", "class": "fc-proximo"},
-        {"title": "📈 Para planificar", "value": str(planificar), "subtitle": "Sugerencias para stock óptimo", "class": "fc-planificar"},
-        {"title": "✅ Stock saludable", "value": str(saludable), "subtitle": "No requieren acción inmediata", "class": "fc-saludable"}
+        {"title": "Artículos críticos", "value": str(urgente), "subtitle": "Necesitan pedido urgente", "class": "fc-urgente"},
+        {"title": "Próximos a agotarse", "value": str(proximo), "subtitle": "Pedir en los próximos 7 días", "class": "fc-proximo"},
+        {"title": "Para planificar", "value": str(planificar), "subtitle": "Sugerencias para stock óptimo", "class": "fc-planificar"},
+        {"title": "Stock saludable", "value": str(saludable), "subtitle": "No requieren acción inmediata", "class": "fc-saludable"}
     ]
 
 def filtrar_sugerencias(sugerencias: pd.DataFrame, filtro_urgencia: str):
-    """
-    Filtra las sugerencias por urgencia.
-    """
     if filtro_urgencia == "Todas":
         return sugerencias
     return sugerencias[sugerencias['urgencia'] == filtro_urgencia.lower()]
@@ -135,50 +122,57 @@ def filtrar_sugerencias(sugerencias: pd.DataFrame, filtro_urgencia: str):
 # =========================
 
 def main():
-    # Aplicar CSS directamente (para asegurar que se aplique y render_sugerencia_card se vea como cards)
+    # CSS
     st.markdown(CSS_SUGERENCIAS_PEDIDOS, unsafe_allow_html=True)
-    
-    # Título con render_title
+
+    # Header
     render_title(
         "Sugerencia de pedidos",
         "Sistema inteligente de recomendaciones de compra basado en consumo histórico"
     )
-    
-    # Filtros con render_section_title
+
+    # -------------------------
+    # FILTROS
+    # -------------------------
     render_section_title("Filtros y opciones")
     col1, col2, col3 = st.columns([1, 1, 2])
+
     with col1:
         anio_seleccionado = st.selectbox(
             "Año de análisis:",
             [2025, 2024, 2023],
             key="anio_seleccionado"
         )
+
     with col2:
         filtro_urgencia = st.selectbox(
             "Filtrar por urgencia:",
             ["Todas", "Urgente", "Próximo", "Planificar", "Saludable"],
             key="filtro_urgencia"
         )
+
     with col3:
-        st.write("")  # Espacio
-    
+        st.write("")
+
     render_divider()
-    
-    # Obtener datos reales
+
+    # -------------------------
+    # DATOS
+    # -------------------------
     df = get_datos_sugerencias(anio_seleccionado)
-    
+
     if df.empty:
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado}.")
         return
-    
-    # Preprocesar datos
+
+    # Preproceso (igual que tu versión)
     df["dias_stock"] = df.apply(
         lambda r: calcular_dias_stock(r["stock_actual"], r["consumo_diario"]),
         axis=1
     )
-    
+
     df["urgencia"] = df["dias_stock"].apply(clasificar_urgencia)
-    
+
     df["cantidad_sugerida"] = df.apply(
         lambda r: calcular_cantidad_sugerida(
             consumo_diario=r["consumo_diario"],
@@ -188,99 +182,86 @@ def main():
         ),
         axis=1
     )
-    
-    # Alertas como cards simples con colores
+
+    # -------------------------
+    # RESUMEN (4 CARDS)
+    # -------------------------
     render_section_title("Resumen de situación")
     alerts = get_mock_alerts(df)
-    for alert in alerts:
-        color = {
-            "fc-urgente": "#ffcccc",
-            "fc-proximo": "#ffffcc",
-            "fc-planificar": "#ccffcc",
-            "fc-saludable": "#ccffff"
-        }.get(alert.get('class', ''), "#f9f9f9")
-        with st.container():
-            st.markdown(f"""
-            <div style="border: 2px solid #ddd; border-radius: 10px; padding: 10px; margin: 5px; background-color: {color};">
-                <h4>{alert['title']}</h4>
-                <h2>{alert['value']}</h2>
-                <p>{alert['subtitle']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-    
+    render_alert_grid(alerts)
+
     render_divider()
-    
-    # Sugerencias con render_section_title
+
+    # -------------------------
+    # SUGERENCIAS (CARDS)
+    # -------------------------
     render_section_title("Sugerencias de pedido")
-    
-    # Filtrar sugerencias
+
     df_filtrado = filtrar_sugerencias(df, filtro_urgencia)
-    
+
     if df_filtrado.empty:
         st.info("No hay sugerencias que cumplan con los criterios de filtro.")
     else:
+        # Orden sugerido: urgentes primero, luego próximos, etc.
+        orden = {"urgente": 0, "proximo": 1, "planificar": 2, "saludable": 3}
+        df_filtrado = df_filtrado.copy()
+        df_filtrado["_ord"] = df_filtrado["urgencia"].map(orden).fillna(9)
+        df_filtrado = df_filtrado.sort_values(["_ord", "producto"]).drop(columns=["_ord"])
+
         for _, r in df_filtrado.iterrows():
-            with st.container():
-                st.write(f"**{r['producto']}**")
-                st.caption(f"Proveedor: {r['proveedor']} | Última compra: {r['ultima_compra']}")
-                
-                badge_text = {
-                    "urgente": "🚨 Urgente",
-                    "proximo": "⚠️ Próximo",
-                    "planificar": "📅 Planificar",
-                    "saludable": "✅ Saludable"
-                }.get(r["urgencia"], "✅ Saludable")
-                st.info(badge_text)
-                
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Compras anuales", f"{r['Cantidad']:.0f} {r['unidad']}")
-                with col2:
-                    compras_mensuales = r['Cantidad'] / 12
-                    st.metric("Compras mensuales", f"{compras_mensuales:.1f} {r['unidad']}")
-                with col3:
-                    st.metric("Compra sugerida", f"{r['cantidad_sugerida']} {r['unidad']}")
-                with col4:
-                    st.metric("Stock actual", f"{r['stock_actual']} {r['unidad']}")
-            
-            st.divider()
-        
-        # Acciones con render_section_title
-        render_section_title("Acciones")
-        
-        # Calcular totales
-        total_cantidad = df_filtrado["cantidad_sugerida"].sum()
-        total_productos = len(df_filtrado)
-        
-        info_html = f"""
-        <div class="fc-info">
-            <p><strong>Total sugerido:</strong> {total_cantidad:.1f} unidades en {total_productos} productos</p>
-            <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock estimados.</p>
-        </div>
-        """
-        render_card(info_html, "fc-info")
-        
-        # Botones de acción
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            if st.button("📤 Exportar a Excel", key="export_excel", help="Descargar sugerencias en formato Excel"):
-                # Lógica de exportación
-                csv = df_filtrado.to_csv(index=False)
-                st.download_button(
-                    label="Descargar CSV",
-                    data=csv,
-                    file_name=f"sugerencias_pedidos_{anio_seleccionado}.csv",
-                    mime="text/csv"
-                )
-        with col2:
-            if st.button("📧 Enviar por email", key="send_email", help="Enviar sugerencias por correo"):
-                st.success("Funcionalidad de email no implementada aún.")
-        with col3:
-            if st.button("🛒 Crear orden de compra", key="create_order", help="Generar orden de compra automática"):
-                st.success("Funcionalidad de orden de compra no implementada aún.")
-        with col4:
-            if st.button("🔄 Actualizar datos", key="refresh_data", help="Recargar datos desde la base de datos"):
-                st.rerun()
+            compras_anuales = float(r.get("Cantidad", 0) or 0)
+            compras_mensuales = round(compras_anuales / 12, 2)
+
+            render_sugerencia_card(
+                producto=str(r.get("producto", "")),
+                proveedor=str(r.get("proveedor", "")),
+                ultima_compra=str(r.get("ultima_compra", "")),
+                urgencia=str(r.get("urgencia", "saludable")),
+                compras_anuales=round(compras_anuales, 2),
+                compras_mensuales=compras_mensuales,
+                compra_sugerida=float(r.get("cantidad_sugerida", 0) or 0),
+                stock_actual=float(r.get("stock_actual", 0) or 0),
+                unidad=str(r.get("unidad", "un"))
+            )
+
+    # -------------------------
+    # ACCIONES (como tu versión)
+    # -------------------------
+    render_divider()
+    render_section_title("Acciones")
+
+    total_cantidad = df_filtrado["cantidad_sugerida"].sum() if not df_filtrado.empty else 0
+    total_productos = len(df_filtrado) if not df_filtrado.empty else 0
+
+    info_html = f"""
+    <p><strong>Total sugerido:</strong> {total_cantidad:.1f} unidades en {total_productos} productos</p>
+    <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock estimados.</p>
+    """
+    render_card(info_html)
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        if st.button("Exportar a Excel", key="export_excel", help="Descargar sugerencias en formato Excel"):
+            csv = df_filtrado.to_csv(index=False)
+            st.download_button(
+                label="Descargar CSV",
+                data=csv,
+                file_name=f"sugerencias_pedidos_{anio_seleccionado}.csv",
+                mime="text/csv"
+            )
+
+    with col2:
+        if st.button("Enviar por email", key="send_email", help="Enviar sugerencias por correo"):
+            st.success("Funcionalidad de email no implementada aún.")
+
+    with col3:
+        if st.button("Crear orden de compra", key="create_order", help="Generar orden de compra automática"):
+            st.success("Funcionalidad de orden de compra no implementada aún.")
+
+    with col4:
+        if st.button("Actualizar datos", key="refresh_data", help="Recargar datos desde la base de datos"):
+            st.rerun()
 
 # =========================
 # EJECUCIÓN
