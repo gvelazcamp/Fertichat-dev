@@ -166,7 +166,7 @@ def comparar_compras(
     """
 
     print(f"🐛 DEBUG comparar_compras: Ejecutando con {len(params)} params")
-    print(f"🐛 SQL (primeros 500 chars): {sql[:500]}...")
+    print(f"🐛 DEBUG SQL (primeros 500 chars): {sql[:500]}...")
 
     df = ejecutar_consulta(sql, tuple(params))
     print(f"🐛 Resultado: {len(df) if df is not None and not df.empty else 0} filas")
@@ -846,26 +846,46 @@ def get_analisis_variacion_articulos(proveedor, anios):
         FROM (SELECT * FROM base WHERE "Año" = {anio1}) b1
         FULL OUTER JOIN (SELECT * FROM base WHERE "Año" = {anio2}) b2
             ON b1."Articulo" = b2."Articulo" AND b1."Moneda" = b2."Moneda"
+        WHERE COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0) != 0
+           OR COALESCE(b1.total_anio, 0) = 0
+           OR COALESCE(b2.total_anio, 0) = 0
         ORDER BY ABS(COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0)) DESC
     """
     
-    df = ejecutar_consulta(sql, (f"%{proveedor.split(' (')[0].strip().lower()}%",))
+    df = ejecutar_consulta(sql, (f"%{proveedor.strip().lower()}%",))
     if df is None or df.empty or len(df.columns) == 0:
         return pd.DataFrame()
 
-    # Calcular Impacto
-    def calcular_impacto(row):
+    # Calcular Tipo de Variación e Impacto
+    def calcular_tipo_y_impacto(row):
         var = row['Variación']
         total_2024 = row[f'Total {anio1}']
         total_2025 = row[f'Total {anio2}']
         if var == 0:
-            return "—"
+            return "Sin Cambio", "—"
         if total_2024 == 0 and total_2025 > 0:
-            return "🔺 Nuevo"
+            return "Nuevo", "🔺 Nuevo"
         if var < 0:
             pct = abs(var) / total_2024 if total_2024 > 0 else 1
-            return "🔻 Muy alto" if pct > 0.2 else "🔻 Alto"
-        return "—"  # Para positivos, no especificado
+            tipo = "Disminución"
+            if pct > 0.5:
+                impacto = "🔻 Crítico"
+            elif pct > 0.2:
+                impacto = "🔻 Muy alto"
+            else:
+                impacto = "🔻 Alto"
+            return tipo, impacto
+        if var > 0:
+            tipo = "Aumento"
+            pct = var / total_2024 if total_2024 > 0 else 1
+            if pct > 0.5:
+                impacto = "🔺 Crítico"
+            elif pct > 0.2:
+                impacto = "🔺 Muy alto"
+            else:
+                impacto = "🔺 Alto"
+            return tipo, impacto
+        return "—", "—"
 
-    df['Impacto'] = df.apply(calcular_impacto, axis=1)
+    df[['Tipo de Variación', 'Impacto']] = df.apply(calcular_tipo_y_impacto, axis=1, result_type='expand')
     return df
