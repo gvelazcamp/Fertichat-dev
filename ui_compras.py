@@ -1868,7 +1868,31 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 st.info("No se pudo generar el gráfico")
     
     with tabs[4]:
-        st.dataframe(df, use_container_width=True, height=600)
+        # ✅ MODIFICACIÓN AQUÍ: LOGIC FOR HISTORICAL PRICES IF ONE ARTICLE SELECTED
+        articulos_sel = st.session_state.get("art_multi", [])
+        
+        if articulos_sel and len(articulos_sel) == 1:
+            # ✅ MODO HISTÓRICO DE PRECIOS
+            articulo = articulos_sel[0]
+            
+            try:
+                df_hist = sqlq_comparativas.get_historico_precios_unitarios(articulo)
+                
+                if df_hist is not None and not df_hist.empty:
+                    st.subheader(f"Histórico de precios – {articulo}")
+                    
+                    st.dataframe(
+                        df_hist,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                else:
+                    st.info("No hay datos históricos para este artículo")
+            except Exception as e:
+                st.error(f"Error cargando histórico: {e}")
+        else:
+            # ⬇️ TABLA COMPARATIVA ORIGINAL (NO TOCAR)
+            st.dataframe(df, use_container_width=True, height=600)
 
 
 # =========================
@@ -2522,7 +2546,7 @@ def Compras_IA():
                         
                         render_dashboard_compras_vendible(df, titulo="Compras")
                     elif df is not None:
-                        st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
+                        st.warning("⚠️ No se encontraron resultados para esa b��squeda.")
                 except Exception as e:
                     st.error(f"❌ Error en búsqueda: {e}")
 
