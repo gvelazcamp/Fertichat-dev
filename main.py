@@ -1,7 +1,3 @@
-# =========================
-# MAIN.PY - ARCHIVO PRINCIPAL DE LA APLICACIÓN STREAMLIT
-# =========================
-
 import streamlit as st
 
 st.set_page_config(
@@ -352,6 +348,11 @@ section[data-testid="stMain"] {
     animation: none !important;
 }
 
+/* Ocultar loader superior */
+div[data-testid="stDecoration"] {
+    display: none !important;
+}
+
 /* Quitar shimmer / placeholders */
 [data-testid="stSkeleton"] {
     display: none !important;
@@ -397,10 +398,10 @@ main_container = st.container()
 init_db()
 user = get_current_user() or {}
 
-# Grupos del menú - AGREGAR LA NUEVA OPCIÓN A GESTIÓN
+# Grupos del menú - AGREGADO SUGERENCIAS A GESTIÓN
 groups = {
     "PRINCIPAL": ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"],
-    "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes", "📋 Sugerencia de pedidos "],  # ← AGREGADO AQUÍ
+    "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes", "📋 Sugerencia de pedidos preciso con sus importes"],  # ← AGREGADO
     "CATÁLOGO": ["📚 Artículos", "🧩 Familias", "🏬 Depósitos", "📑 Comprobantes"],
     "ANÁLISIS": ["📊 Dashboard", "📈 Indicadores (Power BI)"],
 }
@@ -745,9 +746,9 @@ with st.sidebar:
     # Header con logo
     st.markdown("""
     <div class='fc-sidebar-header'>
-        <div style="display:flex; align-items:center; gap:10px; justify-content:center;">
-            <div style="font-size: 26px;">🦋</div>
-            <div style="font-size: 20px; font-weight: 800; color:#0f172a;">FertiChat</div>
+        <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
+            <div style='font-size: 26px;'>🦋</div>
+            <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -787,7 +788,7 @@ with st.sidebar:
     # Menu agrupado
     for group, options in groups.items():
         st.markdown(f'<div class="fc-section-header">{group}</div>', unsafe_allow_html=True)
-        st.radio("", options, key=f"radio_{group.lower()}", label_visibility="collapsed", on_change=update_pagina, args=(group,))
+        st.radio("", options, key=f"radio_{group.lower()}", label_visibility="hidden", on_change=update_pagina, args=(group,))  # ← CAMBIADO A "hidden"
     
     st.components.v1.html(r"""
     <script>
@@ -922,7 +923,7 @@ with main_container:
     elif st.session_state.pagina == "📑 Comprobantes":
         mostrar_menu_comprobantes()
 
-    # ← AGREGADO: NUEVA CONDICIÓN PARA SUGERENCIAS
+    # ← CONDICIÓN PARA SUGERENCIAS
     elif st.session_state.pagina == "📋 Sugerencia de pedidos preciso con sus importes":
         try:
             import pages.sugerencias
