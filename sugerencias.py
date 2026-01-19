@@ -220,29 +220,30 @@ def main():
         st.info("No hay sugerencias que cumplan con los criterios de filtro.")
     else:
         for _, r in df_filtrado.iterrows():
-            badge_text = {
-                "urgente": "🚨 Urgente",
-                "proximo": "⚠️ Próximo",
-                "planificar": "📅 Planificar",
-                "saludable": "✅ Saludable"
-            }.get(r["urgencia"], "✅ Saludable")
+            with st.container():
+                st.write(f"**{r['producto']}**")
+                st.caption(f"Proveedor: {r['proveedor']} | Última compra: {r['ultima_compra']}")
+                
+                badge_text = {
+                    "urgente": "🚨 Urgente",
+                    "proximo": "⚠️ Próximo",
+                    "planificar": "📅 Planificar",
+                    "saludable": "✅ Saludable"
+                }.get(r["urgencia"], "✅ Saludable")
+                st.info(badge_text)
+                
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Compras anuales", f"{r['Cantidad']:.0f} {r['unidad']}")
+                with col2:
+                    compras_mensuales = r['Cantidad'] / 12
+                    st.metric("Compras mensuales", f"{compras_mensuales:.1f} {r['unidad']}")
+                with col3:
+                    st.metric("Compra sugerida", f"{r['cantidad_sugerida']} {r['unidad']}")
+                with col4:
+                    st.metric("Stock actual", f"{r['stock_actual']} {r['unidad']}")
             
-            badge_class = r["urgencia"]
-            
-            render_sugerencia_card(
-                title=f"{r['producto']}",
-                subtitle=f"Proveedor: {r['proveedor']} | Última compra: {r['ultima_compra']}",
-                badge=badge_text,
-                badge_class=badge_class,
-                metrics=[
-                    {"key": "Compras anuales", "value": f"{r['Cantidad']:.0f} {r['unidad']}"},
-                    {"key": "Compras mensuales", "value": f"{(r['Cantidad'] / 12):.1f} {r['unidad']}"},
-                    {"key": "Compra sugerida", "value": f"{r['cantidad_sugerida']} {r['unidad']}"},
-                    {"key": "Stock actual", "value": f"{r['stock_actual']} {r['unidad']}"}
-                ]
-            )
-        
-        render_divider()
+            st.divider()
         
         # Acciones con render_section_title
         render_section_title("Acciones")
