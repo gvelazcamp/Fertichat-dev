@@ -1009,15 +1009,48 @@ def get_compras_por_mes_excel(
 ) -> pd.DataFrame:
     """
     Wrapper de compatibilidad para el menú de Comparativas Fáciles.
-    Acepta llamadas con o sin mes.
-    NO modifica lógica existente.
+    Traduce meses en español (Abril → 2025-04).
+    NO modifica SQL existente.
     """
 
+    # -------------------------
+    # Normalizar proveedor
+    # -------------------------
     proveedores = []
     if proveedor and proveedor.lower() not in ("todos", "todas", "all"):
         proveedores = [proveedor]
 
-    meses = [mes] if mes else None
+    # -------------------------
+    # Normalizar mes
+    # -------------------------
+    meses = None
+    if mes:
+        mes_map = {
+            "enero": "01",
+            "febrero": "02",
+            "marzo": "03",
+            "abril": "04",
+            "mayo": "05",
+            "junio": "06",
+            "julio": "07",
+            "agosto": "08",
+            "septiembre": "09",
+            "setiembre": "09",
+            "octubre": "10",
+            "noviembre": "11",
+            "diciembre": "12",
+        }
+
+        mes_clean = mes.strip().lower()
+
+        # Caso: viene "Abril"
+        if mes_clean in mes_map:
+            meses = [f"{anio}-{mes_map[mes_clean]}"]
+
+        # Caso: ya viene "2025-04"
+        elif "-" in mes_clean:
+            meses = [mes_clean]
+
     anios = [anio] if anio else None
 
     return get_compras_multiples(
@@ -1026,4 +1059,5 @@ def get_compras_por_mes_excel(
         anios=anios,
         limite=limite
     )
+
 
