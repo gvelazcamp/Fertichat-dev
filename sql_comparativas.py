@@ -778,7 +778,7 @@ def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
 def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
     """
     Devuelve el histórico real de precios unitarios por artículo.
-    Parsea Monto Neto y castea Cantidad.
+    Parsea Monto Neto y Cantidad (ambos con formato LATAM).
     """
     sql = """
         WITH base AS (
@@ -788,19 +788,20 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
                 "Nro. Comprobante",
                 "Cantidad",
                 "Moneda",
-                -- Parsing simple
+                -- Parsing para Monto Neto
                 CASE
                     WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
                         -1 * CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
                     ELSE
                         CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
-                END AS monto_num
+                END AS monto_num,
+                -- Parsing para Cantidad (igual que Monto Neto)
+                CAST(REPLACE(REPLACE(REPLACE("Cantidad", ' ', ''), '.', ''), ',', '.') AS NUMERIC) AS cant_num
             FROM chatbot_raw
             WHERE
                 LOWER(TRIM("Articulo")) LIKE LOWER(%s)
                 AND "Cantidad" IS NOT NULL
                 AND TRIM("Cantidad") <> ''
-                AND CAST("Cantidad" AS NUMERIC) > 0  -- Castea y filtra > 0
                 AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
         )
         SELECT
@@ -808,10 +809,11 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
             Proveedor,
             "Nro. Comprobante",
             "Cantidad",
-            ROUND(monto_num / CAST("Cantidad" AS NUMERIC), 2) AS precio_unitario,  -- Castea en división
+            ROUND(monto_num / cant_num, 2) AS precio_unitario,
             Moneda
         FROM base
         WHERE monto_num IS NOT NULL AND monto_num > 0
+          AND cant_num > 0  -- Filtra cantidades > 0
         ORDER BY "Fecha" ASC;
     """
     return ejecutar_consulta(sql, (f"%{articulo_like.strip().lower()}%",))
