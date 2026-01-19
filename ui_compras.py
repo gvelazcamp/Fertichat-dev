@@ -2694,3 +2694,69 @@ def Compras_IA():
             st_autorefresh(interval=5000, key="fc_keepalive")
         except Exception:
             pass
+
+    with tabs[4]:  # ← INDENTADO DENTRO DE Compras_IA()
+        # ✅ MODIFICACIÓN AQUÍ: LOGIC FOR HISTORICAL PRICES IF ONE ARTICLE SELECTED
+        articulos_sel = st.session_state.get("art_multi", [])
+        
+        if articulos_sel and len(articulos_sel) == 1:
+            articulo = articulos_sel[0]
+            
+            try:
+                df_hist = sqlq_comparativas.get_historico_precios_unitarios(articulo)
+                
+                if df_hist is not None and not df_hist.empty:
+                    st.subheader(f"Histórico de precios – {articulo}")
+                    
+                    st.dataframe(
+                        df_hist,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                else:
+                    st.warning(f"⚠️ No hay datos históricos para '{articulo}'")
+                    
+                    # Debug rápido: contar registros
+                    debug_sql = '''
+                        SELECT COUNT(*) as total
+                        FROM chatbot_raw 
+                        WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+                          AND "Cantidad" IS NOT NULL AND TRIM("Cantidad") <> ''
+                          AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+                    '''
+                    debug_df = ejecutar_consulta(debug_sql, (f"%{articulo.strip().lower()}%",))
+                    if debug_df is not None and not debug_df.empty:
+                        total = int(debug_df.iloc[0]['total'])
+                        st.info(f"Registros encontrados para '{articulo}': {total}")
+                        if total == 0:
+                            st.info("El artículo no existe o no tiene datos válidos.")
+                        else:
+                            st.info("Datos existen, pero no se pudieron parsear (revisa Monto Neto).")
+            except Exception as e:
+                st.error(f"Error: {e}")
+        else:
+            # ✅ NUEVA LÓGICA: Si 1 proveedor y 2 períodos → Mostrar análisis de variación
+            proveedores_sel = st.session_state.get("comparativas_proveedores_multi", [])
+            if proveedores_sel and len(proveedores_sel) == 1 and len(periodos_validos) == 2:
+                proveedor_sel = proveedores_sel[0]
+                
+                df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
+                
+                if df_variacion is not None and not df_variacion.empty:
+                    st.markdown("#### 📊 ¿Por qué bajó/subió el gasto?")
+                    st.dataframe(
+                        df_variacion[['Articulo', 'Moneda', f'Total {periodos_validos[0]}', f'Total {periodos_validos[1]}', 'Variación', 'Tipo de Variación', 'Impacto']],
+                        use_container_width=True,
+                        hide_index=True,
+                        height=600
+                    )
+                else:
+                    st.info("No hay datos de variación para este proveedor")
+            
+            # ⬇️ TABLA COMPARATIVA ORIGINAL (NO TOCAR) - Solo si NO aplica CASO 2
+            if not (
+                proveedores_sel
+                and len(proveedores_sel) == 1
+                and len(periodos_validos) == 2
+            ):
+                st.dataframe(df, use_container_width=True, height=600)
