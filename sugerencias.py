@@ -135,7 +135,7 @@ def filtrar_sugerencias(sugerencias: pd.DataFrame, filtro_urgencia: str):
 # =========================
 
 def main():
-    # Aplicar CSS directamente (para asegurar que se aplique y render_alert_grid se vea como cards)
+    # Aplicar CSS directamente (para asegurar que se aplique y render_sugerencia_card se vea como cards)
     st.markdown(CSS_SUGERENCIAS_PEDIDOS, unsafe_allow_html=True)
     
     # Título con render_title
@@ -189,10 +189,24 @@ def main():
         axis=1
     )
     
-    # Alertas con render_section_title y render_alert_grid (ahora con CSS aplicado, se verán como cards)
+    # Alertas como cards simples con colores
     render_section_title("Resumen de situación")
     alerts = get_mock_alerts(df)
-    render_alert_grid(alerts)
+    for alert in alerts:
+        color = {
+            "fc-urgente": "#ffcccc",
+            "fc-proximo": "#ffffcc",
+            "fc-planificar": "#ccffcc",
+            "fc-saludable": "#ccffff"
+        }.get(alert.get('class', ''), "#f9f9f9")
+        with st.container():
+            st.markdown(f"""
+            <div style="border: 2px solid #ddd; border-radius: 10px; padding: 10px; margin: 5px; background-color: {color};">
+                <h4>{alert['title']}</h4>
+                <h2>{alert['value']}</h2>
+                <p>{alert['subtitle']}</p>
+            </div>
+            """, unsafe_allow_html=True)
     
     render_divider()
     
