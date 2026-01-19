@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 # Importar helpers UI y config
 from ui_sugerencias import (
-    apply_css_sugerencias,
+    CSS_SUGERENCIAS_PEDIDOS,
     render_title,
     render_section_title,
     render_card,
@@ -135,8 +135,8 @@ def filtrar_sugerencias(sugerencias: pd.DataFrame, filtro_urgencia: str):
 # =========================
 
 def main():
-    # Aplicar estilos CSS (SIN try para que se aplique correctamente)
-    apply_css_sugerencias()
+    # Aplicar CSS directamente (para asegurar que se aplique y render_alert_grid se vea como cards)
+    st.markdown(CSS_SUGERENCIAS_PEDIDOS, unsafe_allow_html=True)
     
     # Título con render_title
     render_title(
@@ -189,7 +189,7 @@ def main():
         axis=1
     )
     
-    # Alertas con render_section_title y render_alert_grid
+    # Alertas con render_section_title y render_alert_grid (ahora con CSS aplicado, se verán como cards)
     render_section_title("Resumen de situación")
     alerts = get_mock_alerts(df)
     render_alert_grid(alerts)
