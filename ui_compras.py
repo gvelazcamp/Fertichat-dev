@@ -339,394 +339,210 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
     # Buscar columna de moneda
     col_moneda = None
     for col in df.columns:
-        if col.lower() in ["moneda", "currency"]:
+        if col.lower() == 'moneda':
             col_moneda = col
             break
 
-    # Buscar columnas de períodos (excluir columnas que NO son períodos)
-    numeric_cols = []
-    for col in df.columns:
-        # Excluir columnas obvias que NO son períodos
-        if col in [col_moneda, 'Articulo', 'Proveedor', 'Cliente / Proveedor', 'Diferencia']:
-            continue
-        
-        # Si es numérica, incluirla
-        if pd.api.types.is_numeric_dtype(df[col]):
-            numeric_cols.append(col)
-        # Si el nombre parece un año o período, incluirla
-        elif isinstance(col, str) and (col.isdigit() or '-' in col):
-            numeric_cols.append(col)
+    # Buscar columnas de períodos (años como 2024, 2025 o meses como 2024-11)
+    # Excluir 'Proveedor', 'Articulo', 'Moneda', 'Diferencia'
+    cols_periodos = []
+    for c in df.columns:
+        # Es un período si es numérica o tiene guión y no es excluida
+        if pd.api.types.is_numeric_dtype(df[c]) and c not in ['Diferencia']:
+            cols_periodos.append(c)
+        elif isinstance(c, str) and ('-' in c or c.isdigit()) and c not in ['Proveedor', 'Articulo', 'Moneda', 'Cliente / Proveedor']:
+            cols_periodos.append(c)
     
-    # Si no hay columna moneda, asumir todo en UYU
-    if not col_moneda:
-        total_general = 0
-        for col in numeric_cols:
-            try:
-                total_general += pd.to_numeric(df[col], errors='coerce').fillna(0).sum()
-            except:
-                pass
-        return {"Pesos": float(total_general), "USD": 0}
-
-    try:
-        totales = {"Pesos": 0, "USD": 0}
+    # ✅ AGREGADO: Convertir columnas de períodos a numérico
+    for col in cols_periodos:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    
+    print(f"🐛 DEBUG: Columnas de períodos detectadas: {cols_periodos}")
+    
+    # Calcular totales por moneda - SEPARAR CORRECTAMENTE SIN FALLBACK
+    total_uyu = 0
+    total_usd = 0
+    
+    # ✅ FIX: Buscar columna "Moneda" o "moneda" (case insensitive)
+    col_moneda = None
+    for col in df.columns:
+        if col.lower() == 'moneda':
+            col_moneda = col
+            break
+    
+    if col_moneda and cols_periodos:
+        # ✅ FIX: Buscar TODAS las variaciones de pesos y dólares
+        df['Moneda_norm'] = df[col_moneda].astype(str).str.strip().str.upper()
         
-        # Iterar por cada fila y sumar según su moneda
-        for idx, row in df.iterrows():
-            moneda_str = str(row[col_moneda]).strip().upper()
-            
-            # Detectar USD
-            es_usd = any(x in moneda_str for x in ["USD", "U$S", "US$", "U$", "DOLAR", "DÓLAR"])
-            
-            # Sumar las columnas numéricas de esta fila
-            suma_fila = 0
-            for col in numeric_cols:
+        # Pesos: $, UYU, PESO
+        df_pesos = df[df['Moneda_norm'].str.contains(r'^\$|UYU|PESO', regex=True, na=False) & 
+                      ~df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+        
+        # Dólares: U$S, USD, US$, U$
+        df_usd = df[df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+        
+        if not df_pesos.empty:
+            for col in cols_periodos:
                 try:
-                    val = row[col]
-                    if pd.notna(val):
-                        suma_fila += float(val)
+                    total_uyu += pd.to_numeric(df_pesos[col], errors='coerce').fillna(0).sum()
                 except:
                     pass
-            
-            # Acumular en el total correcto
-            if es_usd:
-                totales["USD"] += suma_fila
-            else:
-                totales["Pesos"] += suma_fila
         
-        return totales
-
-    except Exception as e:
-        print(f"❌ Error calculando totales comparativas: {e}")
-        import traceback
-        traceback.print_exc()
-        return {"Pesos": 0, "USD": 0}
-
-
-# =========================
-# DASHBOARD VENDIBLE (UI) - NUEVO
-# (NO TOCA SQL / NO ROMPE LO EXISTENTE)
-# =========================
-import io
-
-
-def _find_col(df: pd.DataFrame, candidates_lower: list) -> Optional[str]:
-    for c in df.columns:
-        if str(c).lower() in candidates_lower:
-            return c
-    return None
-
-
-def _norm_moneda_view(x: str) -> str:
-    s = ("" if x is None else str(x)).strip().upper()
-    if not s:
-        return "OTRA"
-    if "U$S" in s or "USD" in s or "US$" in s or s == "U$" or "DOLAR" in s or "DÓLAR" in s:
-        return "USD"
-    if s == "$" or "UYU" in s or "PESO" in s:
-        return "UYU"
-    return s
-
-
-def _safe_to_float(v) -> float:
-    try:
-        if v is None:
-            return 0.0
-        if isinstance(v, (int, float)):
-            return float(v)
-        s = str(v).strip()
-        if not s:
-            return 0.0
-        s = s.replace(" ", "")
-        # soporta "1.234,56" (LATAM) y "1,234.56" (EN) de forma básica
-        if "," in s and "." in s:
-            s = s.replace(".", "").replace(",", ".")
-        else:
-            if "," in s and "." not in s:
-                s = s.replace(",", ".")
-        return float(s)
-    except Exception:
-        return 0.0
-
-
-def _fmt_compact_money(v: float, moneda: str) -> str:
-    try:
-        v = float(v or 0.0)
-    except Exception:
-        v = 0.0
-
-    sign = "-" if v < 0 else ""
-    a = abs(v)
-
-    if moneda == "USD":
-        prefix = "U$S "
-        decimals = 2
-    else:
-        prefix = "$ "
-        decimals = 0 if a >= 1000 else 2
-
-    if a >= 1_000_000_000:
-        return f"{sign}{prefix}{a/1_000_000_000:,.2f}B".replace(",", ".")
-    if a >= 1_000_000:
-        return f"{sign}{prefix}{a/1_000_000:,.2f}M".replace(",", ".")
-    if a >= 1_000:
-        return f"{sign}{prefix}{a/1_000:,.2f}K".replace(",", ".")
-    return f"{sign}{prefix}{a:,.{decimals}f}".replace(",", ".")
-
-
-def _shorten_text(x, max_len: int = 52) -> str:
-    s = "" if x is None else str(x)
-    s = s.strip()
-    if len(s) <= max_len:
-        return s
-    return s[: max_len - 1] + "…"
-
-
-def _df_export_clean(df: pd.DataFrame) -> pd.DataFrame:
-    # No exportar columnas internas __*
-    cols = [c for c in df.columns if not str(c).startswith("__")]
-    return df[cols].copy() if cols else df.copy()
-
-
-def _df_to_csv_bytes(df: pd.DataFrame) -> bytes:
-    try:
-        return df.to_csv(index=False).encode("utf-8")
-    except Exception:
-        return b""
-
-
-def _df_to_excel_bytes(df: pd.DataFrame) -> bytes:
-    try:
-        buff = io.BytesIO()
-        with pd.ExcelWriter(buff, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="datos")
-        return buff.getvalue()
-    except Exception:
-        return b""
-
-
-def _init_saved_views():
-    if "FC_SAVED_VIEWS" not in st.session_state:
-        st.session_state["FC_SAVED_VIEWS"] = []
-
-
-def _save_view(view_name: str, data: dict):
-    _init_saved_views()
-    name = (view_name or "").strip()
-    if not name:
-        return
-    # Reemplaza si existe
-    out = []
-    for v in st.session_state["FC_SAVED_VIEWS"]:
-        if str(v.get("name", "")).strip().lower() == name.lower():
-            continue
-        out.append({"name": name, "data": data})
-    st.session_state["FC_SAVED_VIEWS"] = out
-
-
-def _get_saved_view_names() -> list:
-    _init_saved_views()
-    names = [v.get("name") for v in st.session_state.get("FC_SAVED_VIEWS", []) if v.get("name")]
-    return sorted(names, key=lambda s: str(s).lower())
-
-
-def _load_view(name: str) -> Optional[dict]:
-    _init_saved_views()
-    for v in st.session_state.get("FC_SAVED_VIEWS", []):
-        if str(v.get("name", "")).strip().lower() == str(name or "").strip().lower():
-            return v.get("data") or {}
-    return None
-
-
-def _paginate(df_in: pd.DataFrame, page: int, page_size: int) -> pd.DataFrame:
-    if df_in is None or df_in.empty:
-        return df_in
-    page_size = max(1, int(page_size or 25))
-    page = max(1, int(page or 1))
-    start = (page - 1) * page_size
-    end = start + page_size
-    return df_in.iloc[start:end]
-
-
-# Agregado: Mapeo de meses para display amigable
-month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-month_num = {name: f"{i+1:02d}" for i, name in enumerate(month_names)}
-
-MONTH_MAPPING = {}
-for year in [2023, 2024, 2025, 2026]:
-    for month, num in month_num.items():
-        MONTH_MAPPING[f"{year}-{num}"] = f"{month} {year}"
-
-def code_to_display(code: str) -> str:
-    return MONTH_MAPPING.get(code, code)
-
-def display_to_code(display: str) -> str:
-    reverse_mapping = {v: k for k, v in MONTH_MAPPING.items()}
-    return reverse_mapping.get(display, display)
-
-def rename_month_columns(df: pd.DataFrame) -> pd.DataFrame:
-    df_renamed = df.copy()
-    df_renamed.rename(columns=MONTH_MAPPING, inplace=True)
-    return df_renamed
-
-
-def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado", key_prefix: str = "", hide_metrics: bool = False):
-    if df is None or df.empty:
-        st.warning("⚠️ No hay resultados para mostrar.")
-        return
-
-    # CSS MODERNO (header gradiente + tarjetas)
-    st.markdown(
-        """
-        <style>
+        if not df_usd.empty:
+            for col in cols_periodos:
+                try:
+                    total_usd += pd.to_numeric(df_usd[col], errors='coerce').fillna(0).sum()
+                except:
+                    pass
+        
+        print(f"🐛 DEBUG: Total UYU: {total_uyu}, Total USD: {total_usd}")
+    
+    # Determinar si es comparación de artículos (basado en entrada)
+    # Nota: Aquí asumimos que si 'articulos' fue seleccionado en la UI, es artículos
+    # Pero como no tenemos acceso directo, usamos la estructura del DF
+    es_articulos = 'Articulo' in df.columns and 'Proveedor' not in df.columns
+    entidad = 'Artículos' if es_articulos else 'Proveedores'
+    entidad_singular = 'Artículo' if es_articulos else 'Proveedor'
+    todos_entidad = f"Todos los {entidad.lower()}"
+    
+    # Número de entidades y registros
+    num_entidades = df['Articulo'].nunique() if es_articulos else df['Proveedor'].nunique() if 'Proveedor' in df.columns else 0
+    num_registros = len(df)
+    
+    # Identificar qué años/meses se están comparando
+    periodos = cols_periodos
+    num_periodos = len(periodos)
+    
+    # ==========================================
+    # CSS Moderno (restante) - AGREGAR ESPACIADO Y ALTURA UNIFORME
+    # ==========================================
+    st.markdown("""
+    <style>
         /* ==========================================
            HEADER CON TÍTULO Y METADATA
            ========================================== */
-        .fc-header-modern {
+        .dash-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 16px;
-            padding: 20px 24px;
-            margin-bottom: 20px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
             color: white;
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
         }
         
-        .fc-title-modern {
-            font-size: 1.3rem;
+        .dash-title {
+            font-size: 1.5rem;
             font-weight: 700;
-            margin: 0 0 8px 0;
-            color: white;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
         
-        .fc-badge-modern {
+        .dash-badge {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             background: rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(10px);
-            padding: 6px 14px;
+            padding: 8px 16px;
             border-radius: 20px;
-            font-size: 0.85rem;
-            color: white;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
         }
         
-        .fc-meta-modern {
+        .dash-meta {
             font-size: 0.85rem;
             opacity: 0.9;
             margin: 0;
-            color: rgba(255,255,255,0.9);
         }
         
         /* ==========================================
            TARJETAS DE MÉTRICAS (4 columnas)
            ========================================== */
-        .fc-metrics-grid {
+        .metrics-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 32px;  /* ← Aumentado de 16px a 32px para más separación */
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
         
-        .fc-metric-card {
+        .metric-card {
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            padding: 18px;
+            padding: 20px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             transition: all 0.2s ease;
         }
         
-        .fc-metric-card:hover {
+        .metric-card:hover {
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             transform: translateY(-2px);
         }
         
-        .fc-metric-label {
+        .metric-label {
             font-size: 0.85rem;
             color: #6b7280;
-            margin: 0 0 6px 0;
+            margin: 0 0 8px 0;
             font-weight: 500;
         }
         
-        .fc-metric-value {
-            font-size: 1.6rem;
+        .metric-value {
+            font-size: 1.75rem;
             font-weight: 700;
             color: #111827;
             margin: 0;
         }
         
-        .fc-metric-help {
-            font-size: 0.75rem;
-            color: #9ca3af;
-            margin: 4px 0 0 0;
-        }
-        
         /* ==========================================
-           CARD TOTAL GRANDE
+           CARD PROVEEDOR DESTACADO (para 1 proveedor)
            ========================================== */
-        .total-summary-card {
+        .single-provider-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 16px;
-            padding: 40px 32px;
+            padding: 32px 28px;
             margin-bottom: 24px;
             color: white;
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
             text-align: center;
         }
         
-        .total-summary-value {
-            font-size: 3rem;
+        .single-provider-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .single-provider-name {
+            font-size: 1.5rem;
             font-weight: 700;
             margin: 0 0 8px 0;
         }
         
-        .total-summary-label {
-            font-size: 1.2rem;
+        .single-provider-detail {
+            font-size: 0.9rem;
             opacity: 0.9;
             margin: 0;
         }
         
         /* ==========================================
-           CARD RESUMEN EJECUTIVO
-           ========================================== */
-        .resumen-card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 14px 18px !important;
-            margin-bottom: 24px !important;  /* ← MÁS ESPACIO ENTRE CARDS (antes 12px) */
-            min-height: 120px !important;  /* ← MÁS BAJA (antes 140px) */
-            display: flex !important;
-            flex-direction: column !important;
-            box-sizing: border-box !important;
-        }
-        
-        .resumen-title {
-            font-size: 0.8rem !important;  /* Un poco más pequeño */
-            font-weight: 700 !important;
-            margin: 0 0 6px 0 !important;
-            color: #374151;
-        }
-        
-        .resumen-text {
-            font-size: 0.7rem !important;  /* Un poco más pequeño */
-            color: #6b7280;
-            margin: 0 !important;
-            line-height: 1.3 !important;  /* Menos interlineado */
-        }
-        
-        /* ==========================================
-           PROVIDER CARD
+           CARD PROVEEDOR PRINCIPAL
            ========================================== */
         .provider-card {
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            padding: 16px !important;
-            margin-bottom: 24px !important;  /* ← MÁS ESPACIO */
-            min-height: 120px !important;  /* ← MÁS BAJA */
+            padding: 16px;
+            margin-bottom: 16px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            display: flex !important;
-            flex-direction: column !important;
         }
         
         .provider-header {
@@ -796,379 +612,485 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         }
         
         /* ==========================================
+           TABS Y BOTONES
+           ========================================== */
+        .btn-export {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-export:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+        
+        /* ==========================================
            RESPONSIVE (MOBILE)
            ========================================== */
         @media (max-width: 768px) {
-            .fc-metrics-grid {
+            .metrics-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 12px;
             }
-            .fc-metric-value {
-                font-size: 1.3rem;
+            
+            .metric-value {
+                font-size: 1.4rem;
             }
-            .total-summary-value {
-                font-size: 2.5rem;
+            
+            .provider-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .provider-amount {
+                text-align: left;
+                margin-top: 8px;
+            }
+            
+            .dash-title {
+                font-size: 1.2rem;
+            }
+            
+            .action-bar {
+                flex-wrap: nowrap !important;
+                height: 48px !important;  /* Altura máxima de la barra */
+                gap: 8px !important;  /* Separación uniforme */
+            }
+            
+            .action-left, .action-right {
+                justify-content: center;
             }
         }
         
-        /* Legacy (mantener compatibilidad) */
-        .fc-subtle { color: rgba(49,51,63,0.65); font-size: 0.9rem; }
-        .fc-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px 0; }
-        
-        /* ==========================================
-           OCULTAR BOTÓN NATIVO DE STREAMLIT
-           ========================================== */
-        [data-testid="stDataFrameToolbar"] {
-            display: none !important;
+        /* Espaciado consistente */
+        .action-bar {
+            margin-bottom: 20px !important;  /* Espacio entre barra y tarjetas */
         }
         
-        /* ==========================================
-           OCULTAR LÍNEAS HORIZONTALES (hr) GENERADAS POR st.markdown("---")
-           ========================================== */
-        hr {
-            display: none !important;
+        .metrics-grid {
+            margin-bottom: 20px !important;  /* Espacio entre tarjetas y gráfico */
         }
         
-        /* Botón de exportación arriba */
-        .fc-export-btn {
-            text-align: right;
-            margin-bottom: 8px;
+        /* INTERLINEADO ENTRE BOTONES Y TARJETAS */
+        .comparison-wrapper {
+            margin-top: 40px !important;  /* Más espacio arriba */
+            margin-bottom: 20px !important;  /* Espacio entre gráfico y siguiente */
         }
         
-        /* Ajuste para Top 5 Artículos más largo */
-        .top5-card {
-            min-height: 260px !important;  /* Hacerlo más largo para alinear con Actividad */
+        /* ALTURA UNIFORME ENTRE GRÁFICA Y TOP 5 */
+        .comparison-wrapper .stColumns {
+            display: flex !important;
+            align-items: stretch !important;  /* Hace que las columnas tengan la misma altura */
         }
-        """ + (".fc-metrics-grid { display: none !important; }" if hide_metrics else "") + """
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-    df_view = rename_month_columns(df.copy())  # Renombra columnas de meses para display
-
-    col_proveedor = _find_col(df_view, ["proveedor", "cliente / proveedor"])
-    col_articulo = _find_col(df_view, ["articulo", "artículo"])
-    col_fecha = _find_col(df_view, ["fecha"])
-    col_moneda = _find_col(df_view, ["moneda", "currency"])
-    col_total = _find_col(df_view, ["total", "monto", "importe", "valor", "monto_neto"])
-    col_nro = _find_col(df_view, ["nro_factura", "nro. comprobante", "nro comprobante", "nro_comprobante"])
-    col_cantidad = _find_col(df_view, ["cantidad"])
-
-    if col_moneda:
-        df_view["__moneda_view__"] = df_view[col_moneda].apply(_norm_moneda_view)
-    else:
-        df_view["__moneda_view__"] = "OTRA"
-
-    if col_fecha:
-        df_view["__fecha_view__"] = pd.to_datetime(df_view[col_fecha], errors="coerce")
-    else:
-        df_view["__fecha_view__"] = pd.NaT
-
-    # FIX: Calcular __total_num__ correctamente para comparaciones
-    if col_total:
-        df_view["__total_num__"] = df_view[col_total].apply(_safe_to_float)
-    else:
-        numeric_cols = [c for c in df_view.columns if c != col_proveedor and pd.api.types.is_numeric_dtype(df_view[c])]
-        if numeric_cols:
-            # Para comparaciones: suma las columnas numéricas (ej: "2024-11" + "2025-11")
-            df_view["__total_num__"] = df_view[numeric_cols].sum(axis=1)
-        else:
-            df_view["__total_num__"] = 0.0
-
-    # Contexto
-    filas_total = int(len(df_view))
-    facturas = int(df_view[col_nro].nunique()) if col_nro else 0
-    proveedores = int(df_view[col_proveedor].nunique()) if col_proveedor else 0
-    articulos = int(df_view[col_articulo].nunique()) if col_articulo else 0
-
-    # Rango fechas
-    rango_txt = ""
-    if df_view["__fecha_view__"].notna().any():
-        dmin = df_view["__fecha_view__"].min()
-        dmax = df_view["__fecha_view__"].max()
-        try:
-            rango_txt = f" · {dmin.date()} → {dmax.date()}"
-        except Exception:
-            rango_txt = ""
-
+    </style>
+    """, unsafe_allow_html=True)
+    
     # ==========================================
-    # HEADER MODERNO CON GRADIENTE
+    # HTML ESTRUCTURA
     # ==========================================
+    
+    # HEADER
     st.markdown(f"""
-    <div class="fc-header-modern">
-        <h2 class="fc-title-modern">📊 {titulo}</h2>
-        <div class="fc-badge-modern">
-            ✅ {filas_total} registros encontrados
+    <div class="dash-header">
+        <h2 class="dash-title">📊 {titulo}</h2>
+        <div class="dash-badge">
+            ✅ Resultado: Se encontraron {len(df)} registros
         </div>
-        <p class="fc-meta-modern">
-            Facturas: {facturas} · Proveedores: {proveedores} · Artículos: {articulos}{rango_txt}
+        <p class="dash-meta">
+            📅 Última actualización: {datetime.now().strftime("%d/%m/%Y %H:%M")}
         </p>
     </div>
     """, unsafe_allow_html=True)
-
-    # ==========================================
-    # MÉTRICAS CON TARJETAS MODERNAS (ocultas si hide_metrics)
-    # ==========================================
-    tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
-    tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
-    # FIX: Si no hay columna moneda (como en comparaciones), mostrar total general en UYU
-    if not col_moneda:
-        tot_uyu = float(df_view["__total_num__"].sum())
-        tot_usd = 0.0
-
+    
+    # MÉTRICAS
+    # Formatear totales
+    total_uyu_fmt = f"$ {total_uyu/1_000_000:.2f}M" if total_uyu >= 1_000_000 else f"$ {total_uyu:,.0f}".replace(",", ".")
+    total_usd_fmt = f"U$S {total_usd/1_000:.0f}K" if total_usd >= 1_000 else f"U$S {total_usd:,.0f}"
+    
     st.markdown(f"""
-    <div class="fc-metrics-grid">
-        <div class="fc-metric-card">
-            <p class="fc-metric-label">Total UYU 💰</p>
-            <p class="fc-metric-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
-            <p class="fc-metric-help">Valor exacto: $ {tot_uyu:,.2f}</p>
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <p class="metric-label">Total UYU 💰</p>
+            <p class="metric-value">{total_uyu_fmt}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Suma de {len(periodos)} período(s)
+            </p>
         </div>
-        <div class="fc-metric-card">
-            <p class="fc-metric-label">Total USD 💵</p>
-            <p class="fc-metric-value">{_fmt_compact_money(tot_usd, "USD")}</p>
-            <p class="fc-metric-help">Valor exacto: U$S {tot_usd:,.2f}</p>
+        <div class="metric-card">
+            <p class="metric-label">Total USD 💵</p>
+            <p class="metric-value">{total_usd_fmt}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Suma de {len(periodos)} período(s)
+            </p>
         </div>
-        <div class="fc-metric-card">
-            <p class="fc-metric-label">{"Facturas 📄" if col_nro else "Registros 📄"}</p>
-            <p class="fc-metric-value">{facturas if col_nro else filas_total}</p>
+        <div class="metric-card">
+            <p class="metric-label">Registros 📄</p>
+            <p class="metric-value">{num_registros}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                {len(df_pesos) if 'Moneda' in df.columns and not df_pesos.empty else 0} en pesos, {len(df_usd) if 'Moneda' in df.columns and not df_usd.empty else 0} en USD
+            </p>
         </div>
-        <div class="fc-metric-card">
-            <p class="fc-metric-label">Proveedores 🏭</p>
-            <p class="fc-metric-value">{proveedores}</p>
+        <div class="metric-card">
+            <p class="metric-label">{entidad} 🏭</p>
+            <p class="metric-value">{num_entidades}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Comparando {', '.join(map(str, periodos[:3]))}{"..." if len(periodos) > 3 else ""}
+            </p>
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-    # ============================================================
-    # SIN FILTROS (mostrar todo)
-    # ============================================================
-    df_f = df_view.copy()
-
-    # ============================================================
-    # TABS
-    # ============================================================
-    tab_all, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
-        ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
-    )
-
-    with tab_all:
-        # 📊 GRID 2x2 DE CARDS
-        col1, col2 = st.columns(2)
+    
+    # ==========================================
+    # ❌ TARJETAS DUPLICADAS ELIMINADAS
+    # ==========================================
+    
+    # TABS CON DATOS
+    tabs = st.tabs(["📊 Vista General", "💵 Pesos (UYU)", "💰 Dólares (USD)", "📈 Gráfico", "📋 Tabla"])
+    
+    # ==========================================
+    # TAB 1: VISTA GENERAL - DASHBOARD EJECUTIVO IMPACTANTE
+    # ==========================================
+    with tabs[0]:
+        # Validar que tengamos al menos 2 períodos
+        periodos_validos = [p for p in periodos if p in df.columns]
         
-        with col1:
-            # CARD 1: PERÍODO ANALIZADO
-            st.markdown(f"""
-            <div class="resumen-card">
-                <h4 class="resumen-title">📅 Período Analizado</h4>
-                <p class="resumen-text">{rango_txt if rango_txt else 'Sin datos de fecha'}</p>
-            </div>
-            """, unsafe_allow_html=True)
+        if len(periodos_validos) >= 2:
+            # 🎯 CALCULAR MÉTRICAS PRINCIPALES
+            p1 = periodos_validos[0]
+            p2 = periodos_validos[1]
             
-            # CARD 3: ACTIVIDAD EN EL TIEMPO
-            if col_fecha and not df_f.empty:
-                df_f['fecha_dt'] = pd.to_datetime(df_f[col_fecha], errors='coerce')
-                df_f['fecha_str'] = df_f['fecha_dt'].dt.strftime('%d/%m')
-                gasto_diario = df_f.groupby('fecha_str')['__total_num__'].sum()
-                if col_nro:
-                    facturas_diario = df_f.groupby('fecha_str')[col_nro].nunique()
-                else:
-                    facturas_diario = df_f.groupby('fecha_str').size()
-                
-                if not gasto_diario.empty:
-                    dia_mayor_gasto = gasto_diario.idxmax()
-                    mayor_gasto = gasto_diario.max()
-                    
-                    dia_mas_facturas = facturas_diario.idxmax()
-                    mas_facturas = facturas_diario.max()
-                    
-                    promedio_diario = gasto_diario.mean()
-                    
-                    st.markdown(f"""
-                    <div class="resumen-card">
-                        <h4 class="resumen-title">⏰ Actividad en el Tiempo</h4>
-                        <p class="resumen-text">
-                            Día con mayor gasto: {dia_mayor_gasto} — {_fmt_compact_money(mayor_gasto, "UYU")}<br>
-                            Día con más facturas: {dia_mas_facturas} — {mas_facturas} facturas<br>
-                            Promedio diario: {_fmt_compact_money(promedio_diario, "UYU")}
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
-        
-        with col2:
-            # CARD 2: TOP 5 ARTÍCULOS
-            if col_articulo:
-                top_art = (
-                    df_f.groupby(col_articulo)["__total_num__"]
-                    .sum()
-                    .sort_values(ascending=False)
-                ).head(5)
-                
-                if len(top_art) > 0:
-                    items_html = ""
-                    for idx, (art, monto) in enumerate(top_art.items(), 1):
-                        art_short = _shorten_text(art, 40)
-                        monto_fmt = _fmt_compact_money(monto, "UYU")
-                        items_html += f'<span class="numero-badge">{idx}</span>{art_short} — {monto_fmt}<br>'
-                    
-                    st.markdown(f"""
-                    <div class="resumen-card top5-card">
-                        <h4 class="resumen-title">📊 Top 5 Artículos</h4>
-                        <p class="resumen-text">{items_html}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-    with tab_uyu:
-        # Calcular total UYU
-        total_uyu_tab = df_f[df_f["__moneda_view__"] == "UYU"]["__total_num__"].sum()
-        
-        st.markdown(f"""
-        <div class="total-summary-card">
-            <p class="total-summary-value">{_fmt_compact_money(total_uyu_tab, "UYU")}</p>
-            <p class="total-summary-label">Total Pesos (UYU)</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with tab_usd:
-        # Calcular total USD
-        total_usd_tab = df_f[df_f["__moneda_view__"] == "USD"]["__total_num__"].sum()
-        
-        st.markdown(f"""
-        <div class="total-summary-card">
-            <p class="total-summary-value">{_fmt_compact_money(total_usd_tab, "USD")}</p>
-            <p class="total-summary-label">Total Dólares (USD)</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with tab_graf:
-        if df_f is None or df_f.empty or not col_articulo:
-            st.info("Sin datos suficientes para gráfico.")
-        else:
-            g_mon = st.selectbox(
-                "Moneda del gráfico",
-                options=["TODAS", "UYU", "USD"],
-                index=0,
-                key=f"{key_prefix}g_mon"
-            )
-            df_g = df_f.copy()
-            if g_mon != "TODAS":
-                df_g = df_g[df_g["__moneda_view__"] == g_mon]
-
-            top_art = (
-                df_g.groupby(col_articulo)["__total_num__"]
-                .sum()
-                .sort_values(ascending=False)
-            ).head(10)
-
-            if len(top_art) == 0:
-                st.info("Sin resultados para ese filtro.")
+            total_p1 = df[p1].sum()
+            total_p2 = df[p2].sum()
+            diferencia = total_p2 - total_p1
+            variacion_pct = ((total_p2 / total_p1 - 1) * 100) if total_p1 != 0 else 0
+            
+            # 🎨 DETERMINAR COLOR Y ESTILO
+            if variacion_pct > 0:
+                color_bg = "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                icono = "🚀"
+                color_texto = "#10b981"
             else:
-                df_top_art = top_art.reset_index()
-                df_top_art.columns = [col_articulo, "Total"]
-                df_top_art[col_articulo] = df_top_art[col_articulo].apply(lambda x: _shorten_text(x, 60))
-
-                st.dataframe(df_top_art, use_container_width=True, hide_index=True, height=320)
-
+                color_bg = "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
+                icono = "📉"
+                color_texto = "#ef4444"
+            
+            # Formatear diferencia
+            dif_fmt = f"${abs(diferencia)/1_000_000:.1f}M" if abs(diferencia) >= 1_000_000 else f"${abs(diferencia):,.0f}".replace(",", ".")
+            signo = "+" if diferencia > 0 else "-"
+            
+            # 📊 FIX 3: WRAPPER PARA BLOQUE KPIs (forzar flujo vertical)
+            st.markdown('<div style="margin-bottom:20px;">', unsafe_allow_html=True)  # Espacio
+            
+            # 📊 FILA 1: 2 CARDS ARRIBA (CRECIMIENTO EN $ + VARIACIÓN EN %)
+            col_crec, col_var = st.columns(2)
+            
+            with col_crec:
+                card_html = f'<div style="background: {color_bg}; border-radius: 8px; padding: 12px 16px; text-align: center; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: center;"><h3 style="margin: 0; font-size: 0.75rem; font-weight: 600; opacity: 0.95; letter-spacing: 1px;">CRECIMIENTO</h3><h1 style="margin: 6px 0 2px 0; font-size: 1.5rem; font-weight: 800; line-height: 1;">{signo}{dif_fmt}</h1><p style="margin: 0; font-size: 0.7rem; font-weight: 500; opacity: 0.9;">vs {p1}</p></div>'
+                st.markdown(card_html, unsafe_allow_html=True)
+            
+            with col_var:
+                card_html = f'<div style="background: white; border: 2px solid {color_texto}; border-radius: 8px; padding: 12px 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: center;"><h3 style="margin: 0; font-size: 0.75rem; font-weight: 600; color: #6b7280; letter-spacing: 1px;">VARIACIÓN</h3><h1 style="margin: 6px 0 2px 0; font-size: 1.5rem; font-weight: 800; line-height: 1; color: {color_texto};">{variacion_pct:+.1f}%</h1><p style="margin: 0; font-size: 0.7rem; font-weight: 500; color: #6b7280;">Cambio total</p></div>'
+                st.markdown(card_html, unsafe_allow_html=True)
+            
+            # Cerrar wrapper KPIs
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # 📊 FIX 3: WRAPPER PARA BLOQUE GRÁFICO + TOP5
+            st.markdown('<div class="comparison-wrapper" style="margin-bottom:20px;">', unsafe_allow_html=True)  # Espacio
+            
+            # 📊 FILA 2: GRÁFICO (50%) + TOP 5 (50%) - ✅ Alineado con 2 columnas arriba
+            col_graph, col_top5 = st.columns(2)  # ✅ Cambiado a st.columns(2) para igual ancho
+            
+            with col_graph:
+                # ✅ FIX #3: GRÁFICO INTELIGENTE SEGÚN CANTIDAD DE ENTIDADES
+                if len(df) == 1:
+                    st.markdown("#### 📊 Comparación de Períodos")
+                else:
+                    st.markdown("#### 📊 Comparación")
+                
                 try:
-                    chart_df = df_top_art.set_index(col_articulo)["Total"]
-                    st.bar_chart(chart_df)
-                except Exception:
-                    pass
-
-    with tab_tabla:
-        if df_f is None or df_f.empty:
-            st.info("Sin resultados para mostrar.")
+                    import plotly.graph_objects as go
+                    
+                    entity_col = 'Articulo' if es_articulos else 'Proveedor' if 'Proveedor' in df.columns else 'Articulo'
+                    
+                    if len(df) == 1:
+                        # ✅ 1 SOLO ARTÍCULO/PROVEEDOR: Gráfico simple de períodos
+                        fig = go.Figure()
+                        fig.add_trace(go.Bar(
+                            name=str(p1),
+                            x=['Período 1'],
+                            y=[total_p1],
+                            marker_color='#667eea',
+                            text=[f'${total_p1/1_000_000:.1f}M' if total_p1 >= 1_000_000 else f'${total_p1:,.0f}'.replace(",", ".")],
+                            textposition='outside'
+                        ))
+                        fig.add_trace(go.Bar(
+                            name=str(p2),
+                            x=['Período 2'],
+                            y=[total_p2],
+                            marker_color='#764ba2',
+                            text=[f'${total_p2/1_000_000:.1f}M' if total_p2 >= 1_000_000 else f'${total_p2:,.0f}'.replace(",", ".")],
+                            textposition='outside'
+                        ))
+                        
+                        fig.update_layout(
+                            xaxis_title="",
+                            yaxis_title="Monto",
+                            template="plotly_white",
+                            showlegend=True,
+                            barmode='group',
+                            margin=dict(t=20, b=30, l=50, r=20)
+                        )
+                    else:
+                        # ✅ MÚLTIPLES ENTIDADES: Top 8 con barras agrupadas
+                        df_graph = df.copy()
+                        df_graph['Total'] = df_graph[periodos_validos].sum(axis=1)
+                        df_graph = df_graph.nlargest(8, 'Total')
+                        
+                        fig = go.Figure()
+                        fig.add_trace(go.Bar(
+                            name=str(p1),
+                            x=df_graph[entity_col],
+                            y=df_graph[p1].astype(float),
+                            marker_color='#667eea',
+                            text=df_graph[p1].apply(lambda x: f'${float(x)/1_000_000:.1f}M' if x >= 1_000_000 else f'${float(x):,.0f}'.replace(",", ".") if pd.notna(x) else "0"),
+                            textposition='outside',
+                            textfont=dict(size=10)
+                        ))
+                        fig.add_trace(go.Bar(
+                            name=str(p2),
+                            x=df_graph[entity_col],
+                            y=df_graph[p2].astype(float),
+                            marker_color='#764ba2',
+                            text=df_graph[p2].apply(lambda x: f'${float(x)/1_000_000:.1f}M' if x >= 1_000_000 else f'${float(x):,.0f}'.replace(",", ".") if pd.notna(x) else "0"),
+                            textposition='outside',
+                            textfont=dict(size=10)
+                        ))
+                        
+                        fig.update_layout(
+                            xaxis_title="",
+                            yaxis_title="Monto",
+                            template="plotly_white",
+                            showlegend=True,
+                            barmode='group',
+                            xaxis={'tickangle': -45, 'tickfont': {'size': 9}},
+                            margin=dict(t=20, b=50, l=50, r=20)
+                        )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+            
+            with col_top5:
+                st.markdown("#### 📊 Top 5 Períodos Más Comprados")
+                
+                # ✅ TOP 5 PERÍODOS: Si hay artículos seleccionados, mostrar top períodos para ese artículo
+                articulos_sel = st.session_state.get("art_multi", [])
+                
+                if articulos_sel and len(articulos_sel) > 0:
+                    # Mostrar top períodos para el primer artículo seleccionado
+                    articulo_seleccionado = articulos_sel[0]  # Asumir uno; ajusta si múltiples
+                    try:
+                        # Obtener contexto de session_state
+                        anios_ctx = st.session_state.get("anios_sel", [2024, 2025])
+                        meses_ctx = st.session_state.get("meses_multi", [])
+                        proveedores_ctx = st.session_state.get("comparativas_proveedores_multi", [])
+                        
+                        meses_param = meses_ctx if meses_ctx and len(meses_ctx) > 0 else None
+                        proveedores_param = proveedores_ctx if proveedores_ctx and len(proveedores_ctx) > 0 else None
+                        
+                        df_top_periodos = get_top_5_periodos_por_articulo(
+                            articulo=articulo_seleccionado,
+                            anios=anios_ctx,
+                            meses=meses_param,
+                            proveedores=proveedores_param
+                        )
+                        
+                        if df_top_periodos is None or df_top_periodos.empty:
+                            st.info("No hay datos para los períodos seleccionados")
+                        else:
+                            # Formatear totales
+                            df_display = df_top_periodos.copy()
+                            df_display['total'] = df_display['total'].apply(lambda x: f"${float(x):,.0f}".replace(",", "."))
+                            df_display.columns = ['Período', 'Total Comprado']
+                            st.dataframe(df_display, use_container_width=True, hide_index=True, height=300)
+                            st.caption(f"Top períodos para el artículo: **{articulo_seleccionado}**")
+                    except Exception as e:
+                        st.error(f"Error cargando top períodos: {str(e)}")
+                else:
+                    # Mantener el Top 5 artículos global original
+                    try:
+                        # Obtener contexto de session_state
+                        anios_ctx = st.session_state.get("anios_sel", [2024, 2025])
+                        meses_ctx = st.session_state.get("meses_multi", [])
+                        proveedores_ctx = st.session_state.get("comparativas_proveedores_multi", [])
+                        
+                        # ✅ FIX: Si hay meses, usar SOLO los años únicos de esos meses
+                        if meses_ctx and len(meses_ctx) > 0:
+                            # Extraer años únicos de los meses (ej: ["2024-11", "2025-11"] -> [2024, 2025])
+                            anios_unicos = list(set([int(m.split('-')[0]) for m in meses_ctx if '-' in m]))
+                            anios_ctx = anios_unicos if anios_unicos else anios_ctx
+                        
+                        # ✅ Pasar meses SOLO si hay selección explícita
+                        meses_param = meses_ctx if meses_ctx and len(meses_ctx) > 0 else None
+                        
+                        # ✅ Pasar proveedores correctamente
+                        proveedores_param = proveedores_ctx if proveedores_ctx and len(proveedores_ctx) > 0 else None
+                        
+                        # --- NORMALIZAR PROVEEDORES PARA TOP 5 ---
+                        if proveedores_param:
+                            if isinstance(proveedores_param, str):
+                                proveedores_param = [proveedores_param]
+                            elif not isinstance(proveedores_param, (list, tuple)):
+                                proveedores_param = []
+                        
+                        print(f"🛠 DEBUG Top5: años={anios_ctx}, meses={meses_param}, provs={proveedores_param}")
+                        
+                        df_top5 = get_top_5_articulos(
+                            anios=anios_ctx,
+                            meses=meses_param,
+                            proveedores=proveedores_param
+                        )
+                        
+                        if df_top5 is None or df_top5.empty:
+                            st.info("No hay datos para el período seleccionado")
+                        else:
+                            # Mostrar tabla con Moneda incluida
+                            df_display = df_top5[['Articulo', 'Moneda', 'total']].copy()
+                            df_display['total'] = df_display['total'].apply(
+                                lambda x: f"${float(x):,.0f}".replace(",", ".")
+                            )
+                            df_display.columns = ['Artículo', 'Moneda', 'Total']
+                            st.dataframe(df_display, use_container_width=True, hide_index=True, height=300)
+                    except Exception as e:
+                        st.error(f"Error Top 5: {str(e)}")
+                        import traceback
+                        st.code(traceback.format_exc())
+            
+            # Cerrar wrapper gráfico + top5
+            st.markdown('</div>', unsafe_allow_html=True)
+        
         else:
-            # Orden preferido (mantiene columnas originales)
-            pref = []
-            for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
-                if c and c in df_f.columns:
-                    pref.append(c)
-            resto = [c for c in df_f.columns if c not in pref and not str(c).startswith("__")]
-            show_cols = pref + resto
-
-            # Paginación
-            t1, t2, t3 = st.columns([1.2, 1.0, 1.8])
-            with t1:
-                page_size = st.selectbox(
-                    "Filas por página",
-                    options=[25, 50, 100, 250],
-                    index=0,
-                    key=f"{key_prefix}page_size"
+            st.info("⚠️ Se requieren al menos 2 períodos para generar el análisis comparativo.")
+    
+    with tabs[1]:
+        # ✅ FIX: Usar col_moneda encontrada antes (case insensitive)
+        if col_moneda:
+            df['Moneda_norm'] = df[col_moneda].astype(str).str.strip().str.upper()
+            df_pesos = df[df['Moneda_norm'].str.contains(r'^\$|UYU|PESO', regex=True, na=False) & 
+                          ~df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+        else:
+            df_pesos = df
+        st.dataframe(df_pesos, use_container_width=True, height=400)
+    
+    with tabs[2]:
+        # ✅ FIX: Usar col_moneda encontrada antes (case insensitive)
+        if col_moneda:
+            df['Moneda_norm'] = df[col_moneda].astype(str).str.strip().str.upper()
+            df_usd = df[df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+        else:
+            df_usd = pd.DataFrame()
+        
+        if not df_usd.empty:
+            st.dataframe(df_usd, use_container_width=True, height=400)
+        else:
+            st.info("No hay datos en dólares")
+    
+    with tabs[3]:
+        # Gráfico de barras por proveedor
+        if 'Proveedor' in df.columns:
+            try:
+                import plotly.express as px
+                fig = px.bar(
+                    df.groupby('Proveedor').sum(numeric_only=True).reset_index(),
+                    x='Proveedor',
+                    y=df.select_dtypes(include='number').columns[0],
+                    title="Distribución por Proveedor"
                 )
-            max_pages = max(1, int((len(df_f) + int(page_size) - 1) / int(page_size)))
-            with t2:
-                page = st.number_input(
-                    "Página",
-                    min_value=1,
-                    max_value=max_pages,
-                    value=min(st.session_state.get(f"{key_prefix}page", 1), max_pages),
-                    step=1,
-                    key=f"{key_prefix}page"
+                st.plotly_chart(fig, use_container_width=True)
+            except ImportError:
+                st.info("Plotly no disponible")
+            except Exception:
+                st.info("No se pudo generar el gráfico")
+    
+with tabs[4]:
+    # ✅ MODIFICACIÓN AQUÍ: LOGIC FOR HISTORICAL PRICES IF ONE ARTICLE SELECTED
+    articulos_sel = st.session_state.get("art_multi", [])
+    
+    if articulos_sel and len(articulos_sel) == 1:
+        articulo = articulos_sel[0]
+        
+        try:
+            df_hist = sqlq_comparativas.get_historico_precios_unitarios(articulo)
+            
+            if df_hist is not None and not df_hist.empty:
+                st.subheader(f"Histórico de precios – {articulo}")
+                
+                st.dataframe(
+                    df_hist,
+                    use_container_width=True,
+                    hide_index=True
                 )
-            with t3:
-                st.caption(f"Página {int(page)} de {max_pages} · Total filas: {len(df_f)}")
-
-            df_page = _paginate(df_f[show_cols], int(page), int(page_size)).copy()
-
-            # Recortar textos para vista limpia
-            if col_proveedor and col_proveedor in df_page.columns:
-                df_page[col_proveedor] = df_page[col_proveedor].apply(lambda x: _shorten_text(x, 60))
-            if col_articulo and col_articulo in df_page.columns:
-                df_page[col_articulo] = df_page[col_articulo].apply(lambda x: _shorten_text(x, 60))
-
-            st.dataframe(df_page, use_container_width=True, height=460)
-
-            # Drill-down por factura
-            if col_nro and col_nro in df_f.columns:
-                st.markdown("#### Detalle por factura")
-                nros = [n for n in df_f[col_nro].dropna().astype(str).unique().tolist() if str(n).strip()]
-                nros = sorted(nros)[:5000]
-
-                det_col1, det_col2 = st.columns([1.2, 2.8])
-                with det_col1:
-                    det_search = st.text_input(
-                        "Buscar nro factura",
-                        value="",
-                        key=f"{key_prefix}det_search",
-                        placeholder="Ej: A00060907"
-                    ).strip()
-
-                nro_opts = nros
-                if det_search:
-                    nro_opts = [n for n in nros if det_search.lower() in str(n).lower()]
-                    nro_opts = nro_opts[:200]
-
-                with det_col2:
-                    nro_sel = st.selectbox(
-                        "Seleccionar factura",
-                        options=["(ninguna)"] + nro_opts,
-                        index=0,
-                        key=f"{key_prefix}det_nro_sel"
-                    )
-
-                if nro_sel and nro_sel != "(ninguna)":
-                    df_fac = df_f[df_f[col_nro].astype(str) == str(nro_sel)].copy()
-
-                    tot_fac = float(df_fac["__total_num__"].sum())
-                    mon_fac = "USD" if (df_fac["__moneda_view__"] == "USD").any() and not (df_fac["__moneda_view__"] == "UYU").any() else "UYU"
-                    st.markdown(
-                        f"**Factura:** `{nro_sel}` · **Items:** {len(df_fac)} · **Total:** {_fmt_compact_money(tot_fac, mon_fac)}"
-                    )
-
-                    pref_fac = []
-                    for c in [col_articulo, col_cantidad, col_total, col_fecha, col_moneda]:
-                        if c and c in df_fac.columns:
-                            pref_fac.append(c)
-                    resto_fac = [c for c in df_fac.columns if c not in pref_fac and not str(c).startswith("__")]
-                    show_cols_fac = pref_fac + resto_fac
-
-                    df_fac_disp = df_fac[show_cols_fac].copy()
-                    if col_articulo and col_articulo in df_fac_disp.columns:
-                        df_fac_disp[col_articulo] = df_fac_disp[col_articulo].apply(lambda x: _shorten_text(x, 70))
-
-                    st.dataframe(df_fac_disp, use_container_width=True, height=320)
-
+            else:
+                st.warning(f"⚠️ No hay datos históricos para '{articulo}'")
+                
+                # Debug rápido: contar registros
+                debug_sql = '''
+                    SELECT COUNT(*) as total
+                    FROM chatbot_raw 
+                    WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+                      AND "Cantidad" IS NOT NULL AND TRIM("Cantidad") <> ''
+                      AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+                '''
+                debug_df = ejecutar_consulta(debug_sql, (f"%{articulo.strip().lower()}%",))
+                if debug_df is not None and not debug_df.empty:
+                    total = int(debug_df.iloc[0]['total'])
+                    st.info(f"Registros encontrados para '{articulo}': {total}")
+                    if total == 0:
+                        st.info("El artículo no existe o no tiene datos válidos.")
+                    else:
+                        st.info("Datos existen, pero no se pudieron parsear (revisa Monto Neto).")
+        except Exception as e:
+            st.error(f"Error: {e}")
+    else:
+        # ✅ NUEVA LÓGICA: Si 1 proveedor y 2 períodos → Mostrar análisis de variación
+        proveedores_sel = st.session_state.get("comparativas_proveedores_multi", [])
+        if proveedores_sel and len(proveedores_sel) == 1 and len(periodos_validos) == 2:
+            proveedor_sel = proveedores_sel[0]
+            
+            df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
+            
+            if df_variacion is not None and not df_variacion.empty:
+                st.markdown("#### 📊 ¿Por qué bajó/subió el gasto?")
+                st.dataframe(
+                    df_variacion[['Articulo', 'Moneda', f'Total {periodos_validos[0]}', f'Total {periodos_validos[1]}', 'Variación', 'Tipo de Variación', 'Impacto']],
+                    use_container_width=True,
+                    hide_index=True,
+                    height=600
+                )
+            else:
+                st.info("No hay datos de variación para este proveedor")
+        
+        # ⬇️ TABLA COMPARATIVA ORIGINAL (NO TOCAR) - Solo si NO aplica CASO 2
+        if not (
+            proveedores_sel
+            and len(proveedores_sel) == 1
+            and len(periodos_validos) == 2
+        ):
+            st.dataframe(df, use_container_width=True, height=600)
 
 # =========================
 # DASHBOARD COMPARATIVAS MODERNO
