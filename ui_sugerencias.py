@@ -273,14 +273,9 @@ div[data-testid="stTextInput"] > div{
     display: none !important;
 }
 
-/* Ocultar barra grande de estado dentro de la tarjeta */
-.fc-statusbar{
-    display: none !important;
-}
-
-/* Ocultar completamente las tarjetas de sugerencias */
-.fc-sug-card{
-    display: none !important;
+/* Separación clara entre título de sección y primer card */
+.fc-section-title{
+    margin-bottom: 1rem !important;
 }
 </style>
 """
