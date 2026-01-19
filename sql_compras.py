@@ -282,7 +282,7 @@ def get_detalle_compras_proveedor_mes(proveedor_like: str, mes_key: str, anio: O
             if df is not None and not df.empty:
                 df.attrs["fallback_mes"] = mes_alt
     
-    return df if df is not None else pd.DataFrame()
+    return df
 
 
 # =====================================================================
@@ -666,14 +666,21 @@ def get_total_facturas_proveedor(
         params.extend([desde, hasta])
 
     elif meses:
-        ph = ", ".join(["%s"] * len(meses))
-        where_parts.append(f'LOWER(TRIM("Mes")) IN ({ph})')  # ✅ LOWER agregado
-        params.extend([m.lower() for m in meses])  # ✅ .lower() agregado
+        meses_ok = [m for m in (meses or []) if m]
+        if meses_ok:
+            ph = ", ".join(["%s"] * len(meses_ok))
+            where_parts.append(f'LOWER(TRIM("Mes")) IN ({ph})')  # ✅ LOWER agregado
+            params.extend([m.lower() for m in meses_ok])  # ✅ .lower() agregado
 
     elif anios:
-        ph = ", ".join(["%s"] * len(anios))
-        where_parts.append(f'"Año" IN ({ph})')
-        params.extend(anios)
+        anios_ok: List[int] = []
+        for a in (anios or []):
+            if isinstance(a, int):
+                anios_ok.append(a)
+        if anios_ok:
+            ph = ", ".join(["%s"] * len(anios_ok))
+            where_parts.append(f'"Año" IN ({ph})')
+            params.extend(anios_ok)
 
     query = f"""
         SELECT
@@ -1059,4 +1066,60 @@ def get_compras_por_mes_excel(
         limite=limite
     )
 
+# =========================
+# FUNCIONES PARA SUGERENCIAS
+# =========================
 
+def get_cantidad_articulos_anio(anio: int) -> pd.DataFrame:
+    """
+    Devuelve la cantidad anual total por artículo en el año especificado.
+    """
+    sql = """
+    SELECT
+        TRIM("Articulo") AS articulo,
+        SUM(
+            CAST(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(TRIM("Cantidad"), '.', ''),
+                    ',', '.'),
+                ' ', '')
+            AS NUMERIC
+        ) AS cantidad_anual
+    FROM chatbot_raw
+    WHERE "Año"::int = %(anio)s
+      AND TRIM("Articulo") IS NOT NULL
+      AND TRIM("Articulo") <> ''
+      AND "Cantidad" IS NOT NULL
+      AND TRIM("Cantidad") <> ''
+    GROUP BY TRIM("Articulo")
+    HAVING SUM(
+        CAST(
+            REPLACE(
+                REPLACE(
+                    REPLACE(TRIM("Cantidad"), '.', ''),
+                ',', '.'),
+            ' ', '')
+        AS NUMERIC
+    )) > 0
+    ORDER BY cantidad_anual DESC;
+    """
+    return ejecutar_consulta(sql, {"anio": anio})
+
+def get_info_articulos_ultima_compra(anio: int) -> pd.DataFrame:
+    """
+    Devuelve la última compra y proveedor por artículo en el año especificado.
+    """
+    sql = """
+    SELECT
+        TRIM("Articulo") AS articulo,
+        MAX("Fecha") AS ultima_compra,
+        (ARRAY_AGG("Cliente / Proveedor" ORDER BY "Fecha" DESC))[1] AS proveedor_ultima_compra
+    FROM chatbot_raw
+    WHERE "Año"::int = %(anio)s
+      AND TRIM("Articulo") IS NOT NULL
+      AND TRIM("Articulo") <> ''
+      AND "Fecha" IS NOT NULL
+    GROUP BY TRIM("Articulo");
+    """
+    return ejecutar_consulta(sql, {"anio": anio})
