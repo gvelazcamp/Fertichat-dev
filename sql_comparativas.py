@@ -820,7 +820,7 @@ def get_analisis_variacion_articulos(proveedor, anios):
     sql = f"""
         WITH base AS (
             SELECT
-                "Articulo",
+                TRIM("Articulo") AS "Articulo",
                 "Moneda",
                 "Año",
                 SUM(
@@ -835,7 +835,7 @@ def get_analisis_variacion_articulos(proveedor, anios):
             WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
                 AND "Año"::int IN ({anio1}, {anio2})
                 AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
-            GROUP BY "Articulo", "Moneda", "Año"
+            GROUP BY TRIM("Articulo"), "Moneda", "Año"
         )
         SELECT
             COALESCE(b1."Articulo", b2."Articulo") AS "Articulo",
