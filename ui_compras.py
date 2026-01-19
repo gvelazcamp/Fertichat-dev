@@ -1178,9 +1178,6 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         st.warning("⚠️ No hay datos para mostrar")
         return
 
-    # ✅ AGREGADO: Convertir 'Total' a numérico para evitar errores en nlargest
-    df['Total'] = pd.to_numeric(df['Total'], errors='coerce').fillna(0)
-    
     # ==========================================
     # CALCULAR MÉTRICAS CORRECTAMENTE
     # ==========================================
@@ -1196,6 +1193,10 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             cols_periodos.append(c)
         elif isinstance(c, str) and ('-' in c or c.isdigit()) and c not in ['Proveedor', 'Articulo', 'Moneda', 'Cliente / Proveedor']:
             cols_periodos.append(c)
+    
+    # ✅ AGREGADO: Convertir columnas de períodos a numérico
+    for col in cols_periodos:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
     
     print(f"🐛 DEBUG: Columnas de períodos detectadas: {cols_periodos}")
     
