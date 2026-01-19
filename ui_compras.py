@@ -1,4 +1,4 @@
-import streamlit as st
+    import streamlit as st
 import pandas as pd
 from datetime import datetime
 from typing import Optional
@@ -2695,7 +2695,7 @@ def Compras_IA():
         except Exception:
             pass
 
-    with tabs[4]:  # ← INDENTADO DENTRO DE Compras_IA()
+    with tabs[4]:
         # ✅ MODIFICACIÓN AQUÍ: LOGIC FOR HISTORICAL PRICES IF ONE ARTICLE SELECTED
         articulos_sel = st.session_state.get("art_multi", [])
         
