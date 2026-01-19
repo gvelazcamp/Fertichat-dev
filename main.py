@@ -400,7 +400,7 @@ user = get_current_user() or {}
 # Grupos del menú - AGREGAR LA NUEVA OPCIÓN A GESTIÓN
 groups = {
     "PRINCIPAL": ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"],
-    "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes", "📋 Sugerencia de pedidos preciso con sus importes"],  # ← AGREGADO AQUÍ
+    "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes", "📋 Sugerencia de pedidos "],  # ← AGREGADO AQUÍ
     "CATÁLOGO": ["📚 Artículos", "🧩 Familias", "🏬 Depósitos", "📑 Comprobantes"],
     "ANÁLISIS": ["📊 Dashboard", "📈 Indicadores (Power BI)"],
 }
