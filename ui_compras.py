@@ -1256,7 +1256,169 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     
     # Identificar qué años/meses se están comparando
     periodos = cols_periodos
+    periodos_validos = cols_periodos  # ✅ AGREGADO: Variable que se usa en tabs[4]
     num_periodos = len(periodos)
+    
+    # ==========================================
+    # CSS Moderno (restante) - AGREGAR ESPACIADO Y ALTURA UNIFORME
+    # ==========================================
+    st.markdown("""
+    <style>
+        /* ... TODO EL CSS QUE YA TIENES ... */
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # ==========================================
+    # HTML ESTRUCTURA
+    # ==========================================
+    
+    # HEADER
+    st.markdown(f"""
+    <div class="dash-header">
+        <h2 class="dash-title">📊 {titulo}</h2>
+        <div class="dash-badge">
+            ✅ Resultado: Se encontraron {len(df)} registros
+        </div>
+        <p class="dash-meta">
+            📅 Última actualización: {datetime.now().strftime("%d/%m/%Y %H:%M")}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # MÉTRICAS
+    # Formatear totales
+    total_uyu_fmt = f"$ {total_uyu/1_000_000:.2f}M" if total_uyu >= 1_000_000 else f"$ {total_uyu:,.0f}".replace(",", ".")
+    total_usd_fmt = f"U$S {total_usd/1_000:.0f}K" if total_usd >= 1_000 else f"U$S {total_usd:,.0f}"
+    
+    st.markdown(f"""
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <p class="metric-label">Total UYU 💰</p>
+            <p class="metric-value">{total_uyu_fmt}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Suma de {len(periodos)} período(s)
+            </p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Total USD 💵</p>
+            <p class="metric-value">{total_usd_fmt}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Suma de {len(periodos)} período(s)
+            </p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Registros 📄</p>
+            <p class="metric-value">{num_registros}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                {len(df_pesos) if col_moneda and not df_pesos.empty else 0} en pesos, {len(df_usd) if col_moneda and not df_usd.empty else 0} en USD
+            </p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">{entidad} 🏭</p>
+            <p class="metric-value">{num_entidades}</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">
+                Comparando {', '.join(map(str, periodos[:3]))}{"..." if len(periodos) > 3 else ""}
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # TABS CON DATOS
+    tabs = st.tabs(["📊 Vista General", "💵 Pesos (UYU)", "💰 Dólares (USD)", "📈 Gráfico", "📋 Tabla"])
+    
+    # ==========================================
+    # TAB 1: VISTA GENERAL - DASHBOARD EJECUTIVO IMPACTANTE
+    # ==========================================
+    with tabs[0]:
+        # ... TODO EL CÓDIGO DEL TAB 0 QUE YA TIENES ...
+        pass  # Reemplazar con tu código
+    
+    with tabs[1]:
+        # ... TODO EL CÓDIGO DEL TAB 1 QUE YA TIENES ...
+        pass  # Reemplazar con tu código
+    
+    with tabs[2]:
+        # ... TODO EL CÓDIGO DEL TAB 2 QUE YA TIENES ...
+        pass  # Reemplazar con tu código
+    
+    with tabs[3]:
+        # ... TODO EL CÓDIGO DEL TAB 3 QUE YA TIENES ...
+        pass  # Reemplazar con tu código
+    
+    # ==========================================
+    # TAB 5: TABLA - ✅ CÓDIGO NUEVO AQUÍ
+    # ==========================================
+    with tabs[4]:
+        # ✅ LÓGICA MEJORADA: 3 casos según selección
+        articulos_sel = st.session_state.get("art_multi", [])
+        proveedores_sel = st.session_state.get("comparativas_proveedores_multi", [])
+        
+        # CASO 1: Un solo artículo seleccionado → Mostrar histórico de precios
+        if articulos_sel and len(articulos_sel) == 1:
+            articulo = articulos_sel[0]
+            
+            try:
+                df_hist = sqlq_comparativas.get_historico_precios_unitarios(articulo)
+                
+                if df_hist is not None and not df_hist.empty:
+                    st.subheader(f"📊 Histórico de precios — {articulo}")
+                    st.dataframe(
+                        df_hist,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                else:
+                    st.warning(f"⚠️ No hay datos históricos para '{articulo}'")
+                    
+                    # Debug rápido: contar registros
+                    debug_sql = '''
+                        SELECT COUNT(*) as total
+                        FROM chatbot_raw 
+                        WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+                          AND "Cantidad" IS NOT NULL AND TRIM("Cantidad") <> ''
+                          AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+                    '''
+                    debug_df = ejecutar_consulta(debug_sql, (f"%{articulo.strip().lower()}%",))
+                    if debug_df is not None and not debug_df.empty:
+                        total = int(debug_df.iloc[0]['total'])
+                        st.info(f"Registros encontrados para '{articulo}': {total}")
+                        if total == 0:
+                            st.info("El artículo no existe o no tiene datos válidos.")
+                        else:
+                            st.info("Datos existen, pero no se pudieron parsear (revisa Monto Neto).")
+            except Exception as e:
+                st.error(f"Error: {e}")
+        
+        # CASO 2: Un solo proveedor Y dos períodos → Mostrar análisis de variación
+        elif proveedores_sel and len(proveedores_sel) == 1 and len(periodos_validos) == 2:
+            proveedor_sel = proveedores_sel[0]
+            
+            try:
+                df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(
+                    proveedor_sel, 
+                    periodos_validos
+                )
+                
+                if df_variacion is not None and not df_variacion.empty:
+                    st.markdown("#### 📊 ¿Por qué bajó/subió el gasto?")
+                    st.dataframe(
+                        df_variacion[['Articulo', 'Moneda', f'Total {periodos_validos[0]}', f'Total {periodos_validos[1]}', 'Variación', 'Impacto']],
+                        use_container_width=True,
+                        hide_index=True,
+                        height=600
+                    )
+                else:
+                    st.info("No hay datos de variación para este proveedor")
+                    st.dataframe(df, use_container_width=True, height=600)
+            except Exception as e:
+                st.error(f"Error al cargar análisis de variación: {e}")
+                import traceback
+                st.code(traceback.format_exc())
+                st.dataframe(df, use_container_width=True, height=600)
+        
+        # CASO 3: Default → Mostrar tabla comparativa completa
+        else:
+            st.dataframe(df, use_container_width=True, height=600)
     
     # ==========================================
     # CSS Moderno (restante) - AGREGAR ESPACIADO Y ALTURA UNIFORME
