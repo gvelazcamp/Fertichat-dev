@@ -267,6 +267,11 @@ div[data-testid="stSelectbox"] > div,
 div[data-testid="stTextInput"] > div{
     border-radius: 12px;
 }
+
+/* Ocultar el wrapper de Streamlit para las tarjetas de sugerencias */
+div[data-testid="stMarkdownContainer"] {
+    display: contents;
+}
 </style>
 """
 
