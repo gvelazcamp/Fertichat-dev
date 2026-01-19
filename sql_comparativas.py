@@ -778,7 +778,7 @@ def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
 def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
     """
     Devuelve el histórico real de precios unitarios por artículo.
-    Parsea Monto Neto exactamente como en los ejemplos.
+    Parsea Monto Neto con el método simple que funciona.
     """
     sql = """
         WITH base AS (
@@ -788,7 +788,7 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
                 "Nro. Comprobante",
                 "Cantidad",
                 "Moneda",
-                -- Parsing IDÉNTICO a los ejemplos que funcionan
+                -- Parsing SIMPLE que funciona (como en los ejemplos)
                 CASE
                     WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
                         -1 * CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
