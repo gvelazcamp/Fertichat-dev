@@ -8,7 +8,7 @@ import numpy as np
 from datetime import datetime, timedelta
 
 # Importar helpers UI y config
-from ui.ui_sugerencias import (
+from ui_sugerencias import (
     apply_css_sugerencias,
     render_title,
     render_section_title,
