@@ -1,3 +1,7 @@
+# =========================
+# MAIN.PY - ARCHIVO PRINCIPAL DE LA APLICACIÓN STREAMLIT
+# =========================
+
 import streamlit as st
 
 st.set_page_config(
@@ -348,11 +352,6 @@ section[data-testid="stMain"] {
     animation: none !important;
 }
 
-/* Ocultar loader superior */
-div[data-testid="stDecoration"] {
-    display: none !important;
-}
-
 /* Quitar shimmer / placeholders */
 [data-testid="stSkeleton"] {
     display: none !important;
@@ -398,10 +397,10 @@ main_container = st.container()
 init_db()
 user = get_current_user() or {}
 
-# Grupos del menú
+# Grupos del menú - AGREGAR LA NUEVA OPCIÓN A GESTIÓN
 groups = {
     "PRINCIPAL": ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"],
-    "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes"],
+    "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes", "📋 Sugerencia de pedidos preciso con sus importes"],  # ← AGREGADO AQUÍ
     "CATÁLOGO": ["📚 Artículos", "🧩 Familias", "🏬 Depósitos", "📑 Comprobantes"],
     "ANÁLISIS": ["📊 Dashboard", "📈 Indicadores (Power BI)"],
 }
@@ -746,9 +745,9 @@ with st.sidebar:
     # Header con logo
     st.markdown("""
     <div class='fc-sidebar-header'>
-        <div style='display:flex; align-items:center; gap:10px; justify-content:center;'>
-            <div style='font-size: 26px;'>🦋</div>
-            <div style='font-size: 20px; font-weight: 800; color:#0f172a;'>FertiChat</div>
+        <div style="display:flex; align-items:center; gap:10px; justify-content:center;">
+            <div style="font-size: 26px;">🦋</div>
+            <div style="font-size: 20px; font-weight: 800; color:#0f172a;">FertiChat</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -922,6 +921,16 @@ with main_container:
 
     elif st.session_state.pagina == "📑 Comprobantes":
         mostrar_menu_comprobantes()
+
+    # ← AGREGADO: NUEVA CONDICIÓN PARA SUGERENCIAS
+    elif st.session_state.pagina == "📋 Sugerencia de pedidos preciso con sus importes":
+        try:
+            import pages.sugerencias
+            pages.sugerencias.main()
+        except ImportError:
+            st.error("Página 'Sugerencias' no encontrada. Verifica que pages/sugerencias.py exista.")
+        except Exception as e:
+            st.error(f"Error al cargar sugerencias: {str(e)}")
 
 # Marca visual para saber que el orquestador está cargado
 # st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
