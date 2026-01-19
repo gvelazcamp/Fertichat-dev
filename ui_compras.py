@@ -2033,57 +2033,235 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             except Exception:
                 st.info("No se pudo generar el gráfico")
     
-with tabs[4]:
-        # ✅ LÓGICA MEJORADA: 3 casos según selección
+def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Comparativas"):
+    """
+    Dashboard con diseño moderno tipo card (similar a la imagen)
+    """
+    
+    if df is None or df.empty:
+        st.warning("⚠️ No hay datos para mostrar")
+        return
+    
+    # ==========================================
+    # CALCULAR MÉTRICAS CORRECTAMENTE
+    # ==========================================
+    
+    print(f"🐛 DEBUG: Columnas del DataFrame: {df.columns.tolist()}")
+    
+    # Identificar columnas de períodos (años como 2024, 2025 o meses como 2024-11)
+    # Excluir 'Proveedor', 'Articulo', 'Moneda', 'Diferencia'
+    cols_periodos = []
+    for c in df.columns:
+        # Es un período si es numérica o tiene guión y no es excluida
+        if pd.api.types.is_numeric_dtype(df[c]) and c not in ['Diferencia']:
+            cols_periodos.append(c)
+        elif isinstance(c, str) and ('-' in c or c.isdigit()) and c not in ['Proveedor', 'Articulo', 'Moneda', 'Cliente / Proveedor']:
+            cols_periodos.append(c)
+    
+    # ✅ AGREGADO: Convertir columnas de períodos a numérico
+    for col in cols_periodos:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    
+    print(f"🐛 DEBUG: Columnas de períodos detectadas: {cols_periodos}")
+    
+    # Calcular totales por moneda - SEPARAR CORRECTAMENTE SIN FALLBACK
+    total_uyu = 0
+    total_usd = 0
+    
+    # ✅ FIX: Buscar columna "Moneda" o "moneda" (case insensitive)
+    col_moneda = None
+    for col in df.columns:
+        if col.lower() == 'moneda':
+            col_moneda = col
+            break
+    
+    if col_moneda and cols_periodos:
+        # ✅ FIX: Buscar TODAS las variaciones de pesos y dólares
+        df['Moneda_norm'] = df[col_moneda].astype(str).str.strip().str.upper()
+        
+        # Pesos: $, UYU, PESO
+        df_pesos = df[df['Moneda_norm'].str.contains(r'^\$|UYU|PESO', regex=True, na=False) & 
+                      ~df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+        
+        # Dólares: U$S, USD, US$, U$
+        df_usd = df[df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+        
+        if not df_pesos.empty:
+            for col in cols_periodos:
+                try:
+                    total_uyu += pd.to_numeric(df_pesos[col], errors='coerce').fillna(0).sum()
+                except:
+                    pass
+        
+        if not df_usd.empty:
+            for col in cols_periodos:
+                try:
+                    total_usd += pd.to_numeric(df_usd[col], errors='coerce').fillna(0).sum()
+                except:
+                    pass
+        
+        print(f"🐛 DEBUG: Total UYU: {total_uyu}, Total USD: {total_usd}")
+    
+    # Determinar si es comparación de artículos (basado en entrada)
+    es_articulos = 'Articulo' in df.columns and 'Proveedor' not in df.columns
+    entidad = 'Artículos' if es_articulos else 'Proveedores'
+    entidad_singular = 'Artículo' if es_articulos else 'Proveedor'
+    todos_entidad = f"Todos los {entidad.lower()}"
+    
+    # Número de entidades y registros
+    num_entidades = df['Articulo'].nunique() if es_articulos else df['Proveedor'].nunique() if 'Proveedor' in df.columns else 0
+    num_registros = len(df)
+    
+    # Identificar qué años/meses se están comparando
+    periodos = cols_periodos
+    periodos_validos = cols_periodos  # ✅ Variable para tabs[4]
+    num_periodos = len(periodos)
+    
+    # ==========================================
+    # CSS Moderno
+    # ==========================================
+    st.markdown("""
+    <style>
+        .dash-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+        
+        .dash-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 12px 0;
+        }
+        
+        .dash-badge {
+            display: inline-flex;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        
+        .dash-meta {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin: 0;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 32px;
+            margin-bottom: 24px;
+        }
+        
+        .metric-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .metric-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin: 0 0 8px 0;
+        }
+        
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #111827;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # HEADER
+    st.markdown(f"""
+    <div class="dash-header">
+        <h2 class="dash-title">📊 {titulo}</h2>
+        <div class="dash-badge">✅ {len(df)} registros</div>
+        <p class="dash-meta">📅 {datetime.now().strftime("%d/%m/%Y %H:%M")}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # MÉTRICAS
+    total_uyu_fmt = f"$ {total_uyu/1_000_000:.2f}M" if total_uyu >= 1_000_000 else f"$ {total_uyu:,.0f}".replace(",", ".")
+    total_usd_fmt = f"U$S {total_usd/1_000:.0f}K" if total_usd >= 1_000 else f"U$S {total_usd:,.0f}"
+    
+    st.markdown(f"""
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <p class="metric-label">Total UYU 💰</p>
+            <p class="metric-value">{total_uyu_fmt}</p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Total USD 💵</p>
+            <p class="metric-value">{total_usd_fmt}</p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Registros 📄</p>
+            <p class="metric-value">{num_registros}</p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">{entidad} 🏭</p>
+            <p class="metric-value">{num_entidades}</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # TABS
+    tabs = st.tabs(["📊 Vista General", "💵 Pesos (UYU)", "💰 Dólares (USD)", "📈 Gráfico", "📋 Tabla"])
+    
+    with tabs[0]:
+        st.info("Vista general - implementar KPIs aquí")
+    
+    with tabs[1]:
+        if col_moneda:
+            df_pesos_tab = df[df['Moneda_norm'].str.contains(r'^\$|UYU|PESO', regex=True, na=False) & 
+                              ~df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+        else:
+            df_pesos_tab = df
+        st.dataframe(df_pesos_tab, use_container_width=True, height=400)
+    
+    with tabs[2]:
+        if col_moneda:
+            df_usd_tab = df[df['Moneda_norm'].str.contains(r'U\$S|USD|U\$|US\$', regex=True, na=False)]
+            st.dataframe(df_usd_tab, use_container_width=True, height=400)
+        else:
+            st.info("No hay datos en dólares")
+    
+    with tabs[3]:
+        st.info("Gráfico - implementar aquí")
+    
+    # ✅ TAB 4 - AQUÍ VA EL CÓDIGO CORREGIDO
+    with tabs[4]:
         articulos_sel = st.session_state.get("art_multi", [])
         proveedores_sel = st.session_state.get("comparativas_proveedores_multi", [])
         
-        # CASO 1: Un solo artículo seleccionado → Mostrar histórico de precios
+        # CASO 1: Un artículo
         if articulos_sel and len(articulos_sel) == 1:
             articulo = articulos_sel[0]
-            
             try:
                 df_hist = sqlq_comparativas.get_historico_precios_unitarios(articulo)
-                
                 if df_hist is not None and not df_hist.empty:
                     st.subheader(f"📊 Histórico de precios — {articulo}")
-                    st.dataframe(
-                        df_hist,
-                        use_container_width=True,
-                        hide_index=True
-                    )
+                    st.dataframe(df_hist, use_container_width=True, hide_index=True)
                 else:
-                    st.warning(f"⚠️ No hay datos históricos para '{articulo}'")
-                    
-                    # Debug rápido: contar registros
-                    debug_sql = '''
-                        SELECT COUNT(*) as total
-                        FROM chatbot_raw 
-                        WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
-                          AND "Cantidad" IS NOT NULL AND TRIM("Cantidad") <> ''
-                          AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
-                    '''
-                    debug_df = ejecutar_consulta(debug_sql, (f"%{articulo.strip().lower()}%",))
-                    if debug_df is not None and not debug_df.empty:
-                        total = int(debug_df.iloc[0]['total'])
-                        st.info(f"Registros encontrados para '{articulo}': {total}")
-                        if total == 0:
-                            st.info("El artículo no existe o no tiene datos válidos.")
-                        else:
-                            st.info("Datos existen, pero no se pudieron parsear (revisa Monto Neto).")
+                    st.warning(f"⚠️ No hay datos para '{articulo}'")
             except Exception as e:
                 st.error(f"Error: {e}")
         
-        # CASO 2: Un solo proveedor Y dos períodos → Mostrar análisis de variación
+        # CASO 2: Un proveedor + dos períodos
         elif proveedores_sel and len(proveedores_sel) == 1 and len(periodos_validos) == 2:
             proveedor_sel = proveedores_sel[0]
-            
             try:
-                df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(
-                    proveedor_sel, 
-                    periodos_validos
-                )
-                
+                df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
                 if df_variacion is not None and not df_variacion.empty:
                     st.markdown("#### 📊 ¿Por qué bajó/subió el gasto?")
                     st.dataframe(
@@ -2093,17 +2271,13 @@ with tabs[4]:
                         height=600
                     )
                 else:
-                    st.info("No hay datos de variación para este proveedor")
-                    # Mostrar tabla comparativa normal como fallback
+                    st.info("No hay datos de variación")
                     st.dataframe(df, use_container_width=True, height=600)
             except Exception as e:
-                st.error(f"Error al cargar análisis de variación: {e}")
-                import traceback
-                st.code(traceback.format_exc())
-                # Mostrar tabla comparativa normal como fallback
+                st.error(f"Error: {e}")
                 st.dataframe(df, use_container_width=True, height=600)
         
-        # CASO 3: Default → Mostrar tabla comparativa completa
+        # CASO 3: Default
         else:
             st.dataframe(df, use_container_width=True, height=600)
 
