@@ -846,9 +846,6 @@ def get_analisis_variacion_articulos(proveedor, anios):
         FROM (SELECT * FROM base WHERE "Año" = {anio1}) b1
         FULL OUTER JOIN (SELECT * FROM base WHERE "Año" = {anio2}) b2
             ON b1."Articulo" = b2."Articulo" AND b1."Moneda" = b2."Moneda"
-        WHERE COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0) != 0
-           OR COALESCE(b1.total_anio, 0) = 0
-           OR COALESCE(b2.total_anio, 0) = 0
         ORDER BY ABS(COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0)) DESC
     """
     
@@ -865,6 +862,8 @@ def get_analisis_variacion_articulos(proveedor, anios):
             return "Sin Cambio", "—"
         if total_2024 == 0 and total_2025 > 0:
             return "Nuevo", "🔺 Nuevo"
+        if total_2025 == 0 and total_2024 > 0:
+            return "Desaparecido", "🔻 Desaparecido"
         if var < 0:
             pct = abs(var) / total_2024 if total_2024 > 0 else 1
             tipo = "Disminución"
