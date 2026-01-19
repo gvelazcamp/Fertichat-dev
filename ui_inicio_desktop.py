@@ -260,6 +260,34 @@ def mostrar_inicio_desktop():
             st.query_params["go"] = "indicadores"
             st.rerun()
 
+    # ← NUEVA SECCIÓN PARA SUGERENCIAS
+    st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:0 0 24px 6px;display:flex;align-items:center;gap:8px;'>📋 Análisis y sugerencias</div>", unsafe_allow_html=True)
+    
+    col9, col10, col11, col12 = st.columns(4, gap="large")
+    
+    with col9:
+        st.markdown("""
+        <div style="text-align:center;margin-bottom:-200px;pointer-events:none;position:relative;z-index:1;">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 12l2 2 4-4"/><path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/><path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/><path d="M12 3v6"/><path d="M12 15v6"/>
+            </svg>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Sugerencia de pedidos\nRecomendaciones inteligentes de compra", key="sugerencias", use_container_width=True):
+            st.query_params["go"] = "sugerencias"
+            st.rerun()
+
+    # Rellenar las otras columnas para mantener el diseño (opcional)
+    with col10:
+        st.empty()
+    
+    with col11:
+        st.empty()
+    
+    with col12:
+        st.empty()
+
     st.markdown("</div>", unsafe_allow_html=True)
 
     tips = [
