@@ -398,10 +398,10 @@ main_container = st.container()
 init_db()
 user = get_current_user() or {}
 
-# Grupos del menú - AGREGADO SUGERENCIAS A GESTIÓN
+# Grupos del menú - CAMBIADO A "Sugerencia de pedidos"
 groups = {
     "PRINCIPAL": ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"],
-    "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes", "📋 Sugerencia de pedidos preciso con sus importes"],  # ← AGREGADO
+    "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes", "Sugerencia de pedidos"],  # ← CAMBIADO
     "CATÁLOGO": ["📚 Artículos", "🧩 Familias", "🏬 Depósitos", "📑 Comprobantes"],
     "ANÁLISIS": ["📊 Dashboard", "📈 Indicadores (Power BI)"],
 }
@@ -788,7 +788,7 @@ with st.sidebar:
     # Menu agrupado
     for group, options in groups.items():
         st.markdown(f'<div class="fc-section-header">{group}</div>', unsafe_allow_html=True)
-        st.radio("", options, key=f"radio_{group.lower()}", label_visibility="hidden", on_change=update_pagina, args=(group,))  # ← CAMBIADO A "hidden"
+        st.radio("", options, key=f"radio_{group.lower()}", label_visibility="hidden", on_change=update_pagina, args=(group,))
     
     st.components.v1.html(r"""
     <script>
@@ -923,13 +923,13 @@ with main_container:
     elif st.session_state.pagina == "📑 Comprobantes":
         mostrar_menu_comprobantes()
 
-    # ← CONDICIÓN PARA SUGERENCIAS
-    elif st.session_state.pagina == "📋 Sugerencia de pedidos":
+    # ← CONDICIÓN PARA SUGERENCIAS - CAMBIADO A "Sugerencia de pedidos"
+    elif st.session_state.pagina == "Sugerencia de pedidos":
         try:
-            import pages.sugerencias
-            pages.sugerencias.main()
+            import sugerencias  # ← CAMBIADO
+            sugerencias.main()  # ← CAMBIADO
         except ImportError:
-            st.error("Página 'Sugerencias' no encontrada. Verifica que pages/sugerencias.py exista.")
+            st.error("Página 'Sugerencias' no encontrada. Verifica que sugerencias.py exista en la raíz.")
         except Exception as e:
             st.error(f"Error al cargar sugerencias: {str(e)}")
 
