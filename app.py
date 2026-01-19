@@ -125,9 +125,8 @@ def main():
     # =========================
     go = st.query_params.get("go")
     
-    # DEBUG GENERAL: Mostrar el valor de 'go' para verificar navegación
-    if st.session_state.get("modo_avanzado"):
-        st.write(f"🔍 DEBUG: Valor de 'go' = {go}")
+    # DEBUG GENERAL: Mostrar siempre el valor de 'go' para verificar
+    st.write(f"🔍 DEBUG GENERAL: Valor de 'go' = '{go}' (tipo: {type(go)})")
     
     if go == "compras":
         # Módulo Compras IA
