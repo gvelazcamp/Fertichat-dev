@@ -277,6 +277,11 @@ div[data-testid="stTextInput"] > div{
 .fc-section-title{
     margin-bottom: 1rem !important;
 }
+
+/* Ocultar completamente las tarjetas de sugerencias */
+.fc-sug-card{
+    display: none !important;
+}
 </style>
 """
 
