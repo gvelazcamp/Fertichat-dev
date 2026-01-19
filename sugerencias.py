@@ -19,7 +19,7 @@ from ui_sugerencias import (
     render_divider
 )
 from config import DEBUG_MODE
-from sql_compras import get_cantidad_anual_por_articulo, get_total_compras_anio  # Importar funciones necesarias
+from sql_compras import get_cantidad_anual_por_articulo, get_proveedores_anio, get_total_compras_anio  # Importar funciones necesarias
 
 # =========================
 # FUNCIONES DE DATOS Y LÓGICA
@@ -50,8 +50,8 @@ def calcular_cantidad_sugerida(
         cantidad = lote_minimo
     return max(round(cantidad, 1), 0)
 
-def get_datos_sugerencias(anio: int) -> pd.DataFrame:
-    df = get_cantidad_anual_por_articulo(anio)
+def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
+    df = get_cantidad_anual_por_articulo(anio, proveedor_like)
 
     if df is None or df.empty:
         return pd.DataFrame()
@@ -130,7 +130,7 @@ def main():
     )
 
     # =========================
-    # FILTRO PRINCIPAL (AÑO)
+    # FILTRO PRINCIPAL (AÑO Y PROVEEDOR)
     # =========================
     render_section_title("Filtros y opciones")
     colA, colB, colC = st.columns([1, 1, 2])
@@ -141,8 +141,17 @@ def main():
             [2025, 2024, 2023],
             key="anio_seleccionado"
         )
+    
+    # Obtener proveedores para el año seleccionado
+    proveedores = get_proveedores_anio(anio_seleccionado)
+    
     with colB:
-        st.write("")
+        proveedor_sel = st.selectbox(
+            "Proveedor:",
+            ["Todos"] + proveedores,
+            key="proveedor_sel"
+        )
+    
     with colC:
         st.write("")
 
@@ -151,10 +160,11 @@ def main():
     # =========================
     # DATOS
     # =========================
-    df = get_datos_sugerencias(anio_seleccionado)
+    proveedor_like = f"%{proveedor_sel.lower()}%" if proveedor_sel != "Todos" else None
+    df = get_datos_sugerencias(anio_seleccionado, proveedor_like)
 
     if df is None or df.empty:
-        st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado}.")
+        st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
     # Preproceso (igual que tu versión)
@@ -214,15 +224,6 @@ def main():
             key="filtro_urgencia"
         )
 
-        # Proveedor (desde datos)
-        st.selectbox(
-            "Proveedores:",
-            ["(no disponible)"],
-            key="proveedor_sel_disabled",
-            disabled=True
-        )
-        proveedor_sel = "(no disponible)"
-
         # Categoría (solo si existe columna; si no, queda deshabilitado)
         if "categoria" in df.columns:
             categorias = ["Todos"] + sorted([str(x) for x in df["categoria"].dropna().unique().tolist()])
@@ -237,10 +238,6 @@ def main():
     # ---- Aplicar filtros (sobre df) ----
     df_scope = df.copy()
 
-    # Proveedor
-    # if proveedor_sel != "Todos":
-    #     df_scope = df_scope[df_scope["proveedor"].astype(str) == str(proveedor_sel)]
-
     # Categoría (si existe)
     if "categoria" in df_scope.columns and categoria_sel != "Todos":
         df_scope = df_scope[df_scope["categoria"].astype(str) == str(categoria_sel)]
@@ -248,7 +245,7 @@ def main():
     # Búsqueda
     if q_art.strip():
         qq = q_art.strip().lower()
-        df_scope = df_scope[df_scope["articulo"].astype(str).str.lower().str.contains(qq, na=False)]
+        df_scope = df_scope[df_scope["Articulo"].astype(str).str.lower().str.contains(qq, na=False)]
 
     # Para la lista: además aplicar urgencia
     df_filtrado = df_scope.copy()
@@ -267,16 +264,16 @@ def main():
             orden = {"urgente": 0, "proximo": 1, "planificar": 2, "saludable": 3}
             df_filtrado = df_filtrado.copy()
             df_filtrado["_ord"] = df_filtrado["urgencia"].map(orden).fillna(9)
-            df_filtrado = df_filtrado.sort_values(["_ord", "articulo"]).drop(columns=["_ord"])
+            df_filtrado = df_filtrado.sort_values(["_ord", "Articulo"]).drop(columns=["_ord"])
 
             for _, r in df_filtrado.iterrows():
                 compras_anuales = float(r.get("cantidad_anual", 0) or 0)
                 compras_mensuales = round(compras_anuales / 12, 2)
 
                 render_sugerencia_card(
-                    producto=str(r.get("articulo", "")),
-                    proveedor="—",
-                    ultima_compra="—",
+                    producto=str(r.get("Articulo", "")),
+                    proveedor=str(r.get("proveedor", "—")),
+                    ultima_compra=_fmt_fecha(r.get("ultima_compra", "—")),
                     urgencia=str(r.get("urgencia", "saludable")),
                     compras_anuales=round(compras_anuales, 2),
                     compras_mensuales=compras_mensuales,
