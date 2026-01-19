@@ -309,7 +309,7 @@ div[data-testid="stTextInput"] > div{
 
 /* Evitar que el siguiente título quede “pegado” */
 .fc-sug-card + .fc-sug-card{
-    margin-top: 10px !important;
+    margin-top: 18px !important;
 }
 </style>
 """
