@@ -1911,21 +1911,24 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             except Exception as e:
                 st.error(f"Error: {e}")
         else:
-            # ⬇️ TABLA COMPARATIVA ORIGINAL (NO TOCAR)
-            st.dataframe(df, use_container_width=True, height=600)
-            
-            # ✅ NUEVA TABLA: ¿Por qué bajó/subió el gasto?
-            if len(periodos_validos) == 2 and num_entidades == 1:  # Solo 2 años y 1 proveedor
-                proveedor_sel = df['Proveedor'].iloc[0] if 'Proveedor' in df.columns else None
-                if proveedor_sel:
-                    df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
-                    if not df_variacion.empty:
-                        st.markdown("#### ¿Por qué bajó/subió el gasto?")
-                        st.dataframe(
-                            df_variacion[['Articulo', 'Moneda', f'Total {periodos_validos[0]}', f'Total {periodos_validos[1]}', 'Variación', 'Impacto']],
-                            use_container_width=True,
-                            hide_index=True
-                        )
+            # ✅ NUEVA LÓGICA: Si 1 proveedor y 2 períodos → Mostrar análisis de variación
+            proveedores_sel = st.session_state.get("comparativas_proveedores_multi", [])
+            if proveedores_sel and len(proveedores_sel) == 1 and len(periodos_validos) == 2:
+                proveedor_sel = proveedores_sel[0]
+                df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
+                if df_variacion is not None and not df_variacion.empty:
+                    st.markdown("#### 📊 ¿Por qué bajó/subió el gasto?")
+                    st.dataframe(
+                        df_variacion[['Articulo', 'Moneda', f'Total {periodos_validos[0]}', f'Total {periodos_validos[1]}', 'Variación', 'Tipo de Variación', 'Impacto']],
+                        use_container_width=True,
+                        hide_index=True,
+                        height=600
+                    )
+                else:
+                    st.info("No hay datos de variación para este proveedor")
+            else:
+                # ⬇️ TABLA COMPARATIVA ORIGINAL (NO TOCAR)
+                st.dataframe(df, use_container_width=True, height=600)
 
 
 # =========================
