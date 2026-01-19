@@ -183,6 +183,19 @@ def main():
         st.write("Power BI.")
         # Agrega lógica específica
 
+    # ← NUEVA CONDICIÓN PARA SUGERENCIAS
+    elif go == "sugerencias":
+        # Módulo Sugerencia de pedidos
+        st.subheader("📋 Sugerencia de pedidos preciso con sus importes")
+        st.write("Sistema inteligente de recomendaciones de compra.")
+        try:
+            import pages.sugerencias
+            pages.sugerencias.main()
+        except ImportError:
+            st.error("Página 'Sugerencias' no encontrada. Verifica que pages/sugerencias.py exista.")
+        except Exception as e:
+            st.error(f"Error al cargar sugerencias: {str(e)}")
+
     else:
         # Pantalla de inicio con tarjetas
         mostrar_inicio()
