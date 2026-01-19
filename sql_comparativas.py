@@ -803,3 +803,68 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
         ORDER BY "Fecha" ASC;
     """
     return ejecutar_consulta(sql, (articulo_like.strip(),))
+
+    def get_analisis_variacion_articulos(proveedor, anios):
+    """
+    Devuelve análisis de variación por artículo/moneda entre dos años.
+    """
+    if len(anios) != 2:
+        return pd.DataFrame()
+    
+    anio1, anio2 = sorted(anios)  # ej. 2024, 2025
+    
+    sql = f"""
+        WITH base AS (
+            SELECT
+                "Articulo",
+                "Moneda",
+                "Año",
+                SUM(
+                    CASE
+                        WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
+                            -1 * CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
+                        ELSE
+                            CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
+                    END
+                ) AS total_anio
+            FROM chatbot_raw
+            WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+                AND "Año"::int IN ({anio1}, {anio2})
+                AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+            GROUP BY "Articulo", "Moneda", "Año"
+        )
+        SELECT
+            COALESCE(b1."Articulo", b2."Articulo") AS "Articulo",
+            COALESCE(b1."Moneda", b2."Moneda") AS "Moneda",
+            COALESCE(b1.total_anio, 0) AS "Total {anio1}",
+            COALESCE(b2.total_anio, 0) AS "Total {anio2}",
+            COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0) AS "Variación"
+        FROM (SELECT * FROM base WHERE "Año" = {anio1}) b1
+        FULL OUTER JOIN (SELECT * FROM base WHERE "Año" = {anio2}) b2
+            ON b1."Articulo" = b2."Articulo" AND b1."Moneda" = b2."Moneda"
+        WHERE COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0) != 0
+           OR COALESCE(b1.total_anio, 0) = 0
+           OR COALESCE(b2.total_anio, 0) = 0
+        ORDER BY ABS(COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0)) DESC
+    """
+    
+    df = ejecutar_consulta(sql, (f"%{proveedor.strip().lower()}%",))
+    if df is None:
+        return pd.DataFrame()
+    
+    # Calcular Impacto
+    def calcular_impacto(row):
+        var = row['Variación']
+        total_2024 = row[f'Total {anio1}']
+        total_2025 = row[f'Total {anio2}']
+        if var == 0:
+            return "—"
+        if total_2024 == 0 and total_2025 > 0:
+            return "🔺 Nuevo"
+        if var < 0:
+            pct = abs(var) / total_2024 if total_2024 > 0 else 1
+            return "🔻 Muy alto" if pct > 0.2 else "🔻 Alto"
+        return "—"  # Para positivos, no especificado
+    
+    df['Impacto'] = df.apply(calcular_impacto, axis=1)
+    return df
