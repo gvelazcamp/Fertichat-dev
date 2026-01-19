@@ -357,7 +357,7 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
         elif isinstance(col, str) and (col.isdigit() or '-' in col):
             numeric_cols.append(col)
     
-    # Si no hay columna de moneda, asumir todo en UYU
+    # Si no hay columna moneda, asumir todo en UYU
     if not col_moneda:
         total_general = 0
         for col in numeric_cols:
@@ -1174,10 +1174,14 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 # DASHBOARD COMPARATIVAS MODERNO
 # =========================
 def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Comparativas"):
+    """
+    Dashboard con diseño moderno tipo card (similar a la imagen)
+    """
+    
     if df is None or df.empty:
         st.warning("⚠️ No hay datos para mostrar")
         return
-
+    
     # ==========================================
     # CALCULAR MÉTRICAS CORRECTAMENTE
     # ==========================================
@@ -1867,61 +1871,61 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             except Exception:
                 st.info("No se pudo generar el gráfico")
     
-with tabs[4]:
-    # ✅ MODIFICACIÓN AQUÍ: LOGIC FOR HISTORICAL PRICES IF ONE ARTICLE SELECTED
-    articulos_sel = st.session_state.get("art_multi", [])
-    
-    if articulos_sel and len(articulos_sel) == 1:
-        articulo = articulos_sel[0]
+    with tabs[4]:
+        # ✅ MODIFICACIÓN AQUÍ: LOGIC FOR HISTORICAL PRICES IF ONE ARTICLE SELECTED
+        articulos_sel = st.session_state.get("art_multi", [])
         
-        try:
-            df_hist = sqlq_comparativas.get_historico_precios_unitarios(articulo)
+        if articulos_sel and len(articulos_sel) == 1:
+            articulo = articulos_sel[0]
             
-            if df_hist is not None and not df_hist.empty:
-                st.subheader(f"Histórico de precios – {articulo}")
+            try:
+                df_hist = sqlq_comparativas.get_historico_precios_unitarios(articulo)
                 
-                st.dataframe(
-                    df_hist,
-                    use_container_width=True,
-                    hide_index=True
-                )
-            else:
-                st.warning(f"⚠️ No hay datos históricos para '{articulo}'")
-                
-                # Debug rápido: contar registros
-                debug_sql = '''
-                    SELECT COUNT(*) as total
-                    FROM chatbot_raw 
-                    WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
-                      AND "Cantidad" IS NOT NULL AND TRIM("Cantidad") <> ''
-                      AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
-                '''
-                debug_df = ejecutar_consulta(debug_sql, (f"%{articulo.strip().lower()}%",))
-                if debug_df is not None and not debug_df.empty:
-                    total = int(debug_df.iloc[0]['total'])
-                    st.info(f"Registros encontrados para '{articulo}': {total}")
-                    if total == 0:
-                        st.info("El artículo no existe o no tiene datos válidos.")
-                    else:
-                        st.info("Datos existen, pero no se pudieron parsear (revisa Monto Neto).")
-        except Exception as e:
-            st.error(f"Error: {e}")
-    else:
-        # ⬇️ TABLA COMPARATIVA ORIGINAL (NO TOCAR)
-        st.dataframe(df, use_container_width=True, height=600)
-        
-        # ✅ NUEVA TABLA: ¿Por qué bajó/subió el gasto?
-        if len(periodos_validos) == 2 and num_entidades == 1:  # Solo 2 años y 1 proveedor
-            proveedor_sel = df['Proveedor'].iloc[0] if 'Proveedor' in df.columns else None
-            if proveedor_sel:
-                df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
-                if not df_variacion.empty:
-                    st.markdown("#### ¿Por qué bajó/subió el gasto?")
+                if df_hist is not None and not df_hist.empty:
+                    st.subheader(f"Histórico de precios – {articulo}")
+                    
                     st.dataframe(
-                        df_variacion[['Articulo', 'Moneda', f'Total {periodos_validos[0]}', f'Total {periodos_validos[1]}', 'Variación', 'Impacto']],
+                        df_hist,
                         use_container_width=True,
                         hide_index=True
                     )
+                else:
+                    st.warning(f"⚠️ No hay datos históricos para '{articulo}'")
+                    
+                    # Debug rápido: contar registros
+                    debug_sql = '''
+                        SELECT COUNT(*) as total
+                        FROM chatbot_raw 
+                        WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+                          AND "Cantidad" IS NOT NULL AND TRIM("Cantidad") <> ''
+                          AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+                    '''
+                    debug_df = ejecutar_consulta(debug_sql, (f"%{articulo.strip().lower()}%",))
+                    if debug_df is not None and not debug_df.empty:
+                        total = int(debug_df.iloc[0]['total'])
+                        st.info(f"Registros encontrados para '{articulo}': {total}")
+                        if total == 0:
+                            st.info("El artículo no existe o no tiene datos válidos.")
+                        else:
+                            st.info("Datos existen, pero no se pudieron parsear (revisa Monto Neto).")
+            except Exception as e:
+                st.error(f"Error: {e}")
+        else:
+            # ⬇️ TABLA COMPARATIVA ORIGINAL (NO TOCAR)
+            st.dataframe(df, use_container_width=True, height=600)
+            
+            # ✅ NUEVA TABLA: ¿Por qué bajó/subió el gasto?
+            if len(periodos_validos) == 2 and num_entidades == 1:  # Solo 2 años y 1 proveedor
+                proveedor_sel = df['Proveedor'].iloc[0] if 'Proveedor' in df.columns else None
+                if proveedor_sel:
+                    df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
+                    if not df_variacion.empty:
+                        st.markdown("#### ¿Por qué bajó/subió el gasto?")
+                        st.dataframe(
+                            df_variacion[['Articulo', 'Moneda', f'Total {periodos_validos[0]}', f'Total {periodos_validos[1]}', 'Variación', 'Impacto']],
+                            use_container_width=True,
+                            hide_index=True
+                        )
 
 
 # =========================
