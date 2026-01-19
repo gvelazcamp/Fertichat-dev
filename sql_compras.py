@@ -1016,9 +1016,11 @@ def get_compras_por_mes_excel(
     # -------------------------
     # Normalizar proveedor
     # -------------------------
-    proveedores = []
     if proveedor and proveedor.lower() not in ("todos", "todas", "all"):
         proveedores = [proveedor]
+    else:
+        # Importante: get_compras_multiples exige al menos 1 proveedor
+        proveedores = ["%"]
 
     # -------------------------
     # Normalizar mes
@@ -1043,20 +1045,17 @@ def get_compras_por_mes_excel(
 
         mes_clean = mes.strip().lower()
 
-        # Caso: viene "Abril"
+        # "Abril" → "2025-04"
         if mes_clean in mes_map:
             meses = [f"{anio}-{mes_map[mes_clean]}"]
 
-        # Caso: ya viene "2025-04"
+        # Ya viene como "2025-04"
         elif "-" in mes_clean:
             meses = [mes_clean]
 
-    anios = [anio] if anio else None
-
     return get_compras_multiples(
-        proveedores=proveedores if proveedores else ["%"],
+        proveedores=proveedores,
         meses=meses,
-        anios=anios,
         limite=limite
     )
 
