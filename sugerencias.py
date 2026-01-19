@@ -192,9 +192,9 @@ def main():
 
     render_divider()
 
-    # -------------------------
-    # SUGERENCIAS (CARDS)
-    # -------------------------
+    # =========================
+    # SUGERENCIAS (LISTADO)
+    # =========================
     render_section_title("Sugerencias de pedido")
 
     df_filtrado = filtrar_sugerencias(df, filtro_urgencia)
@@ -209,20 +209,34 @@ def main():
         df_filtrado = df_filtrado.sort_values(["_ord", "producto"]).drop(columns=["_ord"])
 
         for _, r in df_filtrado.iterrows():
-            compras_anuales = float(r.get("Cantidad", 0) or 0)
-            compras_mensuales = round(compras_anuales / 12, 2)
+            with st.container():
+                st.write(f"**{r['producto']}**")
+                st.caption(f"Proveedor: {r['proveedor']} | Última compra: {r['ultima_compra']}")
 
-            render_sugerencia_card(
-                producto=str(r.get("producto", "")),
-                proveedor=str(r.get("proveedor", "")),
-                ultima_compra=str(r.get("ultima_compra", "")),
-                urgencia=str(r.get("urgencia", "saludable")),
-                compras_anuales=round(compras_anuales, 2),
-                compras_mensuales=compras_mensuales,
-                compra_sugerida=float(r.get("cantidad_sugerida", 0) or 0),
-                stock_actual=float(r.get("stock_actual", 0) or 0),
-                unidad=str(r.get("unidad", "un"))
-            )
+                badge_text = {
+                    "urgente": "🚨 Urgente",
+                    "proximo": "⚠️ Próximo",
+                    "planificar": "📅 Planificar",
+                    "saludable": "✅ Saludable"
+                }.get(r["urgencia"], "✅ Saludable")
+                st.info(badge_text)
+
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Compras anuales", f"{r['Cantidad']:.0f} {r['unidad']}")
+                with col2:
+                    compras_mensuales = r['Cantidad'] / 12
+                    st.metric("Compras mensuales", f"{compras_mensuales:.1f} {r['unidad']}")
+                with col3:
+                    st.metric("Compra sugerida", f"{r['cantidad_sugerida']} {r['unidad']}")
+                with col4:
+                    st.metric("Stock actual", f"{r['stock_actual']} {r['unidad']}")
+
+            # ✅ Antes tenías: st.divider()  (eso te dibuja la “línea blanca”)
+            # st.divider()
+
+            # ✅ Si querés separación visual, dejá solo un espaciado:
+            st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
     # -------------------------
     # ACCIONES (como tu versión)
