@@ -788,7 +788,7 @@ with st.sidebar:
     # Menu agrupado
     for group, options in groups.items():
         st.markdown(f'<div class="fc-section-header">{group}</div>', unsafe_allow_html=True)
-        st.radio("", options, key=f"radio_{group.lower()}", label_visibility="hidden", on_change=update_pagina, args=(group,))
+        st.radio("Opciones", options, key=f"radio_{group.lower()}", label_visibility="collapsed", on_change=update_pagina, args=(group,))
     
     st.components.v1.html(r"""
     <script>
