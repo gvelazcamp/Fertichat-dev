@@ -1070,40 +1070,56 @@ def get_compras_por_mes_excel(
 # FUNCIONES PARA SUGERENCIAS
 # =========================
 
-def get_cantidad_anual_por_articulo(anio: int) -> pd.DataFrame:
+def get_proveedores_anio(anio: int) -> list:
     """
-    Devuelve la cantidad anual total por artículo en el año especificado, incluyendo última compra y proveedor.
+    Devuelve la lista de proveedores únicos para el año especificado.
+    """
+    sql = """
+    SELECT DISTINCT TRIM("Cliente / Proveedor") AS proveedor
+    FROM chatbot_raw
+    WHERE "Año" = %s
+      AND TRIM("Cliente / Proveedor") IS NOT NULL
+      AND TRIM("Cliente / Proveedor") <> ''
+    ORDER BY proveedor;
+    """
+    df = ejecutar_consulta(sql, (anio,))
+    if df:
+        return [row['proveedor'] for row in df]
+    return []
+
+def get_cantidad_anual_por_articulo(anio: int, proveedor_like: str = None) -> pd.DataFrame:
+    """
+    Devuelve la cantidad anual total por artículo en el año especificado, opcionalmente filtrado por proveedor.
     """
     sql = """
     SELECT
-        TRIM("Articulo") AS articulo,
+        "Articulo",
         SUM(
-            CASE
-                WHEN "Cantidad" IS NULL OR TRIM("Cantidad") = '' THEN 0
-                WHEN REPLACE("Cantidad",' ','') LIKE '(%)' THEN
-                    -1 * CAST(
-                        REPLACE(
-                            REPLACE(
-                                SUBSTRING(REPLACE("Cantidad",' ',''), 2,
-                                          LENGTH(REPLACE("Cantidad",' ','')) - 2),
-                            '.', ''),
-                        ',', '.'
-                    ) AS NUMERIC)
-                ELSE CAST(
+            CAST(
+                REPLACE(
                     REPLACE(
                         REPLACE(
-                            REPLACE(TRIM("Cantidad"), '.', ''),
-                        ',', '.'),
-                    ' ', '')
-                AS NUMERIC)
-            END
+                            REPLACE(TRIM("Cantidad"), '(', ''),
+                        ')', ''),
+                    '.', ''),
+                ',', '.')
+            AS NUMERIC)
         ) AS cantidad_anual,
         MAX("Fecha") AS ultima_compra,
         (ARRAY_AGG("Cliente / Proveedor" ORDER BY "Fecha" DESC))[1] AS proveedor
     FROM chatbot_raw
-    WHERE "Año"::int = %s
+    WHERE "Año" = %s
       AND TRIM("Articulo") IS NOT NULL
       AND TRIM("Articulo") <> ''
-    GROUP BY TRIM("Articulo")
+      AND TRIM("Cantidad") IS NOT NULL
+      AND TRIM("Cantidad") <> ''
     """
-    return ejecutar_consulta(sql, (anio,))
+    params = [anio]
+    if proveedor_like:
+        sql += " AND LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s"
+        params.append(proveedor_like)
+    sql += """
+    GROUP BY "Articulo"
+    ORDER BY cantidad_anual DESC;
+    """
+    return ejecutar_consulta(sql, tuple(params))
