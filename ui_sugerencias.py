@@ -272,6 +272,11 @@ div[data-testid="stTextInput"] > div{
 .fc-sug-card div[data-testid="stAlert"]{
     display: none !important;
 }
+
+/* Ocultar barra grande de estado dentro de la tarjeta */
+.fc-statusbar{
+    display: none !important;
+}
 </style>
 """
 
