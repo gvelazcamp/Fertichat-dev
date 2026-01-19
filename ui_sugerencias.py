@@ -267,6 +267,11 @@ div[data-testid="stSelectbox"] > div,
 div[data-testid="stTextInput"] > div{
     border-radius: 12px;
 }
+
+/* Ocultar alerts nativos de Streamlit dentro de sugerencias */
+.fc-sug-card div[data-testid="stAlert"]{
+    display: none !important;
+}
 </style>
 """
 
