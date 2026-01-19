@@ -249,7 +249,7 @@ def main():
     # Búsqueda
     if q_art.strip():
         qq = q_art.strip().lower()
-        df_scope = df_scope[df_scope["producto"].astype(str).str.lower().str.contains(qq, na=False)]
+        df_scope = df_scope[df_scope["articulo"].astype(str).str.lower().str.contains(qq, na=False)]
 
     # Para la lista: además aplicar urgencia
     df_filtrado = df_scope.copy()
@@ -268,7 +268,7 @@ def main():
             orden = {"urgente": 0, "proximo": 1, "planificar": 2, "saludable": 3}
             df_filtrado = df_filtrado.copy()
             df_filtrado["_ord"] = df_filtrado["urgencia"].map(orden).fillna(9)
-            df_filtrado = df_filtrado.sort_values(["_ord", "producto"]).drop(columns=["_ord"])
+            df_filtrado = df_filtrado.sort_values(["_ord", "articulo"]).drop(columns=["_ord"])
 
             for _, r in df_filtrado.iterrows():
                 compras_anuales = float(r.get("cantidad_anual", 0) or 0)
