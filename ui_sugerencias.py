@@ -282,6 +282,35 @@ div[data-testid="stTextInput"] > div{
 .fc-sug-card{
     display: none !important;
 }
+
+/* =========================
+   AJUSTES DE ESPACIADO (FINAL)
+   ========================= */
+
+/* Más aire entre tarjetas */
+.fc-sug-card{
+    margin-bottom: 22px !important;
+}
+
+/* Separación entre título del producto y el resto */
+.fc-sug-title{
+    margin-bottom: 0.4rem !important;
+}
+
+/* Aire debajo del bloque de métricas */
+.fc-sug-grid{
+    margin-bottom: 0.6rem !important;
+}
+
+/* Separación clara entre botones y siguiente card */
+.fc-actions-row{
+    margin-bottom: 0.8rem !important;
+}
+
+/* Evitar que el siguiente título quede “pegado” */
+.fc-sug-card + .fc-sug-card{
+    margin-top: 10px !important;
+}
 </style>
 """
 
