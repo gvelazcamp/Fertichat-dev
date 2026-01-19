@@ -215,14 +215,13 @@ def main():
         )
 
         # Proveedor (desde datos)
-        proveedores = ["Todos"] + sorted(
-            [str(x) for x in df["proveedor"].dropna().unique().tolist()]
-        )
-        proveedor_sel = st.selectbox(
+        st.selectbox(
             "Proveedores:",
-            proveedores,
-            key="proveedor_sel"
+            ["(no disponible)"],
+            key="proveedor_sel_disabled",
+            disabled=True
         )
+        proveedor_sel = "(no disponible)"
 
         # Categoría (solo si existe columna; si no, queda deshabilitado)
         if "categoria" in df.columns:
@@ -239,8 +238,8 @@ def main():
     df_scope = df.copy()
 
     # Proveedor
-    if proveedor_sel != "Todos":
-        df_scope = df_scope[df_scope["proveedor"].astype(str) == str(proveedor_sel)]
+    # if proveedor_sel != "Todos":
+    #     df_scope = df_scope[df_scope["proveedor"].astype(str) == str(proveedor_sel)]
 
     # Categoría (si existe)
     if "categoria" in df_scope.columns and categoria_sel != "Todos":
@@ -276,8 +275,8 @@ def main():
 
                 render_sugerencia_card(
                     producto=str(r.get("articulo", "")),
-                    proveedor=str(r.get("proveedor", "")),
-                    ultima_compra=_fmt_fecha(r.get("ultima_compra", "")),
+                    proveedor="—",
+                    ultima_compra="—",
                     urgencia=str(r.get("urgencia", "saludable")),
                     compras_anuales=round(compras_anuales, 2),
                     compras_mensuales=compras_mensuales,
