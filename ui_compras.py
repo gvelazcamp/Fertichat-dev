@@ -1917,7 +1917,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                 proveedor_sel = proveedores_sel[0]
                 df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
                 if df_variacion is not None and not df_variacion.empty:
-                    st.markdown("#### 📊 ¿Por qué bajó/subió el gasto?")
+                    st.markdown("#### ¿Por qué bajó/subió el gasto?")
                     st.dataframe(
                         df_variacion[['Articulo', 'Moneda', f'Total {periodos_validos[0]}', f'Total {periodos_validos[1]}', 'Variación', 'Tipo de Variación', 'Impacto']],
                         use_container_width=True,
