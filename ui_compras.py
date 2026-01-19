@@ -1932,6 +1932,52 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                     reg_tot = int(debug_df.iloc[0]['total_registros'])
                     st.info(f"📊 Artículos distintos: {art_dist}, Registros totales: {reg_tot}")
                 
+                # Debug adicional: Ver si hay totales no cero
+                total_expr = '''
+                    CASE 
+                        WHEN TRIM(REPLACE("Monto Neto", ' ', '')) LIKE '(%%)' THEN 
+                            -1 * COALESCE(CAST(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE(
+                                            SUBSTRING(TRIM(REPLACE("Monto Neto", ' ', '')), 2, LENGTH(TRIM(REPLACE("Monto Neto", ' ', ''))) - 2), 
+                                            '.', ''
+                                        ), 
+                                        ',', '.'
+                                    ), 
+                                    '$', ''
+                                ) AS NUMERIC
+                            ), 0)
+                        ELSE 
+                            COALESCE(CAST(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE(TRIM(REPLACE("Monto Neto", ' ', '')), '.', ''), 
+                                        ',', '.'
+                                    ), 
+                                    '$', ''
+                                ) AS NUMERIC
+                            ), 0)
+                    END
+                '''
+                debug_tot_sql = f'''
+                    SELECT "Articulo", "Moneda", "Año", SUM({total_expr}) as total_anio
+                    FROM chatbot_raw 
+                    WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE LOWER(%s)
+                      AND "Año"::int IN ({periodos_validos[0]}, {periodos_validos[1]})
+                      AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+                    GROUP BY "Articulo", "Moneda", "Año"
+                    HAVING SUM({total_expr}) != 0
+                    ORDER BY ABS(SUM({total_expr})) DESC
+                    LIMIT 5
+                '''
+                debug_tot_df = ejecutar_consulta(debug_tot_sql, (f"%{proveedor_sel.strip().lower()}%",))
+                if debug_tot_df is not None and not debug_tot_df.empty:
+                    st.info("🔢 Ejemplos de totales no cero:")
+                    st.dataframe(debug_tot_df, use_container_width=True)
+                else:
+                    st.warning("⚠️ No hay totales no cero para ningún artículo/año/moneda")
+                
                 df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
                 
                 if df_variacion is not None and not df_variacion.empty:
