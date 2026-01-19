@@ -50,30 +50,24 @@ def calcular_cantidad_sugerida(
         cantidad = lote_minimo
     return max(round(cantidad, 1), 0)
 
-# En la función get_datos_sugerencias, agrega debug:
-
 def get_datos_sugerencias(anio: int) -> pd.DataFrame:
     """
     Obtiene datos reales de sugerencias usando datos de compras.
+    Calcula consumo diario basado en compras del año.
+    Nota: Stock actual se asume 0 ya que no está en datos de compras.
     """
-    df_compras = get_compras_anio(anio, limite=10000)
+    # Obtener todas las compras del año
+    df_compras = get_compras_anio(anio, limite=10000)  # Aumentar límite para más datos
     
     if df_compras is None or df_compras.empty:
         return pd.DataFrame()
     
-    # DEBUG: Imprimir columnas disponibles
-    st.write("📋 Columnas en df_compras:", list(df_compras.columns))
-    st.dataframe(df_compras.head(3))  # Muestra primeras filas
-    
-    # Agrupar por artículo - AJUSTA EL NOMBRE DE LA COLUMNA
-    # Si es 'articulo' en minúscula, cambia 'Articulo' a 'articulo'
-    df_agrupado = df_compras.groupby('Articulo').agg({  # Cambia 'Articulo' si es necesario
-        'Cantidad': 'sum',  # Cambia si es 'cantidad'
-        'Proveedor': 'first',  # Cambia si es 'proveedor'
-        'Fecha': 'max'  # Cambia si es 'fecha'
+    # Agrupar por artículo para calcular estadísticas
+    df_agrupado = df_compras.groupby('articulo').agg({
+        'Cantidad': 'sum',
+        'proveedor': 'first',  # Tomar el primer proveedor
+        'Fecha': 'max'  # Última fecha de compra
     }).reset_index()
-    
-    # ... resto del código se mantiene igual
     
     # Calcular consumo diario aproximado: total comprado / 365 días
     df_agrupado['consumo_diario'] = df_agrupado['Cantidad'] / 365
@@ -88,8 +82,8 @@ def get_datos_sugerencias(anio: int) -> pd.DataFrame:
     
     # Renombrar columnas
     df_agrupado = df_agrupado.rename(columns={
-        'Articulo': 'producto',
-        'Proveedor': 'proveedor'
+        'articulo': 'producto',
+        'proveedor': 'proveedor'
     })
     
     # Seleccionar columnas relevantes
