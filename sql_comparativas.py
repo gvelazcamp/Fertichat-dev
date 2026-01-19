@@ -890,3 +890,5 @@ def get_analisis_variacion_articulos(proveedor, anios):
 
     df[['Tipo de Variación', 'Impacto']] = df.apply(calcular_tipo_y_impacto, axis=1, result_type='expand')
     return df
+
+# ... (otras funciones existentes abajo, sin cambios) ...
