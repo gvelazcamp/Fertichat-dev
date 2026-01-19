@@ -75,6 +75,7 @@ CSS_SUGERENCIAS_PEDIDOS = """
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
+    align-items: stretch;
 }
 @media (max-width: 980px){
     .fc-alert-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -181,7 +182,7 @@ CSS_SUGERENCIAS_PEDIDOS = """
 .fc-badge.planificar{ border-color: rgba(34,197,94,0.22); background: rgba(34,197,94,0.12); }
 .fc-badge.saludable{ border-color: rgba(14,165,233,0.18); background: rgba(14,165,233,0.10); }
 
-/* Barra estado (como tu screenshot) */
+/* Barra estado */
 .fc-statusbar{
     margin-top: 10px;
     border-radius: 12px;
@@ -286,23 +287,24 @@ def render_card(html: str, extra_class: str = ""):
     st.markdown(f'<div class="{cls}">{html}</div>', unsafe_allow_html=True)
 
 def render_alert_grid(alerts: list):
-    st.markdown('<div class="fc-alert-grid">', unsafe_allow_html=True)
+    # ✅ IMPORTANTE: TODO el HTML en UNA sola llamada, si no Streamlit lo rompe y se apila.
+    parts = ['<div class="fc-alert-grid">']
     for a in alerts:
         title = str(a.get("title", ""))
         value = str(a.get("value", ""))
         subtitle = str(a.get("subtitle", ""))
         css_class = str(a.get("class", "")).strip()
-        st.markdown(
+        parts.append(
             f"""
             <div class="fc-alert {css_class}">
                 <div class="t">{title}</div>
                 <div class="v">{value}</div>
                 <div class="s">{subtitle}</div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
-    st.markdown('</div>', unsafe_allow_html=True)
+    parts.append("</div>")
+    st.markdown("\n".join(parts), unsafe_allow_html=True)
 
 def render_sugerencia_card(
     producto: str,
@@ -373,5 +375,4 @@ def render_sugerencia_card(
     st.markdown('</div>', unsafe_allow_html=True)
 
 def render_actions():
-    # Helper disponible (por compatibilidad). Si lo querés usar en el futuro, lo adaptamos.
     pass
