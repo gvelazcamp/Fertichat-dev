@@ -1192,7 +1192,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
     # Excluir 'Proveedor', 'Articulo', 'Moneda', 'Diferencia'
     cols_periodos = []
     for c in df.columns:
-        # Es un período si es número (2024, 2025) o tiene guión (2024-11)
+        # Es un período si es numérica o tiene guión y no es excluida
         if pd.api.types.is_numeric_dtype(df[c]) and c not in ['Diferencia']:
             cols_periodos.append(c)
         elif isinstance(c, str) and ('-' in c or c.isdigit()) and c not in ['Proveedor', 'Articulo', 'Moneda', 'Cliente / Proveedor']:
@@ -1872,7 +1872,6 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         articulos_sel = st.session_state.get("art_multi", [])
         
         if articulos_sel and len(articulos_sel) == 1:
-            # ✅ MODO HISTÓRICO DE PRECIOS
             articulo = articulos_sel[0]
             
             try:
@@ -1887,9 +1886,26 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         hide_index=True
                     )
                 else:
-                    st.info("No hay datos históricos para este artículo")
+                    st.warning(f"⚠️ No hay datos históricos para '{articulo}'")
+                    
+                    # Debug rápido: contar registros
+                    debug_sql = '''
+                        SELECT COUNT(*) as total
+                        FROM chatbot_raw 
+                        WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+                          AND "Cantidad" IS NOT NULL AND TRIM("Cantidad") <> ''
+                          AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+                    '''
+                    debug_df = ejecutar_consulta(debug_sql, (f"%{articulo.strip().lower()}%",))
+                    if debug_df is not None and not debug_df.empty:
+                        total = int(debug_df.iloc[0]['total'])
+                        st.info(f"Registros encontrados para '{articulo}': {total}")
+                        if total == 0:
+                            st.info("El artículo no existe o no tiene datos válidos.")
+                        else:
+                            st.info("Datos existen, pero no se pudieron parsear (revisa Monto Neto).")
             except Exception as e:
-                st.error(f"Error cargando histórico: {e}")
+                st.error(f"Error: {e}")
         else:
             # ⬇️ TABLA COMPARATIVA ORIGINAL (NO TOCAR)
             st.dataframe(df, use_container_width=True, height=600)
@@ -2546,7 +2562,7 @@ def Compras_IA():
                         
                         render_dashboard_compras_vendible(df, titulo="Compras")
                     elif df is not None:
-                        st.warning("⚠️ No se encontraron resultados para esa b��squeda.")
+                        st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
                 except Exception as e:
                     st.error(f"❌ Error en búsqueda: {e}")
 
