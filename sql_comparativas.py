@@ -778,7 +778,7 @@ def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
 def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
     """
     Devuelve el histórico real de precios unitarios por artículo.
-    Parsea Monto Neto correctamente, ahora más robusto para espacios y símbolos.
+    Parsea Monto Neto correctamente, ahora con eliminación de separadores de miles.
     """
     sql = """
         WITH base AS (
@@ -788,16 +788,16 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
                 "Nro. Comprobante",
                 "Cantidad",
                 "Moneda",
-                -- Parsing ROBUSTO: Maneja espacios, símbolos, paréntesis, y separadores mixtos
+                -- Parsing ULTRA-ROBUSTO: Maneja todo (espacios, símbolos, paréntesis, múltiples puntos)
                 CASE
                     WHEN TRIM(REPLACE("Monto Neto", ' ', '')) LIKE '(%%)' THEN
                         -1 * COALESCE(CAST(
                             REGEXP_REPLACE(
                                 REGEXP_REPLACE(
                                     SUBSTRING(TRIM(REPLACE("Monto Neto", ' ', '')), 2, LENGTH(TRIM(REPLACE("Monto Neto", ' ', ''))) - 2),
-                                    '[^0-9,.-]', '', 'g'  -- Elimina cualquier símbolo no numérico
+                                    '[^0-9,.-]', '', 'g'  -- Elimina símbolos
                                 ),
-                                ',', '.', 'g'  -- Convierte coma a punto decimal
+                                '\\.(?=\\d{3})', '', 'g'  -- Elimina puntos de miles (seguido de 3 dígitos)
                             ) AS NUMERIC
                         ), 0)
                     ELSE
@@ -805,9 +805,9 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
                             REGEXP_REPLACE(
                                 REGEXP_REPLACE(
                                     TRIM(REPLACE("Monto Neto", ' ', '')),  -- Elimina espacios
-                                    '[^0-9,.-]', '', 'g'  -- Elimina símbolos de moneda y otros
+                                    '[^0-9,.-]', '', 'g'  -- Elimina símbolos
                                 ),
-                                ',', '.', 'g'  -- Convierte coma a punto decimal
+                                '\\.(?=\\d{3})', '', 'g'  -- Elimina puntos de miles
                             ) AS NUMERIC
                         ), 0)
                 END AS monto_num
