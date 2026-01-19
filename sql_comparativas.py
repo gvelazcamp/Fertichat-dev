@@ -807,7 +807,6 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
 # =====================================================================
 # ANÁLISIS DE VARIACIÓN POR ARTÍCULO/MONEDA
 # =====================================================================
-
 def get_analisis_variacion_articulos(proveedor, anios):
     """
     Devuelve análisis de variación por artículo/moneda entre dos años.
@@ -891,3 +890,4 @@ def get_analisis_variacion_articulos(proveedor, anios):
 
     df[['Tipo de Variación', 'Impacto']] = df.apply(calcular_tipo_y_impacto, axis=1, result_type='expand')
     return df
+
