@@ -770,3 +770,53 @@ def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
         ORDER BY Total DESC
     """
     return ejecutar_consulta(sql, params)
+
+# =====================================================================
+# HISTÓRICO DE PRECIOS UNITARIOS POR ARTÍCULO
+# =====================================================================
+
+def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
+    """
+    Devuelve el histórico real de precios unitarios por artículo.
+    Parsea Monto Neto correctamente, calcula precio_unitario = monto / cantidad.
+    """
+    sql = """
+        WITH base AS (
+            SELECT
+                "Fecha",
+                "Cliente / Proveedor" AS Proveedor,
+                "Nro. Comprobante",
+                "Cantidad",
+                "Moneda",
+                CASE
+                    WHEN REPLACE("Monto Neto",' ','') LIKE '(%%)' THEN
+                        -1 * CAST(
+                            REPLACE(
+                                REPLACE(
+                                    SUBSTRING(REPLACE("Monto Neto",' ',''), 2,
+                                    LENGTH(REPLACE("Monto Neto",' ','')) - 2),
+                                '.', ''), ',', '.') AS NUMERIC)
+                    ELSE
+                        CAST(
+                            REPLACE(
+                                REPLACE(
+                                    REPLACE("Monto Neto",' ',''), '.', ''), ',', '.') AS NUMERIC)
+                END AS monto_num
+            FROM chatbot_raw
+            WHERE
+                LOWER(TRIM("Articulo")) LIKE %s
+                AND "Cantidad" IS NOT NULL
+                AND "Cantidad" > 0
+        )
+        SELECT
+            "Fecha",
+            Proveedor,
+            "Nro. Comprobante",
+            Cantidad,
+            ROUND(monto_num / Cantidad, 2) AS precio_unitario,
+            Moneda
+        FROM base
+        WHERE monto_num IS NOT NULL
+        ORDER BY "Fecha" ASC;
+    """
+    return ejecutar_consulta(sql, (f"%{articulo_like.lower()}%",))
