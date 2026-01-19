@@ -267,11 +267,6 @@ div[data-testid="stSelectbox"] > div,
 div[data-testid="stTextInput"] > div{
     border-radius: 12px;
 }
-
-/* Ocultar el wrapper de Streamlit para las tarjetas de sugerencias */
-div[data-testid="stMarkdownContainer"] {
-    display: contents;
-}
 </style>
 """
 
@@ -332,9 +327,10 @@ def render_sugerencia_card(
     }
     badge_text = badge_map.get(urg, "STOCK SALUDABLE")
 
-    # Combinar todo el HTML en una sola llamada a st.markdown para evitar wrappers innecesarios
-    html = f"""
-    <div class="fc-sug-card">
+    st.markdown('<div class="fc-sug-card">', unsafe_allow_html=True)
+
+    st.markdown(
+        f"""
         <div class="fc-sug-top">
             <div>
                 <div class="fc-sug-title">{producto}</div>
@@ -372,9 +368,11 @@ def render_sugerencia_card(
             <span class="fc-btn">Ajustar cantidad</span>
             <span class="fc-btn">Ver historial</span>
         </div>
-    </div>
-    """
-    st.markdown(html, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def render_actions():
     pass
