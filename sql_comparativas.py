@@ -830,7 +830,7 @@ def get_analisis_variacion_articulos(proveedor, anios):
                 END AS monto_num
             FROM chatbot_raw
             WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
-                AND "Año"::int IN ({anio1}, {anio2})
+                AND "Año"::int IN ({int(anio1)}, {int(anio2)})
                 AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
         ),
         base AS (
@@ -845,8 +845,8 @@ def get_analisis_variacion_articulos(proveedor, anios):
             COALESCE(b1.total_anio, 0) AS "Total {anio1}",
             COALESCE(b2.total_anio, 0) AS "Total {anio2}",
             COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0) AS "Variación"
-        FROM (SELECT * FROM base WHERE "Año" = {anio1}) b1
-        FULL OUTER JOIN (SELECT * FROM base WHERE "Año" = {anio2}) b2
+        FROM (SELECT * FROM base WHERE "Año" = {int(anio1)}) b1
+        FULL OUTER JOIN (SELECT * FROM base WHERE "Año" = {int(anio2)}) b2
             ON b1."Articulo" = b2."Articulo" AND b1."Moneda" = b2."Moneda"
         ORDER BY ABS(COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0)) DESC
     """
@@ -890,4 +890,3 @@ def get_analisis_variacion_articulos(proveedor, anios):
 
     df[['Tipo de Variación', 'Impacto']] = df.apply(calcular_tipo_y_impacto, axis=1, result_type='expand')
     return df
-
