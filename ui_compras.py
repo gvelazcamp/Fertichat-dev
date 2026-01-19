@@ -1915,7 +1915,25 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             proveedores_sel = st.session_state.get("comparativas_proveedores_multi", [])
             if proveedores_sel and len(proveedores_sel) == 1 and len(periodos_validos) == 2:
                 proveedor_sel = proveedores_sel[0]
+                
+                st.info(f"🔍 Buscando análisis de variación para: '{proveedor_sel}' en años {periodos_validos}")
+                
+                # Debug: Contar artículos del proveedor en esos años
+                debug_sql = f'''
+                    SELECT COUNT(DISTINCT "Articulo") as articulos_distintos, COUNT(*) as total_registros
+                    FROM chatbot_raw 
+                    WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE LOWER(%s)
+                      AND "Año"::int IN ({periodos_validos[0]}, {periodos_validos[1]})
+                      AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+                '''
+                debug_df = ejecutar_consulta(debug_sql, (f"%{proveedor_sel.strip().lower()}%",))
+                if debug_df is not None and not debug_df.empty:
+                    art_dist = int(debug_df.iloc[0]['articulos_distintos'])
+                    reg_tot = int(debug_df.iloc[0]['total_registros'])
+                    st.info(f"📊 Artículos distintos: {art_dist}, Registros totales: {reg_tot}")
+                
                 df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
+                
                 if df_variacion is not None and not df_variacion.empty:
                     st.markdown("#### 📊 ¿Por qué bajó/subió el gasto?")
                     st.dataframe(
@@ -1925,7 +1943,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         height=600
                     )
                 else:
-                    st.info("No hay datos de variación para este proveedor")
+                    st.warning("⚠️ No hay datos de variación para este proveedor (revisa debug arriba)")
             else:
                 # ⬇️ TABLA COMPARATIVA ORIGINAL (NO TOCAR)
                 st.dataframe(df, use_container_width=True, height=600)
