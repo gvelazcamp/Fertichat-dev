@@ -777,43 +777,29 @@ def get_gastos_por_familia(where_clause: str, params: tuple) -> pd.DataFrame:
 
 def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
     """
-    Devuelve el histórico real de precios unitarios por artículo.
-    Parsea Monto Neto y Cantidad (ambos con formato LATAM).
+    Devuelve el histórico con Total (monto_num) en lugar de precio unitario.
     """
     sql = """
-        WITH base AS (
-            SELECT
-                "Fecha",
-                "Cliente / Proveedor" AS Proveedor,
-                "Nro. Comprobante",
-                "Cantidad",
-                "Moneda",
-                -- Parsing para Monto Neto
-                CASE
-                    WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
-                        -1 * CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
-                    ELSE
-                        CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
-                END AS monto_num,
-                -- Parsing para Cantidad (igual que Monto Neto)
-                CAST(REPLACE(REPLACE(REPLACE("Cantidad", ' ', ''), '.', ''), ',', '.') AS NUMERIC) AS cant_num
-            FROM chatbot_raw
-            WHERE
-                LOWER(TRIM("Articulo")) LIKE LOWER(%s)
-                AND "Cantidad" IS NOT NULL
-                AND TRIM("Cantidad") <> ''
-                AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
-        )
         SELECT
             "Fecha",
-            Proveedor,
+            "Cliente / Proveedor" AS Proveedor,
             "Nro. Comprobante",
             "Cantidad",
-            ROUND(monto_num / cant_num, 2) AS precio_unitario,
-            Moneda
-        FROM base
-        WHERE monto_num IS NOT NULL AND monto_num > 0
-          AND cant_num > 0  -- Filtra cantidades > 0
+            -- Usa monto_num directamente como Total (sin dividir)
+            CASE
+                WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
+                    -1 * CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
+                ELSE
+                    CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
+            END AS Total,
+            "Moneda"
+        FROM chatbot_raw
+        WHERE
+            LOWER(TRIM("Articulo")) = LOWER(TRIM(%s))  -- Cambia LIKE por = para match exacto
+            AND "Cantidad" IS NOT NULL
+            AND TRIM("Cantidad") <> ''
+            AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+            AND CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC) > 0
         ORDER BY "Fecha" ASC;
     """
-    return ejecutar_consulta(sql, (f"%{articulo_like.strip().lower()}%",))
+    return ejecutar_consulta(sql, (articulo_like.strip(),))
