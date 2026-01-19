@@ -124,6 +124,11 @@ def main():
     # NAVEGACIÓN POR MÓDULOS
     # =========================
     go = st.query_params.get("go")
+    
+    # DEBUG GENERAL: Mostrar el valor de 'go' para verificar navegación
+    if st.session_state.get("modo_avanzado"):
+        st.write(f"🔍 DEBUG: Valor de 'go' = {go}")
+    
     if go == "compras":
         # Módulo Compras IA
         st.subheader("🛒 Compras IA")
@@ -183,18 +188,35 @@ def main():
         st.write("Power BI.")
         # Agrega lógica específica
 
-    # ← NUEVA CONDICIÓN PARA SUGERENCIAS
+    # ← CONDICIÓN PARA SUGERENCIAS CON DEBUG DETALLADO
     elif go == "sugerencias":
+        st.write("🔍 DEBUG: Entrando a sección sugerencias")
+        
         # Módulo Sugerencia de pedidos
         st.subheader("📋 Sugerencia de pedidos")
         st.write("Sistema inteligente de recomendaciones de compra.")
+        
         try:
+            st.write("🔍 DEBUG: Intentando importar pages.sugerencias...")
             import pages.sugerencias
+            st.write("✅ DEBUG: Módulo importado correctamente")
+            
+            st.write("🔍 DEBUG: Intentando ejecutar main()...")
             pages.sugerencias.main()
-        except ImportError:
-            st.error("Página 'Sugerencias' no encontrada. Verifica que pages/sugerencias.py exista.")
+            st.write("✅ DEBUG: main() ejecutado sin errores")
+            
+        except ImportError as e:
+            st.error(f"❌ ERROR de Importación: {str(e)}")
+            st.write("Posibles causas:")
+            st.write("- El archivo pages/sugerencias.py no existe")
+            st.write("- Error de sintaxis en sugerencias.py")
+            st.write("- Ruta incorrecta (verifica carpeta pages/)")
+            st.write("- Módulos faltantes (ui_sugerencias, config, etc.)")
+            
         except Exception as e:
-            st.error(f"Error al cargar sugerencias: {str(e)}")
+            st.error(f"❌ ERROR al ejecutar sugerencias: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
 
     else:
         # Pantalla de inicio con tarjetas
@@ -226,4 +248,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
