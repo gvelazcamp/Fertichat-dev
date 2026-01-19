@@ -849,7 +849,7 @@ def get_analisis_variacion_articulos(proveedor, anios):
         ORDER BY ABS(COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0)) DESC
     """
     
-    df = ejecutar_consulta(sql, (proveedor.strip().lower(),))
+    df = ejecutar_consulta(sql, (proveedor.split(' (')[0].strip().lower(),))
     if df is None or df.empty or len(df.columns) == 0:
         return pd.DataFrame()
 
