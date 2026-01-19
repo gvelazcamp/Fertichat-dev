@@ -1661,9 +1661,9 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             with col_graph:
                 # ✅ FIX #3: GRÁFICO INTELIGENTE SEGÚN CANTIDAD DE ENTIDADES
                 if len(df) == 1:
-                    st.markdown("#### 📊 Comparación de Períodos")
+                    st.markdown("#### Comparación de Períodos")
                 else:
-                    st.markdown("#### 📊 Comparación")
+                    st.markdown("#### Comparación")
                 
                 try:
                     import plotly.graph_objects as go
@@ -2334,7 +2334,7 @@ def Compras_IA():
     art_options = get_unique_articulos()  # ✅ CAMBIO: TODOS LOS ARTÍCULOS (sin [:100])
 
     # TABS PRINCIPALES: Chat IA + Comparativas
-    tab_chat, tab_comparativas = st.tabs(["💬Compras", "📊 Comparativas"])
+    tab_chat, tab_comparativas = st.tabs(["💬Compras", " Comparativas"])
 
     with tab_chat:
         # BOTÓN LIMPIAR (solo en chat)
@@ -2532,7 +2532,7 @@ def Compras_IA():
         st.rerun()
 
     with tab_comparativas:
-        st.markdown("### 📊 Menú Comparativas Fáciles")
+        st.markdown("### Menú Comparativas Fáciles")
         st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
         # Agregado: Submenús Compras y Comparativas
@@ -2590,7 +2590,7 @@ def Compras_IA():
             # ✅ PAUSAR AUTOREFRESH EN COMPARATIVAS
             st.session_state["pause_autorefresh"] = True
 
-            st.markdown("#### 📊 Comparativas")
+            st.markdown("#### Comparativas")
             
             # ✅ PROVEEDORES (ancho completo, sin columnas)
             proveedores_disponibles = prov_options  # Ya tiene todos los proveedores
