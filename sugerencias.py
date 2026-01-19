@@ -22,15 +22,6 @@ from config import DEBUG_MODE
 from sql_compras import get_compras_anio, get_total_compras_anio  # Importar funciones necesarias
 
 # =========================
-# CONFIGURACIÓN DE LA PÁGINA
-# =========================
-st.set_page_config(
-    page_title="Sugerencia de pedidos - Fertichat",
-    page_icon="📋",
-    layout="wide"
-)
-
-# =========================
 # FUNCIONES DE DATOS Y LÓGICA
 # =========================
 
@@ -138,14 +129,23 @@ def filtrar_sugerencias(sugerencias: pd.DataFrame, filtro_urgencia: str):
 # =========================
 
 def main():
+    # DEBUG: Mensaje inicial para verificar que se ejecuta
+    st.write("🔍 DEBUG: Función main() de sugerencias ejecutándose...")
+    
     # Aplicar estilos CSS
     apply_css_sugerencias()
+    
+    # DEBUG: Después de aplicar CSS
+    st.write("✅ DEBUG: CSS aplicado")
     
     # Título de la página
     render_title(
         "📋 Sugerencia de pedidos preciso con sus importes",
         "Sistema inteligente de recomendaciones de compra basado en consumo histórico"
     )
+    
+    # DEBUG: Después del título
+    st.write("✅ DEBUG: Título renderizado")
     
     # Filtros
     render_section_title("Filtros y opciones")
@@ -165,10 +165,21 @@ def main():
     with col3:
         st.write("")  # Espacio
     
+    # DEBUG: Después de filtros
+    st.write(f"✅ DEBUG: Año seleccionado: {anio_seleccionado}")
+    
     render_divider()
     
     # Obtener datos reales
     df = get_datos_sugerencias(anio_seleccionado)
+    
+    # DEBUG: Mostrar datos obtenidos
+    st.write("🔍 DEBUG: Datos obtenidos:")
+    st.write(f"Filas: {len(df)}")
+    if not df.empty:
+        st.dataframe(df.head())
+    else:
+        st.warning("No se encontraron datos de compras para este año.")
     
     if df.empty:
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado}.")
@@ -191,6 +202,10 @@ def main():
         ),
         axis=1
     )
+    
+    # DEBUG: Después del preprocesamiento
+    st.write("✅ DEBUG: Datos preprocesados")
+    st.write(f"Columnas: {list(df.columns)}")
     
     # Alertas basadas en datos reales
     render_section_title("Resumen de situación")
@@ -271,7 +286,7 @@ def main():
                 st.rerun()
 
 # =========================
-# EJECUCIÓN
+# EJECUCIÓN DIRECTA (PARA TESTING)
 # =========================
 if __name__ == "__main__":
     main()
