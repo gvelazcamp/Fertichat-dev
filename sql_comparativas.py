@@ -788,35 +788,48 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
                 "Nro. Comprobante",
                 "Cantidad",
                 "Moneda",
+                -- Parsing más robusto de Monto Neto
                 CASE
-                    WHEN REPLACE("Monto Neto",' ','') LIKE '(%%)' THEN
-                        -1 * CAST(
+                    WHEN TRIM(REPLACE("Monto Neto", ' ', '')) LIKE '(%%)' THEN
+                        -1 * COALESCE(CAST(
                             REPLACE(
                                 REPLACE(
-                                    SUBSTRING(REPLACE("Monto Neto",' ',''), 2,
-                                    LENGTH(REPLACE("Monto Neto",' ','')) - 2),
-                                '.', ''), ',', '.') AS NUMERIC)
+                                    REPLACE(
+                                        SUBSTRING(TRIM(REPLACE("Monto Neto", ' ', '')), 2, LENGTH(TRIM(REPLACE("Monto Neto", ' ', ''))) - 2), 
+                                        '.', ''
+                                    ), 
+                                    ',', '.'
+                                ), 
+                                '$', ''
+                            ) AS NUMERIC
+                        ), 0)
                     ELSE
-                        CAST(
+                        COALESCE(CAST(
                             REPLACE(
                                 REPLACE(
-                                    REPLACE("Monto Neto",' ',''), '.', ''), ',', '.') AS NUMERIC)
+                                    REPLACE(TRIM(REPLACE("Monto Neto", ' ', '')), '.', ''), 
+                                    ',', '.'
+                                ), 
+                                '$', ''
+                            ) AS NUMERIC
+                        ), 0)
                 END AS monto_num
             FROM chatbot_raw
             WHERE
-                LOWER(TRIM("Articulo")) LIKE %s
+                LOWER(TRIM("Articulo")) LIKE LOWER(%s)  -- Usar LOWER en ambos lados
                 AND "Cantidad" IS NOT NULL
-                AND "Cantidad" > 0
+                AND TRIM("Cantidad") <> ''  -- Evitar vacíos
+                AND CAST(TRIM("Cantidad") AS NUMERIC) > 0  -- Convertir y filtrar
         )
         SELECT
             "Fecha",
             Proveedor,
             "Nro. Comprobante",
-            Cantidad,
-            ROUND(monto_num / Cantidad, 2) AS precio_unitario,
+            CAST("Cantidad" AS NUMERIC) AS Cantidad,  -- Asegurar numérico
+            ROUND(monto_num / CAST("Cantidad" AS NUMERIC), 2) AS precio_unitario,
             Moneda
         FROM base
-        WHERE monto_num IS NOT NULL
+        WHERE monto_num IS NOT NULL AND monto_num <> 0  -- Filtrar montos inválidos
         ORDER BY "Fecha" ASC;
     """
-    return ejecutar_consulta(sql, (f"%{articulo_like.lower()}%",))
+    return ejecutar_consulta(sql, (f"%{articulo_like.strip().lower()}%",))
