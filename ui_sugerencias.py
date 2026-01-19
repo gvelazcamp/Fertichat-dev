@@ -316,6 +316,35 @@ div[data-testid="stTextInput"] > div{
 .fc-sug-title{
     margin-top: 0.6rem !important;
 }
+
+/* =========================
+   DASHBOARD ALERTAS UNIFORME
+   ========================= */
+
+.fc-alert{
+    min-height: 130px !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Compactar textos para look dashboard */
+.fc-alert .t{
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.2rem;
+}
+
+.fc-alert .v{
+    font-size: 1.75rem;
+    line-height: 1.1;
+    margin: 0.2rem 0;
+}
+
+.fc-alert .s{
+    font-size: 0.85rem;
+    margin-top: 0.1rem;
+}
 </style>
 """
 
