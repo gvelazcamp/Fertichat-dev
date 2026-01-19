@@ -186,7 +186,7 @@ def main():
     # ← NUEVA CONDICIÓN PARA SUGERENCIAS
     elif go == "sugerencias":
         # Módulo Sugerencia de pedidos
-        st.subheader("📋 Sugerencia de pedidos preciso con sus importes")
+        st.subheader("📋 Sugerencia de pedidos")
         st.write("Sistema inteligente de recomendaciones de compra.")
         try:
             import pages.sugerencias
@@ -226,3 +226,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
