@@ -1,249 +1,307 @@
 # =========================
-# FERTI CHAT - BASE ADAPTATIVA
+# SUGERENCIAS.PY - LÓGICA Y DATOS PARA SUGERENCIAS DE PEDIDOS
 # =========================
 
 import streamlit as st
-import os
-from ui_inicio import mostrar_inicio  # Importa la función de inicio
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
 
+# Importar helpers UI y config
+from ui.ui_sugerencias import (
+    apply_css_sugerencias,
+    render_title,
+    render_section_title,
+    render_card,
+    render_alert_grid,
+    render_sugerencia_card,
+    render_actions,
+    render_divider
+)
+from config import DEBUG_MODE
+from sql_compras import get_compras_anio, get_total_compras_anio  # Importar funciones necesarias
+
+# =========================
+# FUNCIONES DE DATOS Y LÓGICA
+# =========================
+
+def calcular_dias_stock(stock_actual: float, consumo_diario: float) -> float:
+    if consumo_diario <= 0:
+        return float("inf")
+    return round(stock_actual / consumo_diario, 1)
+
+def clasificar_urgencia(dias_stock: float) -> str:
+    if dias_stock <= 3:
+        return "urgente"
+    if dias_stock <= 7:
+        return "proximo"
+    if dias_stock <= 15:
+        return "planificar"
+    return "saludable"
+
+def calcular_cantidad_sugerida(
+    consumo_diario: float,
+    dias_cobertura_objetivo: int,
+    stock_actual: float,
+    lote_minimo: float
+) -> float:
+    cantidad = (consumo_diario * dias_cobertura_objetivo) - stock_actual
+    if cantidad < lote_minimo:
+        cantidad = lote_minimo
+    return max(round(cantidad, 1), 0)
+
+def get_datos_sugerencias(anio: int) -> pd.DataFrame:
+    """
+    Obtiene datos reales de sugerencias usando datos de compras.
+    Calcula consumo diario basado en compras del año.
+    Nota: Stock actual se asume 0 ya que no está en datos de compras.
+    """
+    # Obtener todas las compras del año
+    df_compras = get_compras_anio(anio, limite=10000)  # Aumentar límite para más datos
+    
+    if df_compras is None or df_compras.empty:
+        return pd.DataFrame()
+    
+    # Agrupar por artículo para calcular estadísticas
+    df_agrupado = df_compras.groupby('Articulo').agg({
+        'Cantidad': 'sum',
+        'Proveedor': 'first',  # Tomar el primer proveedor
+        'Fecha': 'max'  # Última fecha de compra
+    }).reset_index()
+    
+    # Calcular consumo diario aproximado: total comprado / 365 días
+    df_agrupado['consumo_diario'] = df_agrupado['Cantidad'] / 365
+    df_agrupado['consumo_diario'] = df_agrupado['consumo_diario'].round(1)
+    
+    # Valores por defecto/estimados
+    df_agrupado['stock_actual'] = 0  # No disponible en datos de compras
+    df_agrupado['stock_minimo'] = (df_agrupado['consumo_diario'] * 30).round(1)  # 30 días de cobertura mínima
+    df_agrupado['lote_minimo'] = df_agrupado['consumo_diario'] * 7  # Lote mínimo = 1 semana
+    df_agrupado['unidad'] = 'un'  # Unidad por defecto
+    df_agrupado['ultima_compra'] = df_agrupado['Fecha']
+    
+    # Renombrar columnas
+    df_agrupado = df_agrupado.rename(columns={
+        'Articulo': 'producto',
+        'Proveedor': 'proveedor'
+    })
+    
+    # Seleccionar columnas relevantes
+    columnas = ['producto', 'proveedor', 'stock_actual', 'stock_minimo', 
+                'consumo_diario', 'ultima_compra', 'lote_minimo', 'unidad']
+    
+    return df_agrupado[columnas]
+
+def get_mock_alerts(df_sugerencias: pd.DataFrame):
+    """
+    Genera datos para las alertas basados en los datos reales.
+    """
+    if df_sugerencias.empty:
+        return [
+            {"title": "📦 Artículos críticos", "value": "0", "subtitle": "Necesitan pedido urgente", "class": "fc-urgente"},
+            {"title": "⏰ Próximos a agotarse", "value": "0", "subtitle": "Pedir en los próximos 7 días", "class": "fc-proximo"},
+            {"title": "📈 Para planificar", "value": "0", "subtitle": "Sugerencias para stock óptimo", "class": "fc-planificar"},
+            {"title": "✅ Stock saludable", "value": "0", "subtitle": "No requieren acción inmediata", "class": "fc-saludable"}
+        ]
+    
+    urgente = len(df_sugerencias[df_sugerencias['urgencia'] == 'urgente'])
+    proximo = len(df_sugerencias[df_sugerencias['urgencia'] == 'proximo'])
+    planificar = len(df_sugerencias[df_sugerencias['urgencia'] == 'planificar'])
+    saludable = len(df_sugerencias[df_sugerencias['urgencia'] == 'saludable'])
+    
+    return [
+        {"title": "📦 Artículos críticos", "value": str(urgente), "subtitle": "Necesitan pedido urgente", "class": "fc-urgente"},
+        {"title": "⏰ Próximos a agotarse", "value": str(proximo), "subtitle": "Pedir en los próximos 7 días", "class": "fc-proximo"},
+        {"title": "📈 Para planificar", "value": str(planificar), "subtitle": "Sugerencias para stock óptimo", "class": "fc-planificar"},
+        {"title": "✅ Stock saludable", "value": str(saludable), "subtitle": "No requieren acción inmediata", "class": "fc-saludable"}
+    ]
+
+def filtrar_sugerencias(sugerencias: pd.DataFrame, filtro_urgencia: str):
+    """
+    Filtra las sugerencias por urgencia.
+    """
+    if filtro_urgencia == "Todas":
+        return sugerencias
+    return sugerencias[sugerencias['urgencia'] == filtro_urgencia.lower()]
+
+# =========================
+# LÓGICA PRINCIPAL DE LA PÁGINA
+# =========================
 
 def main():
-
-    # =========================
-    # CONFIGURACIÓN GENERAL
-    # =========================
-    st.set_page_config(
-        page_title="Ferti Chat",
-        page_icon="🦋",
-        layout="wide"
-    )
-
-    # =========================
-    # ESTADO INICIAL
-    # =========================
-    if "rol" not in st.session_state:
-        st.session_state.rol = "user"
+    # MENSAJE DE PRUEBA PARA CONFIRMAR EJECUCIÓN
+    st.write("🚀 ¡Hola! La función main() de sugerencias se está ejecutando correctamente.")
+    
+    # Aplicar estilos CSS
+    try:
+        apply_css_sugerencias()
+        st.write("✅ CSS aplicado")
+    except Exception as e:
+        st.error(f"❌ Error en CSS: {str(e)}")
+    
+    # Título de la página
+    try:
+        render_title(
+            "📋 Sugerencia de pedidos preciso con sus importes",
+            "Sistema inteligente de recomendaciones de compra basado en consumo histórico"
+        )
+        st.write("✅ Título renderizado")
+    except Exception as e:
+        st.error(f"❌ Error en título: {str(e)}")
+    
+    # Filtros
+    try:
+        render_section_title("Filtros y opciones")
+        col1, col2, col3 = st.columns([1, 1, 2])
+        with col1:
+            anio_seleccionado = st.selectbox(
+                "Año de análisis:",
+                [2025, 2024, 2023],
+                key="anio_seleccionado"
+            )
+        with col2:
+            filtro_urgencia = st.selectbox(
+                "Filtrar por urgencia:",
+                ["Todas", "Urgente", "Próximo", "Planificar", "Saludable"],
+                key="filtro_urgencia"
+            )
+        with col3:
+            st.write("")  # Espacio
         
-    if "modo_avanzado" not in st.session_state:
-        st.session_state.modo_avanzado = False    
-
-    if "logueado" not in st.session_state:
-        st.session_state.logueado = False
-
-    # =========================
-    # DETECTAR ENTORNO
-    # =========================
-    ENTORNO = "cloud" if os.getenv("STREAMLIT_SERVER") else "local"
-
-    # =========================
-    # CSS RESPONSIVE (CLAVE)
-    # =========================
-    st.markdown("""
-    <style>
-    .block-container {
-        padding-top: 2rem;
-        padding-left: 2rem;
-        padding-right: 2rem;
-        max-width: 100%;
-    }
-
-    input, button {
-        width: 100% !important;
-    }
-
-    .stButton>button {
-        background-color: #ff6a00;
-        color: white;
-        font-weight: bold;
-        border-radius: 8px;
-        height: 3rem;
-    }
-
-    @media (max-width: 900px) {
-        h1 { font-size: 1.5rem; }
-        h2 { font-size: 1.2rem; }
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # =========================
-    # HEADER
-    # =========================
-    st.markdown("<h1 style='text-align:center;'>🦋 Ferti Chat</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center;'>Sistema de Gestión de Compras</p>", unsafe_allow_html=True)
-    st.divider()
-
-    # =========================
-    # LOGIN
-    # =========================
-    if not st.session_state.logueado:
-
-        with st.container():
-            empresa = st.text_input("Empresa")
-            usuario = st.text_input("Usuario")
-            password = st.text_input("Contraseña", type="password")
-
-            col1, col2 = st.columns(2)
+        st.write(f"✅ Filtros aplicados - Año: {anio_seleccionado}")
+    except Exception as e:
+        st.error(f"❌ Error en filtros: {str(e)}")
+    
+    render_divider()
+    
+    # Obtener datos reales
+    try:
+        df = get_datos_sugerencias(anio_seleccionado)
+        st.write(f"🔍 Datos obtenidos: {len(df)} filas")
+        if not df.empty:
+            st.dataframe(df.head(3))
+        else:
+            st.warning("No se encontraron datos de compras para este año.")
+    except Exception as e:
+        st.error(f"❌ Error al obtener datos: {str(e)}")
+        df = pd.DataFrame()
+    
+    if df.empty:
+        st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado}.")
+        return
+    
+    # Preprocesar datos
+    try:
+        df["dias_stock"] = df.apply(
+            lambda r: calcular_dias_stock(r["stock_actual"], r["consumo_diario"]),
+            axis=1
+        )
+        
+        df["urgencia"] = df["dias_stock"].apply(clasificar_urgencia)
+        
+        df["cantidad_sugerida"] = df.apply(
+            lambda r: calcular_cantidad_sugerida(
+                consumo_diario=r["consumo_diario"],
+                dias_cobertura_objetivo=30,
+                stock_actual=r["stock_actual"],
+                lote_minimo=r["lote_minimo"]
+            ),
+            axis=1
+        )
+        st.write("✅ Datos preprocesados")
+    except Exception as e:
+        st.error(f"❌ Error al preprocesar datos: {str(e)}")
+        return
+    
+    # Alertas basadas en datos reales
+    try:
+        render_section_title("Resumen de situación")
+        alerts = get_mock_alerts(df)  # Ahora usa datos reales
+        render_alert_grid(alerts)
+        st.write("✅ Alertas renderizadas")
+    except Exception as e:
+        st.error(f"❌ Error en alertas: {str(e)}")
+    
+    render_divider()
+    
+    # Sugerencias detalladas
+    try:
+        render_section_title("Sugerencias de pedido")
+        
+        # Filtrar sugerencias
+        df_filtrado = filtrar_sugerencias(df, filtro_urgencia)
+        
+        if df_filtrado.empty:
+            st.info("No hay sugerencias que cumplan con los criterios de filtro.")
+        else:
+            for _, r in df_filtrado.iterrows():
+                badge_text = {
+                    "urgente": "🚨 Urgente",
+                    "proximo": "⚠️ Próximo",
+                    "planificar": "📅 Planificar",
+                    "saludable": "✅ Saludable"
+                }.get(r["urgencia"], "✅ Saludable")
+                
+                badge_class = r["urgencia"]
+                
+                render_sugerencia_card(
+                    title=f"{r['producto']}",
+                    subtitle=f"Proveedor: {r['proveedor']} | Última compra: {r['ultima_compra']}",
+                    badge=badge_text,
+                    badge_class=badge_class,
+                    metrics=[
+                        {"key": "Stock actual", "value": f"{r['stock_actual']} {r['unidad']}"},
+                        {"key": "Consumo diario", "value": f"{r['consumo_diario']} {r['unidad']}"},
+                        {"key": "Días restantes", "value": f"{r['dias_stock']} días"},
+                        {"key": "Cantidad sugerida", "value": f"{r['cantidad_sugerida']} {r['unidad']}"}
+                    ]
+                )
+            
+            render_divider()
+            
+            # Acciones finales
+            render_section_title("Acciones")
+            
+            # Calcular totales
+            total_cantidad = df_filtrado["cantidad_sugerida"].sum()
+            total_productos = len(df_filtrado)
+            
+            info_html = f"""
+            <div class="fc-info">
+                <p><strong>Total sugerido:</strong> {total_cantidad:.1f} unidades en {total_productos} productos</p>
+                <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock estimados.</p>
+            </div>
+            """
+            render_card(info_html, "fc-info")
+            
+            # Botones de acción
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
-                if st.button("Ingresar"):
-                    if empresa and usuario and password:
-                        st.session_state.logueado = True
-                        if usuario.lower() == "admin":
-                            st.session_state.rol = "admin"
-                        st.rerun()
-                    else:
-                        st.warning("Completar todos los campos")
-
+                if st.button("📤 Exportar a Excel", key="export_excel", help="Descargar sugerencias en formato Excel"):
+                    # Lógica de exportación
+                    csv = df_filtrado.to_csv(index=False)
+                    st.download_button(
+                        label="Descargar CSV",
+                        data=csv,
+                        file_name=f"sugerencias_pedidos_{anio_seleccionado}.csv",
+                        mime="text/csv"
+                    )
             with col2:
-                st.button("Cambiar clave")
-
-        st.stop()
-
-    # =========================
-    # BARRA SUPERIOR
-    # =========================
-    colA, colB, colC = st.columns([2, 2, 1])
-
-    with colA:
-        st.write(f"👤 Rol: **{st.session_state.rol}**")
-
-    with colB:
-        st.session_state.modo_avanzado = st.toggle(
-            "Modo avanzado",
-            value=st.session_state.modo_avanzado
-        )
-
-    with colC:
-        if st.button("Salir"):
-            st.session_state.logueado = False
-            st.rerun()
-
-    st.divider()
-
-    # =========================
-    # NAVEGACIÓN POR MÓDULOS
-    # =========================
-    go = st.query_params.get("go")
-    
-    # DEBUG GENERAL: Mostrar siempre el valor de 'go' para verificar
-    st.write(f"🔍 DEBUG GENERAL: Valor de 'go' = '{go}' (tipo: {type(go)})")
-    
-    if go == "compras":
-        # Módulo Compras IA
-        st.subheader("🛒 Compras IA")
-        st.write("Consultas inteligentes sobre compras.")
-        consulta = st.text_input(
-            "Escribí tu consulta de compras",
-            placeholder="Ej: total compras noviembre 2025"
-        )
-        if st.button("Consultar Compras"):
-            if consulta:
-                st.success(f"Consulta de compras: {consulta}")
-                st.write("👉 Acá va tu lógica real (SQL / DB / IA para compras)")
-                if st.session_state.modo_avanzado:
-                    st.code("DEBUG: consulta de compras parseada")
-            else:
-                st.warning("Escribí una consulta")
-
-    elif go == "buscador":
-        # Módulo Buscador IA
-        st.subheader("🔎 Buscador IA")
-        st.write("Buscar facturas / lotes.")
-        # Agrega lógica específica
-
-    elif go == "stock":
-        # Módulo Stock IA
-        st.subheader("📦 Stock IA")
-        st.write("Consultar inventario.")
-        # Agrega lógica específica
-
-    elif go == "dashboard":
-        # Módulo Dashboard
-        st.subheader("📊 Dashboard")
-        st.write("Ver estadísticas.")
-        # Agrega lógica específica
-
-    elif go == "pedidos":
-        # Módulo Pedidos internos
-        st.subheader("📄 Pedidos internos")
-        st.write("Gestionar pedidos.")
-        # Agrega lógica específica
-
-    elif go == "baja":
-        # Módulo Baja de stock
-        st.subheader("🧾 Baja de stock")
-        st.write("Registrar bajas.")
-        # Agrega lógica específica
-
-    elif go == "ordenes":
-        # Módulo Órdenes de compra
-        st.subheader("📦 Órdenes de compra")
-        st.write("Crear órdenes.")
-        # Agrega lógica específica
-
-    elif go == "indicadores":
-        # Módulo Indicadores
-        st.subheader("📈 Indicadores")
-        st.write("Power BI.")
-        # Agrega lógica específica
-
-    # ← CONDICIÓN PARA SUGERENCIAS CON DEBUG DETALLADO
-    elif go == "sugerencias":
-        st.write("🔍 DEBUG: Entrando a sección sugerencias")
+                if st.button("📧 Enviar por email", key="send_email", help="Enviar sugerencias por correo"):
+                    st.success("Funcionalidad de email no implementada aún.")
+            with col3:
+                if st.button("🛒 Crear orden de compra", key="create_order", help="Generar orden de compra automática"):
+                    st.success("Funcionalidad de orden de compra no implementada aún.")
+            with col4:
+                if st.button("🔄 Actualizar datos", key="refresh_data", help="Recargar datos desde la base de datos"):
+                    st.rerun()
         
-        # Módulo Sugerencia de pedidos
-        st.subheader("📋 Sugerencia de pedidos")
-        st.write("Sistema inteligente de recomendaciones de compra.")
-        
-        try:
-            st.write("🔍 DEBUG: Intentando importar pages.sugerencias...")
-            import pages.sugerencias
-            st.write("✅ DEBUG: Módulo importado correctamente")
-            
-            st.write("🔍 DEBUG: Intentando ejecutar main()...")
-            pages.sugerencias.main()
-            st.write("✅ DEBUG: main() ejecutado sin errores")
-            
-        except ImportError as e:
-            st.error(f"❌ ERROR de Importación: {str(e)}")
-            st.write("Posibles causas:")
-            st.write("- El archivo pages/sugerencias.py no existe")
-            st.write("- Error de sintaxis en sugerencias.py")
-            st.write("- Ruta incorrecta (verifica carpeta pages/)")
-            st.write("- Módulos faltantes (ui_sugerencias, config, etc.)")
-            
-        except Exception as e:
-            st.error(f"❌ ERROR al ejecutar sugerencias: {str(e)}")
-            import traceback
-            st.code(traceback.format_exc())
+        st.write("✅ Sugerencias renderizadas")
+    except Exception as e:
+        st.error(f"❌ Error en sugerencias: {str(e)}")
 
-    else:
-        # Pantalla de inicio con tarjetas
-        mostrar_inicio()
-
-    # =========================
-    # SECCIÓN AVANZADA (ADMIN)
-    # =========================
-    if st.session_state.rol == "admin":
-
-        st.divider()
-        st.subheader("⚙️ Administración")
-
-        if st.session_state.modo_avanzado:
-            st.write("📊 Debug / logs / tablas completas")
-            st.json({
-                "entorno": ENTORNO,
-                "rol": st.session_state.rol,
-                "modo_avanzado": st.session_state.modo_avanzado,
-                "go": go
-            })
-
-    # =========================
-    # FOOTER
-    # =========================
-    st.divider()
-    st.caption("Ferti Chat • Hosted with Streamlit")
-
-
+# =========================
+# EJECUCIÓN DIRECTA (PARA TESTING)
+# =========================
 if __name__ == "__main__":
     main()
