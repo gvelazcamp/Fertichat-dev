@@ -278,11 +278,6 @@ div[data-testid="stTextInput"] > div{
     margin-bottom: 1rem !important;
 }
 
-/* Ocultar completamente las tarjetas de sugerencias */
-.fc-sug-card{
-    display: none !important;
-}
-
 /* =========================
    AJUSTES DE ESPACIADO (FINAL)
    ========================= */
@@ -321,29 +316,26 @@ div[data-testid="stTextInput"] > div{
    DASHBOARD ALERTAS UNIFORME
    ========================= */
 
-/* Todas las tarjetas del dashboard con el mismo alto */
 .fc-alert{
-    min-height: 130px;              /* 🔑 clave */
+    min-height: 130px !important;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* reparte título / número / texto */
+    justify-content: space-between;
 }
 
-/* Título más compacto */
+/* Compactar textos para look dashboard */
 .fc-alert .t{
     font-size: 0.78rem;
     letter-spacing: 0.08em;
     margin-bottom: 0.2rem;
 }
 
-/* Número centrado y consistente */
 .fc-alert .v{
     font-size: 1.75rem;
     line-height: 1.1;
     margin: 0.2rem 0;
 }
 
-/* Subtítulo alineado abajo */
 .fc-alert .s{
     font-size: 0.85rem;
     margin-top: 0.1rem;
