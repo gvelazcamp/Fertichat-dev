@@ -2563,28 +2563,24 @@ def Compras_IA():
                 st.session_state["pause_autorefresh"] = True
 
                 try:
-                    if mes_compras == "Todos":
-                        if proveedor_compras == "Todos":
-                            df = sqlq_compras.get_compras_anio(anio_compras)
-                        else:
-                            df = sqlq_facturas.get_facturas_proveedor(proveedores=[proveedor_compras], anios=[anio_compras])
-                    else:
-                        mes_code = f"{anio_compras}-{month_num[mes_compras]}"
-                        if proveedor_compras == "Todos":
-                            df = sqlq_compras.get_compras_por_mes_excel(mes_code)
-                        else:
-                            df = sqlq_compras.get_detalle_compras_proveedor_mes(proveedor_compras, mes_code)
-                    
+                    df = sqlq_compras.get_compras_por_mes_excel(
+                        anio=anio_compras,
+                        mes=None if mes_compras == "Todos" else mes_compras,
+                        proveedor=None if proveedor_compras == "Todos" else proveedor_compras,
+                        limite=5000
+                    )
+
                     if df is not None and not df.empty:
                         # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
                         st.session_state["compras_resultado"] = df
                         st.session_state["compras_titulo"] = "Compras"
-                        
+
                         render_dashboard_compras_vendible(df, titulo="Compras")
                     elif df is not None:
                         st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
                 except Exception as e:
                     st.error(f"❌ Error en búsqueda: {e}")
+
 
         elif tipo_consulta == "Comparativas":
             # ✅ PAUSAR AUTOREFRESH EN COMPARATIVAS
