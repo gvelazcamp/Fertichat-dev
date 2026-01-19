@@ -309,7 +309,12 @@ div[data-testid="stTextInput"] > div{
 
 /* Evitar que el siguiente título quede “pegado” */
 .fc-sug-card + .fc-sug-card{
-    margin-top: 18px !important;
+    margin-top: 10px !important;
+}
+
+/* Separación extra antes del título de cada producto */
+.fc-sug-title{
+    margin-top: 0.6rem !important;
 }
 </style>
 """
