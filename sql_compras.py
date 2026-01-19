@@ -997,3 +997,32 @@ def get_dashboard_ultimas_compras(anio: int, limite: int = 10) -> pd.DataFrame:
         LIMIT %s
     """
     return ejecutar_consulta(sql, (anio, limite))
+
+# =========================
+# WRAPPER – COMPATIBILIDAD MENÚ COMPARATIVAS
+# =========================
+def get_compras_por_mes_excel(
+    anio: int,
+    mes: str,
+    proveedor: Optional[str] = None,
+    limite: int = 5000
+) -> pd.DataFrame:
+    """
+    Wrapper de compatibilidad para el menú de Comparativas Fáciles.
+    NO modifica lógica existente. Reutiliza funciones que ya funcionan.
+    """
+
+    proveedores = []
+    if proveedor and proveedor.lower() not in ("todos", "todas", "all"):
+        proveedores = [proveedor]
+
+    meses = [mes] if mes else None
+    anios = [anio] if anio else None
+
+    return get_compras_multiples(
+        proveedores=proveedores if proveedores else ["%"],
+        meses=meses,
+        anios=anios,
+        limite=limite
+    )
+
