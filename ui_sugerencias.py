@@ -277,6 +277,11 @@ div[data-testid="stTextInput"] > div{
 .fc-statusbar{
     display: none !important;
 }
+
+/* Ocultar completamente las tarjetas de sugerencias */
+.fc-sug-card{
+    display: none !important;
+}
 </style>
 """
 
