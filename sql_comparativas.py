@@ -808,86 +808,63 @@ def get_historico_precios_unitarios(articulo_like: str) -> pd.DataFrame:
 # ANÁLISIS DE VARIACIÓN POR ARTÍCULO/MONEDA
 # =====================================================================
 
-def get_analisis_variacion_articulos(proveedor, anios):
-    """
-    Devuelve análisis de variación por artículo/moneda entre dos años.
-    """
-    if len(anios) != 2:
-        return pd.DataFrame()
-    
-    anio1, anio2 = sorted(anios)  # ej. 2024, 2025
-    
-    sql = f"""
-        WITH montos AS (
-            SELECT
-                LOWER(TRIM("Articulo")) AS "Articulo",
-                "Moneda",
-                "Año",
-                CASE
-                    WHEN REPLACE("Monto Neto", ' ', '') LIKE '(%%)' THEN
-                        -1 * CAST(REPLACE(REPLACE(SUBSTRING(REPLACE("Monto Neto", ' ', ''), 2, LENGTH(REPLACE("Monto Neto", ' ', '')) - 2), '.', ''), ',', '.') AS NUMERIC)
-                    ELSE
-                        CAST(REPLACE(REPLACE(REPLACE("Monto Neto", ' ', ''), '.', ''), ',', '.') AS NUMERIC)
-                END AS monto_num
-            FROM chatbot_raw
-            WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
-                AND "Año"::int IN ({anio1}, {anio2})
-                AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
-        ),
-        base AS (
-            SELECT "Articulo", "Moneda", "Año", SUM(monto_num) AS total_anio
-            FROM montos
-            WHERE monto_num IS NOT NULL
-            GROUP BY "Articulo", "Moneda", "Año"
-        )
-        SELECT
-            COALESCE(b1."Articulo", b2."Articulo") AS "Articulo",
-            COALESCE(b1."Moneda", b2."Moneda") AS "Moneda",
-            COALESCE(b1.total_anio, 0) AS "Total {anio1}",
-            COALESCE(b2.total_anio, 0) AS "Total {anio2}",
-            COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0) AS "Variación"
-        FROM (SELECT * FROM base WHERE "Año" = {anio1}) b1
-        FULL OUTER JOIN (SELECT * FROM base WHERE "Año" = {anio2}) b2
-            ON b1."Articulo" = b2."Articulo" AND b1."Moneda" = b2."Moneda"
-        ORDER BY ABS(COALESCE(b2.total_anio, 0) - COALESCE(b1.total_anio, 0)) DESC
-    """
-    
-    df = ejecutar_consulta(sql, (f"%{proveedor.strip().lower()}%",))
-    if df is None or df.empty or len(df.columns) == 0:
-        return pd.DataFrame()
-
-    # Calcular Tipo de Variación e Impacto
-    def calcular_tipo_y_impacto(row):
-        var = row['Variación']
-        total_2024 = row[f'Total {anio1}']
-        total_2025 = row[f'Total {anio2}']
-        if var == 0 and total_2024 > 0 and total_2025 > 0:
-            return "Sin Cambio", "—"
-        if total_2024 == 0 and total_2025 > 0:
-            return "Nuevo", "🔺 Nuevo"
-        if total_2025 == 0 and total_2024 > 0:
-            return "Desaparecido", "🔻 Desaparecido"
-        if var < 0:
-            pct = abs(var) / total_2024 if total_2024 > 0 else 1
-            tipo = "Disminución"
-            if pct > 0.5:
-                impacto = "🔻 Crítico"
-            elif pct > 0.2:
-                impacto = "🔻 Muy alto"
+    with tabs[4]:
+        # ✅ MODIFICACIÓN AQUÍ: LOGIC FOR HISTORICAL PRICES IF ONE ARTICLE SELECTED
+        articulos_sel = st.session_state.get("art_multi", [])
+        
+        if articulos_sel and len(articulos_sel) == 1:
+            articulo = articulos_sel[0]
+            
+            try:
+                df_hist = sqlq_comparativas.get_historico_precios_unitarios(articulo)
+                
+                if df_hist is not None and not df_hist.empty:
+                    st.subheader(f"Histórico de precios – {articulo}")
+                    
+                    st.dataframe(
+                        df_hist,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                else:
+                    st.warning(f"⚠️ No hay datos históricos para '{articulo}'")
+                    
+                    # Debug rápido: contar registros
+                    debug_sql = '''
+                        SELECT COUNT(*) as total
+                        FROM chatbot_raw 
+                        WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+                          AND "Cantidad" IS NOT NULL AND TRIM("Cantidad") <> ''
+                          AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
+                    '''
+                    debug_df = ejecutar_consulta(debug_sql, (f"%{articulo.strip().lower()}%",))
+                    if debug_df is not None and not debug_df.empty:
+                        total = int(debug_df.iloc[0]['total'])
+                        st.info(f"Registros encontrados para '{articulo}': {total}")
+                        if total == 0:
+                            st.info("El artículo no existe o no tiene datos válidos.")
+                        else:
+                            st.info("Datos existen, pero no se pudieron parsear (revisa Monto Neto).")
+            except Exception as e:
+                st.error(f"Error: {e}")
+        else:
+            # ✅ NUEVA LÓGICA: Si 1 proveedor y 2 períodos → Mostrar análisis de variación
+            proveedores_sel = st.session_state.get("comparativas_proveedores_multi", [])
+            if proveedores_sel and len(proveedores_sel) == 1 and len(periodos_validos) == 2:
+                proveedor_sel = proveedores_sel[0]
+                
+                df_variacion = sqlq_comparativas.get_analisis_variacion_articulos(proveedor_sel, periodos_validos)
+                
+                if df_variacion is not None and not df_variacion.empty:
+                    st.markdown("#### 📊 ¿Por qué bajó/subió el gasto?")
+                    st.dataframe(
+                        df_variacion[['Articulo', 'Moneda', f'Total {periodos_validos[0]}', f'Total {periodos_validos[1]}', 'Variación', 'Tipo de Variación', 'Impacto']],
+                        use_container_width=True,
+                        hide_index=True,
+                        height=600
+                    )
+                else:
+                    st.info("No hay datos de variación para este proveedor")
             else:
-                impacto = "🔻 Alto"
-            return tipo, impacto
-        if var > 0:
-            tipo = "Aumento"
-            pct = var / total_2024 if total_2024 > 0 else 1
-            if pct > 0.5:
-                impacto = "🔺 Crítico"
-            elif pct > 0.2:
-                impacto = "🔺 Muy alto"
-            else:
-                impacto = "🔺 Alto"
-            return tipo, impacto
-        return "—", "—"
-
-    df[['Tipo de Variación', 'Impacto']] = df.apply(calcular_tipo_y_impacto, axis=1, result_type='expand')
-    return df
+                # ⬇️ TABLA COMPARATIVA ORIGINAL (NO TOCAR)
+                st.dataframe(df, use_container_width=True, height=600)
