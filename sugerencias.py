@@ -19,7 +19,7 @@ from ui_sugerencias import (
     render_divider
 )
 from config import DEBUG_MODE
-from sql_compras import get_compras_anio, get_total_compras_anio  # Importar funciones necesarias
+from sql_compras import get_cantidad_anual_por_articulo, get_total_compras_anio  # Importar funciones necesarias
 
 # =========================
 # FUNCIONES DE DATOS Y LÓGICA
@@ -51,45 +51,33 @@ def calcular_cantidad_sugerida(
     return max(round(cantidad, 1), 0)
 
 def get_datos_sugerencias(anio: int) -> pd.DataFrame:
-    """
-    Obtiene datos reales de sugerencias usando datos de compras.
-    Calcula consumo diario basado en compras del año.
-    Nota: Stock actual se asume 0 ya que no está en datos de compras.
-    """
-    df_compras = get_compras_anio(anio, limite=10000)
+    df = get_cantidad_anual_por_articulo(anio)
 
-    if df_compras is None or df_compras.empty:
+    if df is None or df.empty:
         return pd.DataFrame()
 
-    df_agrupado = df_compras.groupby('articulo').agg({
-        'Cantidad': 'sum',
-        'proveedor': 'first',
-        'Fecha': 'max'
-    }).reset_index()
+    df["cantidad_anual"] = df["cantidad_anual"].fillna(0)
 
-    df_agrupado['Cantidad'] = pd.to_numeric(
-        df_agrupado['Cantidad'].astype(str).str.replace('.', '').str.replace(',', '.'),
-        errors='coerce'
-    ).fillna(0)
+    df["consumo_diario"] = df["cantidad_anual"] / 365
+    df["stock_actual"] = 0
+    df["lote_minimo"] = df["consumo_diario"] * 7
+    df["unidad"] = "un"
 
-    df_agrupado['consumo_diario'] = (df_agrupado['Cantidad'] / 365).round(2)
+    df["dias_stock"] = df.apply(
+        lambda r: float("inf") if r["consumo_diario"] <= 0 else round(r["stock_actual"] / r["consumo_diario"], 1),
+        axis=1
+    )
 
-    df_agrupado['stock_actual'] = 0
-    df_agrupado['stock_minimo'] = (df_agrupado['consumo_diario'] * 30).round(1)
-    df_agrupado['lote_minimo'] = df_agrupado['consumo_diario'] * 7
-    df_agrupado['unidad'] = 'un'
-    df_agrupado['ultima_compra'] = df_agrupado['Fecha']
+    df["urgencia"] = df["dias_stock"].apply(clasificar_urgencia)
 
-    df_agrupado = df_agrupado.rename(columns={
-        'articulo': 'producto',
-        'proveedor': 'proveedor'
-    })
+    df["cantidad_sugerida"] = df.apply(
+        lambda r: calcular_cantidad_sugerida(
+            r["consumo_diario"], 30, r["stock_actual"], r["lote_minimo"]
+        ),
+        axis=1
+    )
 
-    columnas = [
-        'producto', 'proveedor', 'stock_actual', 'stock_minimo',
-        'consumo_diario', 'ultima_compra', 'lote_minimo', 'unidad', 'Cantidad'
-    ]
-    return df_agrupado[columnas]
+    return df
 
 def get_mock_alerts(df_sugerencias: pd.DataFrame):
     if df_sugerencias.empty:
@@ -283,11 +271,11 @@ def main():
             df_filtrado = df_filtrado.sort_values(["_ord", "producto"]).drop(columns=["_ord"])
 
             for _, r in df_filtrado.iterrows():
-                compras_anuales = float(r.get("Cantidad", 0) or 0)
+                compras_anuales = float(r.get("cantidad_anual", 0) or 0)
                 compras_mensuales = round(compras_anuales / 12, 2)
 
                 render_sugerencia_card(
-                    producto=str(r.get("producto", "")),
+                    producto=str(r.get("articulo", "")),
                     proveedor=str(r.get("proveedor", "")),
                     ultima_compra=_fmt_fecha(r.get("ultima_compra", "")),
                     urgencia=str(r.get("urgencia", "saludable")),
