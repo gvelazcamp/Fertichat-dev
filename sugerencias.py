@@ -69,6 +69,12 @@ def get_datos_sugerencias(anio: int) -> pd.DataFrame:
         'Fecha': 'max'  # Última fecha de compra
     }).reset_index()
     
+    # Convertir Cantidad a numérico (maneja formatos como "2.000,00")
+    df_agrupado['Cantidad'] = pd.to_numeric(
+        df_agrupado['Cantidad'].astype(str).str.replace('.', '').str.replace(',', '.'),
+        errors='coerce'
+    ).fillna(0)
+    
     # Calcular consumo diario aproximado: total comprado / 365 días
     df_agrupado['consumo_diario'] = df_agrupado['Cantidad'] / 365
     df_agrupado['consumo_diario'] = df_agrupado['consumo_diario'].round(1)
