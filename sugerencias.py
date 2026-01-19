@@ -53,7 +53,7 @@ def calcular_cantidad_sugerida(
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     df = get_cantidad_anual_por_articulo(anio, proveedor_like)
 
-    if df is None or df.empty:
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         return pd.DataFrame()
 
     df["cantidad_anual"] = df["cantidad_anual"].fillna(0)
@@ -80,7 +80,7 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
     return df
 
 def get_mock_alerts(df_sugerencias: pd.DataFrame):
-    if df_sugerencias.empty:
+    if df_sugerencias is None or (isinstance(df_sugerencias, pd.DataFrame) and df_sugerencias.empty):
         return [
             {"title": "URGENTE", "value": "0", "subtitle": "0–3 días", "class": "fc-urgente"},
             {"title": "PRÓXIMAMENTE", "value": "0", "subtitle": "4–7 días", "class": "fc-proximo"},
@@ -163,7 +163,7 @@ def main():
     proveedor_like = f"%{proveedor_sel.lower()}%" if proveedor_sel != "Todos" else None
     df = get_datos_sugerencias(anio_seleccionado, proveedor_like)
 
-    if df is None or df.empty:
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
@@ -257,7 +257,7 @@ def main():
     with col_list:
         render_section_title("Sugerencias de pedido")
 
-        if df_filtrado.empty:
+        if df_filtrado is None or (isinstance(df_filtrado, pd.DataFrame) and df_filtrado.empty):
             st.info("No hay sugerencias que cumplan con los criterios de filtro.")
         else:
             # Orden sugerido: urgentes primero, luego próximos, etc.
@@ -288,8 +288,8 @@ def main():
     render_divider()
     render_section_title("Acciones")
 
-    total_cantidad = df_filtrado["cantidad_sugerida"].sum() if df_filtrado is not None and not df_filtrado.empty else 0
-    total_productos = len(df_filtrado) if df_filtrado is not None and not df_filtrado.empty else 0
+    total_cantidad = df_filtrado["cantidad_sugerida"].sum() if df_filtrado is not None and isinstance(df_filtrado, pd.DataFrame) and not df_filtrado.empty else 0
+    total_productos = len(df_filtrado) if df_filtrado is not None and isinstance(df_filtrado, pd.DataFrame) and not df_filtrado.empty else 0
 
     info_html = f"""
     <p><strong>Total sugerido:</strong> {total_cantidad:.1f} unidades en {total_productos} productos</p>
