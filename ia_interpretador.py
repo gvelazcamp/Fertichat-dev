@@ -616,7 +616,7 @@ MAPEO_FUNCIONES = {
     },
     "dashboard_top_proveedores": {
         "funcion": "get_dashboard_top_proveedores",
-        "params": ["anio", "top_n"],
+        "params": ["anio", "top_n", "moneda"],
     },
 }
 
