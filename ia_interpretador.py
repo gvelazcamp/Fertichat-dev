@@ -253,38 +253,6 @@ def _extraer_articulo_libre(tokens, provs_detectados):
     return None
 
 # =====================================================================
-# DETECCIÓN SIMPLE DE ARTÍCULO
-# =====================================================================
-def _detectar_articulo_simple(texto_lower_original: str, anios: List[int]) -> Optional[str]:
-    """
-    Detecta artículo de forma simple y segura.
-    Prioriza BD, luego fallback a token.
-    """
-    toks = _tokens(texto_lower_original)
-    ignore_words = {"compras", "compra", "factura", "facturas", "total", "totales", "comparar", "compara", "2023", "2024", "2025", "2026", "usd", "u$s", "pesos", "uyu"}
-    relevant_toks = [t for t in toks if t not in ignore_words and len(t) >= 3]
-    
-    if not relevant_toks:
-        return None
-    
-    # Intentar substring en BD
-    for tk in relevant_toks:
-        sql_sub = '''
-            SELECT DISTINCT TRIM("Articulo") AS art
-            FROM chatbot_raw
-            WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
-              AND TRIM("Articulo") != ''
-            ORDER BY art
-            LIMIT 1
-        '''
-        df_sub = ejecutar_consulta(sql_sub, (f"%{tk}%",))
-        if df_sub is not None and not df_sub.empty:
-            return df_sub.iloc[0]['art']
-    
-    # Fallback: devolver el primer token relevante
-    return relevant_toks[0]
-
-# =====================================================================
 # HELPERS DE KEYWORDS
 # =====================================================================
 def contiene_compras(texto: str) -> bool:
@@ -638,12 +606,12 @@ MAPEO_FUNCIONES = {
         "params": ["proveedor", "anios", "label1", "label2"],
     },
     "comparar_proveedores_meses": {
-        "funcion": "get_comparacion_proveedor_meses",
+        "funcion": "get_comparacion_proveedores_meses",
         "params": ["proveedores", "mes1", "mes2", "label1", "label2"],
     },
     "comparar_proveedores_anios": {
         "funcion": "get_comparacion_proveedores_anios",
-        "params": ["proveedores", "anios", "label1", "label2"],
+        "parametros": ["proveedores", "anios", "label1", "label2"],
     },
     "ultima_factura": {
         "funcion": "get_ultima_factura_inteligente",
@@ -848,23 +816,18 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
-    # ÚNICO RETURN PARA ARTÍCULO
-    articulo = _detectar_articulo_simple(texto_lower_original, anios)
-    if articulo:
-        return {
-            "tipo": "compras_articulo_anio",
-            "parametros": {
-                "articulo": articulo,   # ← "vitek"
-                "anios": anios           # ← [2025]
-            },
-            "debug": "compras artículo + años (fallback seguro)"
-        }
-
     if provs and anios:
         tipo = "facturas_proveedor"
 
     elif arts and anios:
-        tipo = "compras_articulo_anio"
+        return {
+            "tipo": "compras_articulo_anio",
+            "parametros": {
+                "articulo": arts[0],
+                "anios": anios
+            },
+            "debug": "compras articulo + año"
+        }
 
     # =====================================================================
     # AGREGAR ESTE BLOQUE ANTES DEL BLOQUE "COMPRAS" (línea ~580)
