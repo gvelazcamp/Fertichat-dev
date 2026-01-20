@@ -78,68 +78,50 @@ def get_proveedores_anio(anio: int) -> list:
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
     Obtiene datos de sugerencias: Articulo, proveedor, ultima_compra, cantidad_anual, stock_actual.
-    Hace LEFT JOIN con stock_raw para obtener stock_actual.
     Respeta todas las reglas: limpieza de números, filtros obligatorios, agrupaciones.
+    LEFT JOIN con stock_raw para obtener stock_actual.
     """
     base_sql = """
     SELECT
-        cr."Articulo",
-        cr.proveedor,
-        cr.ultima_compra,
-        cr.cantidad_anual,
-        sr."stock_actual"
-    FROM (
-        SELECT
-            TRIM("Articulo") AS "Articulo",
-            (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
-            MAX(TRIM("Fecha")) AS ultima_compra,
-            SUM(
-                CAST(
+        TRIM(cr."Articulo") AS "Articulo",
+        (ARRAY_AGG(TRIM(cr."Cliente / Proveedor") ORDER BY cr."Fecha" DESC))[1] AS proveedor,
+        MAX(TRIM(cr."Fecha")) AS ultima_compra,
+        SUM(
+            CAST(
+                REPLACE(
                     REPLACE(
                         REPLACE(
-                            REPLACE(
-                                REPLACE(TRIM("Cantidad"), '(', ''),
-                            ')', ''),
-                        '.', ''),
-                    ',', '.')
-                AS NUMERIC)
-            ) AS cantidad_anual
-        FROM chatbot_raw
-        WHERE "Año" = %s
-          AND TRIM("Articulo") IS NOT NULL
-          AND TRIM("Articulo") <> ''
-          AND TRIM("Cantidad") IS NOT NULL
-          AND TRIM("Cantidad") <> ''
+                            REPLACE(TRIM(cr."Cantidad"), '(', ''),
+                        ')', ''),
+                    '.', ''),
+                ',', '.')
+            AS NUMERIC)
+        ) AS cantidad_anual,
+        COALESCE(sr.stock_actual, 0) AS stock_actual
+    FROM chatbot_raw cr
+    LEFT JOIN stock_raw sr ON TRIM(cr."Articulo") = TRIM(sr.Articulo) AND TRIM(cr."Cliente / Proveedor") = TRIM(sr.proveedor)
+    WHERE cr."Año" = %s
+      AND TRIM(cr."Articulo") IS NOT NULL
+      AND TRIM(cr."Articulo") <> ''
+      AND TRIM(cr."Cantidad") IS NOT NULL
+      AND TRIM(cr."Cantidad") <> ''
     """
     
     params = [anio]
     
     if proveedor_like:
-        base_sql += " AND LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s"
+        base_sql += " AND LOWER(TRIM(cr.\"Cliente / Proveedor\")) LIKE %s"
         params.append(proveedor_like)
     
     base_sql += """
-        GROUP BY TRIM("Articulo")
-    ) cr
-    LEFT JOIN stock_raw sr ON TRIM(cr."Articulo") = TRIM(sr."Articulo")
-    ORDER BY cr.cantidad_anual DESC;
+    GROUP BY TRIM(cr."Articulo"), COALESCE(sr.stock_actual, 0)
+    ORDER BY cantidad_anual DESC;
     """
     
     df = ejecutar_consulta(base_sql, tuple(params))
     return df
 
 # ========== FUNCIONES UTILITARIAS AJUSTADAS ===========
-def limpiar_numero_texto(texto):
-    """Limpia y convierte texto a float, manejando formato LATAM."""
-    if pd.isna(texto) or texto == '':
-        return 0.0
-    try:
-        # Quitar paréntesis, puntos de miles, reemplazar coma decimal
-        limpio = str(texto).replace('(', '').replace(')', '').replace('.', '').replace(',', '.')
-        return float(limpio)
-    except ValueError:
-        return 0.0
-
 def calcular_dias_stock(stock_actual, consumo_diario):
     if consumo_diario > 0:
         return stock_actual / consumo_diario
@@ -229,10 +211,9 @@ def main():
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # Preproceso: Limpiar y calcular columnas
-    df["stock_actual"] = df["stock_actual"].apply(limpiar_numero_texto)  # Ahora viene de la tabla
-    df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado - ajusta si tienes mejor dato
-    df["lote_minimo"] = 1  # Default - ajusta con lógica real si tienes tabla de productos
+    # Preproceso: Agregar columnas calculadas (AHORA stock_actual VIENE DE LA DB)
+    df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado - ajusta
+    df["lote_minimo"] = 1  # Default - ajusta
     df["unidad"] = "un"  # Default - ajusta
 
     df["dias_stock"] = df.apply(
@@ -388,3 +369,7 @@ def main():
     with col4:
         if st.button("Actualizar datos", key="refresh_data", help="Recargar datos desde la base de datos"):
             st.rerun()
+
+
+if __name__ == "__main__":
+    main()
