@@ -236,7 +236,7 @@ def _extraer_articulo_libre(tokens, provs_detectados):
         "enero","febrero","marzo","abril","mayo","junio",
         "julio","agosto","septiembre","setiembre",
         "octubre","noviembre","diciembre",
-        "usd","u$s","u$$","pesos","uyu",
+        "usd","u$s","pesos","uyu",
         "2023","2024","2025","2026"
     }
 
@@ -828,6 +828,13 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             },
             "debug": "compras articulo + año"
         }
+
+    # ============================
+    # RUTA ARTÍCULOS (SEPARADA)
+    # ============================
+    if contiene_compras(texto_lower_original) and not provs:
+        from ia_interpretador_articulos import interpretar_articulo
+        return interpretar_articulo(texto_original, anios, meses_nombre + meses_yyyymm)
 
     # =====================================================================
     # AGREGAR ESTE BLOQUE ANTES DEL BLOQUE "COMPRAS" (línea ~580)
