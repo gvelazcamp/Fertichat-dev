@@ -635,7 +635,8 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     texto_lower_original = texto_original.lower()
 
     # FAST-PATH: listado facturas por año
-    if re.search(r"\b(listado|lista)\b", texto_lower_original) and re.search(r"\bfacturas?\b", texto_lower_original):
+    if re.search(r"\b(listado|lista)\b", texto_lower) and re.search(r"\bfacturas?\b", texto_lower):
+
         anios_listado = _extraer_anios(texto_lower_original)
         if anios_listado:
             anio = anios_listado[0]
