@@ -3,7 +3,6 @@
 # =========================
 
 import os
-import re
 import json
 import unicodedata
 from typing import Dict, Optional, List, Tuple, Any
@@ -750,6 +749,12 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "parametros": {},
             "debug": "total compras por moneda generico",
         }
+
+    import re
+
+    texto_original = pregunta
+    texto_lower = texto_original.lower()
+    texto_lower_original = texto_lower
 
     texto_limpio = limpiar_consulta(texto_original)
     texto_lower = texto_limpio.lower()
