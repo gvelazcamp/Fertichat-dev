@@ -258,6 +258,35 @@ def main():
     else:
         st.write("get_datos_sugerencias devolvió None")
 
+    # DEBUG ADICIONAL PARA STOCK
+    sql_stock = """
+    SELECT COUNT(*) as total_stock
+    FROM stock
+    """
+    stock_count = ejecutar_consulta(sql_stock, ())
+    st.write(f"Total filas en tabla stock: {stock_count.iloc[0]['total_stock'] if stock_count is not None else 'Error'}")
+
+    # Ver algunos artículos de stock
+    sql_art_stock = """
+    SELECT DISTINCT TRIM("ARTICULO") as articulo
+    FROM stock
+    LIMIT 5
+    """
+    art_stock = ejecutar_consulta(sql_art_stock, ())
+    st.write("Primeros 5 artículos en stock:", art_stock['articulo'].tolist() if art_stock is not None else 'Error')
+
+    # Ver algunos artículos de chatbot_raw
+    sql_art_cr = """
+    SELECT DISTINCT TRIM("Articulo") as articulo
+    FROM chatbot_raw
+    WHERE "Año" = %s
+      AND TRIM("Articulo") IS NOT NULL
+      AND TRIM("Articulo") <> ''
+    LIMIT 5
+    """
+    art_cr = ejecutar_consulta(sql_art_cr, (anio_seleccionado,))
+    st.write("Primeros 5 artículos en chatbot_raw:", art_cr['articulo'].tolist() if art_cr is not None else 'Error')
+
     # ✅ Verificación
     if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
