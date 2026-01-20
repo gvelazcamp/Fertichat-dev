@@ -829,20 +829,24 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         idx_prov, idx_art = _get_indices()
         arts_bd = _match_best(texto_lower, idx_art, max_items=1)
         
-        # 🆕 FIX: Si no encontró exacto, buscar por substring (contiene "vitek")
+        # 🆕 FIX: Si no encontró exacto, buscar por substring usando tokens relevantes
         if not arts_bd:
-            from sql_core import ejecutar_consulta
-            sql_sub = '''
-                SELECT DISTINCT TRIM("Articulo") AS art
-                FROM chatbot_raw
-                WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
-                  AND TRIM("Articulo") != ''
-                ORDER BY art
-                LIMIT 1
-            '''
-            df_sub = ejecutar_consulta(sql_sub, (f"%{texto_lower}%",))
-            if df_sub is not None and not df_sub.empty:
-                arts_bd = [df_sub.iloc[0]['art']]
+            tokens = _tokens(texto_lower_original)  # Usar original para tokens limpios
+            ignorar_tokens = {"compras", "compra", "2023", "2024", "2025", "2026"}
+            for tk in tokens:
+                if tk not in ignorar_tokens and len(tk) >= 3:
+                    sql_sub = '''
+                        SELECT DISTINCT TRIM("Articulo") AS art
+                        FROM chatbot_raw
+                        WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+                          AND TRIM("Articulo") != ''
+                        ORDER BY art
+                        LIMIT 1
+                    '''
+                    df_sub = ejecutar_consulta(sql_sub, (f"%{tk}%",))
+                    if df_sub is not None and not df_sub.empty:
+                        arts_bd = [df_sub.iloc[0]['art']]
+                        break  # Tomar el primero que encuentre
         
         # Si encontró artículo en BD y NO encontró proveedor
         if arts_bd and not provs:
