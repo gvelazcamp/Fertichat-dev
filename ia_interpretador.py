@@ -1195,8 +1195,8 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # TOP PROVEEDORES POR AÑO
     # ======================================================
     if (
-        any(k in texto for k in ["top", "ranking", "principales"])
-        and "proveedor" in texto
+        any(k in texto_lower_original for k in ["top", "ranking", "principales"])
+        and "proveedor" in texto_lower_original
         and anios
     ):
         print("\n[INTÉRPRETE] TOP_PROVEEDORES")
