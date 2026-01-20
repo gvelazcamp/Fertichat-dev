@@ -618,6 +618,10 @@ MAPEO_FUNCIONES = {
         "funcion": "get_total_compras_por_moneda_todos_anios",
         "params": [],
     },
+    "dashboard_top_proveedores": {
+        "funcion": "get_dashboard_top_proveedores",
+        "params": ["anio", "top_n", "moneda"],
+    },
 }
 
 def obtener_info_tipo(tipo: str) -> Optional[Dict]:
@@ -762,6 +766,46 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         prov_libre = _extraer_proveedor_libre(texto_lower_original)
         if prov_libre:
             provs = [_alias_proveedor(prov_libre)]
+
+    # ==================================================
+    # FALLBACK DE ARTÍCULO (SIN ROMPER PROVEEDOR)
+    # Regla:
+    # - proveedor NO se toca
+    # - tokens de proveedor se eliminan
+    # - si no hay artículo → primer token útil = artículo
+    # ==================================================
+
+    if not arts:
+        # 1) Tokens del texto
+        tokens = _tokens(texto_lower_original)
+
+        # 2) Palabras a ignorar
+        ignorar = set([
+            "compras", "compra", "facturas", "factura",
+            "total", "totales", "comparar", "compara",
+            "enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "setiembre",
+            "octubre", "noviembre", "diciembre",
+            "usd", "u$s", "u$$", "pesos", "uyu",
+            "por", "del", "de", "la", "el",
+            "2023", "2024", "2025", "2026"
+        ])
+
+        # 3) Eliminar tokens que son proveedores
+        proveedores_tokens = set()
+        for p in provs:
+            for t in p.lower().split():
+                proveedores_tokens.add(t)
+
+        # 4) Buscar primer token válido como artículo
+        for tk in tokens:
+            if (
+                tk not in ignorar
+                and tk not in proveedores_tokens
+                and len(tk) >= 3
+            ):
+                arts = [tk]
+                break
 
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
@@ -1216,6 +1260,41 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if arts:
             return {"tipo": "stock_articulo", "parametros": {"articulo": arts[0]}, "debug": "stock articulo"}
         return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
+
+    # ======================================================
+    # TOP PROVEEDORES POR AÑO
+    # ======================================================
+    if (
+        any(k in texto_lower_original for k in ["top", "ranking", "principales"])
+        and "proveedor" in texto_lower_original
+        and anios
+    ):
+        top_n = 10
+        match = re.search(r'top\s+(\d+)', texto_lower_original)
+        if match:
+            top_n = int(match.group(1))
+
+        moneda_extraida = _extraer_moneda(texto_lower_original)
+        if moneda_extraida and moneda_extraida.upper() in ("USD", "U$S", "U$$"):
+            moneda_param = "U$S"
+        else:
+            moneda_param = "$"
+
+        print("\n[INTÉRPRETE] TOP_PROVEEDORES")
+        print(f"  Pregunta : {texto_original}")
+        print(f"  Año      : {anios[0]}")
+        print(f"  Top N    : {top_n}")
+        print(f"  Moneda   : {moneda_param}")
+
+        return {
+            "tipo": "dashboard_top_proveedores",
+            "parametros": {
+                "anio": anios[0],
+                "top_n": top_n,
+                "moneda": moneda_param,
+            },
+            "debug": f"top proveedores por año {anios[0]} en {moneda_param}",
+        }
 
     out_ai = _interpretar_con_openai(texto_original)
     if out_ai:
