@@ -8,6 +8,7 @@ from datetime import datetime
 import streamlit as st
 from openai import OpenAI
 from config import OPENAI_MODEL
+from sql_core import ejecutar_consulta
 
 # =========================
 # IA_INTERPRETADOR.PY - CANÓNICO (DETECCIÓN BD + COMPARATIVAS)
@@ -637,7 +638,7 @@ MAPEO_FUNCIONES = {
         "params": ["proveedor", "anios", "label1", "label2"],
     },
     "comparar_proveedores_meses": {
-        "funcion": "get_comparacion_proveedores_meses",
+        "funcion": "get_comparacion_proveedor_meses",
         "params": ["proveedores", "mes1", "mes2", "label1", "label2"],
     },
     "comparar_proveedores_anios": {
