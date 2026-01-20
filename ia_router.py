@@ -149,6 +149,12 @@ MAPEO_FUNCIONES = {
     "compras_proveedor_mes": {"funcion": "get_detalle_compras_proveedor_mes", "params": ["proveedor", "mes"]},
     "compras_mes": {"funcion": "get_compras_por_mes_excel", "params": ["mes"]},
 
+    # 🆕 COMPRAS POR ARTÍCULO
+    "compras_articulo_anio": {
+        "funcion": "get_compras_articulo_anio",
+        "params": ["articulo", "anios"],
+    },
+
     # FACTURAS
     "detalle_factura": {"funcion": "get_detalle_factura_por_numero", "params": ["nro_factura"]},
     "facturas_proveedor": {
@@ -179,7 +185,7 @@ MAPEO_FUNCIONES = {
 
     # STOCK
     "stock_total": {"funcion": "get_stock_total", "params": []},
-    "stock_articulo": {"funcion": "get_stock_articulo", "params": ["articulo"]},
+    "stock_articulo": {"funcion": "stock_articulo", "params": ["articulo"]},
 }
 
 
