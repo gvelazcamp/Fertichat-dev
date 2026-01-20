@@ -856,6 +856,20 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     if df_sub is not None and not df_sub.empty:
                         arts_bd = [df_sub.iloc[0]['art']]
                         break  # Tomar el primero que encuentre
+            
+            # 🆕 FIX EXTRA: Si no encontró con tokens, forzar búsqueda de "vitek" si aparece en la query
+            if not arts_bd and "vitek" in texto_lower_original.lower():
+                sql_sub = '''
+                    SELECT DISTINCT TRIM("Articulo") AS art
+                    FROM chatbot_raw
+                    WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+                      AND TRIM("Articulo") != ''
+                    ORDER BY art
+                    LIMIT 1
+                '''
+                df_sub = ejecutar_consulta(sql_sub, ('%vitek%',))
+                if df_sub is not None and not df_sub.empty:
+                    arts_bd = [df_sub.iloc[0]['art']]
         
         # Si encontró artículo en BD y NO encontró proveedor
         if arts_bd and not provs:
