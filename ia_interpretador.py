@@ -509,7 +509,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
             model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": _get_system_prompt()},
-                {"role": "user", "content": pregunta,
+                {"role": "user", "content": pregunta},
             ],
             temperature=0.1,
             max_tokens=500,
@@ -613,10 +613,6 @@ MAPEO_FUNCIONES = {
     "total_compras_por_moneda_generico": {
         "funcion": "get_total_compras_por_moneda_todos_anios",
         "params": [],
-    },
-    "dashboard_top_proveedores": {
-        "funcion": "get_dashboard_top_proveedores",
-        "params": ["anio", "top_n", "moneda"],
     },
 }
 
@@ -1027,7 +1023,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     "debug": "compras proveedor años (fusionado con facturas_proveedor)",
                 }
             except Exception:
-                pass
+                    pass
 
             return {
                 "tipo": "facturas_proveedor",
@@ -1039,21 +1035,18 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "debug": "compras proveedor años (fusionado con facturas_proveedor)",
             }
 
-        # ✅ NUEVO: COMPRAS MULTI-AÑO SIN PROVEEDOR
-        if anios and len(anios) >= 2 and not provs:
-            print("\n[INTÉRPRETE] COMPRAS_MULTIPLE_ANIOS (SIN PROVEEDOR)")
+        if meses_yyyymm:
+            mes0 = meses_yyyymm[0]
+            print("\n[INTÉRPRETE] COMPRAS_MES")
             print(f"  Pregunta : {texto_original}")
-            print(f"  Años     : {anios}")
-
-            return {
-                "tipo": "compras_multiples",
-                "parametros": {
-                    "proveedores": None,
-                    "meses": None,
-                    "anios": anios,
-                },
-                "debug": "compras múltiples años (sin proveedor)",
-            }
+            print(f"  Mes      : {mes0}")
+            return {"tipo": "compras_mes", "parametros": {"mes": mes0}, "debug": "compras mes (yyyymm)"}
+        if meses_nombre and anios:
+            mes = _to_yyyymm(anios[0], meses_nombre[0])
+            print("\n[INTÉRPRETE] COMPRAS_MES nombre+año")
+            print(f"  Pregunta : {texto_original}")
+            print(f"  Mes      : {mes}")
+            return {"tipo": "compras_mes", "parametros": {"mes": mes}, "debug": "compras mes (nombre+año)"}
 
         if anios:
             print("\n[INTÉRPRETE] COMPRAS_ANIO")
@@ -1190,42 +1183,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if arts:
             return {"tipo": "stock_articulo", "parametros": {"articulo": arts[0]}, "debug": "stock articulo"}
         return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
-
-    # ======================================================
-    # TOP PROVEEDORES POR AÑO
-    # ======================================================
-    if (
-        any(k in texto_lower_original for k in ["top", "ranking", "principales"])
-        and "proveedor" in texto_lower_original
-        and anios
-    ):
-        import re
-        top_n = 10
-        match = re.search(r'top\s+(\d+)', texto_lower_original)
-        if match:
-            top_n = int(match.group(1))
-
-        moneda_extraida = _extraer_moneda(texto_lower_original)
-        if moneda_extraida and moneda_extraida.upper() in ("USD", "U$S", "U$$"):
-            moneda_param = "U$S"
-        else:
-            moneda_param = "$"
-
-        print("\n[INTÉRPRETE] TOP_PROVEEDORES")
-        print(f"  Pregunta : {texto_original}")
-        print(f"  Año      : {anios[0]}")
-        print(f"  Top N    : {top_n}")
-        print(f"  Moneda   : {moneda_param}")
-
-        return {
-            "tipo": "dashboard_top_proveedores",
-            "parametros": {
-                "anio": anios[0],
-                "top_n": top_n,
-                "moneda": moneda_param,
-            },
-            "debug": f"top proveedores por año {anios[0]} en {moneda_param}",
-        }
 
     out_ai = _interpretar_con_openai(texto_original)
     if out_ai:
