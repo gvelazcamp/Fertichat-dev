@@ -509,7 +509,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
             model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": _get_system_prompt()},
-                {"role": "user", "content": pregunta},
+                {"role": "user", "content": pregunta,
             ],
             temperature=0.1,
             max_tokens=500,
@@ -902,6 +902,21 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if proveedores_multiples:
             provs = proveedores_multiples  # Usar los múltiples
 
+        # =========================================================
+        # COMPRAS POR ARTÍCULO + AÑO
+        # Prioridad sobre proveedor
+        # =========================================================
+        articulo = arts[0] if arts else None
+        if "compras" in texto_lower and anios and articulo:
+            return {
+                "tipo": "compras_articulo_anio",
+                "parametros": {
+                    "articulo": articulo,
+                    "anio": anios[0],
+                },
+                "debug": "compras articulo + año (forzado)",
+            }
+
         # ✅ PRIORIZAR MES SOBRE AÑO
         if provs and (meses_yyyymm or (meses_nombre and anios)):
             if len(provs) > 1:
@@ -975,21 +990,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     "parametros": {"proveedor": proveedor, "mes": mes},
                     "debug": "compras proveedor mes",
                 }
-
-        # =========================================================
-        # COMPRAS POR ARTÍCULO + AÑO
-        # Prioridad sobre proveedor (ej: "compras vitek 2025")
-        # =========================================================
-        articulo = arts[0] if arts else None
-        if "compras" in texto_lower and anios and articulo and not provs:
-            return {
-                "tipo": "compras_articulo_anio",
-                "parametros": {
-                    "articulo": articulo,
-                    "anio": anios[0],
-                },
-                "debug": "compras articulo + año (prioridad)",
-            }
 
         if provs and anios:
             if len(provs) > 1:
