@@ -77,55 +77,41 @@ def get_proveedores_anio(anio: int) -> list:
 
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
-    Obtiene datos de sugerencias: Articulo, proveedor, ultima_compra, cantidad_anual, stock_actual.
-    Ahora incluye JOIN con stock_raw para traer stock_actual.
+    Obtiene datos de sugerencias: Articulo, proveedor, ultima_compra, cantidad_anual.
     Respeta todas las reglas: limpieza de números, filtros obligatorios, agrupaciones.
     """
     base_sql = """
     SELECT
-        TRIM(cr."Articulo") AS "Articulo",
-        (ARRAY_AGG(TRIM(cr."Cliente / Proveedor") ORDER BY cr."Fecha" DESC))[1] AS proveedor,
-        MAX(TRIM(cr."Fecha")) AS ultima_compra,
+        TRIM("Articulo") AS "Articulo",
+        (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
+        MAX(TRIM("Fecha")) AS ultima_compra,
         SUM(
             CAST(
                 REPLACE(
                     REPLACE(
                         REPLACE(
-                            REPLACE(TRIM(cr."Cantidad"), '(', ''),
+                            REPLACE(TRIM("Cantidad"), '(', ''),
                         ')', ''),
                     '.', ''),
                 ',', '.')
             AS NUMERIC)
-        ) AS cantidad_anual,
-        COALESCE(
-            CAST(
-                REPLACE(
-                    REPLACE(
-                        REPLACE(
-                            REPLACE(TRIM(sr.stock_actual), '(', ''),
-                        ')', ''),
-                    '.', ''),
-                ',', '.')
-            AS NUMERIC),
-            0
-        ) AS stock_actual
-    FROM chatbot_raw cr
-    LEFT JOIN stock_raw sr ON TRIM(LOWER(cr."Articulo")) = TRIM(LOWER(sr.articulo))
-    WHERE cr."Año" = %s
-      AND TRIM(cr."Articulo") IS NOT NULL
-      AND TRIM(cr."Articulo") <> ''
-      AND TRIM(cr."Cantidad") IS NOT NULL
-      AND TRIM(cr."Cantidad") <> ''
+        ) AS cantidad_anual
+    FROM chatbot_raw
+    WHERE "Año" = %s
+      AND TRIM("Articulo") IS NOT NULL
+      AND TRIM("Articulo") <> ''
+      AND TRIM("Cantidad") IS NOT NULL
+      AND TRIM("Cantidad") <> ''
     """
     
     params = [anio]
     
     if proveedor_like:
-        base_sql += " AND LOWER(TRIM(cr.\"Cliente / Proveedor\")) LIKE %s"
+        base_sql += " AND LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s"
         params.append(proveedor_like)
     
     base_sql += """
-    GROUP BY TRIM(cr."Articulo"), sr.stock_actual
+    GROUP BY TRIM("Articulo")
     ORDER BY cantidad_anual DESC;
     """
     
@@ -171,6 +157,24 @@ def get_mock_alerts(df):
         {"title": "Planificar", "value": str(planificar), "subtitle": "En 30 días", "class": "info"},
         {"title": "Saludables", "value": str(saludable), "subtitle": "Ok por ahora", "class": "success"}
     ]
+
+# ========== FUNCIÓN PARA CARGAR STOCK DESDE CSV ===========
+def cargar_stock_csv() -> pd.DataFrame:
+    """
+    Carga el CSV de stock y devuelve un DataFrame con Articulo y stock_actual.
+    Asegúrate de que el CSV esté accesible en la ruta correcta.
+    """
+    try:
+        # Ruta al CSV (ajusta según tu entorno)
+        csv_path = "Supabase Snippet Comprobantes de compra (cabecera y detalle).csv"
+        df_stock = pd.read_csv(csv_path, sep=',', encoding='utf-8')
+        # Limpiar y seleccionar columnas necesarias
+        df_stock['Articulo'] = df_stock['Articulo'].astype(str).str.strip()
+        df_stock['stock_actual'] = pd.to_numeric(df_stock['stock_actual'], errors='coerce').fillna(0)
+        return df_stock[['Articulo', 'stock_actual']].drop_duplicates(subset=['Articulo'])
+    except Exception as e:
+        st.error(f"Error cargando CSV de stock: {e}")
+        return pd.DataFrame(columns=['Articulo', 'stock_actual'])
 
 # ========== FUNCIÓN MAIN() CON FIXES APLICADOS ===========
 def main():
@@ -222,10 +226,18 @@ def main():
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # Preproceso: Agregar columnas calculadas (AHORA stock_actual viene del SQL)
-    df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado - ajusta
-    df["lote_minimo"] = 1  # Default - ajusta
-    df["unidad"] = "un"  # Default - ajusta
+    # Cargar stock desde CSV y fusionar
+    df_stock = cargar_stock_csv()
+    if not df_stock.empty:
+        df = df.merge(df_stock, on='Articulo', how='left')
+        df['stock_actual'] = df['stock_actual'].fillna(0)  # Si no hay match, stock=0
+    else:
+        df['stock_actual'] = 0  # Fallback si no carga CSV
+
+    # Preproceso: Agregar columnas calculadas
+    df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado
+    df["lote_minimo"] = 1  # Default
+    df["unidad"] = "un"  # Default
 
     df["dias_stock"] = df.apply(
         lambda r: calcular_dias_stock(r["stock_actual"], r["consumo_diario"]),
@@ -256,9 +268,9 @@ def main():
             st.markdown(
                 f"""
                 <div class="fc-alert {a.get("class","")}">
-                    <div class="t">{a.get("title","")}</div>
-                    <div class="v">{a.get("value","")}</div>
-                    <div class="s">{a.get("subtitle","")}</div>
+                    <div class="fc-alert .t">{a.get("title","")}</div>
+                    <div class="fc-alert .v">{a.get("value","")}</div>
+                    <div class="fc-alert .s">{a.get("subtitle","")}</div>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -353,7 +365,7 @@ def main():
 
     info_html = f"""
     <p><strong>Total sugerido:</strong> {total_cantidad:.1f} unidades en {total_productos} productos</p>
-    <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock estimados.</p>
+    <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock reales del CSV.</p>
     """
     render_card(info_html)
 
@@ -380,7 +392,6 @@ def main():
     with col4:
         if st.button("Actualizar datos", key="refresh_data", help="Recargar datos desde la base de datos"):
             st.rerun()
-
 
 if __name__ == "__main__":
     main()
