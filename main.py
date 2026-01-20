@@ -236,6 +236,31 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
             )
 
         # =========================================================
+        # DASHBOARD – TOP PROVEEDORES POR AÑO
+        # =========================================================
+        elif tipo == "dashboard_top_proveedores":
+            from sql_compras import get_dashboard_top_proveedores
+
+            anio = params.get("anio")
+            top_n = params.get("top_n", 10)
+            moneda = params.get("moneda", "$")
+
+            if not anio:
+                return "❌ Indicá el año. Ej: top proveedores 2025", None, None
+
+            df = get_dashboard_top_proveedores(anio=anio, top_n=top_n, moneda=moneda)
+
+            if df is None or df.empty:
+                return f"⚠️ No se encontraron proveedores para {anio}.", None, None
+
+            moneda_label = "USD" if moneda == "U$S" else "pesos"
+            return (
+                f"🏭 Top {top_n} proveedores {anio} en {moneda_label}:",
+                formatear_dataframe(df),
+                None,
+            )
+
+        # =========================================================
         # OTROS TIPOS
         # =========================================================
         return f"❌ Tipo de consulta '{tipo}' no implementado.", None, None
