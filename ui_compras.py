@@ -1,3 +1,4 @@
+# El archivo ui_compras.py completo con las correcciones anteriores (month_names movido al top, etc.)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -210,7 +211,7 @@ def get_top_5_periodos_por_articulo(articulo, anios, meses=None, proveedores=Non
                             CAST(REPLACE(REPLACE(REPLACE("Monto Neto",' ',''), '.', ''), ',', '.') AS NUMERIC)
                     END
                 ) AS total
-            FROM chatbot_raw
+            FROM montos
             WHERE {where_sql}
                 AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
             GROUP BY "{group_by}"
