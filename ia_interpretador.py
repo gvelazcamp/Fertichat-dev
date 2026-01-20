@@ -558,6 +558,10 @@ MAPEO_FUNCIONES = {
         "funcion": "get_compras_multiples",
         "params": ["proveedores", "meses", "anios"],
     },
+    "compras_articulo_anio": {
+        "funcion": "get_detalle_compras_articulo_anio",
+        "params": ["articulo", "anio"],
+    },
     "detalle_factura_numero": {
         "funcion": "get_detalle_factura_por_numero",
         "params": ["nro_factura"],
@@ -972,6 +976,21 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     "debug": "compras proveedor mes",
                 }
 
+        # =========================================================
+        # COMPRAS POR ARTÍCULO + AÑO
+        # Prioridad sobre proveedor (ej: "compras vitek 2025")
+        # =========================================================
+        articulo = arts[0] if arts else None
+        if "compras" in texto_lower and anios and articulo and not provs:
+            return {
+                "tipo": "compras_articulo_anio",
+                "parametros": {
+                    "articulo": articulo,
+                    "anio": anios[0],
+                },
+                "debug": "compras articulo + año (prioridad)",
+            }
+
         if provs and anios:
             if len(provs) > 1:
                 # MÚLTIPLES PROVEEDORES + AÑO
@@ -1053,21 +1072,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             print(f"  Pregunta : {texto_original}")
             print(f"  Año      : {anios[0]}")
             return {"tipo": "compras_anio", "parametros": {"anio": anios[0]}, "debug": "compras año"}
-
-    # COMPRAS ARTICULO + AÑO
-    articulo = arts[0] if arts else None
-    if "compras" in texto_lower and anios and articulo:
-        print("DEBUG_ARTICULO_DETECTADO:", articulo)
-        print("DEBUG_ANIO:", anios)
-
-        return {
-            "tipo": "compras_articulo_anio",
-            "parametros": {
-                "articulo": articulo,
-                "anio": anios[0],
-            },
-            "debug": "compras articulo + año",
-        }
 
     # COMPARAR - ✅ MEJORADO CON SOPORTE PARA TODOS LOS PROVEEDORES
     if contiene_comparar(texto_lower_original):
