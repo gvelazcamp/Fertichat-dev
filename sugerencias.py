@@ -55,7 +55,7 @@ def _fmt_fecha(fecha):
     except:
         return str(fecha)
 
-# ========== FUNCIONES DE DATOS CON FUSIÓN (JOIN) ===========
+# ========== FUNCIONES DE DATOS CON FUSIÓN NORMALIZADA ===========
 def get_proveedores_anio(anio: int) -> list:
     """
     Obtiene lista de proveedores únicos para un año.
@@ -76,7 +76,8 @@ def get_proveedores_anio(anio: int) -> list:
 
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
-    Fusiona compras de chatbot_raw con stock de tabla stock via LEFT JOIN.
+    Fusiona compras de chatbot_raw con stock de tabla stock via LEFT JOIN normalizado.
+    Normaliza nombres: elimina acentos, minúsculas.
     Stock real limpiado LATAM. Si no hay stock, =0.
     Respeta todas las reglas.
     """
@@ -131,7 +132,33 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
     base_sql += """
         GROUP BY TRIM("Articulo")
     ) cr
-    LEFT JOIN stock s ON TRIM(cr."Articulo") = TRIM(s."ARTICULO");
+    LEFT JOIN stock s ON LOWER(
+        REPLACE(
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(TRIM(cr."Articulo"), 'á', 'a'),
+                            'é', 'e'),
+                        'í', 'i'),
+                    'ó', 'o'),
+                'ú', 'u'),
+            'ñ', 'n')
+    ) = LOWER(
+        REPLACE(
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(TRIM(s."ARTICULO"), 'á', 'a'),
+                            'é', 'e'),
+                        'í', 'i'),
+                    'ó', 'o'),
+                'ú', 'u'),
+            'ñ', 'n')
+    );
     """
     
     df = ejecutar_consulta(base_sql, tuple(params))
@@ -177,7 +204,7 @@ def get_mock_alerts(df):
         {"title": "Saludables", "value": str(saludable), "subtitle": "Ok por ahora", "class": "success"}
     ]
 
-# ========== FUNCIÓN MAIN() CON FUSIÓN Y DEBUG ===========
+# ========== FUNCIÓN MAIN() CON FUSIÓN NORMALIZADA ===========
 def main():
     # CSS
     st.markdown(CSS_SUGERENCIAS_PEDIDOS, unsafe_allow_html=True)
@@ -217,84 +244,28 @@ def main():
     render_divider()
 
     # =========================
-    # DATOS CON FUSIÓN
+    # DATOS CON FUSIÓN NORMALIZADA
     # =========================
     proveedor_like = f"%{proveedor_sel.lower()}%" if proveedor_sel != "Todos" else None
     df = get_datos_sugerencias(anio_seleccionado, proveedor_like)
 
-    # 🔍 DEBUG AGREGADO
+    # 🔍 DEBUG (puedes removerlo una vez que funcione)
     st.write("🔍 DEBUG:")
     st.write(f"Año: {anio_seleccionado}, Proveedor: {proveedor_sel}")
-    st.write(f"Proveedor_like: {proveedor_like}")
-
-    # Prueba SQL simple sin JOIN
-    sql_simple = """
-    SELECT COUNT(*) as total
-    FROM chatbot_raw
-    WHERE "Año" = %s
-    """
-    total = ejecutar_consulta(sql_simple, (anio_seleccionado,))
-    st.write(f"Total filas en chatbot_raw para {anio_seleccionado}: {total.iloc[0]['total'] if total is not None else 'Error'}")
-
-    # Prueba subquery sin JOIN
-    sql_sub = """
-    SELECT COUNT(*) as total
-    FROM (
-        SELECT TRIM("Articulo") AS "Articulo"
-        FROM chatbot_raw
-        WHERE "Año" = %s
-          AND TRIM("Articulo") IS NOT NULL
-          AND TRIM("Articulo") <> ''
-          AND TRIM("Cantidad") IS NOT NULL
-          AND TRIM("Cantidad") <> ''
-        GROUP BY TRIM("Articulo")
-    ) cr
-    """
-    sub_total = ejecutar_consulta(sql_sub, (anio_seleccionado,))
-    st.write(f"Total artículos válidos: {sub_total.iloc[0]['total'] if sub_total is not None else 'Error'}")
-
     if df is not None:
-        st.write(f"Filas devueltas por get_datos_sugerencias: {len(df)}")
+        st.write(f"Filas devueltas: {len(df)}")
+        if len(df) > 0:
+            st.write("Primeras filas:", df.head(3))
     else:
-        st.write("get_datos_sugerencias devolvió None")
-
-    # DEBUG ADICIONAL PARA STOCK
-    sql_stock = """
-    SELECT COUNT(*) as total_stock
-    FROM stock
-    """
-    stock_count = ejecutar_consulta(sql_stock, ())
-    st.write(f"Total filas en tabla stock: {stock_count.iloc[0]['total_stock'] if stock_count is not None else 'Error'}")
-
-    # Ver algunos artículos de stock
-    sql_art_stock = """
-    SELECT DISTINCT TRIM("ARTICULO") as articulo
-    FROM stock
-    LIMIT 5
-    """
-    art_stock = ejecutar_consulta(sql_art_stock, ())
-    st.write("Primeros 5 artículos en stock:", art_stock['articulo'].tolist() if art_stock is not None else 'Error')
-
-    # Ver algunos artículos de chatbot_raw
-    sql_art_cr = """
-    SELECT DISTINCT TRIM("Articulo") as articulo
-    FROM chatbot_raw
-    WHERE "Año" = %s
-      AND TRIM("Articulo") IS NOT NULL
-      AND TRIM("Articulo") <> ''
-    LIMIT 5
-    """
-    art_cr = ejecutar_consulta(sql_art_cr, (anio_seleccionado,))
-    st.write("Primeros 5 artículos en chatbot_raw:", art_cr['articulo'].tolist() if art_cr is not None else 'Error')
+        st.write("df es None")
 
     # ✅ Verificación
     if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # Preproceso con stock real de tabla stock
+    # Preproceso con stock real
     df["consumo_diario"] = df["cantidad_anual"] / 365
-    # stock_actual ya viene del JOIN
     df["dias_stock"] = df.apply(lambda r: calcular_dias_stock(r["stock_actual"], r["consumo_diario"]), axis=1)
     df["urgencia"] = df["dias_stock"].apply(clasificar_urgencia)
     df["cantidad_sugerida"] = df.apply(lambda r: calcular_cantidad_sugerida(r["consumo_diario"], 30, r["stock_actual"], 1), axis=1)
