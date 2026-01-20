@@ -140,7 +140,12 @@ def clasificar_urgencia(dias_stock):
         return "saludable"
 
 def calcular_cantidad_sugerida(consumo_diario, dias_cobertura_objetivo, stock_actual, lote_minimo):
-    lote_minimo = lote_minimo if lote_minimo > 0 else 1
+    # Convertir a float para evitar errores con Decimal de PostgreSQL
+    consumo_diario = float(consumo_diario)
+    dias_cobertura_objetivo = float(dias_cobertura_objetivo)
+    stock_actual = float(stock_actual)
+    lote_minimo = float(lote_minimo)
+    
     sugerida = max(0, consumo_diario * dias_cobertura_objetivo - stock_actual)
     return max(sugerida, lote_minimo)
 
