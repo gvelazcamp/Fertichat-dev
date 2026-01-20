@@ -1123,3 +1123,35 @@ def get_cantidad_anual_por_articulo(anio: int, proveedor_like: str = None) -> pd
     ORDER BY cantidad_anual DESC;
     """
     return ejecutar_consulta(sql, tuple(params))
+
+
+
+SQL COMPRAS Pegá este bloque tal cual al final de sql_compras.py (no toca nada existente):
+
+# =========================
+# WRAPPER – COMPRAS AÑOS (MÚLTIPLES)
+# =========================
+def get_compras_anios(anios: List[int], limite: int = 5000) -> pd.DataFrame:
+    """
+    Devuelve compras para múltiples años.
+    No modifica SQL existente: reutiliza get_compras_anio().
+    """
+    if not anios:
+        return pd.DataFrame()
+
+    frames = []
+    for a in anios:
+        try:
+            a_int = int(a)
+        except Exception:
+            continue
+
+        df = get_compras_anio(a_int, limite=limite)
+        if df is not None and not df.empty:
+            frames.append(df)
+
+    if not frames:
+        return pd.DataFrame()
+
+    out = pd.concat(frames, ignore_index=True)
+    return out
