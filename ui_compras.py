@@ -34,10 +34,17 @@ def get_unique_proveedores():
 def get_unique_articulos():
     try:
         from sql_core import ejecutar_consulta
-        sql = 'SELECT DISTINCT TRIM("Articulo") AS art FROM chatbot_raw WHERE TRIM("Articulo") != \'\' ORDER BY art'
+        # ✅ Buscar en chatbot_raw directamente (no en tabla articulos)
+        sql = '''
+            SELECT DISTINCT TRIM("Articulo") AS art 
+            FROM chatbot_raw 
+            WHERE TRIM("Articulo") != '' 
+            ORDER BY art
+        '''
         df = ejecutar_consulta(sql)
         return df['art'].tolist() if not df.empty else []
-    except:
+    except Exception as e:
+        print(f"❌ Error cargando artículos: {e}")
         return []
 
 # =========================
@@ -339,28 +346,23 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
     # Buscar columna de moneda
     col_moneda = None
     for col in df.columns:
-        if col.lower() in ["moneda", "currency"]:
+        if col.lower() == 'moneda':
             col_moneda = col
             break
 
-    # Buscar columnas de períodos (excluir columnas que NO son períodos)
-    numeric_cols = []
-    for col in df.columns:
-        # Excluir columnas obvias que NO son períodos
-        if col in [col_moneda, 'Articulo', 'Proveedor', 'Cliente / Proveedor', 'Diferencia']:
-            continue
-        
-        # Si es numérica, incluirla
-        if pd.api.types.is_numeric_dtype(df[col]):
-            numeric_cols.append(col)
-        # Si el nombre parece un año o período, incluirla
-        elif isinstance(col, str) and (col.isdigit() or '-' in col):
-            numeric_cols.append(col)
+    # Buscar columnas de períodos (excluir 'Proveedor', 'Articulo', 'Moneda', 'Diferencia')
+    cols_periodos = []
+    for c in df.columns:
+        # Es un período si es numérica o tiene guión y no es excluida
+        if pd.api.types.is_numeric_dtype(df[c]) and c not in ['Diferencia']:
+            cols_periodos.append(c)
+        elif isinstance(c, str) and ('-' in c or c.isdigit()) and c not in ['Proveedor', 'Articulo', 'Moneda', 'Cliente / Proveedor']:
+            cols_periodos.append(c)
     
     # Si no hay columna moneda, asumir todo en UYU
     if not col_moneda:
         total_general = 0
-        for col in numeric_cols:
+        for col in cols_periodos:
             try:
                 total_general += pd.to_numeric(df[col], errors='coerce').fillna(0).sum()
             except:
@@ -379,7 +381,7 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
             
             # Sumar las columnas numéricas de esta fila
             suma_fila = 0
-            for col in numeric_cols:
+            for col in cols_periodos:
                 try:
                     val = row[col]
                     if pd.notna(val):
@@ -1716,7 +1718,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         ))
                         fig.add_trace(go.Bar(
                             name=str(p2),
-                            x=df_graph[entity_col],
+                            x=df_graph[p2].astype(float),
                             y=df_graph[p2].astype(float),
                             marker_color='#764ba2',
                             text=df_graph[p2].apply(lambda x: f'${float(x)/1_000_000:.1f}M' if x >= 1_000_000 else f'${float(x):,.0f}'.replace(",", ".") if pd.notna(x) else "0"),
@@ -2769,3 +2771,34 @@ def Compras_IA():
             st_autorefresh(interval=5000, key="fc_keepalive")
         except Exception:
             pass
+
+
+En ese caso, necesitamos cambiar get_unique_articulos() en ui_compras.py:
+pythondef get_unique_articulos():
+    try:
+        from sql_core import ejecutar_consulta
+        # ✅ Buscar en chatbot_raw directamente (no en tabla articulos)
+        sql = '''
+            SELECT DISTINCT TRIM("Articulo") AS art 
+            FROM chatbot_raw 
+            WHERE TRIM("Articulo") != '' 
+            ORDER BY art
+        '''
+        df = ejecutar_consulta(sql)
+        return df['art'].tolist() if not df.empty else []
+    except Exception as e:
+        print(f"❌ Error cargando artículos: {e}")
+        return []
+
+✅ ¿Cuál aplicar?
+
+Aplica Opción 1 (fix en _match_best) → Mejora el matching flexible
+Agrega Opción 2 (debug temporal) → Para ver qué pasa
+Ejecuta "compras vitek 2025" y copia el output del debug
+
+Con eso te digo si el problema es:
+
+A) El matching (se arregla con Opción 1)
+B) La BD no tiene "vitek" (se arregla con Opción 3)
+
+¿Qué sale en el debug?
