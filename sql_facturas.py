@@ -624,3 +624,9 @@ def get_facturas_por_rango_monto(
 
     params.extend([monto_min, monto_max])
     return ejecutar_consulta(sql, tuple(params))
+
+
+# =========================
+# WRAPPER – TOTAL FACTURAS POR MONEDA (TODOS LOS AÑOS)
+# =========================
+from sql_compras import get_total_facturas_por_moneda_todos_anios
