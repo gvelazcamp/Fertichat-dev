@@ -1017,10 +1017,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     "tipo": "facturas_proveedor",
                     "parametros": {
                         "proveedores": [proveedor],
-                        "anios": [anios[0]],
+                        "anios": anios,  # ✅ PASAR TODOS LOS AÑOS
                         "limite": 5000,
                     },
-                    "debug": "compras proveedor año (fusionado con facturas_proveedor)",
+                    "debug": "compras proveedor años (fusionado con facturas_proveedor)",
                 }
             except Exception:
                     pass
@@ -1029,10 +1029,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "tipo": "facturas_proveedor",
                 "parametros": {
                     "proveedores": [proveedor],
-                    "anios": [anios[0]],
+                    "anios": anios,  # ✅ PASAR TODOS LOS AÑOS
                     "limite": 5000,
                 },
-                "debug": "compras proveedor año (fusionado con facturas_proveedor)",
+                "debug": "compras proveedor años (fusionado con facturas_proveedor)",
             }
 
         if meses_yyyymm:
