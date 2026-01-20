@@ -78,50 +78,43 @@ def get_proveedores_anio(anio: int) -> list:
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
     Obtiene datos de sugerencias: Articulo, proveedor, ultima_compra, cantidad_anual, stock_actual.
-    Une con stock_raw para obtener stock_actual.
     Respeta todas las reglas: limpieza de números, filtros obligatorios, agrupaciones.
     """
     base_sql = """
     SELECT
-        cr."Articulo",
-        cr.proveedor,
-        cr.ultima_compra,
-        cr.cantidad_anual,
-        COALESCE(sr.stock_actual, 0) AS stock_actual
-    FROM (
-        SELECT
-            TRIM("Articulo") AS "Articulo",
-            (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
-            MAX(TRIM("Fecha")) AS ultima_compra,
-            SUM(
-                CAST(
+        TRIM("Articulo") AS "Articulo",
+        (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
+        MAX(TRIM("Fecha")) AS ultima_compra,
+        SUM(
+            CAST(
+                REPLACE(
                     REPLACE(
                         REPLACE(
-                            REPLACE(
-                                REPLACE(TRIM("Cantidad"), '(', ''),
-                            ')', ''),
-                        '.', ''),
-                    ',', '.')
-                AS NUMERIC)
-            ) AS cantidad_anual
-        FROM chatbot_raw
-        WHERE "Año" = %s
-          AND TRIM("Articulo") IS NOT NULL
-          AND TRIM("Articulo") <> ''
-          AND TRIM("Cantidad") IS NOT NULL
-          AND TRIM("Cantidad") <> ''
-        GROUP BY TRIM("Articulo")
-    ) cr
-    LEFT JOIN stock_raw sr ON TRIM(cr."Articulo") = TRIM(sr."Articulo")
+                            REPLACE(TRIM("Cantidad"), '(', ''),
+                        ')', ''),
+                    '.', ''),
+                ',', '.')
+            AS NUMERIC)
+        ) AS cantidad_anual,
+        MAX(stock_actual) AS stock_actual  -- Agregado: Trae el stock actual (asumiendo constante por Articulo)
+    FROM chatbot_raw
+    WHERE "Año" = %s
+      AND TRIM("Articulo") IS NOT NULL
+      AND TRIM("Articulo") <> ''
+      AND TRIM("Cantidad") IS NOT NULL
+      AND TRIM("Cantidad") <> ''
     """
     
     params = [anio]
     
     if proveedor_like:
-        base_sql += " WHERE LOWER(TRIM(cr.proveedor)) LIKE %s"
+        base_sql += " AND LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s"
         params.append(proveedor_like)
     
-    base_sql += " ORDER BY cr.cantidad_anual DESC;"
+    base_sql += """
+    GROUP BY TRIM("Articulo")
+    ORDER BY cantidad_anual DESC;
+    """
     
     df = ejecutar_consulta(base_sql, tuple(params))
     return df
@@ -216,7 +209,8 @@ def main():
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # Preproceso: Agregar columnas calculadas (ahora stock_actual viene de la query)
+    # Preproceso: Agregar columnas calculadas (stock_actual ahora viene de la BD)
+    # df["stock_actual"] = 0  # REMOVIDO: Ahora viene de la consulta SQL
     df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado - ajusta
     df["lote_minimo"] = 1  # Default - ajusta
     df["unidad"] = "un"  # Default - ajusta
@@ -250,9 +244,9 @@ def main():
             st.markdown(
                 f"""
                 <div class="fc-alert {a.get("class","")}">
-                    <div class="fc-alert .t">{a.get("title","")}</div>
-                    <div class="fc-alert .v">{a.get("value","")}</div>
-                    <div class="fc-alert .s">{a.get("subtitle","")}</div>
+                    <div class="t">{a.get("title","")}</div>
+                    <div class="v">{a.get("value","")}</div>
+                    <div class="s">{a.get("subtitle","")}</div>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -374,7 +368,3 @@ def main():
     with col4:
         if st.button("Actualizar datos", key="refresh_data", help="Recargar datos desde la base de datos"):
             st.rerun()
-
-
-if __name__ == "__main__":
-    main()
