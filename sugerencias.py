@@ -77,33 +77,32 @@ def get_proveedores_anio(anio: int) -> list:
 
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
-    Obtiene datos de sugerencias: Articulo, stock_actual (suma de stock > 0), proveedor, ultima_compra, cantidad_anual.
-    Incluye stock_actual de la tabla (agregada y poblada).
+    Obtiene datos de sugerencias: Articulo, stock_actual (max de stock > 0 de todas las filas del artículo), proveedor, ultima_compra, cantidad_anual.
     Respeta todas las reglas: limpieza de números, filtros obligatorios, agrupaciones.
     """
     base_sql = """
-    SELECT
-        TRIM("Articulo") AS "Articulo",
-        (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
-        MAX(TRIM("Fecha")) AS ultima_compra,
-        SUM(
-            CAST(
-                REPLACE(
+    WITH aggregated AS (
+        SELECT
+            TRIM("Articulo") AS "Articulo",
+            (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
+            MAX(TRIM("Fecha")) AS ultima_compra,
+            SUM(
+                CAST(
                     REPLACE(
                         REPLACE(
-                            REPLACE(TRIM("Cantidad"), '(', ''),
-                        ')', ''),
-                    '.', ''),
-                ',', '.')
-            AS NUMERIC)
-        ) AS cantidad_anual,
-        SUM(CAST(stock_actual AS NUMERIC)) FILTER (WHERE CAST(stock_actual AS NUMERIC) > 0) AS stock_actual  -- Cast para manejar TEXT
-    FROM chatbot_raw
-    WHERE "Año" = %s
-      AND TRIM("Articulo") IS NOT NULL
-      AND TRIM("Articulo") <> ''
-      AND TRIM("Cantidad") IS NOT NULL
-      AND TRIM("Cantidad") <> ''
+                            REPLACE(
+                                REPLACE(TRIM("Cantidad"), '(', ''),
+                            ')', ''),
+                        '.', ''),
+                    ',', '.')
+                AS NUMERIC)
+            ) AS cantidad_anual
+        FROM chatbot_raw
+        WHERE "Año" = %s
+          AND TRIM("Articulo") IS NOT NULL
+          AND TRIM("Articulo") <> ''
+          AND TRIM("Cantidad") IS NOT NULL
+          AND TRIM("Cantidad") <> ''
     """
     
     params = [anio]
@@ -113,8 +112,21 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
         params.append(proveedor_like)
     
     base_sql += """
-    GROUP BY TRIM("Articulo")
-    ORDER BY cantidad_anual DESC;
+        GROUP BY TRIM("Articulo")
+    )
+    SELECT
+        a."Articulo",
+        a.proveedor,
+        a.ultima_compra,
+        a.cantidad_anual,
+        COALESCE((
+            SELECT MAX(CAST(stock_actual AS NUMERIC))
+            FROM chatbot_raw
+            WHERE TRIM("Articulo") = a."Articulo"
+              AND CAST(stock_actual AS NUMERIC) > 0
+        ), 0) AS stock_actual
+    FROM aggregated a
+    ORDER BY a.cantidad_anual DESC;
     """
     
     df = ejecutar_consulta(base_sql, tuple(params))
