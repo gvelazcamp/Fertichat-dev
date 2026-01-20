@@ -1194,11 +1194,20 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # ======================================================
     # TOP PROVEEDORES POR AÑO
     # ======================================================
+    # ======================================================
+    # TOP PROVEEDORES POR AÑO
+    # ======================================================
     if (
         any(k in texto_lower_original for k in ["top", "ranking", "principales"])
         and "proveedor" in texto_lower_original
         and anios
     ):
+        import re
+        top_n = 10
+        match = re.search(r'top\s+(\d+)', texto_lower_original)
+        if match:
+            top_n = int(match.group(1))
+
         moneda_extraida = _extraer_moneda(texto_lower_original)
         if moneda_extraida and moneda_extraida.upper() in ("USD", "U$S", "U$$"):
             moneda_param = "U$S"
@@ -1208,17 +1217,19 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         print("\n[INTÉRPRETE] TOP_PROVEEDORES")
         print(f"  Pregunta : {texto_original}")
         print(f"  Año      : {anios[0]}")
+        print(f"  Top N    : {top_n}")
         print(f"  Moneda   : {moneda_param}")
 
         return {
             "tipo": "dashboard_top_proveedores",
             "parametros": {
                 "anio": anios[0],
-                "top_n": 10,
+                "top_n": top_n,
                 "moneda": moneda_param,
             },
             "debug": f"top proveedores por año {anios[0]} en {moneda_param}",
         }
+
 
     out_ai = _interpretar_con_openai(texto_original)
     if out_ai:
