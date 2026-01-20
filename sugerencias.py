@@ -78,6 +78,7 @@ def get_proveedores_anio(anio: int) -> list:
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
     Obtiene datos de sugerencias: Articulo, stock_actual (suma de stock > 0), proveedor, ultima_compra, cantidad_anual.
+    Incluye stock_actual de la tabla (agregada y poblada).
     Respeta todas las reglas: limpieza de números, filtros obligatorios, agrupaciones.
     """
     base_sql = """
@@ -96,7 +97,7 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
                 ',', '.')
             AS NUMERIC)
         ) AS cantidad_anual,
-        SUM(stock_actual) FILTER (WHERE stock_actual > 0) AS stock_actual  -- Suma de stock > 0, 0 si no hay
+        SUM(CAST(stock_actual AS NUMERIC)) FILTER (WHERE CAST(stock_actual AS NUMERIC) > 0) AS stock_actual  -- Cast para manejar TEXT
     FROM chatbot_raw
     WHERE "Año" = %s
       AND TRIM("Articulo") IS NOT NULL
