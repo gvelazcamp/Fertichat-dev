@@ -762,6 +762,30 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if prov_libre:
             provs = [_alias_proveedor(prov_libre)]
 
+    # --------------------------------------------------
+    # FALLBACK DE ARTÍCULO (solo si NO es proveedor)
+    # Ej: "compras vitek" → articulo = vitek
+    # --------------------------------------------------
+    if not provs and not arts:
+        tokens_libres = _tokens(texto_lower_original)
+
+        ignorar = set(
+            [
+                "compras", "compra", "facturas", "factura",
+                "total", "totales", "comparar", "comparame", "compara",
+                "enero", "febrero", "marzo", "abril", "mayo", "junio",
+                "julio", "agosto", "septiembre", "setiembre",
+                "octubre", "noviembre", "diciembre",
+                "usd", "u$s", "u$$", "pesos", "uyu",
+                "2023", "2024", "2025", "2026",
+            ]
+        )
+
+        for tk in tokens_libres:
+            if tk not in ignorar and len(tk) >= 3:
+                arts = [tk]
+                break
+
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
