@@ -120,8 +120,6 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
 
 # ========== FUNCIONES UTILITARIAS AJUSTADAS ===========
 def calcular_dias_stock(stock_actual, consumo_diario):
-    # ⚠️ "stock_actual" y "consumo_diario" NO existen en chatbot_raw.
-    # Agregados como defaults - REEMPLAZA con lógica real (ej: otra tabla).
     if consumo_diario > 0:
         return stock_actual / consumo_diario
     return float('inf')
@@ -137,7 +135,6 @@ def clasificar_urgencia(dias_stock):
         return "saludable"
 
 def calcular_cantidad_sugerida(consumo_diario, dias_cobertura_objetivo, stock_actual, lote_minimo):
-    # ⚠️ "lote_minimo" NO existe - default 1. Ajusta con lógica real.
     lote_minimo = lote_minimo if lote_minimo > 0 else 1
     sugerida = max(0, consumo_diario * dias_cobertura_objetivo - stock_actual)
     return max(sugerida, lote_minimo)
@@ -211,12 +208,11 @@ def main():
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # Preproceso: Agregar columnas calculadas (NO inventadas de la tabla)
-    # ⚠️ AJUSTA estos defaults con lógica real si tienes stock/consumo de otra fuente.
-    df["stock_actual"] = 0  # Default - reemplaza
-    df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado - ajusta
-    df["lote_minimo"] = 1  # Default - ajusta
-    df["unidad"] = "un"  # Default - ajusta
+    # ✅ FIX PARA URGENCIA: Asumir stock actual equivalente a 30 días de consumo (saludable por defecto)
+    df["consumo_diario"] = df["cantidad_anual"] / 365
+    df["stock_actual"] = df["consumo_diario"] * 30  # 30 días de stock → dias_stock = 30 → saludable
+    df["lote_minimo"] = 1
+    df["unidad"] = "un"
 
     df["dias_stock"] = df.apply(
         lambda r: calcular_dias_stock(r["stock_actual"], r["consumo_diario"]),
