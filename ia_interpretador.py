@@ -500,20 +500,42 @@ FECHA: {fecha_str} (mes actual {mes_actual}, año {anio_actual})""".strip()
 # =====================================================================
 # OPENAI (opcional)
 # =====================================================================
-def _interpretar_con_openai(pregunta: str) -> dict:
-    client = OpenAI(api_key=OPENAI_API_KEY)
+def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
+    if not (client and USAR_OPENAI_PARA_DATOS):
+        return None
 
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[
-            {"role": "system", "content": _get_system_prompt()},
-            {"role": "user", "content": pregunta},
-        ],
-        temperature=0.0,
-    )
+    try:
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": _get_system_prompt()},
+                {"role": "user", "content": pregunta,
+            ],
+            temperature=0.1,
+            max_tokens=500,
+        )
+        content = response.choices[0].message.content.strip()
+        content = re.sub(r"```json\s*", "", content)
+        content = re.sub(r"```json\s*", "", content).strip()
+        content = re.sub(r"```\s*", "", content).strip()
+        out = json.loads(content)
 
-    content = response.choices[0].message.content.strip()
-    return json.loads(content)
+        if "tipo" not in out:
+            out["tipo"] = "no_entendido"
+        if "parametros" not in out:
+            out["parametros"] = {}
+        if "debug" not in out:
+            out["debug"] = "openai"
+
+        return out
+
+    except Exception:
+        return {
+            "tipo": "no_entendido",
+            "parametros": {},
+            "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279",
+            "debug": "openai error",
+        }
 
 # =====================================================================
 # MAPEO TIPO → FUNCIÓN SQL
@@ -627,10 +649,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     """
     if not pregunta or not str(pregunta).strip():
         return {"tipo": "no_entendido", "parametros": {}, "debug": "pregunta vacía"}
-
-    # ✅ FIX QUIRÚRGICO: AGREGAR AL INICIO PARA GARANTIZAR texto_lower_original
-    texto_original = pregunta
-    texto_lower_original = pregunta.lower()
 
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
