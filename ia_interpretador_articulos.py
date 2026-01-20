@@ -1,3 +1,4 @@
+# Archivo completo basado en el contenido proporcionado
 import re
 from sql_compras import get_lista_articulos
 
