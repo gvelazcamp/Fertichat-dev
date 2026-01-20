@@ -395,21 +395,42 @@ def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: int
         limite = 500
     sql = f"""
         SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Articulo") AS Articulo,
-            TRIM("Nro. Comprobante") AS Nro_Factura,
-            "Fecha",
-            "Cantidad",
-            "Moneda",
-            TRIM("Monto Neto") AS Total
+            TRIM("Articulo") AS articulo,
+            SUM(
+                CAST(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(TRIM("Monto Neto"), '(', ''),
+                            ')', ''),
+                        '.', ''),
+                    ',', '.')
+                AS NUMERIC
+            ) AS total_monto,
+            COUNT(DISTINCT "Nro. Comprobante") AS facturas,
+            SUM(
+                CAST(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(TRIM("Cantidad"), '(', ''),
+                            ')', ''),
+                        '.', ''),
+                    ',', '.')
+                AS NUMERIC
+            ) AS cantidad_total
         FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+        WHERE LOWER(TRIM("Articulo")) LIKE %s
           AND "Año" = %s
-          AND LOWER(TRIM("Articulo")) LIKE %s
-        ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT %s
+          AND TRIM("Articulo") IS NOT NULL
+          AND TRIM("Articulo") <> ''
+          AND TRIM("Cantidad") IS NOT NULL
+          AND TRIM("Cantidad") <> ''
+        GROUP BY TRIM("Articulo")
+        ORDER BY total_monto DESC
     """
-    return ejecutar_consulta(sql, (anio, f"%{articulo_like.lower()}%", limite))
+    params = (f"%{articulo_like.lower()}%", anio)
+    return ejecutar_consulta(sql, params)
 
 
 def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
