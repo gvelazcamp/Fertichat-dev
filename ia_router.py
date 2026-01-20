@@ -95,6 +95,12 @@ def interpretar_pregunta(pregunta: str) -> Dict:
 
     # 3. COMPRAS (va al CANÓNICO)
     if any(k in texto_lower for k in ["compra", "compras", "comprobante", "comprobantes"]):
+        # ✅ FIX: Agregar verificación para artículos antes de ir al canónico
+        from ia_interpretador_articulos import interpretar_articulo
+        resultado_art = interpretar_articulo(pregunta)
+        if isinstance(resultado_art, dict) and "tipo" in resultado_art:
+            return resultado_art
+        # Si no hay artículo, ir al canónico
         return interpretar_canonico(pregunta)
 
     # 4. COMPARATIVAS
