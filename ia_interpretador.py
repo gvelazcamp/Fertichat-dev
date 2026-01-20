@@ -509,7 +509,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
             model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": _get_system_prompt()},
-                {"role": "user", "content": pregunta},
+                {"role": "user", "content": pregunta,
             ],
             temperature=0.1,
             max_tokens=500,
@@ -1199,17 +1199,25 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         and "proveedor" in texto_lower_original
         and anios
     ):
+        moneda_extraida = _extraer_moneda(texto_lower_original)
+        if moneda_extraida and moneda_extraida.upper() in ("USD", "U$S", "U$$"):
+            moneda_param = "U$S"
+        else:
+            moneda_param = "$"
+
         print("\n[INTÉRPRETE] TOP_PROVEEDORES")
         print(f"  Pregunta : {texto_original}")
         print(f"  Año      : {anios[0]}")
+        print(f"  Moneda   : {moneda_param}")
 
         return {
             "tipo": "dashboard_top_proveedores",
             "parametros": {
                 "anio": anios[0],
-                "top_n": 10
+                "top_n": 10,
+                "moneda": moneda_param,
             },
-            "debug": "top proveedores por año",
+            "debug": f"top proveedores por año {anios[0]} en {moneda_param}",
         }
 
     out_ai = _interpretar_con_openai(texto_original)
