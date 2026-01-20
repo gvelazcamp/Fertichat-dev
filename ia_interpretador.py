@@ -225,31 +225,14 @@ def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
 
     return None
 
-def _extraer_articulo_libre(tokens, provs_detectados):
-    """
-    Toma el primer token útil como artículo,
-    siempre que NO sea proveedor detectado.
-    """
-    ignorar = {
-        "compras","compra","facturas","factura",
-        "total","totales","comparar","compara",
-        "enero","febrero","marzo","abril","mayo","junio",
-        "julio","agosto","septiembre","setiembre",
-        "octubre","noviembre","diciembre",
-        "usd","u$s","pesos","uyu",
-        "2023","2024","2025","2026"
-    }
-
-    provs_set = set(p.lower() for p in provs_detectados)
-
-    for tk in tokens:
-        if (
-            tk not in ignorar
-            and len(tk) >= 3
-            and tk not in provs_set
-        ):
-            return tk
-
+def detectar_articulo_valido(tokens, catalogo_articulos):
+    for token in tokens:
+        t = token.strip().lower()
+        if len(t) < 4:
+            continue
+        for art in catalogo_articulos:
+            if t in art.lower():
+                return art
     return None
 
 # =====================================================================
@@ -806,11 +789,24 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # artículo fuerte (si ya lo tenías)
     # arts = [...]
 
-    # 👉 fallback de artículo (nuevo)
+    # 👉 fallback de artículo (VALIDACIÓN CONTRA CATÁLOGO REAL)
     if not arts:
-        art_libre = _extraer_articulo_libre(tokens, provs)
-        if art_libre:
-            arts = [art_libre]
+        listas = _cargar_listas_supabase()
+        articulos_db = listas.get("articulos", [])
+        tokens_restantes = [t for t in tokens if t not in provs]
+        articulo = detectar_articulo_valido(tokens_restantes, articulos_db)
+        if articulo:
+            arts = [articulo]
+
+    # ============================
+    # RUTA ARTÍCULOS (CANÓNICA)
+    # ============================
+    if contiene_compras(texto_lower_original) and not provs:
+        from ia_interpretador_articulos import interpretar_articulo
+        # Extraer anios aquí para pasar a la función
+        anios = _extraer_anios(texto_lower)
+        meses = _extraer_meses_nombre(texto_lower) + _extraer_meses_yyyymm(texto_lower)
+        return interpretar_articulo(texto_original, anios, meses)
 
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
@@ -828,13 +824,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             },
             "debug": "compras articulo + año"
         }
-
-    # ============================
-    # RUTA ARTÍCULOS (SEPARADA)
-    # ============================
-    if contiene_compras(texto_lower_original) and not provs:
-        from ia_interpretador_articulos import interpretar_articulo
-        return interpretar_articulo(texto_original, anios, meses_nombre + meses_yyyymm)
 
     # =====================================================================
     # AGREGAR ESTE BLOQUE ANTES DEL BLOQUE "COMPRAS" (línea ~580)
