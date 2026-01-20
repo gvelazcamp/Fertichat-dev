@@ -829,6 +829,21 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         idx_prov, idx_art = _get_indices()
         arts_bd = _match_best(texto_lower, idx_art, max_items=1)
         
+        # 🆕 FIX: Si no encontró exacto, buscar por substring (contiene "vitek")
+        if not arts_bd:
+            from sql_core import ejecutar_consulta
+            sql_sub = '''
+                SELECT DISTINCT TRIM("Articulo") AS art
+                FROM chatbot_raw
+                WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+                  AND TRIM("Articulo") != ''
+                ORDER BY art
+                LIMIT 1
+            '''
+            df_sub = ejecutar_consulta(sql_sub, (f"%{texto_lower}%",))
+            if df_sub is not None and not df_sub.empty:
+                arts_bd = [df_sub.iloc[0]['art']]
+        
         # Si encontró artículo en BD y NO encontró proveedor
         if arts_bd and not provs:
             articulo = arts_bd[0]
@@ -1276,7 +1291,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         "label1": str(anios[0]),
                         "label2": str(anios[1]),
                     },
-                    "debug": "comparar proveedor a��os",
+                    "debug": "comparar proveedor años",
                 }
             else:
                 # ✅ NUEVO: Sin proveedor = comparar TODOS los proveedores
