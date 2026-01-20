@@ -829,6 +829,15 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         idx_prov, idx_art = _get_indices()
         arts_bd = _match_best(texto_lower, idx_art, max_items=1)
         
+        # 🆕 FIX: Validación para no confundir años con artículos
+        if arts_bd:
+            articulo_candidato = arts_bd[0]
+            # No es un número puro, no contiene años, no es muy corto
+            if (articulo_candidato.strip().isdigit() or 
+                len(articulo_candidato.strip()) < 3 or 
+                any(str(a) in articulo_candidato.lower() for a in [2023, 2024, 2025, 2026])):
+                arts_bd = None  # Invalidar
+        
         # 🆕 FIX: Si no encontró exacto, buscar por substring usando tokens relevantes
         if not arts_bd:
             tokens = _tokens(texto_lower_original)  # Usar original para tokens limpios
@@ -1338,7 +1347,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             top_n = int(match.group(1))
 
         moneda_extraida = _extraer_moneda(texto_lower_original)
-        if moneda_extraida and moneda_extraida.upper() in ("USD", "U$S", "U$$"):
+        if moneda_extraida and moneda_extraida.upper() in ("USD", "U$S", "U$$", "US$"):
             moneda_param = "U$S"
         else:
             moneda_param = "$"
