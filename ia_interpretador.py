@@ -917,6 +917,20 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "debug": "compras articulo + año (forzado)",
             }
 
+        # ============================
+        # COMPRAS POR ARTÍCULO + AÑO
+        # ============================
+        if arts and anios and not provs:
+            return {
+                "tipo": "compras_articulo_anio",
+                "parametros": {
+                    "articulo": arts[0],
+                    "anio": anios[0],
+                    "limite": 5000,
+                },
+                "debug": "compras por articulo y año",
+            }
+
         # ✅ PRIORIZAR MES SOBRE AÑO
         if provs and (meses_yyyymm or (meses_nombre and anios)):
             if len(provs) > 1:
