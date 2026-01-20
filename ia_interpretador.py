@@ -790,6 +790,24 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
+    # FAST-PATH: compras artículo (fallback)
+    if arts and not provs and contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original):
+        print(f"\n[INTÉRPRETE] COMPRAS ARTÍCULO={arts[0]}")
+        try:
+            st.session_state["DBG_INT_LAST"] = {
+                "pregunta": texto_original,
+                "tipo": "facturas_articulo",
+                "parametros": {"articulo": arts[0]},
+                "debug": f"compras artículo {arts[0]} (fallback)",
+            }
+        except Exception:
+            pass
+        return {
+            "tipo": "facturas_articulo",
+            "parametros": {"articulo": arts[0]},
+            "debug": f"compras artículo {arts[0]} (fallback)",
+        }
+
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
 
