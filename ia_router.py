@@ -93,7 +93,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     if "stock" in texto_lower:
         return interpretar_stock(pregunta)
 
-    # 3. COMPRAS (va al CANÓNICO) - MOVIDO ANTES DE COMPARATIVAS PARA PRIORIDAD
+    # 3. COMPRAS (va al CANÓNICO)
     if any(k in texto_lower for k in ["compra", "compras", "comprobante", "comprobantes"]):
         return interpretar_canonico(pregunta)
 
@@ -116,6 +116,7 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             )
             content = response.choices[0].message.content.strip()
             content = re.sub(r"```json\s*", "", content)
+            content = re.sub(r"```json\s*", "", content).strip()
             content = re.sub(r"```\s*", "", content).strip()
             out = json.loads(content)
             if "tipo" not in out:
@@ -137,6 +138,27 @@ def interpretar_pregunta(pregunta: str) -> Dict:
         "sugerencia": "Probá: todas las facturas roche 2025 | detalle factura 273279 | compras 2025",
         "debug": "router: no match.",
     }
+
+
+# =====================================================================
+# NUEVA FUNCIÓN ROUTER PARA ARTÍCULOS
+# =====================================================================
+def interpretar_pregunta_router(pregunta: str) -> dict:
+    from ia_interpretador_articulos import interpretar_articulo
+
+    texto = pregunta.lower()
+
+    # si detecta proveedor → NO tocar
+    if "roche" in texto or "abbott" in texto:
+        return interpretar_canonico(pregunta)
+
+    # si no, probar artículos
+    resultado_art = interpretar_articulo(pregunta)
+    if resultado_art and resultado_art.get("tipo") != "sin_resultado":
+        return resultado_art
+
+    # fallback
+    return interpretar_canonico(pregunta)
 
 
 # =====================================================================
@@ -196,41 +218,3 @@ def obtener_info_tipo(tipo: str) -> Optional[Dict]:
 def es_tipo_valido(tipo: str) -> bool:
     tipos_especiales = ["conversacion", "conocimiento", "no_entendido"]
     return tipo in MAPEO_FUNCIONES or tipo in tipos_especiales
-
-
-# =====================================================================
-# EJECUTOR PRINCIPAL (CORREGIDO CON ORDEN OBLIGATORIO)
-# =====================================================================
-def ejecutar_decision(decision: Dict) -> Optional[any]:
-    """
-    Ejecutor con orden obligatorio:
-    1. Tipos específicos mapeados
-    2. Fallback general
-    """
-    tipo = decision.get("tipo")
-    parametros = decision.get("parametros", {})
-
-    print("ROUTER TIPO:", tipo)
-    print("ROUTER PARAMS:", parametros)
-
-    # =========================
-    # 1️⃣ TIPOS ESPECÍFICOS (PRIMERO)
-    # =========================
-    if tipo in MAPEO_FUNCIONES:
-        info = MAPEO_FUNCIONES[tipo]
-        funcion = info["funcion"]
-        params_keys = info["params"]
-        # Asume que las funciones están disponibles via importar o globals
-        # Ejemplo: from sql_core import ejecutar_consulta
-        # Aquí se llamaría ejecutar_consulta(funcion, **parametros_mapeados)
-        # Para este ejemplo, retornamos un placeholder
-        return f"Ejecutando {funcion} con params { {k: parametros.get(k) for k in params_keys} }"
-
-    # =========================
-    # 2️⃣ FALLBACK GENERAL (ÚLTIMO)
-    # =========================
-    if tipo == "compras":
-        # Llamar a función general de compras
-        return "Ejecutando compras_generales()"
-
-    return None
