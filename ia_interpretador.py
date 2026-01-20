@@ -1,3 +1,7 @@
+# =========================
+# IA_INTERPRETADOR.PY - CANÓNICO (DETECCIÓN BD + COMPARATIVAS)
+# =========================
+
 import os
 import re
 import json
@@ -8,10 +12,6 @@ from datetime import datetime
 import streamlit as st
 from openai import OpenAI
 from config import OPENAI_MODEL
-
-# =========================
-# IA_INTERPRETADOR.PY - CANÓNICO (DETECCIÓN BD + COMPARATIVAS)
-# =========================
 
 # =====================================================================
 # CONFIGURACIÓN OPENAI (opcional)
@@ -309,6 +309,7 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
 # Extraer limite
 # =====================================================================
 def _extraer_limite(texto: str, predeterminado: int = 500) -> int:
+    import re
     numeros = re.findall(r"\b\d+\b", texto)
     for numero in numeros:
         n = int(numero)
@@ -508,7 +509,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
             model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": _get_system_prompt()},
-                {"user": "content": pregunta},
+                {"role": "user", "content": pregunta},
             ],
             temperature=0.1,
             max_tokens=500,
@@ -557,6 +558,10 @@ MAPEO_FUNCIONES = {
         "funcion": "get_compras_multiples",
         "params": ["proveedores", "meses", "anios"],
     },
+    "compras_articulo_anio": {
+        "funcion": "get_detalle_compras_articulo_anio",
+        "params": ["articulo", "anio"],
+    },
     "detalle_factura_numero": {
         "funcion": "get_detalle_factura_por_numero",
         "params": ["nro_factura"],
@@ -583,7 +588,7 @@ MAPEO_FUNCIONES = {
     },
     "facturas_articulo": {
         "funcion": "get_facturas_articulo",
-        "params": ["articulo", "anios"],
+        "params": ["articulo"],
     },
     "stock_total": {
         "funcion": "get_stock_total",
@@ -612,10 +617,6 @@ MAPEO_FUNCIONES = {
     "total_compras_por_moneda_generico": {
         "funcion": "get_total_compras_por_moneda_todos_anios",
         "params": [],
-    },
-    "dashboard_top_proveedores": {
-        "funcion": "get_dashboard_top_proveedores",
-        "params": ["anio", "top_n", "moneda"],
     },
 }
 
@@ -762,51 +763,9 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if prov_libre:
             provs = [_alias_proveedor(prov_libre)]
 
-    # --------------------------------------------------
-    # FALLBACK DE ARTÍCULO (solo si NO es proveedor)
-    # Ej: "compras vitek" → articulo = vitek
-    # --------------------------------------------------
-    if not provs and not arts:
-        tokens_libres = _tokens(texto_lower_original)
-
-        ignorar = set(
-            [
-                "compras", "compra", "facturas", "factura",
-                "total", "totales", "comparar", "comparame", "compara",
-                "enero", "febrero", "marzo", "abril", "mayo", "junio",
-                "julio", "agosto", "septiembre", "setiembre",
-                "octubre", "noviembre", "diciembre",
-                "usd", "u$s", "u$$", "pesos", "uyu",
-                "2023", "2024", "2025", "2026",
-            ]
-        )
-
-        for tk in tokens_libres:
-            if tk not in ignorar and len(tk) >= 3:
-                arts = [tk]
-                break
-
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
-
-    # FAST-PATH: compras artículo (fallback)
-    if arts and not provs and contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original):
-        print(f"\n[INTÉRPRETE] COMPRAS ARTÍCULO={arts[0]}")
-        try:
-            st.session_state["DBG_INT_LAST"] = {
-                "pregunta": texto_original,
-                "tipo": "facturas_articulo",
-                "parametros": {"articulo": arts[0], "anios": anios or None},
-                "debug": f"compras artículo {arts[0]} (fallback)",
-            }
-        except Exception:
-            pass
-        return {
-            "tipo": "facturas_articulo",
-            "parametros": {"articulo": arts[0], "anios": anios or None},
-            "debug": f"compras artículo {arts[0]} (fallback)",
-        }
 
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
@@ -942,6 +901,35 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
         if proveedores_multiples:
             provs = proveedores_multiples  # Usar los múltiples
+
+        # =========================================================
+        # COMPRAS POR ARTÍCULO + AÑO
+        # Prioridad sobre proveedor
+        # =========================================================
+        articulo = arts[0] if arts else None
+        if "compras" in texto_lower and anios and articulo:
+            return {
+                "tipo": "compras_articulo_anio",
+                "parametros": {
+                    "articulo": articulo,
+                    "anio": anios[0],
+                },
+                "debug": "compras articulo + año (forzado)",
+            }
+
+        # ============================
+        # COMPRAS POR ARTÍCULO + AÑO
+        # ============================
+        if arts and anios and not provs:
+            return {
+                "tipo": "compras_articulo_anio",
+                "parametros": {
+                    "articulo": arts[0],
+                    "anio": anios[0],
+                    "limite": 5000,
+                },
+                "debug": "compras por articulo y año",
+            }
 
         # ✅ PRIORIZAR MES SOBRE AÑO
         if provs and (meses_yyyymm or (meses_nombre and anios)):
@@ -1228,41 +1216,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if arts:
             return {"tipo": "stock_articulo", "parametros": {"articulo": arts[0]}, "debug": "stock articulo"}
         return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
-
-    # ======================================================
-    # TOP PROVEEDORES POR AÑO
-    # ======================================================
-    if (
-        any(k in texto_lower_original for k in ["top", "ranking", "principales"])
-        and "proveedor" in texto_lower_original
-        and anios
-    ):
-        top_n = 10
-        match = re.search(r'top\s+(\d+)', texto_lower_original)
-        if match:
-            top_n = int(match.group(1))
-
-        moneda_extraida = _extraer_moneda(texto_lower_original)
-        if moneda_extraida and moneda_extraida.upper() in ("USD", "U$S", "U$$"):
-            moneda_param = "U$S"
-        else:
-            moneda_param = "$"
-
-        print("\n[INTÉRPRETE] TOP_PROVEEDORES")
-        print(f"  Pregunta : {texto_original}")
-        print(f"  Año      : {anios[0]}")
-        print(f"  Top N    : {top_n}")
-        print(f"  Moneda   : {moneda_param}")
-
-        return {
-            "tipo": "dashboard_top_proveedores",
-            "parametros": {
-                "anio": anios[0],
-                "top_n": top_n,
-                "moneda": moneda_param,
-            },
-            "debug": f"top proveedores por año {anios[0]} en {moneda_param}",
-        }
 
     out_ai = _interpretar_con_openai(texto_original)
     if out_ai:
