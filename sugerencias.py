@@ -55,7 +55,7 @@ def _fmt_fecha(fecha):
     except:
         return str(fecha)
 
-# ========== FUNCIONES DE DATOS CON FUSIÓN NORMALIZADA ===========
+# ========== FUNCIONES DE DATOS CON FUSIÓN SIMPLIFICADA ===========
 def get_proveedores_anio(anio: int) -> list:
     """
     Obtiene lista de proveedores únicos para un año.
@@ -76,8 +76,7 @@ def get_proveedores_anio(anio: int) -> list:
 
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
-    Fusiona compras de chatbot_raw con stock de tabla stock via LEFT JOIN normalizado.
-    Normaliza nombres: elimina acentos, minúsculas.
+    Fusiona compras de chatbot_raw con stock de tabla stock via LEFT JOIN simplificado.
     Stock real limpiado LATAM. Si no hay stock, =0.
     Respeta todas las reglas.
     """
@@ -132,33 +131,7 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
     base_sql += """
         GROUP BY TRIM("Articulo")
     ) cr
-    LEFT JOIN stock s ON LOWER(
-        REPLACE(
-            REPLACE(
-                REPLACE(
-                    REPLACE(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(TRIM(cr."Articulo"), 'á', 'a'),
-                            'é', 'e'),
-                        'í', 'i'),
-                    'ó', 'o'),
-                'ú', 'u'),
-            'ñ', 'n')
-    ) = LOWER(
-        REPLACE(
-            REPLACE(
-                REPLACE(
-                    REPLACE(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(TRIM(s."ARTICULO"), 'á', 'a'),
-                            'é', 'e'),
-                        'í', 'i'),
-                    'ó', 'o'),
-                'ú', 'u'),
-            'ñ', 'n')
-    );
+    LEFT JOIN stock s ON LOWER(TRIM(cr."Articulo")) = LOWER(TRIM(s."ARTICULO"));
     """
     
     df = ejecutar_consulta(base_sql, tuple(params))
@@ -204,7 +177,7 @@ def get_mock_alerts(df):
         {"title": "Saludables", "value": str(saludable), "subtitle": "Ok por ahora", "class": "success"}
     ]
 
-# ========== FUNCIÓN MAIN() CON FUSIÓN NORMALIZADA ===========
+# ========== FUNCIÓN MAIN() CON FUSIÓN SIMPLIFICADA ===========
 def main():
     # CSS
     st.markdown(CSS_SUGERENCIAS_PEDIDOS, unsafe_allow_html=True)
@@ -244,7 +217,7 @@ def main():
     render_divider()
 
     # =========================
-    # DATOS CON FUSIÓN NORMALIZADA
+    # DATOS CON FUSIÓN SIMPLIFICADA
     # =========================
     proveedor_like = f"%{proveedor_sel.lower()}%" if proveedor_sel != "Todos" else None
     df = get_datos_sugerencias(anio_seleccionado, proveedor_like)
