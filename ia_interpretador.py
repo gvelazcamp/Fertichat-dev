@@ -1,7 +1,3 @@
-# =========================
-# IA_INTERPRETADOR.PY - CANÓNICO (DETECCIÓN BD + COMPARATIVAS)
-# =========================
-
 import os
 import re
 import json
@@ -12,6 +8,10 @@ from datetime import datetime
 import streamlit as st
 from openai import OpenAI
 from config import OPENAI_MODEL
+
+# =========================
+# IA_INTERPRETADOR.PY - CANÓNICO (DETECCIÓN BD + COMPARATIVAS)
+# =========================
 
 # =====================================================================
 # CONFIGURACIÓN OPENAI (opcional)
@@ -220,6 +220,33 @@ def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
         if not tk or tk in ignorar:
             continue
         if len(tk) >= 3:
+            return tk
+
+    return None
+
+def _extraer_articulo_libre(tokens, provs_detectados):
+    """
+    Toma el primer token útil como artículo,
+    siempre que NO sea proveedor detectado.
+    """
+    ignorar = {
+        "compras","compra","facturas","factura",
+        "total","totales","comparar","compara",
+        "enero","febrero","marzo","abril","mayo","junio",
+        "julio","agosto","septiembre","setiembre",
+        "octubre","noviembre","diciembre",
+        "usd","u$s","u$$","pesos","uyu",
+        "2023","2024","2025","2026"
+    }
+
+    provs_set = set(p.lower() for p in provs_detectados)
+
+    for tk in tokens:
+        if (
+            tk not in ignorar
+            and len(tk) >= 3
+            and tk not in provs_set
+        ):
             return tk
 
     return None
@@ -767,49 +794,29 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if prov_libre:
             provs = [_alias_proveedor(prov_libre)]
 
-    # ==================================================
-    # FALLBACK DE ARTÍCULO (SIN ROMPER PROVEEDOR)
-    # Regla:
-    # - proveedor NO se toca
-    # - tokens de proveedor se eliminan
-    # - si no hay artículo → primer token útil = artículo
-    # ==================================================
+    tokens = _tokens(texto_lower_original)
 
+    # proveedor (YA EXISTE)
+    # provs = [...]
+
+    # artículo fuerte (si ya lo tenías)
+    # arts = [...]
+
+    # 👉 fallback de artículo (nuevo)
     if not arts:
-        # 1) Tokens del texto
-        tokens = _tokens(texto_lower_original)
-
-        # 2) Palabras a ignorar
-        ignorar = set([
-            "compras", "compra", "facturas", "factura",
-            "total", "totales", "comparar", "compara",
-            "enero", "febrero", "marzo", "abril", "mayo", "junio",
-            "julio", "agosto", "septiembre", "setiembre",
-            "octubre", "noviembre", "diciembre",
-            "usd", "u$s", "u$$", "pesos", "uyu",
-            "por", "del", "de", "la", "el",
-            "2023", "2024", "2025", "2026"
-        ])
-
-        # 3) Eliminar tokens que son proveedores
-        proveedores_tokens = set()
-        for p in provs:
-            for t in p.lower().split():
-                proveedores_tokens.add(t)
-
-        # 4) Buscar primer token válido como artículo
-        for tk in tokens:
-            if (
-                tk not in ignorar
-                and tk not in proveedores_tokens
-                and len(tk) >= 3
-            ):
-                arts = [tk]
-                break
+        art_libre = _extraer_articulo_libre(tokens, provs)
+        if art_libre:
+            arts = [art_libre]
 
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
+
+    if provs and anios:
+        tipo = "facturas_proveedor"
+
+    elif arts and anios:
+        tipo = "compras_articulo_anio"
 
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
