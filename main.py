@@ -35,6 +35,10 @@ from sql_core import ejecutar_consulta
 
 # NUEVOS IMPORTS PARA SOPORTE DE COMPRAS
 from ia_interpretador import interpretar_pregunta
+import ia_interpretador
+
+print(">>> IA INTERPRETADOR USADO:", ia_interpretador.__file__)
+
 from sql_facturas import get_facturas_proveedor as get_facturas_proveedor_detalle
 from sql_compras import (
     get_compras_proveedor_anio,
@@ -900,7 +904,6 @@ with main_container:
                 st.json(st.session_state.get("DBG_INT_LAST", {}))
                 st.subheader("SQL ejecutado")
                 st.write("Origen:", st.session_state.get("DBG_SQL_LAST_TAG"))
-                st.write("Params:", st.session_state.get("DBG_SQL_LAST_PARAMS", []))
                 st.subheader("Resultado")
                 st.write("Filas:", st.session_state.get("DBG_SQL_ROWS"))
                 st.write("Columnas:", st.session_state.get("DBG_SQL_COLS", []))
