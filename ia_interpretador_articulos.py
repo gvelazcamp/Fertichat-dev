@@ -1,41 +1,41 @@
-# ia_interpretador_articulos.py
-
 import re
+from sql_compras import get_lista_articulos
 
-# palabras que NO son artículo
-STOPWORDS = {
-    "compras", "compra", "comprar",
-    "facturas", "factura",
-    "del", "de", "la", "el", "los", "las",
-    "por", "para"
-}
+def normalizar(txt: str) -> str:
+    txt = txt.lower().strip()
+    txt = re.sub(r"[^\w\s]", " ", txt)
+    txt = re.sub(r"\s+", " ", txt)
+    return txt
 
-def _limpiar_tokens(texto: str) -> list[str]:
-    texto = texto.lower()
-    texto = re.sub(r"[^\w\s]", " ", texto)
-    return [t for t in texto.split() if t and t not in STOPWORDS]
+def detectar_articulo(texto: str, articulos_db: list[str]) -> str | None:
+    texto_n = normalizar(texto)
 
-def detectar_articulo(texto: str) -> str | None:
-    tokens = _limpiar_tokens(texto)
+    candidatos = []
 
-    # estrategia simple y segura:
-    # el primer token útil largo
-    for t in tokens:
-        if len(t) >= 3 and not t.isdigit():
-            return t
+    for art in articulos_db:
+        art_n = normalizar(art)
 
-    return None
+        # match flexible, como proveedor
+        if art_n in texto_n or texto_n in art_n:
+            candidatos.append(art)
 
-def interpretar_articulo(texto: str, anios: list[int], meses: list[str] | None = None):
-    articulo = detectar_articulo(texto)
+    if not candidatos:
+        return None
+
+    # elegimos el más específico (más largo)
+    return max(candidatos, key=len)
+
+def interpretar_articulo(texto: str, anios: list[int], meses=None):
+    articulos_db = get_lista_articulos()
+
+    articulo = detectar_articulo(texto, articulos_db)
 
     if not articulo:
         return {
             "tipo": "sin_resultado",
-            "debug": "no se pudo detectar articulo"
+            "debug": "articulo no detectado en BD"
         }
 
-    # artículo + año(s)
     if anios:
         return {
             "tipo": "compras_articulo_anio",
@@ -43,14 +43,13 @@ def interpretar_articulo(texto: str, anios: list[int], meses: list[str] | None =
                 "articulo": articulo,
                 "anios": anios
             },
-            "debug": "articulo + año (interpretador articulos)"
+            "debug": "compras articulo + año (canónico)"
         }
 
-    # solo artículo
     return {
         "tipo": "compras_articulo",
         "parametros": {
             "articulo": articulo
         },
-        "debug": "solo articulo (interpretador articulos)"
+        "debug": "compras articulo (canónico)"
     }
