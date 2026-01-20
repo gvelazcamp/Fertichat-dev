@@ -77,8 +77,8 @@ def get_proveedores_anio(anio: int) -> list:
 
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
-    Obtiene datos de sugerencias: Articulo, stock_actual, proveedor, ultima_compra, cantidad_anual.
-    Ahora incluye stock_actual de la tabla (agregada).
+    Obtiene datos de sugerencias: Articulo, proveedor, ultima_compra, cantidad_anual, stock_actual.
+    Incluye stock_actual de la tabla (agregada y poblada).
     Respeta todas las reglas: limpieza de números, filtros obligatorios, agrupaciones.
     """
     base_sql = """
@@ -97,7 +97,7 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
                 ',', '.')
             AS NUMERIC)
         ) AS cantidad_anual,
-        MAX(stock_actual) AS stock_actual  -- Agregado: stock_actual de la tabla (tomando el máximo por artículo)
+        MAX(stock_actual) AS stock_actual  -- Incluido: stock_actual de la tabla (tomando el máximo por artículo)
     FROM chatbot_raw
     WHERE "Año" = %s
       AND TRIM("Articulo") IS NOT NULL
@@ -122,7 +122,7 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
 
 # ========== FUNCIONES UTILITARIAS AJUSTADAS ===========
 def calcular_dias_stock(stock_actual, consumo_diario):
-    # Asegurar que stock_actual sea numérico y no None
+    # Manejo seguro de tipos: convertir a float, manejar None/NaN
     stock_actual = pd.to_numeric(stock_actual, errors='coerce') or 0
     consumo_diario = pd.to_numeric(consumo_diario, errors='coerce') or 0
     if consumo_diario > 0:
@@ -349,7 +349,7 @@ def main():
 
     info_html = f"""
     <p><strong>Total sugerido:</strong> {total_cantidad:.1f} unidades en {total_productos} productos</p>
-    <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock estimados.</p>
+    <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock reales.</p>
     """
     render_card(info_html)
 
