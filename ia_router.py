@@ -185,7 +185,7 @@ MAPEO_FUNCIONES = {
 
     # STOCK
     "stock_total": {"funcion": "get_stock_total", "params": []},
-    "stock_articulo": {"funcion": "stock_articulo", "params": ["articulo"]},
+    "stock_articulo": {"funcion": "get_stock_articulo", "params": ["articulo"]},
 }
 
 
