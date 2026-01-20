@@ -871,24 +871,6 @@ def get_total_facturas_por_moneda_todos_anios() -> pd.DataFrame:
     return ejecutar_consulta(sql, ())
 
 # =========================
-# TOTAL COMPRAS POR MONEDA - GENÉRICO (TODOS LOS AÑOS, AGRUPADO POR AÑO)
-# =========================
-def get_total_facturas_por_moneda_todos_anios() -> pd.DataFrame:
-    """Total de facturas por moneda y año, mostrando todos los años disponibles."""
-    total_expr = _sql_total_num_expr_general()
-    sql = f"""
-        SELECT
-            "Año" AS anio,
-            TRIM("Moneda") AS moneda,
-            COUNT(DISTINCT "Nro. Comprobante") AS total_facturas,
-            COALESCE(SUM({total_expr}), 0) AS monto  -- ← Cambio aquí
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-        GROUP BY "Año", TRIM("Moneda")
-        ORDER BY "Año" ASC, monto DESC  -- ← Y aquí
-    """
-    return ejecutar_consulta(sql, ())
-# =========================
 # TOTAL COMPRAS POR MONEDA AÑO
 # =========================
 def get_total_compras_por_moneda_anio(anio: int) -> pd.DataFrame:
@@ -1123,10 +1105,6 @@ def get_cantidad_anual_por_articulo(anio: int, proveedor_like: str = None) -> pd
     ORDER BY cantidad_anual DESC;
     """
     return ejecutar_consulta(sql, tuple(params))
-
-
-
-SQL COMPRAS Pegá este bloque tal cual al final de sql_compras.py (no toca nada existente):
 
 # =========================
 # WRAPPER – COMPRAS AÑOS (MÚLTIPLES)
