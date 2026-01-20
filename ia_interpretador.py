@@ -252,6 +252,38 @@ def _extraer_articulo_libre(tokens, provs_detectados):
     return None
 
 # =====================================================================
+# DETECCIÓN SIMPLE DE ARTÍCULO
+# =====================================================================
+def _detectar_articulo_simple(texto_lower_original: str, anios: List[int]) -> Optional[str]:
+    """
+    Detecta artículo de forma simple y segura.
+    Prioriza BD, luego fallback a token.
+    """
+    toks = _tokens(texto_lower_original)
+    ignore_words = {"compras", "compra", "factura", "facturas", "total", "totales", "comparar", "compara", "2023", "2024", "2025", "2026", "usd", "u$s", "pesos", "uyu"}
+    relevant_toks = [t for t in toks if t not in ignore_words and len(t) >= 3]
+    
+    if not relevant_toks:
+        return None
+    
+    # Intentar substring en BD
+    for tk in relevant_toks:
+        sql_sub = '''
+            SELECT DISTINCT TRIM("Articulo") AS art
+            FROM chatbot_raw
+            WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+              AND TRIM("Articulo") != ''
+            ORDER BY art
+            LIMIT 1
+        '''
+        df_sub = ejecutar_consulta(sql_sub, (f"%{tk}%",))
+        if df_sub is not None and not df_sub.empty:
+            return df_sub.iloc[0]['art']
+    
+    # Fallback: devolver el primer token relevante
+    return relevant_toks[0]
+
+# =====================================================================
 # HELPERS DE KEYWORDS
 # =====================================================================
 def contiene_compras(texto: str) -> bool:
@@ -420,6 +452,9 @@ def _get_indices() -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
 
 def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) -> List[str]:
     toks = _tokens(texto)
+    # Filter out common words that shouldn't match articles/providers
+    ignore_words = {"compras", "compra", "factura", "facturas", "total", "totales", "comparar", "compara", "2023", "2024", "2025", "2026", "usd", "u$s", "pesos", "uyu"}
+    toks = [t for t in toks if t not in ignore_words]
     if not toks or not index:
         return []
 
@@ -587,7 +622,7 @@ MAPEO_FUNCIONES = {
     },
     "compras_articulo_anio": {
         "funcion": "get_detalle_compras_articulo_anio",
-        "params": ["articulo", "anio"],
+        "params": ["articulo", "anios"],
     },
     "detalle_factura_numero": {
         "funcion": "get_detalle_factura_por_numero",
@@ -812,6 +847,18 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
+    # ÚNICO RETURN PARA ARTÍCULO
+    articulo = _detectar_articulo_simple(texto_lower_original, anios)
+    if articulo:
+        return {
+            "tipo": "compras_articulo_anio",
+            "parametros": {
+                "articulo": articulo,   # ← "vitek"
+                "anios": anios           # ← [2025]
+            },
+            "debug": "compras artículo + años (fallback seguro)"
+        }
+
     if provs and anios:
         tipo = "facturas_proveedor"
 
@@ -822,80 +869,81 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # AGREGAR ESTE BLOQUE ANTES DEL BLOQUE "COMPRAS" (línea ~580)
     # =====================================================================
 
-    # ✅ NUEVO: COMPRAS ARTÍCULO + AÑO (antes de proveedores)
-    # Detectar si es artículo consultando BD PRIMERO
-    if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original) and anios:
-        # Buscar artículos en BD
-        idx_prov, idx_art = _get_indices()
-        arts_bd = _match_best(texto_lower, idx_art, max_items=1)
-        
-        # 🆕 FIX: Validación para no confundir años con artículos
-        if arts_bd:
-            articulo_candidato = arts_bd[0]
-            # No es un número puro, no contiene años, no es muy corto
-            if (articulo_candidato.strip().isdigit() or 
-                len(articulo_candidato.strip()) < 3 or 
-                any(str(a) in articulo_candidato.lower() for a in [2023, 2024, 2025, 2026])):
-                arts_bd = None  # Invalidar
-        
-        # 🆕 FIX: Si no encontró, forzar búsqueda de "vitek" si aparece en la query
-        if not arts_bd and "vitek" in texto_lower_original.lower():
-            sql_sub = '''
-                SELECT DISTINCT TRIM("Articulo") AS art
-                FROM chatbot_raw
-                WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
-                  AND TRIM("Articulo") != ''
-                ORDER BY art
-                LIMIT 1
-            '''
-            df_sub = ejecutar_consulta(sql_sub, ('%vitek%',))
-            if df_sub is not None and not df_sub.empty:
-                arts_bd = [df_sub.iloc[0]['art']]
-        
-        # 🆕 FIX: Si no encontró exacto, buscar por substring usando tokens relevantes
-        if not arts_bd:
-            tokens = _tokens(texto_lower_original)  # Usar original para tokens limpios
-            ignorar_tokens = {"compras", "compra", "2023", "2024", "2025", "2026"}
-            for tk in tokens:
-                if tk not in ignorar_tokens and len(tk) >= 3:
-                    sql_sub = '''
-                        SELECT DISTINCT TRIM("Articulo") AS art
-                        FROM chatbot_raw
-                        WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
-                          AND TRIM("Articulo") != ''
-                        ORDER BY art
-                        LIMIT 1
-                    '''
-                    df_sub = ejecutar_consulta(sql_sub, (f"%{tk}%",))
-                    if df_sub is not None and not df_sub.empty:
-                        arts_bd = [df_sub.iloc[0]['art']]
-                        break  # Tomar el primero que encuentre
-        
-        # Si encontró artículo en BD y NO encontró proveedor
-        if arts_bd and not provs:
-            articulo = arts_bd[0]
-            anio = anios[0]
-            
-            print("\n[INTÉRPRETE] COMPRAS_ARTICULO_ANIO")
-            print(f"  Pregunta : {texto_original}")
-            print(f"  Artículo : {articulo}")
-            print(f"  Año      : {anio}")
-            
-            try:
-                st.session_state["DBG_INT_LAST"] = {
-                    "pregunta": texto_original,
-                    "tipo": "compras_articulo_anio",
-                    "parametros": {"articulo": articulo, "anio": anio},
-                    "debug": f"compras artículo {articulo} año {anio}",
-                }
-            except Exception:
-                pass
-            
-            return {
-                "tipo": "compras_articulo_anio",
-                "parametros": {"articulo": articulo, "anio": anio},
-                "debug": f"compras artículo {articulo} año {anio}",
-            }
+    # --- BLOQUE VIEJO DESACTIVADO ---
+    #     # ✅ NUEVO: COMPRAS ARTÍCULO + AÑO (antes de proveedores)
+    #     # Detectar si es artículo consultando BD PRIMERO
+    #     if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original) and anios:
+    #         # Buscar artículos en BD
+    #         idx_prov, idx_art = _get_indices()
+    #         arts_bd = _match_best(texto_lower, idx_art, max_items=1)
+    #         
+    #         # 🆕 FIX: Validación para no confundir años con artículos
+    #         if arts_bd:
+    #             articulo_candidato = arts_bd[0]
+    #             # No es un número puro, no contiene años, no es muy corto
+    #             if (articulo_candidato.strip().isdigit() or 
+    #                 len(articulo_candidato.strip()) < 3 or 
+    #                 any(str(a) in articulo_candidato.lower() for a in [2023, 2024, 2025, 2026])):
+    #                 arts_bd = None  # Invalidar
+    #         
+    #         # 🆕 FIX: Si no encontró, forzar búsqueda de "vitek" si aparece en la query
+    #         if not arts_bd and "vitek" in texto_lower_original.lower():
+    #             sql_sub = '''
+    #                 SELECT DISTINCT TRIM("Articulo") AS art
+    #                 FROM chatbot_raw
+    #                 WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+    #                   AND TRIM("Articulo") != ''
+    #                 ORDER BY art
+    #                 LIMIT 1
+    #             '''
+    #             df_sub = ejecutar_consulta(sql_sub, ('%vitek%',))
+    #             if df_sub is not None and not df_sub.empty:
+    #                 arts_bd = [df_sub.iloc[0]['art']]
+    #         
+    #         # 🆕 FIX: Si no encontró exacto, buscar por substring usando tokens relevantes
+    #         if not arts_bd:
+    #             tokens = _tokens(texto_lower_original)  # Usar original para tokens limpios
+    #             ignorar_tokens = {"compras", "compra", "2023", "2024", "2025", "2026"}
+    #             for tk in tokens:
+    #                 if tk not in ignorar_tokens and len(tk) >= 3:
+    #                     sql_sub = '''
+    #                         SELECT DISTINCT TRIM("Articulo") AS art
+    #                         FROM chatbot_raw
+    #                         WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+    #                           AND TRIM("Articulo") != ''
+    #                         ORDER BY art
+    #                         LIMIT 1
+    #                     '''
+    #                     df_sub = ejecutar_consulta(sql_sub, (f"%{tk}%",))
+    #                     if df_sub is not None and not df_sub.empty:
+    #                         arts_bd = [df_sub.iloc[0]['art']]
+    #                         break  # Tomar el primero que encuentre
+    #         
+    #         # Si encontró artículo en BD y NO encontró proveedor
+    #         if arts_bd and not provs:
+    #             articulo = arts_bd[0]
+    #             anio = anios[0]
+    #             
+    #             print("\n[INTÉRPRETE] COMPRAS_ARTICULO_ANIO")
+    #             print(f"  Pregunta : {texto_original}")
+    #             print(f"  Artículo : {articulo}")
+    #             print(f"  Año      : {anio}")
+    #             
+    #             try:
+    #                 st.session_state["DBG_INT_LAST"] = {
+    #                     "pregunta": texto_original,
+    #                     "tipo": "compras_articulo_anio",
+    #                     "parametros": {"articulo": articulo, "anio": anio},
+    #                     "debug": f"compras artículo {articulo} año {anio}",
+    #                 }
+    #             except Exception:
+    #                 pass
+    #             
+    #             return {
+    #                 "tipo": "compras_articulo_anio",
+    #                 "parametros": {"articulo": articulo, "anio": anio},
+    #                 "debug": f"compras artículo {articulo} año {anio}",
+    #             }
 
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
