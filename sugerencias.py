@@ -217,6 +217,9 @@ def main():
         st.error(f"Error al cargar sugerencias: {e}")
         return
 
+    # Debug: Mostrar stock_actual para verificar
+    st.write("Debug - stock_actual en df:", df["stock_actual"].head() if df is not None and not df.empty else "DF vacío")
+
     # ✅ FIX 1: Verificación correcta de DataFrame
     if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
@@ -224,6 +227,10 @@ def main():
 
     # Preproceso: Asegurar que stock_actual sea numérico y no None
     df["stock_actual"] = pd.to_numeric(df["stock_actual"], errors='coerce').fillna(0)
+    
+    # Debug: Después de to_numeric
+    st.write("Debug - stock_actual después de to_numeric:", df["stock_actual"].head())
+
     df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado - ajusta
     df["lote_minimo"] = 1  # Default - ajusta
     df["unidad"] = "un"  # Default - ajusta
