@@ -339,23 +339,28 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
     # Buscar columna de moneda
     col_moneda = None
     for col in df.columns:
-        if col.lower() == 'moneda':
+        if col.lower() in ["moneda", "currency"]:
             col_moneda = col
             break
-    
-    # Buscar columnas de períodos (excluir 'Proveedor', 'Articulo', 'Moneda', 'Diferencia')
-    cols_periodos = []
-    for c in df.columns:
-        # Es un período si es numérica o tiene guión y no es excluida
-        if pd.api.types.is_numeric_dtype(df[c]) and c not in ['Diferencia']:
-            cols_periodos.append(c)
-        elif isinstance(c, str) and ('-' in c or c.isdigit()) and c not in ['Proveedor', 'Articulo', 'Moneda', 'Cliente / Proveedor']:
-            cols_periodos.append(c)
+
+    # Buscar columnas de períodos (excluir columnas que NO son períodos)
+    numeric_cols = []
+    for col in df.columns:
+        # Excluir columnas obvias que NO son períodos
+        if col in [col_moneda, 'Articulo', 'Proveedor', 'Cliente / Proveedor', 'Diferencia']:
+            continue
+        
+        # Si es numérica, incluirla
+        if pd.api.types.is_numeric_dtype(df[col]):
+            numeric_cols.append(col)
+        # Si el nombre parece un año o período, incluirla
+        elif isinstance(col, str) and (col.isdigit() or '-' in col):
+            numeric_cols.append(col)
     
     # Si no hay columna moneda, asumir todo en UYU
     if not col_moneda:
         total_general = 0
-        for col in cols_periodos:
+        for col in numeric_cols:
             try:
                 total_general += pd.to_numeric(df[col], errors='coerce').fillna(0).sum()
             except:
@@ -374,7 +379,7 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
             
             # Sumar las columnas numéricas de esta fila
             suma_fila = 0
-            for col in cols_periodos:
+            for col in numeric_cols:
                 try:
                     val = row[col]
                     if pd.notna(val):
@@ -814,6 +819,13 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
            OCULTAR BOTÓN NATIVO DE STREAMLIT
            ========================================== */
         [data-testid="stDataFrameToolbar"] {
+            display: none !important;
+        }
+        
+        /* ==========================================
+           OCULTAR LÍNEAS HORIZONTALES (hr) GENERADAS POR st.markdown("---")
+           ========================================== */
+        hr {
             display: none !important;
         }
         
@@ -1704,7 +1716,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         ))
                         fig.add_trace(go.Bar(
                             name=str(p2),
-                            x=df_graph[p2].astype(float),
+                            x=df_graph[entity_col],
                             y=df_graph[p2].astype(float),
                             marker_color='#764ba2',
                             text=df_graph[p2].apply(lambda x: f'${float(x)/1_000_000:.1f}M' if x >= 1_000_000 else f'${float(x):,.0f}'.replace(",", ".") if pd.notna(x) else "0"),
@@ -2097,20 +2109,6 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
     # ===== TOTAL COMPRAS POR MONEDA GENÉRICO (TODOS LOS AÑOS) =====
     elif tipo == "total_compras_por_moneda_generico":
         df = sqlq_compras.get_total_compras_por_moneda_todos_anios()
-        _dbg_set_result(df)
-        return df
-
-    # ===== DASHBOARD TOP PROVEEDORES (NUEVO) =====
-    elif tipo == "dashboard_top_proveedores":
-        anio = parametros.get("anio")
-        top_n = parametros.get("top_n", 10)
-        moneda = parametros.get("moneda", "$")  # "$" o "U$S"
-
-        df = sqlq_compras.get_dashboard_top_proveedores(
-            anio=anio,
-            top_n=top_n,
-            moneda=moneda
-        )
         _dbg_set_result(df)
         return df
 
