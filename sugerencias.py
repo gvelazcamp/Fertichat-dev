@@ -51,12 +51,11 @@ def _fmt_fecha(fecha):
     if pd.isna(fecha) or fecha == "–":
         return "–"
     try:
-        # "Fecha" es TEXT, intentar parsear si es necesario
         return pd.to_datetime(fecha).strftime("%d/%m/%Y")
     except:
         return str(fecha)
 
-# ========== FUNCIONES DE DATOS AJUSTADAS A chatbot_raw Y stock ===========
+# ========== FUNCIONES DE DATOS AJUSTADAS A chatbot_raw (SIN JOIN) ===========
 def get_proveedores_anio(anio: int) -> list:
     """
     Obtiene lista de proveedores únicos para un año.
@@ -77,52 +76,31 @@ def get_proveedores_anio(anio: int) -> list:
 
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
-    Obtiene datos de sugerencias fusionando compras de chatbot_raw con stock de tabla stock.
-    Respeta todas las reglas: limpieza LATAM, filtros, JOIN.
+    Obtiene datos de sugerencias de chatbot_raw (sin JOIN con stock).
+    Respeta todas las reglas: limpieza LATAM, filtros obligatorios.
     """
     base_sql = """
     SELECT
-        cr."Articulo",
-        cr.proveedor,
-        cr.ultima_compra,
-        cr.cantidad_anual,
-        COALESCE(
+        TRIM("Articulo") AS "Articulo",
+        (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
+        MAX(TRIM("Fecha")) AS ultima_compra,
+        SUM(
             CAST(
                 REPLACE(
                     REPLACE(
                         REPLACE(
-                            REPLACE(TRIM(s."STOCK"), '(', ''),
+                            REPLACE(TRIM("Cantidad"), '(', ''),
                         ')', ''),
                     '.', ''),
                 ',', '.')
-            AS NUMERIC),
-            0
-        ) AS stock_actual,  -- Stock real limpio de tabla stock, o 0 si no hay
-        COALESCE(TRIM(s."FAMILIA"), '') AS familia,  -- Familia de stock
-        COALESCE(TRIM(s."DEPOSITO"), '') AS deposito  -- Depósito de stock
-    FROM (
-        -- Subquery de compras de chatbot_raw
-        SELECT
-            TRIM("Articulo") AS "Articulo",
-            (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
-            MAX(TRIM("Fecha")) AS ultima_compra,
-            SUM(
-                CAST(
-                    REPLACE(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(TRIM("Cantidad"), '(', ''),
-                            ')', ''),
-                        '.', ''),
-                    ',', '.')
-                AS NUMERIC)
-            ) AS cantidad_anual
-        FROM chatbot_raw
-        WHERE "Año" = %s
-          AND TRIM("Articulo") IS NOT NULL
-          AND TRIM("Articulo") <> ''
-          AND TRIM("Cantidad") IS NOT NULL
-          AND TRIM("Cantidad") <> ''
+            AS NUMERIC)
+        ) AS cantidad_anual
+    FROM chatbot_raw
+    WHERE "Año" = %s
+      AND TRIM("Articulo") IS NOT NULL
+      AND TRIM("Articulo") <> ''
+      AND TRIM("Cantidad") IS NOT NULL
+      AND TRIM("Cantidad") <> ''
     """
     
     params = [anio]
@@ -132,9 +110,8 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
         params.append(proveedor_like)
     
     base_sql += """
-        GROUP BY TRIM("Articulo")
-    ) cr
-    LEFT JOIN stock s ON TRIM(cr."Articulo") = TRIM(s."ARTICULO");
+    GROUP BY TRIM("Articulo")
+    ORDER BY cantidad_anual DESC;
     """
     
     df = ejecutar_consulta(base_sql, tuple(params))
@@ -230,9 +207,12 @@ def main():
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # ✅ PREPROCESO CON STOCK REAL DE TABLA stock
+    # ✅ FIX PARA URGENCIA: Stock asumido como 30 días de consumo (no todos urgentes)
     df["consumo_diario"] = df["cantidad_anual"] / 365
-    # stock_actual ya viene de SQL (JOIN con stock), no defaults
+    df["stock_actual"] = df["consumo_diario"] * 30  # 30 días de stock → dias_stock = 30 → planificar
+    df["lote_minimo"] = 1
+    df["unidad"] = "un"
+
     df["dias_stock"] = df.apply(
         lambda r: calcular_dias_stock(r["stock_actual"], r["consumo_diario"]),
         axis=1
@@ -243,11 +223,10 @@ def main():
             consumo_diario=r["consumo_diario"],
             dias_cobertura_objetivo=30,
             stock_actual=r["stock_actual"],
-            lote_minimo=1  # Default, ajusta si tienes en stock
+            lote_minimo=r["lote_minimo"]
         ),
         axis=1
     )
-    df["unidad"] = "un"  # Default, o trae de stock si agregas columna
 
     # =========================
     # DASHBOARD DE ALERTAS (SIEMPRE EN FILA)
@@ -289,22 +268,11 @@ def main():
             key="filtro_urgencia"
         )
 
-        # Familia (nueva, de stock)
-        if "familia" in df.columns:
-            familias = ["Todos"] + sorted([str(x) for x in df["familia"].dropna().unique().tolist() if x])
-            familia_sel = st.selectbox("Familia:", familias, key="familia_sel")
-        else:
-            familia_sel = "Todos"
-
         # Búsqueda por artículo
         q_art = st.text_input("Buscar artículo:", value="", key="q_articulo")
 
     # ---- Aplicar filtros (sobre df) ----
     df_scope = df.copy()
-
-    # Familia
-    if "familia" in df_scope.columns and familia_sel != "Todos":
-        df_scope = df_scope[df_scope["familia"] == familia_sel]
 
     # Búsqueda
     if q_art.strip():
@@ -322,7 +290,7 @@ def main():
         render_section_title("Sugerencias de pedido")
 
         # ✅ FIX 2: Verificación correcta de DataFrame vacío
-        if df_filtrado is None or (isinstance(df_filtrado, pd.DataFrame) and df.empty):
+        if df_filtrado is None or (isinstance(df_filtrado, pd.DataFrame) and df_filtrado.empty):
             st.info("No hay sugerencias que cumplan con los criterios de filtro.")
         else:
             # Orden sugerido: urgentes primero, luego próximos, etc.
@@ -359,7 +327,7 @@ def main():
 
     info_html = f"""
     <p><strong>Total sugerido:</strong> {total_cantidad:.1f} unidades en {total_productos} productos</p>
-    <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock reales.</p>
+    <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock estimados.</p>
     """
     render_card(info_html)
 
