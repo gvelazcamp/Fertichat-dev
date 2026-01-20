@@ -93,13 +93,13 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     if "stock" in texto_lower:
         return interpretar_stock(pregunta)
 
-    # 3. COMPARATIVAS
-    if re.search(r"\b(comparar|comparame|compara)\b", texto_lower):
-        return interpretar_comparativas(pregunta)
-
-    # 4. COMPRAS (va al CANÓNICO)
+    # 3. COMPRAS (va al CANÓNICO) - MOVIDO ANTES DE COMPARATIVAS PARA PRIORIDAD
     if any(k in texto_lower for k in ["compra", "compras", "comprobante", "comprobantes"]):
         return interpretar_canonico(pregunta)
+
+    # 4. COMPARATIVAS
+    if re.search(r"\b(comparar|comparame|compara)\b", texto_lower):
+        return interpretar_comparativas(pregunta)
 
     # OPENAI (opcional)
     if client and USAR_OPENAI_PARA_DATOS:
@@ -196,3 +196,41 @@ def obtener_info_tipo(tipo: str) -> Optional[Dict]:
 def es_tipo_valido(tipo: str) -> bool:
     tipos_especiales = ["conversacion", "conocimiento", "no_entendido"]
     return tipo in MAPEO_FUNCIONES or tipo in tipos_especiales
+
+
+# =====================================================================
+# EJECUTOR PRINCIPAL (CORREGIDO CON ORDEN OBLIGATORIO)
+# =====================================================================
+def ejecutar_decision(decision: Dict) -> Optional[any]:
+    """
+    Ejecutor con orden obligatorio:
+    1. Tipos específicos mapeados
+    2. Fallback general
+    """
+    tipo = decision.get("tipo")
+    parametros = decision.get("parametros", {})
+
+    print("ROUTER TIPO:", tipo)
+    print("ROUTER PARAMS:", parametros)
+
+    # =========================
+    # 1️⃣ TIPOS ESPECÍFICOS (PRIMERO)
+    # =========================
+    if tipo in MAPEO_FUNCIONES:
+        info = MAPEO_FUNCIONES[tipo]
+        funcion = info["funcion"]
+        params_keys = info["params"]
+        # Asume que las funciones están disponibles via importar o globals
+        # Ejemplo: from sql_core import ejecutar_consulta
+        # Aquí se llamaría ejecutar_consulta(funcion, **parametros_mapeados)
+        # Para este ejemplo, retornamos un placeholder
+        return f"Ejecutando {funcion} con params { {k: parametros.get(k) for k in params_keys} }"
+
+    # =========================
+    # 2️⃣ FALLBACK GENERAL (ÚLTIMO)
+    # =========================
+    if tipo == "compras":
+        # Llamar a función general de compras
+        return "Ejecutando compras_generales()"
+
+    return None
