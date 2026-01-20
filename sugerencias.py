@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from sql_core import ejecutar_consulta  # Asegúrate de que esta función exista y funcione con PostgreSQL
 
 # ============ CSS =============
 CSS_SUGERENCIAS_PEDIDOS = """
@@ -50,35 +51,77 @@ def _fmt_fecha(fecha):
     if pd.isna(fecha) or fecha == "–":
         return "–"
     try:
+        # "Fecha" es TEXT, intentar parsear si es necesario
         return pd.to_datetime(fecha).strftime("%d/%m/%Y")
     except:
         return str(fecha)
 
-# ========== DATOS SIMULADOS (AJUSTA A TU DB) ===========
-def get_proveedores_anio(anio):
-    # Simulación - reemplaza con tu query real
-    return ["Roche", "Biodiagnostico", "OtroProveedor"]
+# ========== FUNCIONES DE DATOS AJUSTADAS A chatbot_raw ===========
+def get_proveedores_anio(anio: int) -> list:
+    """
+    Obtiene lista de proveedores únicos para un año.
+    Respeta reglas: LOWER(TRIM("Cliente / Proveedor")).
+    """
+    sql = """
+    SELECT DISTINCT TRIM("Cliente / Proveedor") AS proveedor
+    FROM chatbot_raw
+    WHERE "Año" = %s
+      AND TRIM("Cliente / Proveedor") IS NOT NULL
+      AND TRIM("Cliente / Proveedor") <> ''
+    ORDER BY proveedor;
+    """
+    df = ejecutar_consulta(sql, (anio,))
+    if df is None or df.empty:
+        return []
+    return df['proveedor'].tolist()
 
-def get_datos_sugerencias(anio, proveedor_like):
-    # Simulación - reemplaza con tu query real
-    data = {
-        "Articulo": ["Producto A", "Producto B", "Producto C"],
-        "proveedor": ["Roche", "Biodiagnostico", "Roche"],
-        "ultima_compra": [datetime(2024, 10, 1), datetime(2024, 9, 15), None],
-        "cantidad_anual": [100, 200, 50],
-        "stock_actual": [10, 5, 20],
-        "consumo_diario": [1.0, 2.0, 0.5],
-        "lote_minimo": [10, 20, 5],
-        "unidad": ["un", "kg", "un"],
-        "categoria": ["Cat1", "Cat2", "Cat1"]
-    }
-    df = pd.DataFrame(data)
+def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
+    """
+    Obtiene datos de sugerencias: Articulo, proveedor, ultima_compra, cantidad_anual.
+    Respeta todas las reglas: limpieza de números, filtros obligatorios, agrupaciones.
+    """
+    base_sql = """
+    SELECT
+        TRIM("Articulo") AS "Articulo",
+        (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
+        MAX(TRIM("Fecha")) AS ultima_compra,
+        SUM(
+            CAST(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(TRIM("Cantidad"), '(', ''),
+                        ')', ''),
+                    '.', ''),
+                ',', '.')
+            AS NUMERIC)
+        ) AS cantidad_anual
+    FROM chatbot_raw
+    WHERE "Año" = %s
+      AND TRIM("Articulo") IS NOT NULL
+      AND TRIM("Articulo") <> ''
+      AND TRIM("Cantidad") IS NOT NULL
+      AND TRIM("Cantidad") <> ''
+    """
+    
+    params = [anio]
+    
     if proveedor_like:
-        df = df[df["proveedor"].str.lower().str.contains(proveedor_like.replace("%", ""))]
+        base_sql += " AND LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s"
+        params.append(proveedor_like)
+    
+    base_sql += """
+    GROUP BY TRIM("Articulo")
+    ORDER BY cantidad_anual DESC;
+    """
+    
+    df = ejecutar_consulta(base_sql, tuple(params))
     return df
 
-# ========== FUNCIONES UTILITARIAS ===========
+# ========== FUNCIONES UTILITARIAS AJUSTADAS ===========
 def calcular_dias_stock(stock_actual, consumo_diario):
+    # ⚠️ "stock_actual" y "consumo_diario" NO existen en chatbot_raw.
+    # Agregados como defaults - REEMPLAZA con lógica real (ej: otra tabla).
     if consumo_diario > 0:
         return stock_actual / consumo_diario
     return float('inf')
@@ -94,6 +137,8 @@ def clasificar_urgencia(dias_stock):
         return "saludable"
 
 def calcular_cantidad_sugerida(consumo_diario, dias_cobertura_objetivo, stock_actual, lote_minimo):
+    # ⚠️ "lote_minimo" NO existe - default 1. Ajusta con lógica real.
+    lote_minimo = lote_minimo if lote_minimo > 0 else 1
     sugerida = max(0, consumo_diario * dias_cobertura_objetivo - stock_actual)
     return max(sugerida, lote_minimo)
 
@@ -105,10 +150,10 @@ def filtrar_sugerencias(df, filtro_urgencia):
 def get_mock_alerts(df):
     if df is None or df.empty:
         return [{"title": "Sin datos", "value": "0", "subtitle": "No hay alertas", "class": "warning"}]
-    urgente = len(df[df["urgencia"] == "urgente"])
-    proximo = len(df[df["urgencia"] == "proximo"])
-    planificar = len(df[df["urgencia"] == "planificar"])
-    saludable = len(df[df["urgencia"] == "saludable"])
+    urgente = len(df[df["urgencia"] == "urgente"]) if "urgencia" in df.columns else 0
+    proximo = len(df[df["urgencia"] == "proximo"]) if "urgencia" in df.columns else 0
+    planificar = len(df[df["urgencia"] == "planificar"]) if "urgencia" in df.columns else 0
+    saludable = len(df[df["urgencia"] == "saludable"]) if "urgencia" in df.columns else 0
     return [
         {"title": "Urgentes", "value": str(urgente), "subtitle": "Pedir ya", "class": "urgent"},
         {"title": "Próximos", "value": str(proximo), "subtitle": "En 14 días", "class": "warning"},
@@ -166,7 +211,13 @@ def main():
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # Preproceso (igual que tu versión)
+    # Preproceso: Agregar columnas calculadas (NO inventadas de la tabla)
+    # ⚠️ AJUSTA estos defaults con lógica real si tienes stock/consumo de otra fuente.
+    df["stock_actual"] = 0  # Default - reemplaza
+    df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado - ajusta
+    df["lote_minimo"] = 1  # Default - ajusta
+    df["unidad"] = "un"  # Default - ajusta
+
     df["dias_stock"] = df.apply(
         lambda r: calcular_dias_stock(r["stock_actual"], r["consumo_diario"]),
         axis=1
