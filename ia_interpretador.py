@@ -508,7 +508,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
             model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": _get_system_prompt()},
-                {"role": "user", "content": pregunta},
+                {"user": "content": pregunta},
             ],
             temperature=0.1,
             max_tokens=500,
@@ -583,7 +583,7 @@ MAPEO_FUNCIONES = {
     },
     "facturas_articulo": {
         "funcion": "get_facturas_articulo",
-        "params": ["articulo"],
+        "params": ["articulo", "anios"],
     },
     "stock_total": {
         "funcion": "get_stock_total",
@@ -797,14 +797,14 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             st.session_state["DBG_INT_LAST"] = {
                 "pregunta": texto_original,
                 "tipo": "facturas_articulo",
-                "parametros": {"articulo": arts[0]},
+                "parametros": {"articulo": arts[0], "anios": anios or None},
                 "debug": f"compras artículo {arts[0]} (fallback)",
             }
         except Exception:
             pass
         return {
             "tipo": "facturas_articulo",
-            "parametros": {"articulo": arts[0]},
+            "parametros": {"articulo": arts[0], "anios": anios or None},
             "debug": f"compras artículo {arts[0]} (fallback)",
         }
 
