@@ -1027,7 +1027,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     "debug": "compras proveedor años (fusionado con facturas_proveedor)",
                 }
             except Exception:
-                    pass
+                pass
 
             return {
                 "tipo": "facturas_proveedor",
@@ -1194,9 +1194,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # ======================================================
     # TOP PROVEEDORES POR AÑO
     # ======================================================
-    # ======================================================
-    # TOP PROVEEDORES POR AÑO
-    # ======================================================
     if (
         any(k in texto_lower_original for k in ["top", "ranking", "principales"])
         and "proveedor" in texto_lower_original
@@ -1229,7 +1226,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             },
             "debug": f"top proveedores por año {anios[0]} en {moneda_param}",
         }
-
 
     out_ai = _interpretar_con_openai(texto_original)
     if out_ai:
