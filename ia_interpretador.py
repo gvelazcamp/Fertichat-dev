@@ -628,6 +628,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     if not pregunta or not str(pregunta).strip():
         return {"tipo": "no_entendido", "parametros": {}, "debug": "pregunta vacía"}
 
+    # ✅ FIX QUIRÚRGICO: AGREGAR AL INICIO PARA GARANTIZAR texto_lower_original
+    texto_original = pregunta
+    texto_lower_original = pregunta.lower()
+
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
 
