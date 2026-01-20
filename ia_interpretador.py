@@ -309,7 +309,6 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
 # Extraer limite
 # =====================================================================
 def _extraer_limite(texto: str, predeterminado: int = 500) -> int:
-    import re
     numeros = re.findall(r"\b\d+\b", texto)
     for numero in numeros:
         n = int(numero)
@@ -1196,7 +1195,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         and "proveedor" in texto_lower_original
         and anios
     ):
-        import re
         top_n = 10
         match = re.search(r'top\s+(\d+)', texto_lower_original)
         if match:
