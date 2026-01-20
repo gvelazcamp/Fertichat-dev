@@ -1035,18 +1035,21 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "debug": "compras proveedor años (fusionado con facturas_proveedor)",
             }
 
-        if meses_yyyymm:
-            mes0 = meses_yyyymm[0]
-            print("\n[INTÉRPRETE] COMPRAS_MES")
+        # ✅ NUEVO: COMPRAS MULTI-AÑO SIN PROVEEDOR
+        if anios and len(anios) >= 2 and not provs:
+            print("\n[INTÉRPRETE] COMPRAS_MULTIPLE_ANIOS (SIN PROVEEDOR)")
             print(f"  Pregunta : {texto_original}")
-            print(f"  Mes      : {mes0}")
-            return {"tipo": "compras_mes", "parametros": {"mes": mes0}, "debug": "compras mes (yyyymm)"}
-        if meses_nombre and anios:
-            mes = _to_yyyymm(anios[0], meses_nombre[0])
-            print("\n[INTÉRPRETE] COMPRAS_MES nombre+año")
-            print(f"  Pregunta : {texto_original}")
-            print(f"  Mes      : {mes}")
-            return {"tipo": "compras_mes", "parametros": {"mes": mes}, "debug": "compras mes (nombre+año)"}
+            print(f"  Años     : {anios}")
+
+            return {
+                "tipo": "compras_multiples",
+                "parametros": {
+                    "proveedores": None,
+                    "meses": None,
+                    "anios": anios,
+                },
+                "debug": "compras múltiples años (sin proveedor)",
+            }
 
         if anios:
             print("\n[INTÉRPRETE] COMPRAS_ANIO")
