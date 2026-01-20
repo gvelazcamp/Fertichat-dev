@@ -122,6 +122,9 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
 
 # ========== FUNCIONES UTILITARIAS AJUSTADAS ===========
 def calcular_dias_stock(stock_actual, consumo_diario):
+    # Asegurar que stock_actual sea numérico y no None
+    stock_actual = pd.to_numeric(stock_actual, errors='coerce') or 0
+    consumo_diario = pd.to_numeric(consumo_diario, errors='coerce') or 0
     if consumo_diario > 0:
         return stock_actual / consumo_diario
     return float('inf')
@@ -203,14 +206,19 @@ def main():
     # DATOS
     # =========================
     proveedor_like = f"%{proveedor_sel.lower()}%" if proveedor_sel != "Todos" else None
-    df = get_datos_sugerencias(anio_seleccionado, proveedor_like)
+    try:
+        df = get_datos_sugerencias(anio_seleccionado, proveedor_like)
+    except Exception as e:
+        st.error(f"Error al cargar sugerencias: {e}")
+        return
 
     # ✅ FIX 1: Verificación correcta de DataFrame
     if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # Preproceso: Agregar columnas calculadas (stock_actual ya viene de la BD)
+    # Preproceso: Asegurar que stock_actual sea numérico y no None
+    df["stock_actual"] = pd.to_numeric(df["stock_actual"], errors='coerce').fillna(0)
     df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado - ajusta
     df["lote_minimo"] = 1  # Default - ajusta
     df["unidad"] = "un"  # Default - ajusta
