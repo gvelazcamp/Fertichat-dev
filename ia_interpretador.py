@@ -614,6 +614,10 @@ MAPEO_FUNCIONES = {
         "funcion": "get_total_compras_por_moneda_todos_anios",
         "params": [],
     },
+    "dashboard_top_proveedores": {
+        "funcion": "get_dashboard_top_proveedores",
+        "params": ["anio", "top_n"],
+    },
 }
 
 def obtener_info_tipo(tipo: str) -> Optional[Dict]:
@@ -1186,6 +1190,27 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if arts:
             return {"tipo": "stock_articulo", "parametros": {"articulo": arts[0]}, "debug": "stock articulo"}
         return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
+
+    # ======================================================
+    # TOP PROVEEDORES POR AÑO
+    # ======================================================
+    if (
+        any(k in texto for k in ["top", "ranking", "principales"])
+        and "proveedor" in texto
+        and anios
+    ):
+        print("\n[INTÉRPRETE] TOP_PROVEEDORES")
+        print(f"  Pregunta : {texto_original}")
+        print(f"  Año      : {anios[0]}")
+
+        return {
+            "tipo": "dashboard_top_proveedores",
+            "parametros": {
+                "anio": anios[0],
+                "top_n": 10
+            },
+            "debug": "top proveedores por año",
+        }
 
     out_ai = _interpretar_con_openai(texto_original)
     if out_ai:
