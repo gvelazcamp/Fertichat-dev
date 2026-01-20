@@ -177,7 +177,7 @@ def get_mock_alerts(df):
         {"title": "Saludables", "value": str(saludable), "subtitle": "Ok por ahora", "class": "success"}
     ]
 
-# ========== FUNCIÓN MAIN() CON FUSIÓN ===========
+# ========== FUNCIÓN MAIN() CON FUSIÓN Y DEBUG ===========
 def main():
     # CSS
     st.markdown(CSS_SUGERENCIAS_PEDIDOS, unsafe_allow_html=True)
@@ -221,6 +221,42 @@ def main():
     # =========================
     proveedor_like = f"%{proveedor_sel.lower()}%" if proveedor_sel != "Todos" else None
     df = get_datos_sugerencias(anio_seleccionado, proveedor_like)
+
+    # 🔍 DEBUG AGREGADO
+    st.write("🔍 DEBUG:")
+    st.write(f"Año: {anio_seleccionado}, Proveedor: {proveedor_sel}")
+    st.write(f"Proveedor_like: {proveedor_like}")
+
+    # Prueba SQL simple sin JOIN
+    sql_simple = """
+    SELECT COUNT(*) as total
+    FROM chatbot_raw
+    WHERE "Año" = %s
+    """
+    total = ejecutar_consulta(sql_simple, (anio_seleccionado,))
+    st.write(f"Total filas en chatbot_raw para {anio_seleccionado}: {total.iloc[0]['total'] if total is not None else 'Error'}")
+
+    # Prueba subquery sin JOIN
+    sql_sub = """
+    SELECT COUNT(*) as total
+    FROM (
+        SELECT TRIM("Articulo") AS "Articulo"
+        FROM chatbot_raw
+        WHERE "Año" = %s
+          AND TRIM("Articulo") IS NOT NULL
+          AND TRIM("Articulo") <> ''
+          AND TRIM("Cantidad") IS NOT NULL
+          AND TRIM("Cantidad") <> ''
+        GROUP BY TRIM("Articulo")
+    ) cr
+    """
+    sub_total = ejecutar_consulta(sql_sub, (anio_seleccionado,))
+    st.write(f"Total artículos válidos: {sub_total.iloc[0]['total'] if sub_total is not None else 'Error'}")
+
+    if df is not None:
+        st.write(f"Filas devueltas por get_datos_sugerencias: {len(df)}")
+    else:
+        st.write("get_datos_sugerencias devolvió None")
 
     # ✅ Verificación
     if df is None or (isinstance(df, pd.DataFrame) and df.empty):
