@@ -77,62 +77,52 @@ def get_proveedores_anio(anio: int) -> list:
 
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
-    Obtiene datos de sugerencias: Articulo, proveedor, ultima_compra, cantidad_anual, stock_actual.
-    Asume que existe una tabla stock_raw con columnas Articulo y stock_actual (importada del CSV).
-    Usa LEFT JOIN para obtener el stock actual (máximo por artículo, asumiendo que representa el stock actual).
+    Obtiene datos de sugerencias: Articulo, stock_actual (desde stock_raw), proveedor, ultima_compra, cantidad_anual.
+    Asume tabla stock_raw con columnas Articulo (text), stock_actual (numeric).
     Respeta todas las reglas: limpieza de números, filtros obligatorios, agrupaciones.
     """
     base_sql = """
     SELECT
-        TRIM(cr."Articulo") AS "Articulo",
-        (ARRAY_AGG(TRIM(cr."Cliente / Proveedor") ORDER BY cr."Fecha" DESC))[1] AS proveedor,
-        MAX(TRIM(cr."Fecha")) AS ultima_compra,
-        SUM(
-            CAST(
-                REPLACE(
-                    REPLACE(
-                        REPLACE(
-                            REPLACE(TRIM(cr."Cantidad"), '(', ''),
-                        ')', ''),
-                    '.', ''),
-                ',', '.')
-            AS NUMERIC)
-        ) AS cantidad_anual,
-        COALESCE(sr.stock_actual, 0) AS stock_actual
-    FROM chatbot_raw cr
-    LEFT JOIN (
+        cr."Articulo",
+        COALESCE(sr.stock_actual, 0) AS stock_actual,
+        cr.proveedor,
+        cr.ultima_compra,
+        cr.cantidad_anual
+    FROM (
         SELECT
             TRIM("Articulo") AS "Articulo",
-            MAX(
+            (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
+            MAX(TRIM("Fecha")) AS ultima_compra,
+            SUM(
                 CAST(
                     REPLACE(
                         REPLACE(
                             REPLACE(
-                                REPLACE(TRIM("stock_actual"), '(', ''),
+                                REPLACE(TRIM("Cantidad"), '(', ''),
                             ')', ''),
                         '.', ''),
                     ',', '.')
                 AS NUMERIC)
-            ) AS stock_actual
-        FROM stock_raw
-        GROUP BY TRIM("Articulo")
-    ) sr ON TRIM(cr."Articulo") = sr."Articulo"
-    WHERE cr."Año" = %s
-      AND TRIM(cr."Articulo") IS NOT NULL
-      AND TRIM(cr."Articulo") <> ''
-      AND TRIM(cr."Cantidad") IS NOT NULL
-      AND TRIM(cr."Cantidad") <> ''
+            ) AS cantidad_anual
+        FROM chatbot_raw
+        WHERE "Año" = %s
+          AND TRIM("Articulo") IS NOT NULL
+          AND TRIM("Articulo") <> ''
+          AND TRIM("Cantidad") IS NOT NULL
+          AND TRIM("Cantidad") <> ''
     """
     
     params = [anio]
     
     if proveedor_like:
-        base_sql += " AND LOWER(TRIM(cr.\"Cliente / Proveedor\")) LIKE %s"
+        base_sql += " AND LOWER(TRIM(\"Cliente / Proveedor\")) LIKE %s"
         params.append(proveedor_like)
     
     base_sql += """
-    GROUP BY TRIM(cr."Articulo"), sr.stock_actual
-    ORDER BY cantidad_anual DESC;
+        GROUP BY TRIM("Articulo")
+    ) AS cr
+    LEFT JOIN stock_raw sr ON cr."Articulo" = sr."Articulo"
+    ORDER BY cr.cantidad_anual DESC;
     """
     
     df = ejecutar_consulta(base_sql, tuple(params))
@@ -140,6 +130,7 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
 
 # ========== FUNCIONES UTILITARIAS AJUSTADAS ===========
 def calcular_dias_stock(stock_actual, consumo_diario):
+    # Ahora stock_actual viene del SQL (no default 0)
     if consumo_diario > 0:
         return stock_actual / consumo_diario
     return float('inf')
@@ -155,6 +146,7 @@ def clasificar_urgencia(dias_stock):
         return "saludable"
 
 def calcular_cantidad_sugerida(consumo_diario, dias_cobertura_objetivo, stock_actual, lote_minimo):
+    # lote_minimo NO existe - default 1. Ajusta con lógica real.
     lote_minimo = lote_minimo if lote_minimo > 0 else 1
     sugerida = max(0, consumo_diario * dias_cobertura_objetivo - stock_actual)
     return max(sugerida, lote_minimo)
@@ -228,7 +220,8 @@ def main():
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # Preproceso: Agregar columnas calculadas (stock_actual ahora viene de la tabla)
+    # Preproceso: Agregar columnas calculadas (stock_actual ahora viene del SQL)
+    # df["stock_actual"] ya está en df desde el SQL
     df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado - ajusta
     df["lote_minimo"] = 1  # Default - ajusta
     df["unidad"] = "un"  # Default - ajusta
