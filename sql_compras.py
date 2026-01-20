@@ -657,31 +657,37 @@ def get_facturas_proveedor_detalle(proveedores, meses, anios, desde, hasta, arti
         # Caso general: todas las facturas del año, aumentar límite a 10000
         return get_compras_anio(anios[0], max(limite, 10000))
 
-    # QUERY SIMPLIFICADO PARA EVITAR ERRORES EN CONSTRUCCIÓN DE WHERE
+    # =========================
+    # FIX: PROVEEDOR + MÚLTIPLES AÑOS
+    # =========================
     if len(proveedores or []) == 1 and anios and not meses and not desde and not hasta and not articulo and not moneda:
-        # Caso simple: solo proveedores y años
         prov_like = f"%{proveedores[0].lower()}%"
-        anio_val = anios[0]
+
+        anios_ok = [a for a in anios if isinstance(a, int)]
+        if not anios_ok:
+            return pd.DataFrame()
+
+        ph = ", ".join(["%s"] * len(anios_ok))
+
         sql = f"""
             SELECT
                 TRIM("Cliente / Proveedor") AS Proveedor,
                 TRIM("Articulo") AS Articulo,
                 TRIM("Nro. Comprobante") AS Nro_Factura,
                 "Fecha",
+                "Año",
                 "Cantidad",
                 "Moneda"
             FROM chatbot_raw
-            WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", \'[áéíóúÁÉÍÓÚñÑ]\', \'[aeiouAEIOUñN]\', \'g\'))) LIKE %s
-              AND "Año" = %s
+            WHERE LOWER(TRIM(regexp_replace("Cliente / Proveedor", '[áéíóúÁÉÍÓÚñÑ]', '[aeiouAEIOUñN]', 'g'))) LIKE %s
+              AND "Año" IN ({ph})
               AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
             ORDER BY "Fecha" DESC NULLS LAST
             LIMIT %s
         """
-        params = (prov_like, anio_val, limite)
-        print(f"\n🛠 SQL simplificado: {sql}")
-        print(f"🛠 Params: {params}")
-        df = ejecutar_consulta(sql, params)
-        return df if df is not None else pd.DataFrame()
+
+        params = tuple([prov_like] + anios_ok + [limite])
+        return ejecutar_consulta(sql, params)
 
     # Para otros casos, usar el query complejo original (sin Total para debug)
     where_parts = [
