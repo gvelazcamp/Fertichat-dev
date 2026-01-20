@@ -224,6 +224,33 @@ def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
 
     return None
 
+def _extraer_articulo_libre(tokens, provs_detectados):
+    """
+    Toma el primer token útil como artículo,
+    siempre que NO sea proveedor detectado.
+    """
+    ignorar = {
+        "compras","compra","facturas","factura",
+        "total","totales","comparar","compara",
+        "enero","febrero","marzo","abril","mayo","junio",
+        "julio","agosto","septiembre","setiembre",
+        "octubre","noviembre","diciembre",
+        "usd","u$s","u$$","pesos","uyu",
+        "2023","2024","2025","2026"
+    }
+
+    provs_set = set(p.lower() for p in provs_detectados)
+
+    for tk in tokens:
+        if (
+            tk not in ignorar
+            and len(tk) >= 3
+            and tk not in provs_set
+        ):
+            return tk
+
+    return None
+
 # =====================================================================
 # HELPERS DE KEYWORDS
 # =====================================================================
@@ -309,6 +336,7 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
 # Extraer limite
 # =====================================================================
 def _extraer_limite(texto: str, predeterminado: int = 500) -> int:
+    import re
     numeros = re.findall(r"\b\d+\b", texto)
     for numero in numeros:
         n = int(numero)
@@ -557,6 +585,10 @@ MAPEO_FUNCIONES = {
         "funcion": "get_compras_multiples",
         "params": ["proveedores", "meses", "anios"],
     },
+    "compras_articulo_anio": {
+        "funcion": "get_detalle_compras_articulo_anio",
+        "params": ["articulo", "anio"],
+    },
     "detalle_factura_numero": {
         "funcion": "get_detalle_factura_por_numero",
         "params": ["nro_factura"],
@@ -762,9 +794,66 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if prov_libre:
             provs = [_alias_proveedor(prov_libre)]
 
+    tokens = _tokens(texto_lower_original)
+
+    # proveedor (YA EXISTE)
+    # provs = [...]
+
+    # artículo fuerte (si ya lo tenías)
+    # arts = [...]
+
+    # 👉 fallback de artículo (nuevo)
+    if not arts:
+        art_libre = _extraer_articulo_libre(tokens, provs)
+        if art_libre:
+            arts = [art_libre]
+
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
+
+    if provs and anios:
+        tipo = "facturas_proveedor"
+
+    elif arts and anios:
+        tipo = "compras_articulo_anio"
+
+    # =====================================================================
+    # AGREGAR ESTE BLOQUE ANTES DEL BLOQUE "COMPRAS" (línea ~580)
+    # =====================================================================
+
+    # ✅ NUEVO: COMPRAS ARTÍCULO + AÑO (antes de proveedores)
+    # Detectar si es artículo consultando BD PRIMERO
+    if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original) and anios:
+        # Buscar artículos en BD
+        idx_prov, idx_art = _get_indices()
+        arts_bd = _match_best(texto_lower, idx_art, max_items=1)
+        
+        # Si encontró artículo en BD y NO encontró proveedor
+        if arts_bd and not provs:
+            articulo = arts_bd[0]
+            anio = anios[0]
+            
+            print("\n[INTÉRPRETE] COMPRAS_ARTICULO_ANIO")
+            print(f"  Pregunta : {texto_original}")
+            print(f"  Artículo : {articulo}")
+            print(f"  Año      : {anio}")
+            
+            try:
+                st.session_state["DBG_INT_LAST"] = {
+                    "pregunta": texto_original,
+                    "tipo": "compras_articulo_anio",
+                    "parametros": {"articulo": articulo, "anio": anio},
+                    "debug": f"compras artículo {articulo} año {anio}",
+                }
+            except Exception:
+                pass
+            
+            return {
+                "tipo": "compras_articulo_anio",
+                "parametros": {"articulo": articulo, "anio": anio},
+                "debug": f"compras artículo {articulo} año {anio}",
+            }
 
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
@@ -900,6 +989,35 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
         if proveedores_multiples:
             provs = proveedores_multiples  # Usar los múltiples
+
+        # =========================================================
+        # COMPRAS POR ARTÍCULO + AÑO
+        # Prioridad sobre proveedor
+        # =========================================================
+        articulo = arts[0] if arts else None
+        if "compras" in texto_lower and anios and articulo:
+            return {
+                "tipo": "compras_articulo_anio",
+                "parametros": {
+                    "articulo": articulo,
+                    "anio": anios[0],
+                },
+                "debug": "compras articulo + año (forzado)",
+            }
+
+        # ============================
+        # COMPRAS POR ARTÍCULO + AÑO
+        # ============================
+        if arts and anios and not provs:
+            return {
+                "tipo": "compras_articulo_anio",
+                "parametros": {
+                    "articulo": arts[0],
+                    "anio": anios[0],
+                    "limite": 5000,
+                },
+                "debug": "compras por articulo y año",
+            }
 
         # ✅ PRIORIZAR MES SOBRE AÑO
         if provs and (meses_yyyymm or (meses_nombre and anios)):
@@ -1158,7 +1276,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         "label1": str(anios[0]),
                         "label2": str(anios[1]),
                     },
-                    "debug": "comparar proveedor años",
+                    "debug": "comparar proveedor a��os",
                 }
             else:
                 # ✅ NUEVO: Sin proveedor = comparar TODOS los proveedores
