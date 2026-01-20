@@ -78,8 +78,8 @@ def get_proveedores_anio(anio: int) -> list:
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
     Obtiene datos de sugerencias: Articulo, proveedor, ultima_compra, cantidad_anual, stock_actual.
+    Ahora incluye JOIN con stock_raw para traer stock_actual.
     Respeta todas las reglas: limpieza de números, filtros obligatorios, agrupaciones.
-    LEFT JOIN con stock_raw para obtener stock_actual.
     """
     base_sql = """
     SELECT
@@ -97,9 +97,20 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
                 ',', '.')
             AS NUMERIC)
         ) AS cantidad_anual,
-        COALESCE(sr.stock_actual, 0) AS stock_actual
+        COALESCE(
+            CAST(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(TRIM(sr.stock_actual), '(', ''),
+                        ')', ''),
+                    '.', ''),
+                ',', '.')
+            AS NUMERIC),
+            0
+        ) AS stock_actual
     FROM chatbot_raw cr
-    LEFT JOIN stock_raw sr ON TRIM(cr."Articulo") = TRIM(sr.Articulo) AND TRIM(cr."Cliente / Proveedor") = TRIM(sr.proveedor)
+    LEFT JOIN stock_raw sr ON TRIM(LOWER(cr."Articulo")) = TRIM(LOWER(sr.articulo))
     WHERE cr."Año" = %s
       AND TRIM(cr."Articulo") IS NOT NULL
       AND TRIM(cr."Articulo") <> ''
@@ -114,7 +125,7 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
         params.append(proveedor_like)
     
     base_sql += """
-    GROUP BY TRIM(cr."Articulo"), COALESCE(sr.stock_actual, 0)
+    GROUP BY TRIM(cr."Articulo"), sr.stock_actual
     ORDER BY cantidad_anual DESC;
     """
     
@@ -211,7 +222,7 @@ def main():
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # Preproceso: Agregar columnas calculadas (AHORA stock_actual VIENE DE LA DB)
+    # Preproceso: Agregar columnas calculadas (AHORA stock_actual viene del SQL)
     df["consumo_diario"] = df["cantidad_anual"] / 365  # Aproximado - ajusta
     df["lote_minimo"] = 1  # Default - ajusta
     df["unidad"] = "un"  # Default - ajusta
