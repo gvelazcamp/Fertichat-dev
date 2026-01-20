@@ -55,7 +55,7 @@ def _fmt_fecha(fecha):
     except:
         return str(fecha)
 
-# ========== FUNCIONES DE DATOS AJUSTADAS A chatbot_raw (SIN JOIN) ===========
+# ========== FUNCIONES DE DATOS CON FUSIÓN (JOIN) ===========
 def get_proveedores_anio(anio: int) -> list:
     """
     Obtiene lista de proveedores únicos para un año.
@@ -76,31 +76,50 @@ def get_proveedores_anio(anio: int) -> list:
 
 def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame:
     """
-    Obtiene datos de sugerencias de chatbot_raw (sin JOIN con stock).
-    Respeta todas las reglas: limpieza LATAM, filtros obligatorios.
+    Fusiona compras de chatbot_raw con stock de tabla stock via LEFT JOIN.
+    Stock real limpiado LATAM. Si no hay stock, =0.
+    Respeta todas las reglas.
     """
     base_sql = """
     SELECT
-        TRIM("Articulo") AS "Articulo",
-        (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
-        MAX(TRIM("Fecha")) AS ultima_compra,
-        SUM(
+        cr."Articulo",
+        cr.proveedor,
+        cr.ultima_compra,
+        cr.cantidad_anual,
+        COALESCE(
             CAST(
                 REPLACE(
                     REPLACE(
                         REPLACE(
-                            REPLACE(TRIM("Cantidad"), '(', ''),
+                            REPLACE(TRIM(s."STOCK"), '(', ''),
                         ')', ''),
                     '.', ''),
                 ',', '.')
-            AS NUMERIC)
-        ) AS cantidad_anual
-    FROM chatbot_raw
-    WHERE "Año" = %s
-      AND TRIM("Articulo") IS NOT NULL
-      AND TRIM("Articulo") <> ''
-      AND TRIM("Cantidad") IS NOT NULL
-      AND TRIM("Cantidad") <> ''
+            AS NUMERIC),
+            0
+        ) AS stock_actual
+    FROM (
+        SELECT
+            TRIM("Articulo") AS "Articulo",
+            (ARRAY_AGG(TRIM("Cliente / Proveedor") ORDER BY "Fecha" DESC))[1] AS proveedor,
+            MAX(TRIM("Fecha")) AS ultima_compra,
+            SUM(
+                CAST(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(TRIM("Cantidad"), '(', ''),
+                            ')', ''),
+                        '.', ''),
+                    ',', '.')
+                AS NUMERIC)
+            ) AS cantidad_anual
+        FROM chatbot_raw
+        WHERE "Año" = %s
+          AND TRIM("Articulo") IS NOT NULL
+          AND TRIM("Articulo") <> ''
+          AND TRIM("Cantidad") IS NOT NULL
+          AND TRIM("Cantidad") <> ''
     """
     
     params = [anio]
@@ -110,8 +129,9 @@ def get_datos_sugerencias(anio: int, proveedor_like: str = None) -> pd.DataFrame
         params.append(proveedor_like)
     
     base_sql += """
-    GROUP BY TRIM("Articulo")
-    ORDER BY cantidad_anual DESC;
+        GROUP BY TRIM("Articulo")
+    ) cr
+    LEFT JOIN stock s ON TRIM(cr."Articulo") = TRIM(s."ARTICULO");
     """
     
     df = ejecutar_consulta(base_sql, tuple(params))
@@ -157,7 +177,7 @@ def get_mock_alerts(df):
         {"title": "Saludables", "value": str(saludable), "subtitle": "Ok por ahora", "class": "success"}
     ]
 
-# ========== FUNCIÓN MAIN() CON FIXES APLICADOS ===========
+# ========== FUNCIÓN MAIN() CON FUSIÓN ===========
 def main():
     # CSS
     st.markdown(CSS_SUGERENCIAS_PEDIDOS, unsafe_allow_html=True)
@@ -197,39 +217,26 @@ def main():
     render_divider()
 
     # =========================
-    # DATOS
+    # DATOS CON FUSIÓN
     # =========================
     proveedor_like = f"%{proveedor_sel.lower()}%" if proveedor_sel != "Todos" else None
     df = get_datos_sugerencias(anio_seleccionado, proveedor_like)
 
-    # ✅ FIX 1: Verificación correcta de DataFrame
+    # ✅ Verificación
     if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         st.warning(f"No se encontraron datos de compras para el año {anio_seleccionado} {'y proveedor seleccionado' if proveedor_sel != 'Todos' else ''}.")
         return
 
-    # ✅ FIX PARA URGENCIA: Stock asumido como 30 días de consumo (no todos urgentes)
+    # Preproceso con stock real de tabla stock
     df["consumo_diario"] = df["cantidad_anual"] / 365
-    df["stock_actual"] = df["consumo_diario"] * 30  # 30 días de stock → dias_stock = 30 → planificar
-    df["lote_minimo"] = 1
+    # stock_actual ya viene del JOIN
+    df["dias_stock"] = df.apply(lambda r: calcular_dias_stock(r["stock_actual"], r["consumo_diario"]), axis=1)
+    df["urgencia"] = df["dias_stock"].apply(clasificar_urgencia)
+    df["cantidad_sugerida"] = df.apply(lambda r: calcular_cantidad_sugerida(r["consumo_diario"], 30, r["stock_actual"], 1), axis=1)
     df["unidad"] = "un"
 
-    df["dias_stock"] = df.apply(
-        lambda r: calcular_dias_stock(r["stock_actual"], r["consumo_diario"]),
-        axis=1
-    )
-    df["urgencia"] = df["dias_stock"].apply(clasificar_urgencia)
-    df["cantidad_sugerida"] = df.apply(
-        lambda r: calcular_cantidad_sugerida(
-            consumo_diario=r["consumo_diario"],
-            dias_cobertura_objetivo=30,
-            stock_actual=r["stock_actual"],
-            lote_minimo=r["lote_minimo"]
-        ),
-        axis=1
-    )
-
     # =========================
-    # DASHBOARD DE ALERTAS (SIEMPRE EN FILA)
+    # DASHBOARD DE ALERTAS
     # =========================
     render_section_title("Dashboard de Alertas")
     alerts = get_mock_alerts(df)
@@ -261,39 +268,33 @@ def main():
     with col_filters:
         render_section_title("Filtros")
 
-        # Urgencia (principal del panel)
         filtro_urgencia = st.selectbox(
             "Urgencia:",
             ["Todas", "Urgente", "Próximo", "Planificar", "Saludable"],
             key="filtro_urgencia"
         )
 
-        # Búsqueda por artículo
         q_art = st.text_input("Buscar artículo:", value="", key="q_articulo")
 
-    # ---- Aplicar filtros (sobre df) ----
+    # ---- Aplicar filtros ----
     df_scope = df.copy()
 
-    # Búsqueda
     if q_art.strip():
         qq = q_art.strip().lower()
         df_scope = df_scope[df_scope["Articulo"].astype(str).str.lower().str.contains(qq, na=False)]
 
-    # Para la lista: además aplicar urgencia
     df_filtrado = df_scope.copy()
     df_filtrado = filtrar_sugerencias(df_filtrado, filtro_urgencia)
 
     # =========================
-    # LISTADO (derecha) - CARDS
+    # LISTADO - CARDS
     # =========================
     with col_list:
         render_section_title("Sugerencias de pedido")
 
-        # ✅ FIX 2: Verificación correcta de DataFrame vacío
         if df_filtrado is None or (isinstance(df_filtrado, pd.DataFrame) and df_filtrado.empty):
             st.info("No hay sugerencias que cumplan con los criterios de filtro.")
         else:
-            # Orden sugerido: urgentes primero, luego próximos, etc.
             orden = {"urgente": 0, "proximo": 1, "planificar": 2, "saludable": 3}
             df_filtrado = df_filtrado.copy()
             df_filtrado["_ord"] = df_filtrado["urgencia"].map(orden).fillna(9)
@@ -321,13 +322,12 @@ def main():
     render_divider()
     render_section_title("Acciones")
 
-    # ✅ FIX 3: Verificación correcta para cálculos
     total_cantidad = df_filtrado["cantidad_sugerida"].sum() if df_filtrado is not None and isinstance(df_filtrado, pd.DataFrame) and not df_filtrado.empty else 0
     total_productos = len(df_filtrado) if df_filtrado is not None and isinstance(df_filtrado, pd.DataFrame) and not df_filtrado.empty else 0
 
     info_html = f"""
     <p><strong>Total sugerido:</strong> {total_cantidad:.1f} unidades en {total_productos} productos</p>
-    <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock estimados.</p>
+    <p>Esta sugerencia se basa en el consumo promedio del año {anio_seleccionado} y niveles de stock reales.</p>
     """
     render_card(info_html)
 
