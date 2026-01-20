@@ -405,7 +405,7 @@ def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: int
                             ')', ''),
                         '.', ''),
                     ',', '.')
-                AS NUMERIC
+                AS NUMERIC)
             ) AS total_monto,
             COUNT(DISTINCT "Nro. Comprobante") AS facturas,
             SUM(
@@ -417,7 +417,7 @@ def get_detalle_compras_articulo_anio(articulo_like: str, anio: int, limite: int
                             ')', ''),
                         '.', ''),
                     ',', '.')
-                AS NUMERIC
+                AS NUMERIC)
             ) AS cantidad_total
         FROM chatbot_raw
         WHERE LOWER(TRIM("Articulo")) LIKE %s
@@ -1154,3 +1154,21 @@ def get_compras_anios(anios: List[int], limite: int = 5000) -> pd.DataFrame:
 
     out = pd.concat(frames, ignore_index=True)
     return out
+
+# =========================
+# TOTAL COMPRAS POR MONEDA - GENÉRICO (TODOS LOS AÑOS)
+# =========================
+def get_total_compras_por_moneda_todos_anios() -> pd.DataFrame:
+    """Total de compras por moneda y año, mostrando todos los años disponibles."""
+    total_expr = _sql_total_num_expr_general()  # Usa la expresión estándar para consistencia
+    sql = f"""
+        SELECT
+            "Año" AS Anio,
+            TRIM("Moneda") AS Moneda,
+            COALESCE(SUM({total_expr}), 0) AS monto_total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+        GROUP BY "Año", TRIM("Moneda")
+        ORDER BY "Año" ASC, monto_total DESC
+    """
+    return ejecutar_consulta(sql, ())
