@@ -57,6 +57,61 @@ def interpretar_stock(pregunta: str) -> Dict:
 
 
 # =====================================================================
+# EJECUTOR POR INTERPRETACIÓN (NUEVO - SIEMPRE DEVUELVE ALGO)
+# =====================================================================
+def ejecutar_por_interpretacion(resultado):
+    """
+    Router principal.
+    NO decide por cantidad de filas.
+    Decide SOLO por tipo.
+    """
+    from sql_facturas import get_facturas_proveedor as ejecutar_facturas_proveedor
+    from sql_compras import get_compras_articulo_anio as ejecutar_compras_articulo_anio
+
+    if not resultado or "tipo" not in resultado:
+        return {
+            "ok": False,
+            "mensaje": "No pude interpretar la consulta."
+        }
+
+    tipo = resultado["tipo"]
+    params = resultado.get("parametros", {})
+
+    # -------------------------
+    # COMPRAS POR PROVEEDOR
+    # -------------------------
+    if tipo == "facturas_proveedor":
+        df = ejecutar_facturas_proveedor(**params)
+        return {
+            "ok": True,
+            "tipo": tipo,
+            "df": df
+        }
+
+    # -------------------------
+    # COMPRAS POR ARTÍCULO + AÑO
+    # -------------------------
+    if tipo == "compras_articulo_anio":
+        df = ejecutar_compras_articulo_anio(
+            articulo=params["articulo"],
+            anio=params["anio"]
+        )
+        return {
+            "ok": True,
+            "tipo": tipo,
+            "df": df
+        }
+
+    # -------------------------
+    # FALLBACK
+    # -------------------------
+    return {
+        "ok": False,
+        "mensaje": f"Tipo no soportado: {tipo}"
+    }
+
+
+# =====================================================================
 # ROUTER PRINCIPAL (EXPORTA interpretar_pregunta PARA EL SISTEMA)
 # =====================================================================
 def interpretar_pregunta(pregunta: str) -> Dict:
