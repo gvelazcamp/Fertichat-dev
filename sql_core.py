@@ -237,17 +237,17 @@ def get_lista_proveedores() -> list:
 
 def get_lista_articulos() -> list:
     sql = """
-        SELECT DISTINCT TRIM("Articulo") AS articulo
+        SELECT DISTINCT TRIM("Articulo") AS art
         FROM chatbot_raw
         WHERE "Articulo" IS NOT NULL AND TRIM("Articulo") <> ''
-        ORDER BY articulo
+        ORDER BY art
         LIMIT 500
     """
     df = ejecutar_consulta(sql)
     if df.empty:
         print("⚠️ No se encontraron artículos en la base de datos.")
         return ["Todos"]
-    return ["Todos"] + df["articulo"].tolist()
+    return ["Todos"] + df["art"].tolist()
 
 
 def get_lista_tipos_comprobante() -> list:
@@ -297,17 +297,17 @@ def get_lista_meses() -> list:
 
 def get_lista_articulos_stock() -> list:
     sql = """
-        SELECT DISTINCT TRIM("Articulo") AS articulo
+        SELECT DISTINCT TRIM("Articulo") AS art
         FROM stock_raw
         WHERE "Articulo" IS NOT NULL AND TRIM("Articulo") <> ''
-        ORDER BY articulo
+        ORDER BY art
         LIMIT 500
     """
     df = ejecutar_consulta(sql)
     if df.empty:
         print("⚠️ No se encontraron artículos en el stock.")
         return ["Todos"]
-    return ["Todos"] + df["articulo"].tolist()
+    return ["Todos"] + df["art"].tolist()
 
 
 def get_lista_familias_stock() -> list:
@@ -427,7 +427,7 @@ def get_ultimo_mes_disponible_hasta(mes_key: str) -> Optional[str]:
             return None
 
         mes_encontrado = df["mes"].iloc[0]
-        print(f"✅ Último mes disponible hasta {mes_key}: {mes_encontrado}")
+        print(f"✅ Último mes disponible hasta {mes_encontrado}: {mes_encontrado}")
         return mes_encontrado
 
     except Exception as e:
@@ -448,3 +448,33 @@ def get_unique_articulos() -> List[str]:
     sql = 'SELECT DISTINCT TRIM("Articulo") AS art FROM chatbot_raw WHERE TRIM("Articulo") != \'\' ORDER BY art'
     df = ejecutar_consulta(sql)
     return df['art'].tolist() if df is not None and not df.empty else []
+
+
+# =====================================================================
+# FUNCIONES PARA EL INTÉRPRETE (facturas_articulo, etc.)
+# =====================================================================
+
+def get_facturas_articulo(articulo: str, anios: Optional[List[int]] = None) -> pd.DataFrame:
+    """
+    Obtiene todas las facturas de un artículo específico, opcionalmente filtrado por años.
+    """
+    try:
+        sql = """
+            SELECT *
+            FROM chatbot_raw
+            WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
+        """
+        params = [f"%{articulo}%"]
+
+        if anios:
+            placeholders = ', '.join(['%s'] * len(anios))
+            sql += f' AND "Año" IN ({placeholders})'
+            params.extend(anios)
+
+        sql += ' ORDER BY "Fecha" DESC LIMIT 500'
+
+        return ejecutar_consulta(sql, tuple(params))
+
+    except Exception as e:
+        print(f"❌ Error en get_facturas_articulo: {e}")
+        return pd.DataFrame()
