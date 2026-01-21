@@ -16,7 +16,11 @@ except Exception:
     from ia_interpretador import interpretar_pregunta as _agentic_decidir
     _AGENTIC_SOURCE = "interpretar_pregunta"
 
-from sql_facturas import get_facturas_proveedor as get_facturas_proveedor_detalle
+from sql_facturas import (
+    get_facturas_proveedor as get_facturas_proveedor_detalle,
+    get_detalle_factura_por_numero,
+    buscar_facturas_similares,
+)
 from sql_compras import (  # Importar funciones de compras
     get_compras_proveedor_anio,
     get_detalle_compras_proveedor_mes,
@@ -569,6 +573,57 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str):
                 formatear_dataframe(df),
                 None,
             )
+
+        # =========================================================
+        # DETALLE DE FACTURA POR NÚMERO
+        # =========================================================
+        elif tipo == "detalle_factura_numero":
+            nro_factura = params.get("nro_factura", "").strip()
+            
+            if not nro_factura:
+                return "❌ Indicá el número de factura. Ej: detalle factura 60907", None, None
+            
+            st.session_state["DBG_SQL_LAST_TAG"] = "detalle_factura_numero"
+            
+            print("\n[ORQUESTADOR] Llamando get_detalle_factura_por_numero()")
+            print(f"  nro_factura = {nro_factura}")
+            
+            df = get_detalle_factura_por_numero(nro_factura)
+            
+            try:
+                if st.session_state.get("DEBUG_SQL", False):
+                    st.session_state["DBG_SQL_ROWS"] = 0 if df is None else len(df)
+                    st.session_state["DBG_SQL_COLS"] = [] if df is None or df.empty else list(df.columns)
+            except Exception:
+                pass
+            
+            # Si no se encuentra, buscar similares
+            if df is None or df.empty:
+                print(f"⚠️ No se encontró factura exacta, buscando similares a '{nro_factura}'...")
+                similares = buscar_facturas_similares(nro_factura, limite=20)
+                
+                if similares is not None and not similares.empty:
+                    mensaje = f"⚠️ No se encontró la factura **{nro_factura}** exactamente.\n\n"
+                    mensaje += f"📋 Encontré **{len(similares)}** factura(s) similar(es):"
+                    return mensaje, formatear_dataframe(similares), None
+                else:
+                    return f"❌ No se encontró la factura {nro_factura} ni facturas similares.", None, None
+            
+            # Obtener info
+            proveedor = df["Proveedor"].iloc[0] if "Proveedor" in df.columns else "N/A"
+            fecha = df["Fecha"].iloc[0] if "Fecha" in df.columns else "N/A"
+            moneda = df["Moneda"].iloc[0] if "Moneda" in df.columns else ""
+            nro_real = df["nro_factura"].iloc[0] if "nro_factura" in df.columns else nro_factura
+            total_lineas = len(df)
+            total_monto = df["Total"].sum() if "Total" in df.columns else 0
+            
+            mensaje = f"📄 **Factura {nro_real}**\n"
+            mensaje += f"🏢 Proveedor: **{proveedor}**\n"
+            mensaje += f"📅 Fecha: {fecha}\n"
+            mensaje += f"💰 Total: {moneda} {total_monto:,.2f}\n"
+            mensaje += f"📦 {total_lineas} artículo(s)\n"
+            
+            return mensaje, formatear_dataframe(df), None
 
         return f"❌ Tipo de consulta '{tipo}' no implementado.", None, None
 
