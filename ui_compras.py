@@ -1,3 +1,6 @@
+# ui_compras.py - Código completo corregido para "compras vitek 2025"
+# Se corrigió solo la sección de compras_articulo_anio para usar "valor" en lugar de "articulo"
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
