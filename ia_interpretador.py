@@ -1305,12 +1305,12 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # TOP PROVEEDORES POR AÑO
     # ======================================================
     if (
-        any(k in texto_norm for k in ["top", "ranking", "principales"])
-        and any(p in texto_norm for p in ["proveedor", "proveedores"])
+        any(k in texto_lower_original for k in ["top", "ranking", "principales"])
+        and "proveedor" in texto_lower_original
         and anios
     ):
         top_n = 10
-        match = re.search(r'top\s+(\d+)', texto_norm)
+        match = re.search(r'top\s+(\d+)', texto_lower_original)
         if match:
             top_n = int(match.group(1))
 
