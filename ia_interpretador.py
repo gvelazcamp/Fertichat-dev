@@ -816,7 +816,20 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     idx_prov, idx_art = _get_indices()
     provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
-    arts = _match_best(texto_lower, idx_art, max_items=MAX_ARTICULOS)
+    
+    # ✅ FIX: NO buscar artículos si es "compras + año solo" (ej: "compras 2025")
+    anios_temp = _extraer_anios(texto_lower)
+    es_compras_anio_simple = (
+        "compra" in texto_lower and
+        len(anios_temp) > 0 and
+        len(texto_lower.split()) <= 3 and
+        not provs
+    )
+    
+    if es_compras_anio_simple:
+        arts = []  # NO buscar artículos
+    else:
+        arts = _match_best(texto_lower, idx_art, max_items=MAX_ARTICULOS)
 
     if not provs:
         prov_libre = _extraer_proveedor_libre(texto_lower_original)
