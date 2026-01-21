@@ -1,6 +1,3 @@
-# ui_compras.py - Código completo corregido para "compras vitek 2025"
-# Se corrigió solo la sección de compras_articulo_anio para usar "valor" en lugar de "articulo"
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -1520,7 +1517,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         }
         
         .metrics-grid {
-            margin-bottom: 20px !important;  /* Espacio entre tarjetas y gráfico */
+            margin-bottom: 20px !important;  /* Espacio entre tarjetas y gr��fico */
         }
         
         /* INTERLINEADO ENTRE BOTONES Y TARJETAS */
@@ -2497,7 +2494,20 @@ def Compras_IA():
             respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
 
         elif tipo == "saludo":
-            st.markdown(resultado.get("mensaje", ""))
+            nombre = st.session_state.get("nombre", "👋")
+            st.markdown(f"""
+Hola **{nombre}** 👋  
+
+¿En qué puedo ayudarte hoy?
+
+Puedo ayudarte con:
+• 🛒 **Compras**
+• 📦 **Stock**
+• 📊 **Comparativas**
+• 🧪 **Artículos**
+
+Escribí lo que necesites 👇
+""")
             return
 
         elif tipo == "no_entendido":
@@ -2789,3 +2799,7 @@ def Compras_IA():
                 st_autorefresh(interval=5000, key="fc_keepalive")
             except Exception:
                 pass
+
+# Ejecutar la función principal si se ejecuta directamente
+if __name__ == "__main__":
+    Compras_IA()  
