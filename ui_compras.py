@@ -2095,17 +2095,11 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     # ===== DASHBOARD TOP PROVEEDORES =====
     elif tipo == "dashboard_top_proveedores":
-        anios = parametros.get("anios", [])
+        anio = parametros.get("anio")
+        top_n = parametros.get("top_n", 10)
+        moneda = parametros.get("moneda", "$")
 
-        if not anios:
-            return None
-
-        df = sqlq_compras.get_top_proveedores_por_anios(
-            anios=anios,
-            limite=20
-        )
-
-        return df
+        return sqlq_compras.get_dashboard_top_proveedores(anio=anio, top_n=top_n, moneda=moneda)
 
     # ===== STOCK =====
     elif tipo == "stock_total":
@@ -2143,7 +2137,6 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     raise ValueError(f"Tipo '{tipo}' no implementado en ejecutar_consulta_por_tipo")
-
 
 # =========================
 # UI PRINCIPAL
