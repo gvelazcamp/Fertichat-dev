@@ -841,23 +841,23 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             arts = [articulo]
 
     # ============================
-    # RUTA ARTÍCULOS (CANÓNICA)
+    # RUTA ARTÍCULOS (CANÓNICA) - DESHABILITADA PARA "COMPRAS + AÑO"
     # ============================
-    # ✅ FIX: Detectar si es "compras + año solo" (ej: "compras 2025")
-    # En ese caso NO ir a ruta artículos, dejar que se maneje como compras_anio
-    anios_temp = _extraer_anios(texto_lower)
-    es_compras_anio_solo = (
-        len(anios_temp) > 0 and 
-        not arts and 
-        len(texto_lower.split()) <= 3  # "compras 2025" = 2 palabras
-    )
+    # ✅ FIX: Comentado para que "compras 2025" se maneje como compras_anio
+    # Si querés volver a habilitar artículos, descomentá las líneas de abajo
     
-    if contiene_compras(texto_lower_original) and not provs and not es_compras_anio_solo:
-        from ia_interpretador_articulos import interpretar_articulo
-        # Extraer anios aquí para pasar a la función
-        anios = _extraer_anios(texto_lower)
-        meses = _extraer_meses_nombre(texto_lower) + _extraer_meses_yyyymm(texto_lower)
-        return interpretar_articulo(texto_original, anios, meses)
+    # anios_temp = _extraer_anios(texto_lower)
+    # es_compras_anio_solo = (
+    #     len(anios_temp) > 0 and 
+    #     not arts and 
+    #     len(texto_lower.split()) <= 3
+    # )
+    # 
+    # if contiene_compras(texto_lower_original) and not provs and not es_compras_anio_solo:
+    #     from ia_interpretador_articulos import interpretar_articulo
+    #     anios = _extraer_anios(texto_lower)
+    #     meses = _extraer_meses_nombre(texto_lower) + _extraer_meses_yyyymm(texto_lower)
+    #     return interpretar_articulo(texto_original, anios, meses)
 
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
