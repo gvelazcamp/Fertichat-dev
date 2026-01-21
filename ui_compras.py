@@ -2125,8 +2125,16 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         anio = parametros.get("anio")
         top_n = parametros.get("top_n", 10)
         moneda = parametros.get("moneda", "$")
+        meses = parametros.get("meses")  # ✅ NUEVO: obtener meses
 
-        return sqlq_compras.get_dashboard_top_proveedores(anio=anio, top_n=top_n, moneda=moneda)
+        # ✅ NUEVO: pasar meses a la función SQL
+        return sqlq_compras.get_dashboard_top_proveedores(
+            anio=anio, 
+            top_n=top_n, 
+            moneda=moneda,
+            meses=meses  # ✅ NUEVO parámetro
+        )
+
 
     # ===== STOCK =====
     elif tipo == "stock_total":
