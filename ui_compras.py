@@ -904,12 +904,17 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     # ==========================================
     # MÉTRICAS CON TARJETAS MODERNAS (ocultas si hide_metrics)
     # ==========================================
-    tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
-    tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
-    # FIX: Si no hay columna moneda (como en comparaciones), mostrar total general en UYU
-    if not col_moneda:
-        tot_uyu = float(df_view["__total_num__"].sum())
-        tot_usd = 0.0
+    # ✅ FIX: Para top proveedores, usar Total_$ y Total_USD directamente
+    if "Total_$" in df_view.columns and "Total_USD" in df_view.columns:
+        tot_uyu = df_view["Total_$"].sum()
+        tot_usd = df_view["Total_USD"].sum()
+    else:
+        tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
+        tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
+        # FIX: Si no hay columna moneda (como en comparaciones), mostrar total general en UYU
+        if not col_moneda:
+            tot_uyu = float(df_view["__total_num__"].sum())
+            tot_usd = 0.0
 
     st.markdown(f"""
     <div class="fc-metrics-grid">
@@ -933,7 +938,6 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         </div>
     </div>
     """, unsafe_allow_html=True)
-
     # ============================================================
     # SIN FILTROS (mostrar todo)
     # ============================================================
