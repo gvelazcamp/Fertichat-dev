@@ -2016,25 +2016,26 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     elif tipo == "compras_articulo_anio":
-        # ✅ CORREGIDO: Usar "valor" en lugar de "articulo"
+        # ✅ CORREGIDO: Usar "valor" en lugar de "articulo" y quitar referencia a 'resultado'
         modo_sql = parametros.get("modo_sql", "LIKE_NORMALIZADO")
         valor = parametros.get("valor", "")
         anios = parametros.get("anios", [])
-        
-        # ✅ Validar que tengamos datos
+        meses = parametros.get("meses", None)
+
+        # ✅ Validar que tengamos datos mínimos
         if not valor or not anios:
             st.error("❌ No se pudo interpretar el artículo o año")
             return
-        
-        # ✅ Llamar a la función SQL con los parámetros correctos
+
+        # ✅ Llamar a la función SQL correcta
         df = sqlq_compras.get_compras_articulo_anio(
             modo_sql=modo_sql,
             valor=valor,
             anios=anios,
+            meses=meses,
             limite=5000
         )
         return df
-
     # ===== COMPARATIVAS =====
     elif tipo == "comparar_proveedor_meses":
         df = sqlq_comparativas.get_comparacion_proveedor_meses(
