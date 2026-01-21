@@ -397,38 +397,33 @@ def _get_top_proveedores_anio(anio: int, top_n: int = 20) -> pd.DataFrame:
 # =========================
 def mostrar_resumen_compras_rotativo():
     """
-    Resumen rotativo que se detiene cuando hay una comparativa activa o CUALQUIER interacción del usuario.
+    Resumen rotativo que se detiene cuando hay una comparativa activa o usuario está escribiendo.
     """
-    # ✅ NUEVO: Solo auto-refresh si NO hay comparativa activa NI interacción del usuario
+    # ✅ Solo auto-refresh si NO hay comparativa activa
     if "comparativa_activa" not in st.session_state:
         st.session_state.comparativa_activa = False
     
-    # ✅ DETECCIÓN GENÉRICA: Detectar si el usuario está interactuando con CUALQUIER widget
-    usuario_interactuando = False
+    # ✅ Detectar si el usuario está escribiendo en un text_input
+    usuario_escribiendo = False
     
-    # Contar cuántos widgets tienen valores no vacíos/no default
-    # Si hay más de 2 widgets con valores, el usuario está usando la app
-    widgets_activos = 0
+    # Lista de keys que típicamente son text_input donde el usuario escribe
+    text_input_keys = [
+        'chat_input', 'buscar_text', 'filtro_texto', 'search_query',
+        'nro_factura', 'input_articulo', 'input_proveedor'
+    ]
     
-    for key, value in st.session_state.items():
-        # Ignorar keys internas de Streamlit y del sistema
-        if key.startswith('_') or key.startswith('FormSubmitter'):
-            continue
-        if key in ['comparativa_activa', 'ORQUESTADOR_CARGADO', 'ORQUESTADOR_ERROR', 'AGENTIC_SOURCE']:
-            continue
-        
-        # Contar widgets con valores significativos
-        if value is not None and value != "" and value != [] and value != "Todos":
-            widgets_activos += 1
-    
-    # Si hay 2 o más widgets activos, el usuario está trabajando
-    if widgets_activos >= 2:
-        usuario_interactuando = True
+    for key in text_input_keys:
+        if key in st.session_state:
+            value = st.session_state[key]
+            # Solo si es string y tiene contenido
+            if isinstance(value, str) and len(value.strip()) > 0:
+                usuario_escribiendo = True
+                break
     
     tick = 0
     
-    # Solo hacer auto-refresh si NO hay comparativa Y NO hay interacción
-    if not st.session_state.comparativa_activa and not usuario_interactuando:
+    # Solo hacer auto-refresh si NO hay comparativa Y NO está escribiendo
+    if not st.session_state.comparativa_activa and not usuario_escribiendo:
         try:
             from streamlit_autorefresh import st_autorefresh
             tick = st_autorefresh(interval=5000, key="__rotar_proveedor_5s__") or 0
