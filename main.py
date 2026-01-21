@@ -42,6 +42,7 @@ print(">>> IA INTERPRETADOR USADO:", ia_interpretador.__file__)
 from sql_facturas import (
     get_facturas_proveedor as get_facturas_proveedor_detalle,
     get_detalle_factura_por_numero,
+    buscar_facturas_similares,
 )
 from sql_compras import (
     get_compras_proveedor_anio,
@@ -278,21 +279,36 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
             
             df = get_detalle_factura_por_numero(nro_factura)
             
+            # Si no se encuentra la factura, buscar similares
             if df is None or df.empty:
-                return f"⚠️ No se encontró la factura número {nro_factura}.", None, None
+                print(f"⚠️ No se encontró factura exacta, buscando similares a '{nro_factura}'...")
+                similares = buscar_facturas_similares(nro_factura, limite=20)
+                
+                if similares is not None and not similares.empty:
+                    mensaje = f"⚠️ No se encontró la factura **{nro_factura}** exactamente.\n\n"
+                    mensaje += f"📋 Encontré **{len(similares)}** factura(s) similar(es):\n"
+                    return (
+                        mensaje,
+                        formatear_dataframe(similares),
+                        None,
+                    )
+                else:
+                    return f"❌ No se encontró la factura {nro_factura} ni facturas similares.", None, None
             
             # Obtener info del encabezado
             proveedor = df["Proveedor"].iloc[0] if "Proveedor" in df.columns else "N/A"
             fecha = df["Fecha"].iloc[0] if "Fecha" in df.columns else "N/A"
             moneda = df["Moneda"].iloc[0] if "Moneda" in df.columns else ""
+            nro_factura_encontrado = df["nro_factura"].iloc[0] if "nro_factura" in df.columns else nro_factura
             
-            # Calcular totales si hay múltiples artículos
+            # Calcular totales
             total_lineas = len(df)
+            total_monto = df["Total"].sum() if "Total" in df.columns else 0
             
-            mensaje = f"📄 **Factura {nro_factura}**\n"
+            mensaje = f"📄 **Factura {nro_factura_encontrado}**\n"
             mensaje += f"🏢 Proveedor: **{proveedor}**\n"
             mensaje += f"📅 Fecha: {fecha}\n"
-            mensaje += f"💰 Moneda: {moneda}\n"
+            mensaje += f"💰 Total: {moneda} {total_monto:,.2f}\n"
             mensaje += f"📦 {total_lineas} artículo(s)\n"
             
             return (
