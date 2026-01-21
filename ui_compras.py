@@ -2615,8 +2615,25 @@ Escribí lo que necesites 👇
         st.markdown("### Menú Comparativas Fáciles")
         st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
+        # ✅ INICIALIZAR session_state para tipo de consulta si no existe
+        if "menu_tipo_consulta" not in st.session_state:
+            st.session_state["menu_tipo_consulta"] = "Compras"
+
         # Agregado: Submenús Compras y Comparativas
-        tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
+        # ✅ Usar valor del session_state como índice inicial
+        opciones = ["Compras", "Comparativas"]
+        idx_inicial = opciones.index(st.session_state["menu_tipo_consulta"])
+        
+        tipo_consulta = st.selectbox(
+            "Tipo de consulta", 
+            options=opciones, 
+            index=idx_inicial, 
+            key="tipo_consulta_widget"  # ✅ Key diferente
+        )
+        
+        # ✅ Actualizar session_state cuando cambia
+        if tipo_consulta != st.session_state["menu_tipo_consulta"]:
+            st.session_state["menu_tipo_consulta"] = tipo_consulta
 
         if tipo_consulta == "Compras":
             st.markdown("#### 🛒 Consultas de Compras")
@@ -2634,6 +2651,9 @@ Escribí lo que necesites 👇
                 
 # ✅ BOTÓN PARA LIMPIAR PRIMERO (antes de mostrar resultados)
             if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
+                # ✅ MANTENER EN COMPRAS después del rerun
+                st.session_state["menu_tipo_consulta"] = "Compras"
+                
                 if "compras_resultado" in st.session_state:
                     del st.session_state["compras_resultado"]
                 if "compras_titulo" in st.session_state:
@@ -2648,6 +2668,9 @@ Escribí lo que necesites 👇
                 render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado, key_prefix="guardado_")
             
             if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
+                # ✅ MANTENER EN COMPRAS después del rerun
+                st.session_state["menu_tipo_consulta"] = "Compras"
+                
                 # ✅ PAUSAR AUTOREFRESH AL PRESIONAR BOTÓN DE BÚSQUEDA
                 st.session_state["pause_autorefresh"] = True
 
@@ -2773,6 +2796,9 @@ Escribí lo que necesites 👇
 
             # Botón comparar (oculto, pero funcionalidad en el botón de arriba)
             if btn_compare:
+                # ✅ MANTENER EN COMPARATIVAS después del rerun
+                st.session_state["menu_tipo_consulta"] = "Comparativas"
+                
                 # ✅ VALIDAR: necesitamos al menos 2 períodos (años O meses)
                 tiene_anios = len(anios) >= 2
                 tiene_meses = len(meses) >= 2
@@ -2835,6 +2861,9 @@ Escribí lo que necesites 👇
                 
                 # Botón para limpiar (oculto, funcionalidad en botón de arriba)
                 if btn_clear:
+                    # ✅ MANTENER EN COMPARATIVAS después del rerun
+                    st.session_state["menu_tipo_consulta"] = "Comparativas"
+                    
                     del st.session_state["comparativa_resultado"]
                     del st.session_state["comparativa_titulo"]
                     st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
