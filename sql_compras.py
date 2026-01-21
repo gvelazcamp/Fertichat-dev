@@ -1041,40 +1041,54 @@ def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
     """
     return ejecutar_consulta(sql, (anio,))
 
-def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$") -> pd.DataFrame:
-    """Top proveedores por moneda - VERSIÓN EXTENDIDA CON FECHA."""
+def get_dashboard_top_proveedores(
+    anio: int, 
+    top_n: int = 10, 
+    moneda: str = "$",
+    meses: list = None  # ✅ NUEVO parámetro
+) -> pd.DataFrame:
+    """
+    Top proveedores por moneda.
+    Ahora acepta filtro opcional por meses.
+    
+    Args:
+        anio: Año a consultar
+        top_n: Cantidad de proveedores a mostrar
+        moneda: Moneda a filtrar ("$" o "U$S")
+        meses: Lista de meses en formato YYYY-MM (ej: ["2025-11"]) - OPCIONAL
+    """
     total_expr = _sql_total_num_expr_general()
     
+    # ✅ NUEVO: Construir filtro de mes si se proporciona
+    filtro_mes = ""
+    if meses and len(meses) > 0:
+        # Extraer solo el número del mes (MM) de cada entrada YYYY-MM
+        meses_nums = []
+        for mes in meses:
+            if '-' in mes:
+                mes_num = mes.split('-')[1]  # Ej: "2025-11" -> "11"
+                meses_nums.append(int(mes_num))
+        
+        if meses_nums:
+            meses_str = ', '.join(str(m) for m in meses_nums)
+            filtro_mes = f'AND "Mes"::int IN ({meses_str})'
+    
     sql = f"""
-        WITH proveedor_totales AS (
-            SELECT
-                TRIM("Cliente / Proveedor") AS Proveedor,
-                SUM(CASE WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESO') THEN {total_expr} ELSE 0 END) AS Total_$,
-                SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'USD', 'US$') THEN {total_expr} ELSE 0 END) AS Total_USD
-            FROM chatbot_raw
-            WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-              AND "Año" = %s
-              AND TRIM("Cliente / Proveedor") <> ''
-            GROUP BY TRIM("Cliente / Proveedor")
-            ORDER BY Total_$ DESC, Total_USD DESC
-            LIMIT %s
-        )
-        SELECT 
-            TRIM(c."Cliente / Proveedor") AS Proveedor,
-            c."Articulo" AS Articulo,
-            c."Nro. Comprobante" AS Nro_Factura,
-            c."Fecha" AS Fecha,
-            c."Cantidad" AS Cantidad,
-            c."Moneda" AS Moneda,
-            {total_expr} AS Total
-        FROM chatbot_raw c
-        INNER JOIN proveedor_totales pt ON TRIM(c."Cliente / Proveedor") = pt.Proveedor
-        WHERE (c."Tipo Comprobante" = 'Compra Contado' OR c."Tipo Comprobante" LIKE 'Compra%%')
-          AND c."Año" = %s
-        ORDER BY c."Fecha" DESC
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            SUM(CASE WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESO') THEN {total_expr} ELSE 0 END) AS Total_$ ,
+            SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'USD', 'US$') THEN {total_expr} ELSE 0 END) AS Total_USD
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año" = %s
+          {filtro_mes}
+          AND TRIM("Cliente / Proveedor") <> ''
+        GROUP BY TRIM("Cliente / Proveedor")
+        ORDER BY Total_$ DESC, Total_USD DESC
+        LIMIT %s
     """
     
-    return ejecutar_consulta(sql, (anio, top_n, anio))
+    return ejecutar_consulta(sql, (anio, top_n))
 
 def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
     """Datos para gráfico de torta por familia."""
