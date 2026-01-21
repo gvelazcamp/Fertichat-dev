@@ -1301,45 +1301,54 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             return {"tipo": "stock_articulo", "parametros": {"articulo": arts[0]}, "debug": "stock articulo"}
         return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
 
-# ======================================================
-# TOP PROVEEDORES POR AÑO
-# ======================================================
-if (
-    any(k in texto_lower_original for k in ["top", "ranking", "principales"])
-    and "proveedor" in texto_lower_original
-    and anios
-    and not (meses_yyyymm or meses_nombre)
-):
-    top_n = 10
-    if "top" in numeros:
-        try:
-            top_n = int(numeros[0])
-        except Exception:
-            pass
+    # ======================================================
+    # TOP PROVEEDORES POR AÑO
+    # ======================================================
+    if (
+        any(k in texto_lower_original for k in ["top", "ranking", "principales"])
+        and "proveedor" in texto_lower_original
+        and anios
+        and not (meses_yyyymm or meses_nombre)
+    ):
+        top_n = 10
+        if "top" in numeros:
+            try:
+                top_n = int(numeros[0])
+            except Exception:
+                pass
+
+        return {
+            "tipo": "dashboard_top_proveedores",
+            "parametros": {
+                "anio": anios[0],
+                "top_n": top_n,
+                "moneda": moneda_param,
+            },
+        }
+
+    # ======================================================
+    # FALLBACK IA
+    # ======================================================
+    out_ai = _interpretar_con_openai(texto_original)
+    if out_ai:
+        return out_ai
 
     return {
-        "tipo": "dashboard_top_proveedores",
-        "parametros": {
-            "anio": anios[0],
-            "top_n": top_n,
-            "moneda": moneda_param,
-        },
+        "tipo": "no_entendido",
+        "parametros": {},
+        "sugerencia": (
+            "Probá: compras roche noviembre 2025 | "
+            "comparar compras roche junio julio 2025 | "
+            "detalle factura 273279 | "
+            "todas las facturas roche 2025 | "
+            "listado facturas 2025 | "
+            "total 2025 | "
+            "total facturas por moneda | "
+            "total compras por moneda | "
+            "comparar 2024 2025"
+        ),
+        "debug": "no match",
     }
-
-# ======================================================
-# FALLBACK IA
-# ======================================================
-out_ai = _interpretar_con_openai(texto_original)
-if out_ai:
-    return out_ai
-
-return {
-    "tipo": "no_entendido",
-    "parametros": {},
-    "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025 | total 2025 | total facturas por moneda | total compras por moneda | comparar 2024 2025",
-    "debug": "no match",
-}
-
 
 # =========================
 # AGENTIC AI - API PÚBLICA (NO EJECUTA SQL)
