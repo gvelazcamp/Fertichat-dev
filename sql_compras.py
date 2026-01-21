@@ -495,9 +495,10 @@ def build_sql_articulo(modo_sql: str) -> str:
     
     raise ValueError(f"Modo SQL '{modo_sql}' no soportado")
 
-def get_compras_articulo_anio(modo_sql: str, valor: str, anios: list[int], limite: int = 5000) -> pd.DataFrame:
+def get_compras_articulo_anio(modo_sql: str, valor: str, anios: list[int], meses: Optional[List[str]] = None, limite: int = 5000) -> pd.DataFrame:
     """
     Obtiene compras de artículo según modo SQL.
+    Ahora soporta filtro opcional por meses.
     """
     if not valor or not anios:
         return pd.DataFrame()
@@ -515,6 +516,12 @@ def get_compras_articulo_anio(modo_sql: str, valor: str, anios: list[int], limit
     anios_str = ', '.join(str(int(a)) for a in anios)
     where_anios = f'"Año"::int IN ({anios_str})'
 
+    # Meses (opcional)
+    where_meses = ""
+    if meses:
+        meses_str = ', '.join(f"'{m}'" for m in meses)
+        where_meses = f' AND TRIM("Mes") IN ({meses_str})'
+
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -525,7 +532,7 @@ def get_compras_articulo_anio(modo_sql: str, valor: str, anios: list[int], limit
             "Moneda",
             TRIM("Monto Neto") AS Total
         FROM chatbot_raw
-        WHERE {where_art} AND {where_anios}
+        WHERE {where_art} AND {where_anios}{where_meses}
         ORDER BY "Fecha" DESC NULLS LAST
         LIMIT {limite}
     """
