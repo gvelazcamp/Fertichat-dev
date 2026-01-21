@@ -906,8 +906,8 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     # ==========================================
     # ✅ FIX: Para top proveedores, usar Total_$ y Total_USD directamente
     if "Total_$" in df_view.columns and "Total_USD" in df_view.columns:
-        tot_uyu = float(pd.to_numeric(df_view["Total_$"], errors='coerce').sum())
-        tot_usd = float(pd.to_numeric(df_view["Total_USD"], errors='coerce').sum())
+        tot_uyu = sum(df_view["Total_$"].apply(_safe_to_float))
+        tot_usd = sum(df_view["Total_USD"].apply(_safe_to_float))
     else:
         tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
         tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
