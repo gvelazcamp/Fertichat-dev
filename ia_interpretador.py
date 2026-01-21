@@ -1302,7 +1302,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
 
     # ======================================================
-    # TOP PROVEEDORES POR AÑO
+    # TOP PROVEEDORES POR AÑO/MES  ✅ ACTUALIZADO
     # ======================================================
     if (
         any(k in texto_lower_original for k in ["top", "ranking", "principales"])
@@ -1320,9 +1320,19 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         else:
             moneda_param = "$"
 
+        # ✅ NUEVO: Detectar si hay meses especificados
+        meses_param = None
+        if meses_yyyymm:
+            # Ya tenemos meses en formato YYYY-MM
+            meses_param = meses_yyyymm
+        elif meses_nombre:
+            # Convertir nombres de mes a formato YYYY-MM
+            meses_param = [_to_yyyymm(anios[0], mn) for mn in meses_nombre]
+
         print("\n[INTÉRPRETE] TOP_PROVEEDORES")
         print(f"  Pregunta : {texto_original}")
         print(f"  Año      : {anios[0]}")
+        print(f"  Meses    : {meses_param}")  # ✅ NUEVO log
         print(f"  Top N    : {top_n}")
         print(f"  Moneda   : {moneda_param}")
 
@@ -1330,10 +1340,11 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "tipo": "dashboard_top_proveedores",
             "parametros": {
                 "anio": anios[0],
+                "meses": meses_param,  # ✅ NUEVO parámetro
                 "top_n": top_n,
                 "moneda": moneda_param,
             },
-            "debug": f"top proveedores por año {anios[0]} en {moneda_param}",
+            "debug": f"top proveedores año {anios[0]} {'mes ' + str(meses_param) if meses_param else ''} en {moneda_param}",
         }
 
     out_ai = _interpretar_con_openai(texto_original)
