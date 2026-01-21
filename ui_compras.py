@@ -2632,11 +2632,20 @@ Escribí lo que necesites 👇
                 
                 render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
                 
-                # Botón para limpiar
-                if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
+# ✅ BOTÓN PARA LIMPIAR PRIMERO (antes de mostrar resultados)
+            if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
+                if "compras_resultado" in st.session_state:
                     del st.session_state["compras_resultado"]
+                if "compras_titulo" in st.session_state:
                     del st.session_state["compras_titulo"]
-                    st.rerun()
+                st.rerun()
+            
+            # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
+            if "compras_resultado" in st.session_state:
+                df_guardado = st.session_state["compras_resultado"]
+                titulo_guardado = st.session_state.get("compras_titulo", "Compras")
+                
+                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
             
             if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
                 # ✅ PAUSAR AUTOREFRESH AL PRESIONAR BOTÓN DE BÚSQUEDA
@@ -2654,8 +2663,6 @@ Escribí lo que necesites 👇
                         # ✅ FILTRAR MANUALMENTE POR AÑO SELECCIONADO (fix para selectbox)
                         if "Año" in df.columns:
                             df = df[df["Año"].astype(str) == str(anio_compras)]
-                            st.write(f"🔍 DEBUG: Años en el DF después del filtro: {df['Año'].unique()}")  # ← ESTA LÍNEA
-                            st.write(f"🔍 DEBUG: Total de filas después del filtro: {len(df)}")  # ← Y ESTA
                         
                         if not df.empty:
                             # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
