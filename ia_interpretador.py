@@ -817,17 +817,13 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     idx_prov, idx_art = _get_indices()
     provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
     
-    # ✅ FIX: NO buscar artículos si es "compras + año solo" (ej: "compras 2025")
+    # ✅ FIX SIMPLE: NO buscar artículos si hay "compra" + año
+    # Esto evita confusiones con códigos numéricos como "2183118"
     anios_temp = _extraer_anios(texto_lower)
-    es_compras_anio_simple = (
-        "compra" in texto_lower and
-        len(anios_temp) > 0 and
-        len(texto_lower.split()) <= 3 and
-        not provs
-    )
+    tiene_compra_y_anio = ("compra" in texto_lower) and (len(anios_temp) > 0)
     
-    if es_compras_anio_simple:
-        arts = []  # NO buscar artículos
+    if tiene_compra_y_anio:
+        arts = []  # NO buscar artículos cuando hay compras + año
     else:
         arts = _match_best(texto_lower, idx_art, max_items=MAX_ARTICULOS)
 
