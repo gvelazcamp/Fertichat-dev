@@ -131,15 +131,16 @@ def ejecutar_por_interpretacion(resultado):
     # DASHBOARD TOP PROVEEDORES
     # -------------------------
     elif tipo == "dashboard_top_proveedores":
-        from sql_compras import get_top_proveedores_por_anios
-        anios = params.get("anios", [])
-        limite = params.get("limite", 20)
-        if not anios:
+        from sql_compras import get_dashboard_top_proveedores
+        anio = params.get("anio")
+        top_n = params.get("top_n", 10)
+        moneda = params.get("moneda", "$")
+        if not anio:
             return {
                 "ok": False,
-                "mensaje": "No se especificaron años para el dashboard de top proveedores."
+                "mensaje": "No se especificó año para el dashboard de top proveedores."
             }
-        df = get_top_proveedores_por_anios(anios=anios, limite=limite)
+        df = get_dashboard_top_proveedores(anio=anio, top_n=top_n, moneda=moneda)
         return {
             "ok": True,
             "tipo": tipo,
@@ -322,8 +323,8 @@ MAPEO_FUNCIONES = {
 
     # DASHBOARD TOP PROVEEDORES
     "dashboard_top_proveedores": {
-        "funcion": "get_top_proveedores_por_anios",
-        "params": ["anios", "limite"],
+        "funcion": "get_dashboard_top_proveedores",
+        "params": ["anio", "top_n", "moneda"],
     },
 }
 
