@@ -843,7 +843,16 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # ============================
     # RUTA ARTÍCULOS (CANÓNICA)
     # ============================
-    if contiene_compras(texto_lower_original) and not provs:
+    # ✅ FIX: Detectar si es "compras + año solo" (ej: "compras 2025")
+    # En ese caso NO ir a ruta artículos, dejar que se maneje como compras_anio
+    anios_temp = _extraer_anios(texto_lower)
+    es_compras_anio_solo = (
+        len(anios_temp) > 0 and 
+        not arts and 
+        len(texto_lower.split()) <= 3  # "compras 2025" = 2 palabras
+    )
+    
+    if contiene_compras(texto_lower_original) and not provs and not es_compras_anio_solo:
         from ia_interpretador_articulos import interpretar_articulo
         # Extraer anios aquí para pasar a la función
         anios = _extraer_anios(texto_lower)
