@@ -1306,7 +1306,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # ======================================================
     if (
         any(k in texto_norm for k in ["top", "ranking", "principales"])
-        and "proveedor" in texto_norm
+        and any(p in texto_norm for p in ["proveedor", "proveedores"])
         and anios
     ):
         top_n = 10
