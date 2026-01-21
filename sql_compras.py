@@ -1041,7 +1041,6 @@ def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
     """
     return ejecutar_consulta(sql, (anio,))
 
-
 def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$") -> pd.DataFrame:
     """Top proveedores por moneda - VERSIÓN EXTENDIDA CON FECHA."""
     total_expr = _sql_total_num_expr_general()
@@ -1070,43 +1069,12 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
             {total_expr} AS Total
         FROM chatbot_raw c
         INNER JOIN proveedor_totales pt ON TRIM(c."Cliente / Proveedor") = pt.Proveedor
-        WHERE c."Tipo Comprobante" = 'Compra Contado' OR c."Tipo Comprobante" LIKE 'Compra%%'
+        WHERE (c."Tipo Comprobante" = 'Compra Contado' OR c."Tipo Comprobante" LIKE 'Compra%%')
           AND c."Año" = %s
         ORDER BY c."Fecha" DESC
-```
-    
-    return ejecutar_consulta(sql, (anio, top_n, anio))
-```
-
-El error estaba en:
-- `c.TRIM(...)` → debe ser `TRIM(c."...")`
-- Faltaban paréntesis en el WHERE final
-
-Si sigue sin funcionar, volvé a la **versión original simple** que funcionaba:
-```python
-def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$") -> pd.DataFrame:
-    """Top proveedores por moneda."""
-    total_expr = _sql_total_num_expr_general()
-    
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            SUM(CASE WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESO') THEN {total_expr} ELSE 0 END) AS Total_$ ,
-            SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'USD', 'US$') THEN {total_expr} ELSE 0 END) AS Total_USD
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año" = %s
-          AND TRIM("Cliente / Proveedor") <> ''
-        GROUP BY TRIM("Cliente / Proveedor")
-        ORDER BY Total_$ DESC, Total_USD DESC
-        LIMIT %s
     """
     
-    return ejecutar_consulta(sql, (anio, top_n))
-```
-
-Esta versión simple **funciona pero no tiene las tarjetas extras**. ¿Probamos primero que vuelva a funcionar con esta?
-
+    return ejecutar_consulta(sql, (anio, top_n, anio))
 
 def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
     """Datos para gráfico de torta por familia."""
