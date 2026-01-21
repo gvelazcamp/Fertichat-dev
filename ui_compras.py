@@ -2721,9 +2721,6 @@ Escribí lo que necesites 👇
                     use_container_width=True
                 )
 
-            if btn_compare:
-                st.session_state["tipo_consulta"] = "Comparativas"
-
             
             with col_clr:
                 btn_clear = st.button("🗑️ Limpiar resultados", key="btn_limpiar_horizontal", use_container_width=True)
