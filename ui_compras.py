@@ -1,4 +1,6 @@
-# El archivo ui_compras.py completo con las correcciones anteriores (month_names movido al top, etc.)
+# ui_compras.py - Código completo corregido para "compras vitek 2025"
+# Se corrigió solo la sección de compras_articulo_anio para usar "valor" en lugar de "articulo"
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -365,24 +367,19 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
             col_moneda = col
             break
 
-    # Buscar columnas de períodos (excluir columnas que NO son períodos)
-    numeric_cols = []
-    for col in df.columns:
-        # Excluir columnas obvias que NO son períodos
-        if col in [col_moneda, 'Articulo', 'Proveedor', 'Cliente / Proveedor', 'Diferencia']:
-            continue
-        
-        # Si es numérica, incluirla
-        if pd.api.types.is_numeric_dtype(df[col]):
-            numeric_cols.append(col)
-        # Si el nombre parece un año o período, incluirla
-        elif isinstance(col, str) and (col.isdigit() or '-' in col):
-            numeric_cols.append(col)
+    # Buscar columnas de períodos (excluir 'Proveedor', 'Articulo', 'Moneda', 'Diferencia')
+    cols_periodos = []
+    for c in df.columns:
+        # Es un período si es numérica o tiene guión y no es excluida
+        if pd.api.types.is_numeric_dtype(df[c]) and c not in ['Diferencia']:
+            cols_periodos.append(c)
+        elif isinstance(c, str) and ('-' in c or c.isdigit()) and c not in ['Proveedor', 'Articulo', 'Moneda', 'Cliente / Proveedor']:
+            cols_periodos.append(c)
     
     # Si no hay columna moneda, asumir todo en UYU
     if not col_moneda:
         total_general = 0
-        for col in numeric_cols:
+        for col in cols_periodos:
             try:
                 total_general += pd.to_numeric(df[col], errors='coerce').fillna(0).sum()
             except:
@@ -401,7 +398,7 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
             
             # Sumar las columnas numéricas de esta fila
             suma_fila = 0
-            for col in numeric_cols:
+            for col in cols_periodos:
                 try:
                     val = row[col]
                     if pd.notna(val):
@@ -1716,7 +1713,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         ))
                         fig.add_trace(go.Bar(
                             name=str(p2),
-                            x=df_graph[entity_col],
+                            x=df_graph[p2].astype(float),
                             y=df_graph[p2].astype(float),
                             marker_color='#764ba2',
                             text=df_graph[p2].apply(lambda x: f'${float(x)/1_000_000:.1f}M' if x >= 1_000_000 else f'${float(x):,.0f}'.replace(",", ".") if pd.notna(x) else "0"),
@@ -2019,9 +2016,23 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     elif tipo == "compras_articulo_anio":
-        df = sqlq_compras.get_detalle_compras_articulo_anio(
-            parametros.get("articulo"),
-            parametros.get("anio"),
+        # ✅ CORREGIDO: Usar "valor" en lugar de "articulo"
+        parametros = resultado.get("parametros", {})
+        modo_sql = parametros.get("modo_sql", "LIKE_NORMALIZADO")
+        valor = parametros.get("valor", "")
+        anios = parametros.get("anios", [])
+        
+        # ✅ Validar que tengamos datos
+        if not valor or not anios:
+            st.error("❌ No se pudo interpretar el artículo o año")
+            return
+        
+        # ✅ Llamar a la función SQL con los parámetros correctos
+        df = sqlq_compras.get_compras_articulo_anio(
+            modo_sql=modo_sql,
+            valor=valor,
+            anios=anios,
+            limite=5000
         )
         return df
 
@@ -2753,19 +2764,10 @@ def Compras_IA():
                     titulo=titulo_guardado
                 )
 
-        # Botón para reanudar auto-refresh (opcional, si se pausa)
-        if st.session_state.get("pause_autorefresh", False):
-            st.markdown("---")
-            col1, col2 = st.columns([3, 1])
-            with col2:
-                if st.button("▶️ Reanudar auto-refresh", help="Reactivar auto-refresh automático"):
-                    st.session_state["pause_autorefresh"] = False
-                    st.rerun()
-
-    # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
-    if not st.session_state.get("pause_autorefresh", False):
-        try:
-            from streamlit_autorefresh import st_autorefresh
-            st_autorefresh(interval=5000, key="fc_keepalive")
-        except Exception:
-            pass
+        # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
+        if not st.session_state.get("pause_autorefresh", False):
+            try:
+                from streamlit_autorefresh import st_autorefresh
+                st_autorefresh(interval=5000, key="fc_keepalive")
+            except Exception:
+                pass
