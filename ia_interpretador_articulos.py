@@ -110,17 +110,19 @@ def interpretar_articulo(texto: str, anios: List[int] = None, meses: List[str] =
                     "parametros": {
                         "modo_sql": modo_sql,
                         "valor": valor,
-                        "anios": anios
+                        "anios": anios,
+                        "meses": meses if meses else None  # ✅ Agregado
                     },
                     "debug": f"alias '{t}' ({tipo}) + años {anios} | modo: {modo_sql}"
                 }
 
             if meses:
                 return {
-                    "tipo": "compras_articulo_mes",
+                    "tipo": "compras_articulo_anio",
                     "parametros": {
                         "modo_sql": modo_sql,
                         "valor": valor,
+                        "anios": _extraer_anios(texto) if not anios else anios,  # Extraer años si no hay
                         "meses": meses
                     },
                     "debug": f"alias '{t}' ({tipo}) + meses {meses} | modo: {modo_sql}"
