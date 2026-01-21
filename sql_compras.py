@@ -206,12 +206,18 @@ def get_compras_multiples(
         if mes_clauses:
             where_parts.append("(" + " OR ".join(mes_clauses) + ")")
 
+    # ✅ FIX: Filtro por años
+    if anios:
+        anios_str = ', '.join(str(int(a)) for a in anios)
+        where_parts.append(f'"Año"::int IN ({anios_str})')
+
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
             TRIM("Articulo") AS Articulo,
             TRIM("Nro. Comprobante") AS Nro_Factura,
             "Fecha",
+            "Año",
             "Cantidad",
             "Moneda",
             TRIM("Monto Neto") AS Total
@@ -1203,6 +1209,7 @@ def get_compras_por_mes_excel(
     return get_compras_multiples(
         proveedores=proveedores,
         meses=meses,
+        anios=[anio],  # ✅ FIX: Pasar año como lista
         limite=limite
     )
 
