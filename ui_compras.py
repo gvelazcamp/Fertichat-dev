@@ -1,6 +1,3 @@
-# ui_compras.py - Código completo corregido para "compras vitek 2025"
-# Se corrigió solo la sección de compras_articulo_anio para usar "valor" en lugar de "articulo"
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -2016,26 +2013,27 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     elif tipo == "compras_articulo_anio":
-        # ✅ CORREGIDO: Usar "valor" en lugar de "articulo" y quitar referencia a 'resultado'
+        # ✅ CORREGIDO: Usar "valor" en lugar de "articulo"
         modo_sql = parametros.get("modo_sql", "LIKE_NORMALIZADO")
         valor = parametros.get("valor", "")
         anios = parametros.get("anios", [])
-        meses = parametros.get("meses", None)
-
-        # ✅ Validar que tengamos datos mínimos
+        meses = parametros.get("meses", None)  # ✅ Agregado
+        
+        # ✅ Validar que tengamos datos
         if not valor or not anios:
             st.error("❌ No se pudo interpretar el artículo o año")
             return
-
-        # ✅ Llamar a la función SQL correcta
+        
+        # ✅ Llamar a la función SQL con los parámetros correctos
         df = sqlq_compras.get_compras_articulo_anio(
             modo_sql=modo_sql,
             valor=valor,
             anios=anios,
-            meses=meses,
+            meses=meses,  # ✅ Agregado
             limite=5000
         )
         return df
+
     # ===== COMPARATIVAS =====
     elif tipo == "comparar_proveedor_meses":
         df = sqlq_comparativas.get_comparacion_proveedor_meses(
@@ -2093,6 +2091,20 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
             anios=anios
         )
         _dbg_set_result(df)
+        return df
+
+    # ===== DASHBOARD TOP PROVEEDORES =====
+    elif tipo == "dashboard_top_proveedores":
+        anios = parametros.get("anios", [])
+
+        if not anios:
+            return None
+
+        df = sqlq_compras.get_top_proveedores_por_anios(
+            anios=anios,
+            limite=20
+        )
+
         return df
 
     # ===== STOCK =====
