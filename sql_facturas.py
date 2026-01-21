@@ -117,9 +117,8 @@ def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
         WHERE TRIM("Nro. Comprobante") = %s
           AND TRIM("Nro. Comprobante") <> 'A0000000'
           AND (
-            "Tipo Comprobante" = 'Compra Contado'
-            OR "Tipo Comprobante" ILIKE 'Compra%%'
-            OR "Tipo Comprobante" ILIKE 'Factura%%'
+            "Tipo Comprobante" ILIKE '%Compra%'
+            OR "Tipo Comprobante" ILIKE '%Factura%'
           )
         ORDER BY TRIM("Articulo")
     """
