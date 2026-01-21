@@ -2317,7 +2317,6 @@ def Compras_IA():
     .single-provider-icon {
         width: 40px !important;  /* Más pequeño */
         height: 40px !important;
-        font-size: 1.3rem !important;
     }
     
     .single-provider-name {
@@ -2496,6 +2495,10 @@ def Compras_IA():
 
         elif tipo == "conocimiento":
             respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
+
+        elif tipo == "saludo":
+            st.markdown(resultado.get("mensaje", ""))
+            return
 
         elif tipo == "no_entendido":
             respuesta_content = "🤔 No entendí bien tu pregunta."
