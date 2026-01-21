@@ -57,7 +57,7 @@ def interpretar_stock(pregunta: str) -> Dict:
 
 
 # =====================================================================
-# EJECUTOR POR INTERPRETACIÓN (NUEVO - SIEMPRE DEVUELVE ALGO)
+# EJECUTOR POR INTERPRETACIÓN (SIEMPRE DEVUELVE ALGO)
 # =====================================================================
 def ejecutar_por_interpretacion(resultado):
     """
@@ -93,8 +93,9 @@ def ejecutar_por_interpretacion(resultado):
     # -------------------------
     if tipo == "compras_articulo_anio":
         df = ejecutar_compras_articulo_anio(
-            articulo=params["articulo"],
-            anio=params["anio"]
+            modo_sql=params["modo_sql"],
+            valor=params["valor"],
+            anios=params["anios"]
         )
         return {
             "ok": True,
@@ -235,7 +236,7 @@ MAPEO_FUNCIONES = {
     # 🆕 COMPRAS POR ARTÍCULO
     "compras_articulo_anio": {
         "funcion": "get_compras_articulo_anio",
-        "params": ["articulo", "anios"],
+        "params": ["modo_sql", "valor", "anios"],
     },
 
     # FACTURAS
