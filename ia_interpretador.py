@@ -1301,30 +1301,30 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             return {"tipo": "stock_articulo", "parametros": {"articulo": arts[0]}, "debug": "stock articulo"}
         return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
 
-     # ======================================================
-     # TOP PROVEEDORES POR AÑO
-     # ======================================================
-     if (
-          any(k in texto_lower_original for k in ["top", "ranking", "principales"])
-          and "proveedor" in texto_lower_original
-          and anios
-          and not (meses_yyyymm or meses_nombre)
-     ):
-          top_n = 10
-          if "top" in numeros:
-               try:
-                    top_n = int(numeros[0])
-               except Exception:
-                    pass
+# ======================================================
+# TOP PROVEEDORES POR AÑO
+# ======================================================
+if (
+     any(k in texto_lower_original for k in ["top", "ranking", "principales"])
+     and "proveedor" in texto_lower_original
+     and anios
+     and not (meses_yyyymm or meses_nombre)
+):
+     top_n = 10
+     if "top" in numeros:
+          try:
+               top_n = int(numeros[0])
+          except Exception:
+               pass
 
-          return {
-               "tipo": "dashboard_top_proveedores",
-               "parametros": {
-                    "anio": anios[0],
-                    "top_n": top_n,
-                    "moneda": moneda_param,
-               },
-          }
+     return {
+          "tipo": "dashboard_top_proveedores",
+          "parametros": {
+               "anio": anios[0],
+               "top_n": top_n,
+               "moneda": moneda_param,
+          },
+     }
 
 
     out_ai = _interpretar_con_openai(texto_original)
