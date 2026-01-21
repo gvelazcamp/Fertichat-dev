@@ -1340,7 +1340,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "parametros": {
                 "anio": anios[0],
                 "top_n": top_n,
-                "moneda": moneda_param,
+                "moneda": None,
             },
         }
 
