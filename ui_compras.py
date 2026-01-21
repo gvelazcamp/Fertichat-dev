@@ -2017,7 +2017,6 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     elif tipo == "compras_articulo_anio":
         # ✅ CORREGIDO: Usar "valor" en lugar de "articulo"
-        parametros = resultado.get("parametros", {})
         modo_sql = parametros.get("modo_sql", "LIKE_NORMALIZADO")
         valor = parametros.get("valor", "")
         anios = parametros.get("anios", [])
