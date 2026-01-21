@@ -1257,3 +1257,53 @@ def get_total_compras_por_moneda_todos_anios() -> pd.DataFrame:
         ORDER BY "Año" ASC, monto_total DESC
     """
     return ejecutar_consulta(sql, ())
+
+
+# =========================
+# AGREGADO: get_compras_articulos_anios
+# =========================
+def get_compras_articulos_anios(
+    articulos: list[str],
+    modo_sql: str,
+    anios: list[int],
+    meses: list[str] | None = None,
+    limite: int = 5000
+):
+    if not articulos or not anios:
+        return pd.DataFrame()
+
+    where_art = build_sql_articulo(modo_sql)
+
+    art_clauses = []
+    params = []
+
+    for a in articulos:
+        art_clauses.append(where_art)
+        params.append(f"%{a}%")
+
+    where_anios = f"\"Año\" IN ({','.join(map(str, anios))})"
+
+    where_meses = ""
+    if meses:
+        ph = ",".join(["%s"] * len(meses))
+        where_meses = f" AND TRIM(\"Mes\") IN ({ph})"
+        params.extend(meses)
+
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            TRIM("Nro. Comprobante") AS Nro_Factura,
+            "Fecha",
+            "Cantidad",
+            "Moneda",
+            TRIM("Monto Neto") AS Total
+        FROM chatbot_raw
+        WHERE ({' OR '.join(art_clauses)})
+          AND {where_anios}
+          {where_meses}
+        ORDER BY "Fecha" DESC NULLS LAST
+        LIMIT {limite}
+    """
+
+    return ejecutar_consulta(sql, tuple(params))
