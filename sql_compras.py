@@ -454,6 +454,75 @@ def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
 
 
 # =====================================================================
+# COMPRAS POR ARTÍCULO CON MODOS SQL (NUEVO)
+# =====================================================================
+def build_sql_articulo(modo_sql: str) -> str:
+    """
+    Construye la cláusula WHERE para artículos según el modo.
+    """
+    if modo_sql == "EXACTO":
+        return 'TRIM("Articulo") = %s'
+    
+    if modo_sql == "LIKE_FAMILIA":
+        return 'LOWER(TRIM("Articulo")) LIKE %s'
+    
+    if modo_sql == "LIKE_NORMALIZADO":
+        return """
+        LOWER(
+            REGEXP_REPLACE(
+                "Articulo",
+                '[^a-zA-Z0-9]',
+                '',
+                'g'
+            )
+        ) LIKE %s
+        """
+    
+    raise ValueError(f"Modo SQL '{modo_sql}' no soportado")
+
+def get_compras_articulo_anio(modo_sql: str, valor: str, anios: list[int], limite: int = 5000) -> pd.DataFrame:
+    """
+    Obtiene compras de artículo según modo SQL.
+    """
+    if not valor or not anios:
+        return pd.DataFrame()
+
+    # Construir WHERE para artículo
+    where_art = build_sql_articulo(modo_sql)
+    
+    # Parámetro para artículo
+    if modo_sql in ["LIKE_FAMILIA", "LIKE_NORMALIZADO"]:
+        param_art = f"%{valor}%"
+    else:  # EXACTO
+        param_art = valor
+    
+    # Años
+    anios_str = ', '.join(str(int(a)) for a in anios)
+    where_anios = f'"Año"::int IN ({anios_str})'
+
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            TRIM("Nro. Comprobante") AS Nro_Factura,
+            "Fecha",
+            "Cantidad",
+            "Moneda",
+            TRIM("Monto Neto") AS Total
+        FROM chatbot_raw
+        WHERE {where_art} AND {where_anios}
+        ORDER BY "Fecha" DESC NULLS LAST
+        LIMIT {limite}
+    """
+
+    try:
+        return ejecutar_consulta(sql, (param_art,))
+    except Exception as e:
+        print(f"❌ Error get_compras_articulo_anio: {e}")
+        return pd.DataFrame()
+
+
+# =====================================================================
 # FACTURAS (mantener expresiones complejas donde sea necesario)
 # =====================================================================
 
@@ -673,11 +742,12 @@ def get_total_facturas_proveedor(
     params: List[Any] = []
 
     prov_clauses = []
-    for p in proveedores:
-        p = str(p).strip().lower()
-        if p:
-            prov_clauses.append('LOWER(TRIM(regexp_replace("Cliente / Proveedor", \'[áéíóúÁÉÍÓÚñÑ]\', \'[aeiouAEIOUñN]\', \'g\'))) LIKE %s')
-            params.append(f"%{p}%")
+    if proveedores:  # Solo agregar filtro si hay proveedores reales
+        for p in proveedores:
+            p = str(p).strip().lower()
+            if p:
+                prov_clauses.append('LOWER(TRIM(regexp_replace("Cliente / Proveedor", \'[áéíóúÁÉÍÓÚñÑ]\', \'[aeiouAEIOUñN]\', \'g\'))) LIKE %s')
+                params.append(f"%{p}%")
 
     if prov_clauses:
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
