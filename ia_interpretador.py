@@ -697,7 +697,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # SALUDOS
     # ============================
     if es_saludo(texto_lower_original):
-        usuario = st.session_state.get("usuario_nombre", "👋")
+        usuario = st.session_state.get("nombre", "👋")
 
         return {
             "tipo": "saludo",
