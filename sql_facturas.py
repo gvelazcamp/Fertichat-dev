@@ -19,8 +19,9 @@ from sql_core import (
 def _factura_variantes(nro_factura: str) -> List[str]:
     """
     Genera variantes de números de factura:
-    - "275015"       -> ["275015", "A00275015", "00275015"]
-    - "A00275015"    -> ["A00275015", "00275015", "275015"]
+    - "275015"       -> ["275015", "A00275015", "00275015", "A275015"]
+    - "A00275015"    -> ["A00275015", "00275015", "275015", "A275015"]
+    - "60907"        -> ["60907", "A00060907", "00060907", "A60907", "A0060907"]
     """
     s = (nro_factura or "").strip().upper()
     if not s:
@@ -29,11 +30,12 @@ def _factura_variantes(nro_factura: str) -> List[str]:
     variantes = [s]
 
     if s.isdigit():
-        # Sólo números
-        if len(s) <= 8:
-            variantes.append("A" + s.zfill(8))
+        # Sólo números - generar TODAS las variantes posibles
+        variantes.append("A" + s.zfill(8))      # A00060907
+        variantes.append(s.zfill(8))            # 00060907
+        variantes.append("A" + s)               # A60907
         if len(s) < 8:
-            variantes.append(s.zfill(8))
+            variantes.append("A00" + s)         # A0060907 (por si acaso)
     else:
         # Prefijo letras + dígitos
         i = 0
@@ -43,10 +45,11 @@ def _factura_variantes(nro_factura: str) -> List[str]:
         dig = s[i:]
 
         if dig.isdigit() and dig:
-            variantes.append(dig)
-            variantes.append(dig.lstrip("0") or dig)
+            variantes.append(dig)                   # 60907
+            variantes.append(dig.lstrip("0") or dig)  # 60907
             if pref and len(dig) < 8:
-                variantes.append(pref + dig.zfill(8))
+                variantes.append(pref + dig.zfill(8))  # A00060907
+            variantes.append(pref + dig)            # A60907
 
     out: List[str] = []
     seen = set()
@@ -122,19 +125,32 @@ def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
     """
 
     variantes = _factura_variantes(nro_factura)
+    
+    # DEBUG: Imprimir variantes generadas
+    print(f"🔍 DEBUG FACTURA: Buscando '{nro_factura}'")
+    print(f"🔍 Variantes generadas: {variantes}")
+    
     if not variantes:
+        print("❌ No se generaron variantes")
         return ejecutar_consulta(sql, ("",))
 
+    # Probar primera variante
+    print(f"🔍 Probando variante 1: '{variantes[0]}'")
     df = ejecutar_consulta(sql, (variantes[0],))
     if df is not None and not df.empty:
+        print(f"✅ Encontrada con '{variantes[0]}' ({len(df)} líneas)")
         return df
 
-    for alt in variantes[1:]:
+    # Probar variantes alternativas
+    for i, alt in enumerate(variantes[1:], 2):
+        print(f"🔍 Probando variante {i}: '{alt}'")
         df2 = ejecutar_consulta(sql, (alt,))
         if df2 is not None and not df2.empty:
+            print(f"✅ Encontrada con '{alt}' ({len(df2)} líneas)")
             df2.attrs["nro_factura_fallback"] = alt
             return df2
 
+    print(f"❌ No encontrada con ninguna variante de {variantes}")
     return df if df is not None else pd.DataFrame()
 
 
@@ -630,3 +646,35 @@ def get_facturas_por_rango_monto(
 # WRAPPER – TOTAL FACTURAS POR MONEDA (TODOS LOS AÑOS)
 # =========================
 from sql_compras import get_total_facturas_por_moneda_todos_anios
+
+
+# =========================
+# BÚSQUEDA DE FACTURAS SIMILARES (DEBUG)
+# =========================
+
+def buscar_facturas_similares(patron: str, limite: int = 10) -> pd.DataFrame:
+    """
+    Busca facturas que contengan el patrón dado (útil para debug cuando no se encuentra una factura exacta)
+    """
+    total_expr = _sql_total_num_expr_general()
+    sql = f"""
+        SELECT 
+            TRIM("Nro. Comprobante") AS nro_factura,
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            MIN("Fecha") AS Fecha,
+            COUNT(*) as Lineas,
+            SUM({total_expr}) AS Total
+        FROM chatbot_raw
+        WHERE TRIM("Nro. Comprobante") LIKE %s
+          AND TRIM("Nro. Comprobante") <> 'A0000000'
+          AND (
+            "Tipo Comprobante" = 'Compra Contado'
+            OR "Tipo Comprobante" ILIKE 'Compra%%'
+            OR "Tipo Comprobante" ILIKE 'Factura%%'
+          )
+        GROUP BY TRIM("Nro. Comprobante"), TRIM("Cliente / Proveedor")
+        ORDER BY TRIM("Nro. Comprobante")
+        LIMIT {limite}
+    """
+    
+    return ejecutar_consulta(sql, (f"%{patron}%",))
