@@ -904,10 +904,14 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     # ==========================================
     # MÉTRICAS CON TARJETAS MODERNAS (ocultas si hide_metrics)
     # =========================================
-    # ✅ FIX DEFINITIVO: Top proveedores suma directa desde SQL
-    if "Total_$" in df_view.columns and "Total_USD" in df_view.columns:
-        tot_uyu = float(df_view["Total_$"].fillna(0).sum())
-        tot_usd = float(df_view["Total_USD"].fillna(0).sum())
+# ✅ FIX DEFINITIVO: Top proveedores suma directa desde SQL (case insensitive)
+    cols_lower = [c.lower() for c in df_view.columns]
+    if "total_$" in cols_lower and "total_usd" in cols_lower:
+        # Encontrar los nombres reales de las columnas
+        col_pesos = [c for c in df_view.columns if c.lower() == "total_$"][0]
+        col_usd = [c for c in df_view.columns if c.lower() == "total_usd"][0]
+        tot_uyu = float(df_view[col_pesos].fillna(0).sum())
+        tot_usd = float(df_view[col_usd].fillna(0).sum())
     else:
         tot_uyu = float(
             df_view.loc[
