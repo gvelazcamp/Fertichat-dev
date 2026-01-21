@@ -454,6 +454,21 @@ def get_total_compras_articulo_anio(articulo_like: str, anio: int) -> dict:
 
 
 # =====================================================================
+# GET LISTA ARTÍCULOS (para compatibilidad con ia_interpretador_articulos)
+# =====================================================================
+@st.cache_data(ttl=60 * 60)
+def get_lista_articulos() -> list[str]:
+    """
+    Devuelve la lista de artículos únicos de la BD.
+    """
+    sql = "SELECT DISTINCT TRIM(\"Articulo\") AS art FROM chatbot_raw WHERE TRIM(\"Articulo\") != '' ORDER BY art"
+    df = ejecutar_consulta(sql, ())
+    if df is not None and not df.empty:
+        return df["art"].tolist()
+    return []
+
+
+# =====================================================================
 # COMPRAS POR ARTÍCULO CON MODOS SQL (NUEVO)
 # =====================================================================
 def build_sql_articulo(modo_sql: str) -> str:
