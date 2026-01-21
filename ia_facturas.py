@@ -173,7 +173,7 @@ def interpretar_facturas(pregunta: str) -> Dict:
     
     if nro_factura and any(k in texto for k in ["detalle", "factura", "comprobante"]):
         return {
-            "tipo": "detalle_factura",
+            "tipo": "detalle_factura_numero",  # ✅ CAMBIO AQUÍ: era "detalle_factura"
             "parametros": {"nro_factura": nro_factura},
             "debug": f"detalle factura: {nro_factura}",
         }
