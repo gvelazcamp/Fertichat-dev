@@ -1051,14 +1051,17 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
             TRIM("Cliente / Proveedor") AS Proveedor,
             SUM(
                 CASE
-                    WHEN UPPER(TRIM("Moneda")) IN ('$', 'UYU', 'PESO', 'PESOS')
+                    WHEN UPPER("Moneda") LIKE '%UYU%'
+                      OR UPPER("Moneda") LIKE '%PESO%'
+                      OR "Moneda" LIKE '%$%'
                     THEN {total_expr}
                     ELSE 0
                 END
             ) AS Total_$,
             SUM(
                 CASE
-                    WHEN UPPER(TRIM("Moneda")) IN ('USD', 'U$S', 'US$')
+                    WHEN UPPER("Moneda") LIKE '%USD%'
+                      OR UPPER("Moneda") LIKE '%U$S%'
                     THEN {total_expr}
                     ELSE 0
                 END
