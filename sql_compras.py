@@ -1049,8 +1049,20 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
-            SUM(CASE WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESO') THEN {total_expr} ELSE 0 END) AS Total_$ ,
-            SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'USD', 'US$') THEN {total_expr} ELSE 0 END) AS Total_USD
+            SUM(
+                CASE
+                    WHEN UPPER(TRIM("Moneda")) IN ('$', 'UYU', 'PESO', 'PESOS')
+                    THEN {total_expr}
+                    ELSE 0
+                END
+            ) AS Total_$,
+            SUM(
+                CASE
+                    WHEN UPPER(TRIM("Moneda")) IN ('USD', 'U$S', 'US$')
+                    THEN {total_expr}
+                    ELSE 0
+                END
+            ) AS Total_USD
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" = %s
@@ -1061,6 +1073,7 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
     """
     
     return ejecutar_consulta(sql, (anio, top_n))
+
 
 
 def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
