@@ -1046,25 +1046,36 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
     """Top proveedores por moneda."""
     total_expr = _sql_total_num_expr_general()
     
-    # ✅ FIX: Hacer el filtro de moneda más inclusivo
+    # ✅ FIX: Para "$", sumar TODOS los montos (sin filtro de moneda), para USD filtrar
     if moneda == "$":
-        moneda_filter = "TRIM(\"Moneda\") IN ('$', 'UYU', 'PESO')"
+        sql = f"""
+            SELECT
+                TRIM("Cliente / Proveedor") AS Proveedor,
+                COALESCE(SUM({total_expr}), 0) AS Total
+            FROM chatbot_raw
+            WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+              AND "Año" = %s
+              AND TRIM("Cliente / Proveedor") <> ''
+            GROUP BY TRIM("Cliente / Proveedor")
+            ORDER BY Total DESC
+            LIMIT %s
+        """
     else:
-        moneda_filter = "TRIM(\"Moneda\") IN ('U$S', 'U$$', 'USD')"
+        # Para USD, filtrar
+        sql = f"""
+            SELECT
+                TRIM("Cliente / Proveedor") AS Proveedor,
+                COALESCE(SUM({total_expr}), 0) AS Total
+            FROM chatbot_raw
+            WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+              AND "Año" = %s
+              AND TRIM("Moneda") IN ('U$S', 'U$$', 'USD')
+              AND TRIM("Cliente / Proveedor") <> ''
+            GROUP BY TRIM("Cliente / Proveedor")
+            ORDER BY Total DESC
+            LIMIT %s
+        """
     
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            COALESCE(SUM({total_expr}), 0) AS Total
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año" = %s
-          AND {moneda_filter}
-          AND TRIM("Cliente / Proveedor") <> ''
-        GROUP BY TRIM("Cliente / Proveedor")
-        ORDER BY Total DESC
-        LIMIT %s
-    """
     return ejecutar_consulta(sql, (anio, top_n))
 
 
