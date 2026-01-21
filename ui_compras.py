@@ -2651,15 +2651,20 @@ Escribí lo que necesites 👇
                     )
 
                     if df is not None and not df.empty:
-                        # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
-                        st.session_state["compras_resultado"] = df
-                        st.session_state["compras_titulo"] = "Compras"
+                        # ✅ FILTRAR MANUALMENTE POR AÑO SELECCIONADO (fix para selectbox)
+                        if "Año" in df.columns:
+                            df = df[df["Año"].astype(str) == str(anio_compras)]
+                        
+                        if not df.empty:
+                            # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
+                            st.session_state["compras_resultado"] = df
+                            st.session_state["compras_titulo"] = "Compras"
 
-                        render_dashboard_compras_vendible(df, titulo="Compras")
+                            render_dashboard_compras_vendible(df, titulo="Compras")
+                        else:
+                            st.warning(f"⚠️ No hay datos para el año {anio_compras}.")
                     elif df is not None:
                         st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
-                except Exception as e:
-                    st.error(f"❌ Error en búsqueda: {e}")
 
 
         elif tipo_consulta == "Comparativas":
