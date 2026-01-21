@@ -1049,25 +1049,10 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
-            SUM(
-                CASE
-                    WHEN UPPER("Moneda") LIKE '%UYU%'
-                      OR UPPER("Moneda") LIKE '%PESO%'
-                      OR "Moneda" LIKE '%$%'
-                    THEN {total_expr}
-                    ELSE 0
-                END
-            ) AS Total_$,
-            SUM(
-                CASE
-                    WHEN UPPER("Moneda") LIKE '%USD%'
-                      OR UPPER("Moneda") LIKE '%U$S%'
-                    THEN {total_expr}
-                    ELSE 0
-                END
-            ) AS Total_USD
+            SUM(CASE WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESO') THEN {total_expr} ELSE 0 END) AS Total_$ ,
+            SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'USD', 'US$') THEN {total_expr} ELSE 0 END) AS Total_USD
         FROM chatbot_raw
-        WHERE UPPER(TRIM("Tipo Comprobante")) LIKE 'COMPRA%'
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" = %s
           AND TRIM("Cliente / Proveedor") <> ''
         GROUP BY TRIM("Cliente / Proveedor")
@@ -1076,8 +1061,6 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
     """
     
     return ejecutar_consulta(sql, (anio, top_n))
-
-
 
 
 def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
@@ -1095,7 +1078,6 @@ def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
         ORDER BY Total DESC
     """
     return ejecutar_consulta(sql, (anio,))
-
 
 def get_dashboard_ultimas_compras(anio: int, limite: int = 10) -> pd.DataFrame:
     """Últimas compras recientes."""
