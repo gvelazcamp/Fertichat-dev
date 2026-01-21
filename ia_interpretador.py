@@ -1302,51 +1302,40 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
 
     # ======================================================
-    # TOP PROVEEDORES POR MES
-    # ======================================================
-    if (
-        any(k in texto_lower_original for k in ["top", "ranking", "principales"])
-        and "proveedor" in texto_lower_original
-        and anios
-        and (meses_yyyymm or meses_nombre)
-    ):
-        return {
-            "tipo": "top_proveedores_mes",
-            "parametros": {
-                "anio": anios[0],
-                "mes": meses_yyyymm[0] if meses_yyyymm else None,
-                "moneda": moneda_param,
-            },
-        }
-
-    # ======================================================
     # TOP PROVEEDORES POR AÑO
     # ======================================================
     if (
         any(k in texto_lower_original for k in ["top", "ranking", "principales"])
         and "proveedor" in texto_lower_original
         and anios
-        and not (meses_yyyymm or meses_nombre)
     ):
         top_n = 10
-        if "top" in numeros:
-            try:
-                top_n = int(numeros[0])
-            except Exception:
-                pass
+        match = re.search(r'top\s+(\d+)', texto_lower_original)
+        if match:
+            top_n = int(match.group(1))
+
+        moneda_extraida = _extraer_moneda(texto_lower_original)
+        if moneda_extraida and moneda_extraida.upper() in ("USD", "U$S", "U$$", "US$"):
+            moneda_param = "U$S"
+        else:
+            moneda_param = "$"
+
+        print("\n[INTÉRPRETE] TOP_PROVEEDORES")
+        print(f"  Pregunta : {texto_original}")
+        print(f"  Año      : {anios[0]}")
+        print(f"  Top N    : {top_n}")
+        print(f"  Moneda   : {moneda_param}")
 
         return {
             "tipo": "dashboard_top_proveedores",
             "parametros": {
                 "anio": anios[0],
                 "top_n": top_n,
-                "moneda": None,
+                "moneda": moneda_param,
             },
+            "debug": f"top proveedores por año {anios[0]} en {moneda_param}",
         }
 
-    # ======================================================
-    # FALLBACK IA
-    # ======================================================
     out_ai = _interpretar_con_openai(texto_original)
     if out_ai:
         return out_ai
@@ -1354,19 +1343,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     return {
         "tipo": "no_entendido",
         "parametros": {},
-        "sugerencia": (
-            "Probá: compras roche noviembre 2025 | "
-            "comparar compras roche junio julio 2025 | "
-            "detalle factura 273279 | "
-            "todas las facturas roche 2025 | "
-            "listado facturas 2025 | "
-            "total 2025 | "
-            "total facturas por moneda | "
-            "total compras por moneda | "
-            "comparar 2024 2025"
-        ),
+        "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025 | total 2025 | total facturas por moneda | total compras por moneda | comparar 2024 2025",
         "debug": "no match",
     }
+
 
 # =========================
 # AGENTIC AI - API PÚBLICA (NO EJECUTA SQL)
