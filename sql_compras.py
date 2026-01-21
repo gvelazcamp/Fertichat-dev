@@ -1067,7 +1067,7 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
                 END
             ) AS Total_USD
         FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+        WHERE UPPER(TRIM("Tipo Comprobante")) LIKE 'COMPRA%'
           AND "Año" = %s
           AND TRIM("Cliente / Proveedor") <> ''
         GROUP BY TRIM("Cliente / Proveedor")
@@ -1076,6 +1076,7 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
     """
     
     return ejecutar_consulta(sql, (anio, top_n))
+
 
 
 
