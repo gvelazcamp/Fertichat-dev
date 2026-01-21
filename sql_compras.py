@@ -1,7 +1,3 @@
-#OBSERVACIÓN:
-#TODO BLOQUE QUE DICE SQL FUNCIONA PERFECTO NO MODIFICAR SOLO AGREGAR ALGO SI SE SOLICITA YA QUE FUNCIONAN PERFECTOS
-#POR ENDE NO MODIFICAR EL GET QUE LO LLAMA
-
 # =========================
 # SQL COMPRAS - CONSULTAS TRANSACCIONALES
 # =========================
@@ -1282,35 +1278,4 @@ def get_compras_articulos_anios(
     where_art = build_sql_articulo(modo_sql)
 
     art_clauses = []
-    params = []
-
-    for a in articulos:
-        art_clauses.append(where_art)
-        params.append(f"%{a}%")
-
-    where_anios = f"\"Año\" IN ({','.join(map(str, anios))})"
-
-    where_meses = ""
-    if meses:
-        ph = ",".join(["%s"] * len(meses))
-        where_meses = f" AND TRIM(\"Mes\") IN ({ph})"
-        params.extend(meses)
-
-    sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Articulo") AS Articulo,
-            TRIM("Nro. Comprobante") AS Nro_Factura,
-            "Fecha",
-            "Cantidad",
-            "Moneda",
-            TRIM("Monto Neto") AS Total
-        FROM chatbot_raw
-        WHERE ({' OR '.join(art_clauses)})
-          AND {where_anios}
-          {where_meses}
-        ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT {limite}
-    """
-
-    return ejecutar_consulta(sql, tuple(params))
+    params
