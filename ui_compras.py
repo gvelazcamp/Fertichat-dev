@@ -1965,7 +1965,13 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
     )
 
     # ===== FACTURAS =====
-    if tipo == "detalle_factura":
+    if tipo == "detalle_factura_numero":  # ✅ CORREGIDO: era "detalle_factura"
+        df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
+        _dbg_set_result(df)
+        return df
+    
+    # Mantener compatibilidad con nombre antiguo
+    elif tipo == "detalle_factura":
         df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
         _dbg_set_result(df)
         return df
@@ -2830,4 +2836,4 @@ Escribí lo que necesites 👇
 
 # Ejecutar la función principal si se ejecuta directamente
 if __name__ == "__main__":
-    Compras_IA()  
+    Compras_IA()
