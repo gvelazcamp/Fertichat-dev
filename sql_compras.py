@@ -1049,7 +1049,7 @@ def get_dashboard_top_proveedores(
 ) -> pd.DataFrame:
     """
     Top proveedores por moneda.
-    Ahora acepta filtro opcional por meses.
+    Ahora acepta filtro opcional por meses en formato YYYY-MM.
     
     Args:
         anio: Año a consultar
@@ -1059,19 +1059,12 @@ def get_dashboard_top_proveedores(
     """
     total_expr = _sql_total_num_expr_general()
     
-    # ✅ NUEVO: Construir filtro de mes si se proporciona
+    # ✅ CORREGIDO: Usar el formato completo YYYY-MM directamente
     filtro_mes = ""
     if meses and len(meses) > 0:
-        # Extraer solo el número del mes (MM) de cada entrada YYYY-MM
-        meses_nums = []
-        for mes in meses:
-            if '-' in mes:
-                mes_num = mes.split('-')[1]  # Ej: "2025-11" -> "11"
-                meses_nums.append(int(mes_num))
-        
-        if meses_nums:
-            meses_str = ', '.join(str(m) for m in meses_nums)
-            filtro_mes = f'AND "Mes"::int IN ({meses_str})'
+        # Los meses vienen en formato "2025-11", usar directamente
+        meses_placeholders = ', '.join(['%s'] * len(meses))
+        filtro_mes = f'AND TRIM("Mes") IN ({meses_placeholders})'
     
     sql = f"""
         SELECT
@@ -1088,7 +1081,13 @@ def get_dashboard_top_proveedores(
         LIMIT %s
     """
     
-    return ejecutar_consulta(sql, (anio, top_n))
+    # Construir parámetros
+    if meses:
+        params = (anio, *meses, top_n)
+    else:
+        params = (anio, top_n)
+    
+    return ejecutar_consulta(sql, params)
 
 def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
     """Datos para gráfico de torta por familia."""
