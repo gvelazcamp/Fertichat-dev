@@ -578,7 +578,7 @@ MAPEO_FUNCIONES = {
     "compras_anio": {
         "funcion": "get_compras_anio",
         "params": ["anio"],
-        "resumen": "get_total_compras_anio",
+        # ✅ Removido "resumen" - siempre usar detalle
     },
     "compras_proveedor_mes": {
         "funcion": "get_detalle_compras_proveedor_mes",
