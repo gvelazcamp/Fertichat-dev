@@ -110,7 +110,6 @@ def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
             TRIM("Articulo") AS Articulo,
             "Fecha",
             "Cantidad",
-            "Precio Unitario",
             "Moneda",
             {total_expr} AS Total
         FROM chatbot_raw
