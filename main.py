@@ -39,7 +39,10 @@ import ia_interpretador
 
 print(">>> IA INTERPRETADOR USADO:", ia_interpretador.__file__)
 
-from sql_facturas import get_facturas_proveedor as get_facturas_proveedor_detalle
+from sql_facturas import (
+    get_facturas_proveedor as get_facturas_proveedor_detalle,
+    get_detalle_factura_por_numero,
+)
 from sql_compras import (
     get_compras_proveedor_anio,
     get_detalle_compras_proveedor_mes,
@@ -260,6 +263,40 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
             moneda_label = "USD" if moneda == "U$S" else "pesos"
             return (
                 f"🏭 Top {top_n} proveedores {anio} en {moneda_label}:",
+                formatear_dataframe(df),
+                None,
+            )
+
+        # =========================================================
+        # DETALLE DE FACTURA POR NÚMERO
+        # =========================================================
+        elif tipo == "detalle_factura_numero":
+            nro_factura = params.get("nro_factura", "").strip()
+            
+            if not nro_factura:
+                return "❌ Indicá el número de factura. Ej: detalle factura 60907", None, None
+            
+            df = get_detalle_factura_por_numero(nro_factura)
+            
+            if df is None or df.empty:
+                return f"⚠️ No se encontró la factura número {nro_factura}.", None, None
+            
+            # Obtener info del encabezado
+            proveedor = df["Proveedor"].iloc[0] if "Proveedor" in df.columns else "N/A"
+            fecha = df["Fecha"].iloc[0] if "Fecha" in df.columns else "N/A"
+            moneda = df["Moneda"].iloc[0] if "Moneda" in df.columns else ""
+            
+            # Calcular totales si hay múltiples artículos
+            total_lineas = len(df)
+            
+            mensaje = f"📄 **Factura {nro_factura}**\n"
+            mensaje += f"🏢 Proveedor: **{proveedor}**\n"
+            mensaje += f"📅 Fecha: {fecha}\n"
+            mensaje += f"💰 Moneda: {moneda}\n"
+            mensaje += f"📦 {total_lineas} artículo(s)\n"
+            
+            return (
+                mensaje,
                 formatear_dataframe(df),
                 None,
             )
