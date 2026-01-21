@@ -523,7 +523,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
             model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": _get_system_prompt()},
-                {"role": "user", "content": pregunta},
+                {"user": "content": pregunta},
             ],
             temperature=0.1,
             max_tokens=500,
@@ -825,86 +825,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "debug": "compras articulo + año"
         }
 
-    # =====================================================================
-    # AGREGAR ESTE BLOQUE ANTES DEL BLOQUE "COMPRAS" (línea ~580)
-    # =====================================================================
-
-    # --- BLOQUE VIEJO DESACTIVADO ---
-    #     # ✅ NUEVO: COMPRAS ARTÍCULO + AÑO (antes de proveedores)
-    #     # Detectar si es artículo consultando BD PRIMERO
-    #     if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original) and anios:
-    #         # Buscar artículos en BD
-    #         idx_prov, idx_art = _get_indices()
-    #         arts_bd = _match_best(texto_lower, idx_art, max_items=1)
-    #         
-    #         # 🆕 FIX: Validación para no confundir años con artículos
-    #         if arts_bd:
-    #             articulo_candidato = arts_bd[0]
-    #             # No es un número puro, no contiene años, no es muy corto
-    #             if (articulo_candidato.strip().isdigit() or 
-    #                 len(articulo_candidato.strip()) < 3 or 
-    #                 any(str(a) in articulo_candidato.lower() for a in [2023, 2024, 2025, 2026])):
-    #                 arts_bd = None  # Invalidar
-    #         
-    #         # 🆕 FIX: Si no encontró, forzar búsqueda de "vitek" si aparece en la query
-    #         if not arts_bd and "vitek" in texto_lower_original.lower():
-    #             sql_sub = '''
-    #                 SELECT DISTINCT TRIM("Articulo") AS art
-    #                 FROM chatbot_raw
-    #                 WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
-    #                   AND TRIM("Articulo") != ''
-    #                 ORDER BY art
-    #                 LIMIT 1
-    #             '''
-    #             df_sub = ejecutar_consulta(sql_sub, ('%vitek%',))
-    #             if df_sub is not None and not df_sub.empty:
-    #                 arts_bd = [df_sub.iloc[0]['art']]
-    #         
-    #         # 🆕 FIX: Si no encontró exacto, buscar por substring usando tokens relevantes
-    #         if not arts_bd:
-    #             tokens = _tokens(texto_lower_original)  # Usar original para tokens limpios
-    #             ignorar_tokens = {"compras", "compra", "2023", "2024", "2025", "2026"}
-    #             for tk in tokens:
-    #                 if tk not in ignorar_tokens and len(tk) >= 3:
-    #                     sql_sub = '''
-    #                         SELECT DISTINCT TRIM("Articulo") AS art
-    #                         FROM chatbot_raw
-    #                         WHERE LOWER(TRIM("Articulo")) LIKE LOWER(%s)
-    #                           AND TRIM("Articulo") != ''
-    #                         ORDER BY art
-    #                         LIMIT 1
-    #                     '''
-    #                     df_sub = ejecutar_consulta(sql_sub, (f"%{tk}%",))
-    #                     if df_sub is not None and not df_sub.empty:
-    #                         arts_bd = [df_sub.iloc[0]['art']]
-    #                         break  # Tomar el primero que encuentre
-    #         
-    #         # Si encontró artículo en BD y NO encontró proveedor
-    #         if arts_bd and not provs:
-    #             articulo = arts_bd[0]
-    #             anio = anios[0]
-    #             
-    #             print("\n[INTÉRPRETE] COMPRAS_ARTICULO_ANIO")
-    #             print(f"  Pregunta : {texto_original}")
-    #             print(f"  Artículo : {articulo}")
-    #             print(f"  Año      : {anio}")
-    #             
-    #             try:
-    #                 st.session_state["DBG_INT_LAST"] = {
-    #                     "pregunta": texto_original,
-    #                     "tipo": "compras_articulo_anio",
-    #                     "parametros": {"articulo": articulo, "anio": anio},
-    #                     "debug": f"compras artículo {articulo} año {anio}",
-    #                 }
-    #             except Exception:
-    #                 pass
-    #             
-    #             return {
-    #                 "tipo": "compras_articulo_anio",
-    #                 "parametros": {"articulo": articulo, "anio": anio},
-    #                 "debug": f"compras artículo {articulo} año {anio}",
-    #             }
-
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
 
@@ -1040,21 +960,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if proveedores_multiples:
             provs = proveedores_multiples  # Usar los múltiples
 
-        # =========================================================
-        # COMPRAS POR ARTÍCULO + AÑO
-        # Prioridad sobre proveedor
-        # =========================================================
-        articulo = arts[0] if arts else None
-        if "compras" in texto_lower and anios and articulo:
-            return {
-                "tipo": "compras_articulo_anio",
-                "parametros": {
-                    "articulo": articulo,
-                    "anio": anios[0],
-                },
-                "debug": "compras articulo + año (forzado)",
-            }
-
         # ============================
         # COMPRAS POR ARTÍCULO + AÑO
         # ============================
@@ -1063,8 +968,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "tipo": "compras_articulo_anio",
                 "parametros": {
                     "articulo": arts[0],
-                    "anio": anios[0],
-                    "limite": 5000,
+                    "anios": anios
                 },
                 "debug": "compras por articulo y año",
             }
@@ -1420,7 +1324,7 @@ def agentic_decidir(pregunta: str) -> Dict[str, Any]:
 
 def agentic_es_ejecutable(decision: Dict[str, Any]) -> bool:
     """
-    True si la decisión tiene tipo válido para el router/orquestador.
+    True si la decisión tiene tipo válido para el orquestador.
     No ejecuta nada: solo valida formato mínimo.
     """
     if not isinstance(decision, dict):
