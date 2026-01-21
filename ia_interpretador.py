@@ -248,6 +248,22 @@ def detectar_articulo_valido(tokens, catalogo_articulos):
                 return art
     return None
 
+def es_saludo(texto: str) -> bool:
+    saludos = [
+        "hola",
+        "buenas",
+        "buen día",
+        "buen dia",
+        "buenas tardes",
+        "buenas noches",
+        "como andas",
+        "como estás",
+        "qué tal",
+        "que tal"
+    ]
+    t = texto.lower().strip()
+    return any(t.startswith(s) or s in t for s in saludos)
+
 # =====================================================================
 # HELPERS DE KEYWORDS
 # =====================================================================
@@ -603,7 +619,7 @@ MAPEO_FUNCIONES = {
     },
     "comparar_proveedores_meses": {
         "funcion": "get_comparacion_proveedores_meses",
-        "params": ["proveedores", "mes1", "mes2", "label1", "label2"],
+        "parametros": ["proveedores", "mes1", "mes2", "label1", "label2"],
     },
     "comparar_proveedores_anios": {
         "funcion": "get_comparacion_proveedores_anios",
@@ -683,6 +699,26 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
+
+    # ============================
+    # SALUDOS
+    # ============================
+    if es_saludo(texto_lower_original):
+        usuario = st.session_state.get("usuario_nombre", "👋")
+
+        return {
+            "tipo": "saludo",
+            "mensaje": (
+                f"Hola **{usuario}** 👋\n\n"
+                "¿En qué puedo ayudarte hoy?\n\n"
+                "Puedo ayudarte con:\n"
+                "• 🛒 **Compras**\n"
+                "• 📦 **Stock**\n"
+                "• 📊 **Comparativas**\n"
+                "• 🧪 **Artículos**\n\n"
+                "Escribí lo que necesites 👇"
+            )
+        }
 
     # FAST-PATH: listado facturas por año
     if re.search(r"\b(listado|lista)\b", texto_lower_original) and re.search(r"\bfacturas?\b", texto_lower_original):
