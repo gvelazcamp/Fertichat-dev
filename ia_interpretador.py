@@ -154,20 +154,11 @@ def _tokens(texto: str) -> List[str]:
     return out
 
 def normalizar_texto(texto: str) -> str:
-    if not texto:
-        return ""
-
-    ruido = ["gonzalo", "daniela", "andres", "sndres", "juan", "quiero", "por favor", "las", "los", "una", "un"]
-    texto = texto.lower().strip()
-    for r in ruido:
-        texto = re.sub(fr"\b{re.escape(r)}\b", "", texto)
-
-    texto = "".join(
-        c
-        for c in unicodedata.normalize("NFD", texto)
-        if unicodedata.category(c) != "Mn"
-    )
-    texto = re.sub(r"[^\w\s]", "", texto)
+    texto = texto.lower()
+    texto = unicodedata.normalize("NFD", texto)
+    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
+    texto = re.sub(r"(.)\1{1,}", r"\1", texto)  # elimina letras repetidas
+    texto = re.sub(r"[^a-z0-9 ]+", " ", texto)
     texto = re.sub(r"\s+", " ", texto).strip()
     return texto
 
@@ -699,6 +690,8 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
+
+    texto_norm = normalizar_texto(texto_original)
 
     # ============================
     # SALUDOS
@@ -1312,12 +1305,12 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # TOP PROVEEDORES POR AÑO
     # ======================================================
     if (
-        any(k in texto_lower_original for k in ["top", "ranking", "principales"])
-        and "proveedor" in texto_lower_original
+        any(k in texto_norm for k in ["top", "ranking", "principales"])
+        and "proveedor" in texto_norm
         and anios
     ):
         top_n = 10
-        match = re.search(r'top\s+(\d+)', texto_lower_original)
+        match = re.search(r'top\s+(\d+)', texto_norm)
         if match:
             top_n = int(match.group(1))
 
