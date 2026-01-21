@@ -60,6 +60,13 @@ NOMBRES_PERSONALES_EXCLUIR = [
 ]
 
 # =====================================================================
+# EXCLUSIÓN DE PALABRAS CLAVE DE ARTÍCULOS PARA NO CONFUNDIR CON PROVEEDORES
+# =====================================================================
+PALABRAS_CLAVE_ARTICULOS = [
+    "vitek", "ast", "gn", "id20", "test", "kit", "coba", "elecsys"
+]
+
+# =====================================================================
 # ALIAS / SINÓNIMOS DE PROVEEDOR (fallback cuando BD falla)
 # =====================================================================
 ALIAS_PROVEEDOR = {
@@ -214,11 +221,17 @@ def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
     for tk in toks:
         if not tk or tk in ignorar:
             continue
+        # EXCLUSIÓN: Si es palabra clave de artículo, no considerarlo proveedor
+        if tk in PALABRAS_CLAVE_ARTICULOS:
+            continue
         if tk in ALIAS_PROVEEDOR:
             return ALIAS_PROVEEDOR[tk]
 
     for tk in toks:
         if not tk or tk in ignorar:
+            continue
+        # EXCLUSIÓN: Si es palabra clave de artículo, no considerarlo proveedor
+        if tk in PALABRAS_CLAVE_ARTICULOS:
             continue
         if len(tk) >= 3:
             return tk
