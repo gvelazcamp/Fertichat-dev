@@ -1302,6 +1302,24 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
 
     # ======================================================
+    # TOP PROVEEDORES POR MES
+    # ======================================================
+    if (
+        any(k in texto_lower_original for k in ["top", "ranking", "principales"])
+        and "proveedor" in texto_lower_original
+        and anios
+        and (meses_yyyymm or meses_nombre)
+    ):
+        return {
+            "tipo": "top_proveedores_mes",
+            "parametros": {
+                "anio": anios[0],
+                "mes": meses_yyyymm[0] if meses_yyyymm else None,
+                "moneda": moneda_param,
+            },
+        }
+
+    # ======================================================
     # TOP PROVEEDORES POR AÑO
     # ======================================================
     if (
