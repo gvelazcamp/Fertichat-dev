@@ -2654,6 +2654,8 @@ Escribí lo que necesites 👇
                         # ✅ FILTRAR MANUALMENTE POR AÑO SELECCIONADO (fix para selectbox)
                         if "Año" in df.columns:
                             df = df[df["Año"].astype(str) == str(anio_compras)]
+                            st.write(f"🔍 DEBUG: Años en el DF después del filtro: {df['Año'].unique()}")  # ← ESTA LÍNEA
+                            st.write(f"🔍 DEBUG: Total de filas después del filtro: {len(df)}")  # ← Y ESTA
                         
                         if not df.empty:
                             # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
