@@ -1045,7 +1045,13 @@ def get_dashboard_compras_por_mes(anio: int) -> pd.DataFrame:
 def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$") -> pd.DataFrame:
     """Top proveedores por moneda."""
     total_expr = _sql_total_num_expr_general()
-    moneda_filter = f"TRIM(\"Moneda\") = '{moneda}'" if moneda == "$" else f"TRIM(\"Moneda\") IN ('U$S', 'U$$')"
+    
+    # ✅ FIX: Hacer el filtro de moneda más inclusivo
+    if moneda == "$":
+        moneda_filter = "TRIM(\"Moneda\") IN ('$', 'UYU', 'PESO')"
+    else:
+        moneda_filter = "TRIM(\"Moneda\") IN ('U$S', 'U$$', 'USD')"
+    
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
