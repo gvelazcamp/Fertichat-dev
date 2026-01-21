@@ -2714,14 +2714,14 @@ Escribí lo que necesites 👇
             # Barra de acciones en una sola fila horizontal - MODIFICADA
             col_cmp, col_clr, col_csv, col_xls = st.columns(4)  # Equal size for all buttons
             
-             with col_cmp:
+            with col_cmp:
                 btn_compare = st.button(
                     "🔍 Comparar",
                     key="btn_comparar_horizontal",
                     use_container_width=True
                 )
 
-             if btn_compare:
+            if btn_compare:
                 st.session_state["tipo_consulta"] = "Comparativas"
 
             
