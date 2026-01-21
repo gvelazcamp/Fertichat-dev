@@ -2632,7 +2632,7 @@ Escribí lo que necesites 👇
                 
                 render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
                 
-            # ✅ BOTÓN PARA LIMPIAR PRIMERO (antes de mostrar resultados)
+# ✅ BOTÓN PARA LIMPIAR PRIMERO (antes de mostrar resultados)
             if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
                 if "compras_resultado" in st.session_state:
                     del st.session_state["compras_resultado"]
@@ -2645,7 +2645,7 @@ Escribí lo que necesites 👇
                 df_guardado = st.session_state["compras_resultado"]
                 titulo_guardado = st.session_state.get("compras_titulo", "Compras")
                 
-                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
+                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado, key_prefix="guardado_")
             
             if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
                 # ✅ PAUSAR AUTOREFRESH AL PRESIONAR BOTÓN DE BÚSQUEDA
