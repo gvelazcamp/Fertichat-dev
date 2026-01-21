@@ -57,6 +57,18 @@ def interpretar_stock(pregunta: str) -> Dict:
 
 
 # =====================================================================
+# DETECTOR SIMPLE DE ARTÍCULOS
+# =====================================================================
+def detecta_articulo_simple(texto: str) -> bool:
+    """
+    Detección simple: si contiene palabras clave de artículos conocidos.
+    """
+    texto_lower = texto.lower()
+    keywords_articulos = ["vitek", "roche", "coba", "elecsys", "ast", "n422", "gn", "id20", "test", "kit"]
+    return any(k in texto_lower for k in keywords_articulos)
+
+
+# =====================================================================
 # EJECUTOR POR INTERPRETACIÓN (SIEMPRE DEVUELVE ALGO)
 # =====================================================================
 def ejecutar_por_interpretacion(resultado):
@@ -132,12 +144,18 @@ def interpretar_pregunta(pregunta: str) -> Dict:
         }
 
     texto_lower = str(pregunta).lower().strip()
+    texto_normalizado = re.sub(r'[^\w\s]', ' ', texto_lower).strip()  # Normalizar para búsqueda
 
     # Saludos / conversación
     saludos = {"hola", "buenas", "buenos", "gracias", "ok", "dale", "perfecto", "genial"}
     if any(re.search(rf"\b{re.escape(w)}\b", texto_lower) for w in saludos):
         if not any(k in texto_lower for k in ["compra", "compras", "compar", "stock", "factura", "facturas"]):
             return {"tipo": "conversacion", "parametros": {}, "debug": "saludo"}
+
+    # Paso 1 — Regla simple para artículos (ANTES de ia_interpretador.py)
+    if "articulo" in texto_normalizado or detecta_articulo_simple(pregunta):
+        from ia_interpretador_articulos import interpretar_articulo as interpretar_articulos
+        return interpretar_articulos(pregunta)
 
     # ROUTING POR KEYWORDS (orden importa)
     
