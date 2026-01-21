@@ -2632,7 +2632,7 @@ Escribí lo que necesites 👇
                 
                 render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
                 
-# ✅ BOTÓN PARA LIMPIAR PRIMERO (antes de mostrar resultados)
+            # ✅ BOTÓN PARA LIMPIAR PRIMERO (antes de mostrar resultados)
             if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
                 if "compras_resultado" in st.session_state:
                     del st.session_state["compras_resultado"]
@@ -2668,7 +2668,7 @@ Escribí lo que necesites 👇
                             # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
                             st.session_state["compras_resultado"] = df
                             st.session_state["compras_titulo"] = "Compras"
-                            render_dashboard_compras_vendible(df, titulo="Compras")
+                            st.rerun()
                         else:
                             st.warning(f"⚠️ No hay datos para el año {anio_compras}.")
                     elif df is not None:
