@@ -1279,3 +1279,29 @@ def get_compras_articulos_anios(
 
     art_clauses = []
     params
+
+# =========================
+# get_top_proveedores_por_anios
+# =========================
+def get_top_proveedores_por_anios(anios: list[int], limite: int = 20) -> pd.DataFrame:
+    """
+    Devuelve top proveedores por monto total acumulado en múltiples años.
+    """
+    if not anios:
+        return pd.DataFrame()
+
+    total_expr = _sql_total_num_expr_general()
+    anios_str = ', '.join(str(int(a)) for a in anios)
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            COALESCE(SUM({total_expr}), 0) AS Total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año"::int IN ({anios_str})
+          AND TRIM("Cliente / Proveedor") <> ''
+        GROUP BY TRIM("Cliente / Proveedor")
+        ORDER BY Total DESC
+        LIMIT {limite}
+    """
+    return ejecutar_consulta(sql, ())
