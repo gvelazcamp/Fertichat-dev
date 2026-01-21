@@ -2,6 +2,16 @@ import re
 from typing import Dict, List, Any
 
 # =====================================================================
+# MESES MAP (para normalizar nombres a YYYY-MM)
+# =====================================================================
+MESES_MAP = {
+    "enero": "01", "febrero": "02", "marzo": "03", "abril": "04",
+    "mayo": "05", "junio": "06", "julio": "07", "agosto": "08",
+    "septiembre": "09", "setiembre": "09", "octubre": "10",
+    "noviembre": "11", "diciembre": "12",
+}
+
+# =====================================================================
 # ALIASES DE ARTÍCULOS (MÍNIMO PARA FUNCIONAR)
 # =====================================================================
 ARTICULO_ALIASES = {
@@ -20,16 +30,6 @@ ARTICULO_ALIASES = {
 # =====================================================================
 FAMILIAS_VALIDAS = {
     "test", "kit", "coba", "elecsys"
-}
-
-# =====================================================================
-# MESES DICCIONARIO
-# =====================================================================
-MESES_DICT = {
-    "enero": "01", "febrero": "02", "marzo": "03", "abril": "04",
-    "mayo": "05", "junio": "06", "julio": "07", "agosto": "08",
-    "septiembre": "09", "setiembre": "09", "octubre": "10",
-    "noviembre": "11", "diciembre": "12",
 }
 
 # =====================================================================
@@ -61,16 +61,19 @@ def _extraer_meses(texto: str) -> List[str]:
     out.extend(meses_yyyymm)
     return list(set(out))
 
-def _convertir_meses(meses: List[str], anios: List[int]) -> List[str]:
-    """Convierte nombres de meses a formato YYYY-MM usando los años proporcionados."""
-    out = []
-    for a in anios:
-        for m in meses:
-            if m in MESES_DICT:
-                out.append(f"{a}-{MESES_DICT[m]}")
-            elif '-' in m:  # Ya en formato YYYY-MM
-                out.append(m)
-    return list(set(out))  # Unicos
+def normalizar_meses(meses: List[str], anios: List[int]) -> List[str]:
+    """
+    Convierte ['noviembre'] + [2025] → ['2025-11']
+    """
+    if not meses or not anios:
+        return []
+    meses_norm = []
+    for anio in anios:
+        for mes in meses:
+            m = MESES_MAP.get(mes.lower())
+            if m:
+                meses_norm.append(f"{anio}-{m}")
+    return list(set(meses_norm))  # Eliminar duplicados
 
 def detectar_articulo(tokens, catalogo_articulos):
     for token in tokens:
@@ -125,6 +128,9 @@ def interpretar_articulo(texto: str, anios: List[int] = None, meses: List[str] =
 
             print(f"  Alias encontrado: '{t}' -> {config} | Modo SQL: {modo_sql}")
 
+            # ✅ NORMALIZAR MESES ANTES DE RETORNAR
+            meses_norm = normalizar_meses(meses, anios) if meses else None
+
             if anios:
                 return {
                     "tipo": "compras_articulo_anio",
@@ -132,23 +138,21 @@ def interpretar_articulo(texto: str, anios: List[int] = None, meses: List[str] =
                         "modo_sql": modo_sql,
                         "valor": valor,
                         "anios": anios,
-                        "meses": _convertir_meses(meses, anios) if meses else None  # ✅ Agregado
+                        "meses": meses_norm  # ✅ Normalizado
                     },
-                    "debug": f"alias '{t}' ({tipo}) + años {anios} | modo: {modo_sql}"
+                    "debug": f"alias '{t}' ({tipo}) + años {anios} + meses {meses_norm} | modo: {modo_sql}"
                 }
 
-            if meses:
-                # Si hay meses pero no años, usar años por defecto o extraer de texto
-                default_anios = anios if anios else _extraer_anios(texto) if _extraer_anios(texto) else [2025]
+            if meses_norm:
                 return {
-                    "tipo": "compras_articulo_anio",
+                    "tipo": "compras_articulo_anio",  # ✅ Cambiado a anio para usar la misma función SQL
                     "parametros": {
                         "modo_sql": modo_sql,
                         "valor": valor,
-                        "anios": default_anios,
-                        "meses": _convertir_meses(meses, default_anios)
+                        "anios": anios if anios else [2025],  # Default si no hay años
+                        "meses": meses_norm
                     },
-                    "debug": f"alias '{t}' ({tipo}) + meses {meses} | modo: {modo_sql}"
+                    "debug": f"alias '{t}' ({tipo}) + meses {meses_norm} | modo: {modo_sql}"
                 }
 
             return {
@@ -156,8 +160,7 @@ def interpretar_articulo(texto: str, anios: List[int] = None, meses: List[str] =
                 "parametros": {
                     "modo_sql": modo_sql,
                     "valor": valor,
-                    "anios": [2025],  # Default a 2025 si no hay tiempo
-                    "meses": None
+                    "anios": [2025]  # Default a 2025 si no hay tiempo
                 },
                 "debug": f"alias '{t}' ({tipo}) + default 2025 | modo: {modo_sql}"
             }
@@ -178,6 +181,9 @@ def interpretar_articulo(texto: str, anios: List[int] = None, meses: List[str] =
             # Para artículos de BD, usar LIKE_NORMALIZADO (búsqueda exacta)
             modo_sql = "LIKE_NORMALIZADO"
 
+            # ✅ NORMALIZAR MESES ANTES DE RETORNAR
+            meses_norm = normalizar_meses(meses, anios) if meses else None
+
             if anios:
                 return {
                     "tipo": "compras_articulo_anio",
@@ -185,22 +191,21 @@ def interpretar_articulo(texto: str, anios: List[int] = None, meses: List[str] =
                         "modo_sql": modo_sql,
                         "valor": articulo,
                         "anios": anios,
-                        "meses": _convertir_meses(meses, anios) if meses else None
+                        "meses": meses_norm  # ✅ Normalizado
                     },
-                    "debug": f"BD '{articulo}' + años {anios} | modo: {modo_sql}"
+                    "debug": f"BD '{articulo}' + años {anios} + meses {meses_norm} | modo: {modo_sql}"
                 }
 
-            if meses:
-                default_anios = anios if anios else _extraer_anios(texto) if _extraer_anios(texto) else [2025]
+            if meses_norm:
                 return {
-                    "tipo": "compras_articulo_anio",
+                    "tipo": "compras_articulo_anio",  # ✅ Cambiado a anio
                     "parametros": {
                         "modo_sql": modo_sql,
                         "valor": articulo,
-                        "anios": default_anios,
-                        "meses": _convertir_meses(meses, default_anios)
+                        "anios": anios if anios else [2025],
+                        "meses": meses_norm
                     },
-                    "debug": f"BD '{articulo}' + meses {meses} | modo: {modo_sql}"
+                    "debug": f"BD '{articulo}' + meses {meses_norm} | modo: {modo_sql}"
                 }
 
             return {
@@ -208,8 +213,7 @@ def interpretar_articulo(texto: str, anios: List[int] = None, meses: List[str] =
                 "parametros": {
                     "modo_sql": modo_sql,
                     "valor": articulo,
-                    "anios": [2025],
-                    "meses": None
+                    "anios": [2025]
                 },
                 "debug": f"BD '{articulo}' + default 2025 | modo: {modo_sql}"
             }
