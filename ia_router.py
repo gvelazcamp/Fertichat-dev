@@ -116,6 +116,18 @@ def ejecutar_por_interpretacion(resultado):
         }
 
     # -------------------------
+    # ✅ AGREGADO: COMPRAS ARTÍCULOS ANIOS (MÚLTIPLES)
+    # -------------------------
+    elif tipo == "compras_articulos_anios":
+        from sql_compras import get_compras_articulos_anios
+        df = get_compras_articulos_anios(**params)
+        return {
+            "ok": True,
+            "tipo": tipo,
+            "df": df
+        }
+
+    # -------------------------
     # FALLBACK
     # -------------------------
     return {
