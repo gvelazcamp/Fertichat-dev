@@ -1049,17 +1049,8 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
     sql = f"""
         SELECT
             TRIM("Cliente / Proveedor") AS Proveedor,
-            SUM(CASE WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESO') THEN {total_expr} ELSE 0 END) AS Total_$,
-            SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'USD', 'US$') THEN {total_expr} ELSE 0 END) AS Total_USD,
-            -- ✅ AGREGAR COLUMNA "Total" PARA QUE EL DASHBOARD LA RECONOZCA
-            SUM({total_expr}) AS Total,
-            -- ✅ AGREGAR COLUMNA "Moneda" PARA QUE EL DASHBOARD DETECTE LA MONEDA
-            CASE 
-                WHEN SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'USD', 'US$') THEN {total_expr} ELSE 0 END) > 
-                     SUM(CASE WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESO') THEN {total_expr} ELSE 0 END) 
-                THEN 'U$S'
-                ELSE '$'
-            END AS Moneda
+            SUM(CASE WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESO') THEN {total_expr} ELSE 0 END) AS Total_$ ,
+            SUM(CASE WHEN TRIM("Moneda") IN ('U$S', 'USD', 'US$') THEN {total_expr} ELSE 0 END) AS Total_USD
         FROM chatbot_raw
         WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
           AND "Año" = %s
@@ -1070,6 +1061,40 @@ def get_dashboard_top_proveedores(anio: int, top_n: int = 10, moneda: str = "$")
     """
     
     return ejecutar_consulta(sql, (anio, top_n))
+
+
+def get_dashboard_gastos_familia(anio: int) -> pd.DataFrame:
+    """Datos para gráfico de torta por familia."""
+    # Asumiendo que hay una columna "Familia" o similar; ajusta según tu esquema
+    total_expr = _sql_total_num_expr_general()
+    sql = f"""
+        SELECT
+            COALESCE(TRIM("Familia"), 'Sin Clasificar') AS Familia,
+            COALESCE(SUM({total_expr}), 0) AS Total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año" = %s
+        GROUP BY COALESCE(TRIM("Familia"), 'Sin Clasificar')
+        ORDER BY Total DESC
+    """
+    return ejecutar_consulta(sql, (anio,))
+
+def get_dashboard_ultimas_compras(anio: int, limite: int = 10) -> pd.DataFrame:
+    """Últimas compras recientes."""
+    total_expr = _sql_total_num_expr_general()
+    sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            "Fecha",
+            {total_expr} AS Total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+        AND "Año"::int = %s
+        ORDER BY "Fecha" DESC NULLS LAST
+        LIMIT %s
+    """
+    return ejecutar_consulta(sql, (anio, limite))
 
 # =========================
 # WRAPPER – COMPATIBILIDAD MENÚ COMPARATIVAS
