@@ -901,61 +901,61 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     </div>
     """, unsafe_allow_html=True)
 
-     # ==========================================
-     # MÉTRICAS CON TARJETAS MODERNAS (ocultas si hide_metrics)
-     # =========================================
-     # ✅ FIX DEFINITIVO: Top proveedores suma directa desde SQL
-     if "Total_$" in df_view.columns and "Total_USD" in df_view.columns:
-          tot_uyu = float(df_view["Total_$"].fillna(0).sum())
-          tot_usd = float(df_view["Total_USD"].fillna(0).sum())
-     else:
-          tot_uyu = float(
-               df_view.loc[
-                    df_view["__moneda_view__"] == "UYU",
-                    "__total_num__"
-               ].sum()
-          )
-          tot_usd = float(
-               df_view.loc[
-                    df_view["__moneda_view__"] == "USD",
-                    "__total_num__"
-               ].sum()
-          )
-          # FIX: Si no hay columna moneda (como en comparaciones),
-          # mostrar total general en UYU
-          if not col_moneda:
-               tot_uyu = float(df_view["__total_num__"].sum())
-               tot_usd = 0.0
+    # ==========================================
+    # MÉTRICAS CON TARJETAS MODERNAS (ocultas si hide_metrics)
+    # =========================================
+    # ✅ FIX DEFINITIVO: Top proveedores suma directa desde SQL
+    if "Total_$" in df_view.columns and "Total_USD" in df_view.columns:
+        tot_uyu = float(df_view["Total_$"].fillna(0).sum())
+        tot_usd = float(df_view["Total_USD"].fillna(0).sum())
+    else:
+        tot_uyu = float(
+            df_view.loc[
+                df_view["__moneda_view__"] == "UYU",
+                "__total_num__"
+            ].sum()
+        )
+        tot_usd = float(
+            df_view.loc[
+                df_view["__moneda_view__"] == "USD",
+                "__total_num__"
+            ].sum()
+        )
+        # FIX: Si no hay columna moneda (como en comparaciones),
+        # mostrar total general en UYU
+        if not col_moneda:
+            tot_uyu = float(df_view["__total_num__"].sum())
+            tot_usd = 0.0
 
-     st.markdown(
-          f"""
-          <div class="fc-metrics-grid">
-               <div class="fc-metric-card">
-                    <p class="fc-metric-label">Total UYU 💰</p>
-                    <p class="fc-metric-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
-                    <p class="fc-metric-help">Valor exacto: $ {tot_uyu:,.2f}</p>
-               </div>
-               <div class="fc-metric-card">
-                    <p class="fc-metric-label">Total USD 💵</p>
-                    <p class="fc-metric-value">{_fmt_compact_money(tot_usd, "USD")}</p>
-                    <p class="fc-metric-help">Valor exacto: U$S {tot_usd:,.2f}</p>
-               </div>
-               <div class="fc-metric-card">
-                    <p class="fc-metric-label">
-                         {"Facturas 📄" if col_nro else "Registros 📄"}
-                    </p>
-                    <p class="fc-metric-value">
-                         {facturas if col_nro else filas_total}
-                    </p>
-               </div>
-               <div class="fc-metric-card">
-                    <p class="fc-metric-label">Proveedores 🏭</p>
-                    <p class="fc-metric-value">{proveedores}</p>
-               </div>
-          </div>
-          """,
-          unsafe_allow_html=True
-     )
+    st.markdown(
+        f"""
+        <div class="fc-metrics-grid">
+            <div class="fc-metric-card">
+                <p class="fc-metric-label">Total UYU 💰</p>
+                <p class="fc-metric-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
+                <p class="fc-metric-help">Valor exacto: $ {tot_uyu:,.2f}</p>
+            </div>
+            <div class="fc-metric-card">
+                <p class="fc-metric-label">Total USD 💵</p>
+                <p class="fc-metric-value">{_fmt_compact_money(tot_usd, "USD")}</p>
+                <p class="fc-metric-help">Valor exacto: U$S {tot_usd:,.2f}</p>
+            </div>
+            <div class="fc-metric-card">
+                <p class="fc-metric-label">
+                    {"Facturas 📄" if col_nro else "Registros 📄"}
+                </p>
+                <p class="fc-metric-value">
+                    {facturas if col_nro else filas_total}
+                </p>
+            </div>
+            <div class="fc-metric-card">
+                <p class="fc-metric-label">Proveedores 🏭</p>
+                <p class="fc-metric-value">{proveedores}</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     # ============================================================
     # SIN FILTROS (mostrar todo)
