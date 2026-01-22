@@ -4,9 +4,7 @@ from datetime import datetime
 from typing import Optional
 from imports_globales import *
 
-# ✅ CAMBIO: Usar ia_router en lugar de ia_interpretador (viejo)
-from ia_router import interpretar_pregunta, obtener_info_tipo
-# from ia_interpretador import interpretar_pregunta, obtener_info_tipo  # ❌ Desactivado
+from ia_interpretador import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
 import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
@@ -2040,9 +2038,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     # ===== COMPRAS =====
     elif tipo == "compras_anio":
-        # ✅ Usar get_top_proveedores_por_anios para tener el formato correcto del dashboard
-        anios = parametros.get("anios", [parametros.get("anio")])  # Manejar ambos formatos
-        df = sqlq_compras.get_top_proveedores_por_anios(anios, limite=20)
+        df = sqlq_compras.get_compras_anio(parametros["anio"])
         _dbg_set_result(df)
         return df
 
