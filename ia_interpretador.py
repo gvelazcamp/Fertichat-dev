@@ -713,6 +713,21 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             )
         }
 
+    # ============================
+    # CONOCIMIENTO (preguntas qué es, qué significa, etc.)
+    # ============================
+    palabras_conocimiento = ["qué es", "que es", "qué significa", "que significa", 
+                             "explica", "explicame", "explícame", "define", 
+                             "dime sobre", "qué son", "que son", "cuál es", "cual es",
+                             "para qué sirve", "para que sirve", "cómo funciona", "como funciona"]
+    
+    if any(palabra in texto_lower_original for palabra in palabras_conocimiento):
+        return {
+            "tipo": "conocimiento",
+            "parametros": {},
+            "debug": f"pregunta de conocimiento: {texto_original}"
+        }
+
     # FAST-PATH: listado facturas por año
     if re.search(r"\b(listado|lista)\b", texto_lower_original) and re.search(r"\bfacturas?\b", texto_lower_original):
         anios_listado = _extraer_anios(texto_lower_original)
@@ -1166,10 +1181,16 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             return {"tipo": "compras_mes", "parametros": {"mes": mes}, "debug": "compras mes (nombre+año)"}
 
         if anios:
-            print("\n[INTÉRPRETE] COMPRAS_ANIO")
-            print(f"  Pregunta : {texto_original}")
-            print(f"  Año      : {anios[0]}")
-            return {"tipo": "compras_anio", "parametros": {"anio": anios[0]}, "debug": "compras año"}
+            # ✅ ESPECIAL: Para "compras 2025", delegar a ia_compras
+            if texto_lower.strip() == "compras 2025":
+                from ia_compras import interpretar_compras
+                resultado = interpretar_compras(texto_original, anios)
+                return resultado
+            else:
+                print("\n[INTÉRPRETE] COMPRAS_ANIO")
+                print(f"  Pregunta : {texto_original}")
+                print(f"  Año      : {anios[0]}")
+                return {"tipo": "compras_anio", "parametros": {"anio": anios[0]}, "debug": "compras año"}
 
     # COMPARAR - ✅ MEJORADO CON SOPORTE PARA TODOS LOS PROVEEDORES
     if contiene_comparar(texto_lower_original):
