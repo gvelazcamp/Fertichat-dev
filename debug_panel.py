@@ -42,6 +42,32 @@ class DebugPanel:
             "data": data
         })
     
+    def log_sql(self, function_name: str, params: dict, query: str = None):
+        """
+        Registra una llamada SQL con información detallada
+        
+        Args:
+            function_name: Nombre de la función SQL (ej: "get_compras_anio")
+            params: Parámetros pasados a la función
+            query: Query SQL real (opcional)
+        """
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        
+        data = {
+            "función": function_name,
+            "parámetros": params
+        }
+        
+        if query:
+            data["query_sql"] = query
+        
+        st.session_state[self.session_key].append({
+            "timestamp": timestamp,
+            "step": "💾 SQL Query",
+            "data": data,
+            "is_sql": True  # Marca especial para renderizado
+        })
+    
     def clear(self):
         """Limpia todos los logs"""
         st.session_state[self.session_key] = []
@@ -124,7 +150,19 @@ class DebugPanel:
                 st.caption(f"📋 Columnas: {', '.join(data.columns.tolist())}")
                 
             elif isinstance(data, dict):
-                st.json(data)
+                # Renderizado especial para SQL queries
+                if "query_sql" in data:
+                    st.markdown("**🎯 Función SQL:**")
+                    st.code(data.get("función", "N/A"), language="python")
+                    
+                    st.markdown("**📝 Parámetros:**")
+                    st.json(data.get("parámetros", {}))
+                    
+                    if data.get("query_sql"):
+                        st.markdown("**💾 Query SQL Real:**")
+                        st.code(data["query_sql"], language="sql")
+                else:
+                    st.json(data)
                 
             elif isinstance(data, str):
                 if len(data) > 100 or "\n" in data:
