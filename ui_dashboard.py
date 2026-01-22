@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+from imports_globales import *
 
 from config import DEBUG_MODE, POWERBI_URL
 from utils_format import _fmt_num_latam, _safe_float
