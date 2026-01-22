@@ -1012,19 +1012,44 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "debug": f"facturas/compras proveedor(es): {', '.join(proveedores_lista)} | meses: {meses_out} | años: {anios}",
         }
 
-    # COMPRAS (fusionado con facturas_proveedor para proveedor+año)
+    # ==================================================
+    # COMPRAS (fusionado con facturas_proveedor)
+    # ==================================================
     if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original):
-        # ✅ EXTRAER PROVEEDORES CON COMA (MÚLTIPLES) - MEJORADO
+
+        # ----------------------------------------------
+        # 🔒 FORZADO ABSOLUTO: "compras <AÑO>"
+        # ----------------------------------------------
+        anios_forzados = _extraer_anios(texto_lower)
+        tokens_simple = texto_lower_original.strip().split()
+
+        if (
+            anios_forzados
+            and len(tokens_simple) == 2
+            and tokens_simple[0] in ("compras", "compra")
+        ):
+            return {
+                "tipo": "compras_anio",
+                "parametros": {
+                    "anio": anios_forzados[0]
+                },
+                "debug": "forzado compras año directo"
+            }
+
+        # ----------------------------------------------
+        # ✅ EXTRAER PROVEEDORES CON COMA (MÚLTIPLES)
+        # ----------------------------------------------
         proveedores_multiples: List[str] = []
         parts = texto_lower_original.split()
+
         if "compras" in parts or "compra" in parts:
             idx = parts.index("compras") if "compras" in parts else parts.index("compra")
-            after_compras = parts[idx+1:]
+            after_compras = parts[idx + 1:]
 
             # Encontrar el primer mes o año para detener
             first_stop = None
             for i, p in enumerate(after_compras):
-                clean_p = re.sub(r"[^\w]", "", p)  # quitar comas
+                clean_p = re.sub(r"[^\w]", "", p)
                 if clean_p in MESES or (clean_p.isdigit() and int(clean_p) in ANIOS_VALIDOS):
                     first_stop = i
                     break
@@ -1035,13 +1060,16 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 proveedores_texto = " ".join(after_compras)
 
             if "," in proveedores_texto:
-                proveedores_multiples = [p.strip() for p in proveedores_texto.split(",") if p.strip()]
-                proveedores_multiples = [_alias_proveedor(p) for p in proveedores_multiples if p]
-            else:
-                proveedores_multiples = [_alias_proveedor(proveedores_texto)] if proveedores_texto else []
+                proveedores_multiples = [
+                    _alias_proveedor(p.strip())
+                    for p in proveedores_texto.split(",")
+                    if p.strip()
+                ]
+            elif proveedores_texto:
+                proveedores_multiples = [_alias_proveedor(proveedores_texto)]
 
         if proveedores_multiples:
-            provs = proveedores_multiples  # Usar los múltiples
+            provs = proveedores_multiples
 
         # ============================
         # COMPRAS POR ARTÍCULO + AÑO
