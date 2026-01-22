@@ -1026,8 +1026,8 @@ SELECT
 FROM chatbot_raw
 WHERE LOWER(TRIM("Articulo")) LIKE '%{articulo}%'
     AND "Año" = {anio}
-    AND "Moneda" = '{moneda}'
     AND "Monto Neto" IS NOT NULL
+    AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
 GROUP BY "Mes"
 ORDER BY "Mes" DESC;
         """
