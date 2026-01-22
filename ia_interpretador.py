@@ -855,8 +855,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if articulo:
             arts = [articulo]
 
-     anios = _extraer_anios(texto_lower)
-
     # ============================
     # COMPRAS SOLO POR AÑO
     # ============================
