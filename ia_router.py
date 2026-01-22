@@ -201,12 +201,21 @@ def interpretar_pregunta(pregunta: str) -> Dict:
 
     # 3. COMPRAS (va al CANÓNICO)
     if any(k in texto_lower for k in ["compra", "compras", "comprobante", "comprobantes"]):
-        # ✅ FIX: Agregar verificación para artículos antes de ir al canónico
+
+        # 🔒 Caso simple: "compras <AÑO>" → ir directo al canónico
+        if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
+            return interpretar_canonico(pregunta)
+
+        # ✅ Probar primero intérprete de artículos
         from ia_interpretador_articulos import interpretar_articulo
         resultado_art = interpretar_articulo(pregunta)
-        if isinstance(resultado_art, dict) and "tipo" in resultado_art:
+        if isinstance(resultado_art, dict) and resultado_art.get("tipo") not in (
+            "no_entendido",
+            "sin_resultado",
+        ):
             return resultado_art
-        # Si no hay artículo, ir al canónico
+
+        # 🔁 Fallback al canónico
         return interpretar_canonico(pregunta)
 
     # 4. COMPARATIVAS
