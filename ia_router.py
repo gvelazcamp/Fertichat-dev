@@ -34,7 +34,6 @@ MESES = {
     "noviembre": "11", "diciembre": "12",
 }
 
-
 # =====================================================================
 # INTÉRPRETE DE STOCK (BÁSICO)
 # =====================================================================
@@ -55,7 +54,6 @@ def interpretar_stock(pregunta: str) -> Dict:
         "debug": "stock: no match",
     }
 
-
 # =====================================================================
 # DETECTOR SIMPLE DE ARTÍCULOS
 # =====================================================================
@@ -66,7 +64,6 @@ def detecta_articulo_simple(texto: str) -> bool:
     texto_lower = texto.lower()
     keywords_articulos = ["vitek", "roche", "coba", "elecsys", "ast", "n422", "gn", "id20", "test", "kit"]
     return any(k in texto_lower for k in keywords_articulos)
-
 
 # =====================================================================
 # EJECUTOR POR INTERPRETACIÓN (SIEMPRE DEVUELVE ALGO)
@@ -155,7 +152,6 @@ def ejecutar_por_interpretacion(resultado):
         "mensaje": f"Tipo no soportado: {tipo}"
     }
 
-
 # =====================================================================
 # ROUTER PRINCIPAL (EXPORTA interpretar_pregunta PARA EL SISTEMA)
 # =====================================================================
@@ -201,7 +197,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
 
     # 3. COMPRAS (va al CANÓNICO)
     if any(k in texto_lower for k in ["compra", "compras", "comprobante", "comprobantes"]):
-
         # 🔒 Caso simple: "compras <AÑO>" → ir directo al canónico
         if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
             return interpretar_canonico(pregunta)
@@ -260,7 +255,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
         "debug": "router: no match.",
     }
 
-
 # =====================================================================
 # NUEVA FUNCIÓN ROUTER PARA ARTÍCULOS
 # =====================================================================
@@ -280,7 +274,6 @@ def interpretar_pregunta_router(pregunta: str) -> dict:
 
     # fallback
     return interpretar_canonico(pregunta)
-
 
 # =====================================================================
 # MAPEO TIPO → FUNCIÓN SQL
@@ -337,10 +330,8 @@ MAPEO_FUNCIONES = {
     },
 }
 
-
 def obtener_info_tipo(tipo: str) -> Optional[Dict]:
     return MAPEO_FUNCIONES.get(tipo)
-
 
 def es_tipo_valido(tipo: str) -> bool:
     tipos_especiales = ["conversacion", "conocimiento", "no_entendido"]
