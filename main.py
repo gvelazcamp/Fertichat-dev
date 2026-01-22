@@ -9,6 +9,7 @@ st.set_page_config(
 
 from ui_css import CSS_GLOBAL
 from login_page import require_auth, get_current_user, logout
+from imports_globales import *
 
 from config import MENU_OPTIONS, DEBUG_MODE
 from auth import init_db
