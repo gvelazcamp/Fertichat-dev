@@ -157,7 +157,7 @@ USAR_OPENAI_PARA_DATOS = False
             )
     END
 
-📖 PARSEO DE CANTIDADES (SQL):
+��� PARSEO DE CANTIDADES (SQL):
 
     CAST(
         REPLACE(REPLACE("Cantidad", '.', ''), ',', '.')
@@ -305,6 +305,7 @@ SELECT
 FROM chatbot_raw
 WHERE LOWER(TRIM("Articulo")) LIKE '%{articulo}%'
     AND "Año" = {anio}
+    AND "Moneda" = '{moneda}'
     AND "Monto Neto" IS NOT NULL
     AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
 GROUP BY "Mes"
