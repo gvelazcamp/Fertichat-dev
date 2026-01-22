@@ -378,6 +378,47 @@ def _extraer_rango_fechas(texto: str) -> Tuple[Optional[str], Optional[str]]:
     return None, None
 
 # =====================================================================
+# DETECCIÓN REAL DE ENTIDAD (PROVEEDOR vs ARTÍCULO)
+# =====================================================================
+def detectar_entidad_real(token: str) -> str:
+    """
+    Devuelve:
+    - 'proveedor'
+    - 'articulo'
+    - 'ambigua'
+    - 'ninguna'
+    """
+    q_prov = """
+        SELECT 1
+        FROM chatbot_raw
+        WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
+        LIMIT 1
+    """
+    q_art = """
+        SELECT 1
+        FROM chatbot_raw
+        WHERE LOWER(TRIM("Articulo")) LIKE %s
+        LIMIT 1
+    """
+
+    like = f"%{token.lower()}%"
+
+    df_prov = ejecutar_consulta(q_prov, (like,))
+    df_art = ejecutar_consulta(q_art, (like,))
+
+    existe_prov = df_prov is not None and not df_prov.empty
+    existe_art = df_art is not None and not df_art.empty
+
+    if existe_prov and not existe_art:
+        return "proveedor"
+    if existe_art and not existe_prov:
+        return "articulo"
+    if existe_prov and existe_art:
+        return "ambigua"
+
+    return "ninguna"
+
+# =====================================================================
 # CARGA LISTAS DESDE SUPABASE
 # =====================================================================
 @st.cache_data(ttl=60 * 60)
