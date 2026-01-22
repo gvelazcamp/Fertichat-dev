@@ -2529,21 +2529,14 @@ def Compras_IA():
             respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
 
         elif tipo == "saludo":
-            nombre = st.session_state.get("nombre", "👋")
-            st.markdown(f"""
-Hola **{nombre}** 👋  
-
-¿En qué puedo ayudarte hoy?
-
-Puedo ayudarte con:
-• 🛒 **Compras**
-• 📦 **Stock**
-• 📊 **Comparativas**
-• 🧪 **Artículos**
-
-Escribí lo que necesites 👇
-""")
-            return
+            # Usar OpenAI en vez de texto hardcodeado
+            nombre = st.session_state.get("nombre", "")
+            if nombre:
+                mensaje = f"Hola, soy {nombre}. {pregunta}"
+            else:
+                mensaje = pregunta
+            
+            respuesta_content = responder_con_openai(mensaje, tipo="conversacion")
 
         elif tipo == "no_entendido":
             respuesta_content = "🤔 No entendí bien tu pregunta."
