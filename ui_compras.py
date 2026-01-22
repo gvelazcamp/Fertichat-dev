@@ -15,23 +15,6 @@ from sql_core import get_unique_proveedores, get_unique_articulos, ejecutar_cons
 month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 month_num = {name: f"{i+1:02d}" for i, name in enumerate(month_names)}
 
-    # ==================================================
-    # 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
-    # Prioridad ABSOLUTA – no pasa por interpretación
-    # ==================================================
-    texto_q = str(texto_lower).strip().lower()
-    m = re.fullmatch(r"(compra|compras)\s+(\d{4})", texto_q)
-    if m:
-        anio = int(m.group(2))
-        return {
-            "tipo": "compras_anio",
-            "parametros": {
-                "anio": anio
-            },
-            "debug": "BLOQUE_UNIVERSAL_COMPRAS_AÑO"
-        }
-    # ==================================================
-
 MONTH_MAPPING = {}
 for year in [2023, 2024, 2025, 2026]:
     for month, num in month_num.items():
@@ -78,6 +61,23 @@ def get_unique_articulos():
         return df['art'].tolist() if not df.empty else []
     except:
         return []
+
+    # ==================================================
+    # 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
+    # Prioridad ABSOLUTA – no pasa por interpretación
+    # ==================================================
+    texto_q = str(texto_lower).strip().lower()
+    m = re.fullmatch(r"(compra|compras)\s+(\d{4})", texto_q)
+    if m:
+        anio = int(m.group(2))
+        return {
+            "tipo": "compras_anio",
+            "parametros": {
+                "anio": anio
+            },
+            "debug": "BLOQUE_UNIVERSAL_COMPRAS_AÑO"
+        }
+    # ==================================================
 
 # =========================
 # NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
