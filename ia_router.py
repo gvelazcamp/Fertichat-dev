@@ -749,12 +749,14 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     elif arts and anios:
         intentos.append("router: delegar_a_interpretador_articulos")
 
+        meses = meses_nombre + meses_yyyymm
+
         from ia_interpretador_articulos import interpretar_articulo
 
         resultado = interpretar_articulo(
             texto_original,
-            arts,
-            anios
+            anios=anios,
+            meses=meses
         )
 
         # Inyectar intentos del router en el debug final
