@@ -182,8 +182,6 @@ def limpiar_consulta(texto: str) -> str:
     texto = re.sub(r"\s{2,}", " ", texto).strip()
     return texto
 
-# ... existing code ...
-
 def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
     """
     Fallback para NO depender de listas de Supabase.
@@ -376,47 +374,6 @@ def _extraer_rango_fechas(texto: str) -> Tuple[Optional[str], Optional[str]]:
     elif len(fechas) == 1:
         return fechas[0], None
     return None, None
-
-# =====================================================================
-# DETECCIÓN REAL DE ENTIDAD (PROVEEDOR vs ARTÍCULO)
-# =====================================================================
-def detectar_entidad_real(token: str) -> str:
-    """
-    Devuelve:
-    - 'proveedor'
-    - 'articulo'
-    - 'ambigua'
-    - 'ninguna'
-    """
-    q_prov = """
-        SELECT 1
-        FROM chatbot_raw
-        WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE %s
-        LIMIT 1
-    """
-    q_art = """
-        SELECT 1
-        FROM chatbot_raw
-        WHERE LOWER(TRIM("Articulo")) LIKE %s
-        LIMIT 1
-    """
-
-    like = f"%{token.lower()}%"
-
-    df_prov = ejecutar_consulta(q_prov, (like,))
-    df_art = ejecutar_consulta(q_art, (like,))
-
-    existe_prov = df_prov is not None and not df_prov.empty
-    existe_art = df_art is not None and not df_art.empty
-
-    if existe_prov and not existe_art:
-        return "proveedor"
-    if existe_art and not existe_prov:
-        return "articulo"
-    if existe_prov and existe_art:
-        return "ambigua"
-
-    return "ninguna"
 
 # =====================================================================
 # CARGA LISTAS DESDE SUPABASE
@@ -701,7 +658,6 @@ MAPEO_FUNCIONES = {
     },
 }
 
-
 def obtener_info_tipo(tipo: str) -> Optional[Dict]:
     return MAPEO_FUNCIONES.get(tipo)
 
@@ -755,21 +711,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "• 🧪 **Artículos**\n\n"
                 "Escribí lo que necesites 👇"
             )
-        }
-
-    # ============================
-    # CONOCIMIENTO (preguntas qué es, qué significa, etc.)
-    # ============================
-    palabras_conocimiento = ["qué es", "que es", "qué significa", "que significa", 
-                             "explica", "explicame", "explícame", "define", 
-                             "dime sobre", "qué son", "que son", "cuál es", "cual es",
-                             "para qué sirve", "para que sirve", "cómo funciona", "como funciona"]
-    
-    if any(palabra in texto_lower_original for palabra in palabras_conocimiento):
-        return {
-            "tipo": "conocimiento",
-            "parametros": {},
-            "debug": f"pregunta de conocimiento: {texto_original}"
         }
 
     # FAST-PATH: listado facturas por año
@@ -875,27 +816,16 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     idx_prov, idx_art = _get_indices()
     provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
-
-    # ✅ FIX: Excluir artículos problemáticos
-    ARTICULOS_EXCLUIDOS = [
-        "2183118 - IVA COMPRAS DEL ESTADO (DTOS 528/03 Y 319/06)",
-        "IVA COMPRAS DEL ESTADO",
-    ]
-
-    idx_art_filtrado = [
-        (orig, norm) for orig, norm in idx_art
-        if not any(excl.lower() in orig.lower() for excl in ARTICULOS_EXCLUIDOS)
-    ]
-
+    
     # ✅ FIX SIMPLE: NO buscar artículos si hay "compra" + año
     # Esto evita confusiones con códigos numéricos como "2183118"
     anios_temp = _extraer_anios(texto_lower)
     tiene_compra_y_anio = ("compra" in texto_lower) and (len(anios_temp) > 0)
-
+    
     if tiene_compra_y_anio:
         arts = []  # NO buscar artículos cuando hay compras + año
     else:
-        arts = _match_best(texto_lower, idx_art_filtrado, max_items=MAX_ARTICULOS)
+        arts = _match_best(texto_lower, idx_art, max_items=MAX_ARTICULOS)
 
     if not provs:
         prov_libre = _extraer_proveedor_libre(texto_lower_original)
@@ -914,18 +844,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     if not arts:
         listas = _cargar_listas_supabase()
         articulos_db = listas.get("articulos", [])
-
-        # ✅ FIX: Excluir artículos de la lista también
-        articulos_db_filtrados = [
-            art for art in articulos_db
-            if not any(excl.lower() in art.lower() for excl in ARTICULOS_EXCLUIDOS)
-        ]
-
         tokens_restantes = [t for t in tokens if t not in provs]
-        articulo = detectar_articulo_valido(tokens_restantes, articulos_db_filtrados)
+        articulo = detectar_articulo_valido(tokens_restantes, articulos_db)
         if articulo:
             arts = [articulo]
-
 
     # ============================
     # RUTA ARTÍCULOS (CANÓNICA) - DESHABILITADA PARA "COMPRAS + AÑO"
@@ -951,30 +873,17 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
     if provs and anios:
-        entidad = detectar_entidad_real(provs[0])
-
-        if entidad == "proveedor":
-            tipo = "facturas_proveedor"
-
-        elif entidad == "articulo":
-            from ia_compras import interpretar_compras
-            resultado = interpretar_compras(texto_original, anios)
-            return resultado
-
-        elif entidad == "ambigua":
-            return {
-                "tipo": "no_entendido",
-                "parametros": {},
-                "sugerencia": f"¿Te referís al proveedor o al artículo '{provs[0]}'?",
-                "debug": "entidad ambigua proveedor/articulo"
-            }
+        tipo = "facturas_proveedor"
 
     elif arts and anios:
-        # ✅ FORZAR A IA_COMPRAS PARA COMPRAS ARTÍCULO + AÑO
-        from ia_compras import interpretar_compras
-        resultado = interpretar_compras(texto_original, anios)
-        return resultado
-
+        return {
+            "tipo": "compras_articulo_anio",
+            "parametros": {
+                "articulo": arts[0],
+                "anios": anios
+            },
+            "debug": "compras articulo + año"
+        }
 
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
@@ -1080,33 +989,15 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "debug": f"facturas/compras proveedor(es): {', '.join(proveedores_lista)} | meses: {meses_out} | años: {anios}",
         }
 
- # COMPRAS (fusionado con facturas_proveedor para proveedor+año)
+    # COMPRAS (fusionado con facturas_proveedor para proveedor+año)
     if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original):
-        # ✅ FIX: "compras [año]" sin proveedor ni mes → ia_compras.py
-        if anios and not provs and not meses_nombre and not meses_yyyymm:
-            print("\n[INTÉRPRETE] DELEGANDO A ia_compras.py")
-            print(f"  Pregunta : {texto_original}")
-            print(f"  Año(s)   : {anios}")
-            
-            try:
-                from ia_compras import interpretar_compras
-                resultado = interpretar_compras(texto_original, anios)
-                print(f"  ✅ Resultado de ia_compras: {resultado.get('tipo')}")
-                return resultado
-            except ImportError as e:
-                print(f"  ⚠️ Error importando ia_compras: {e}")
-                return {
-                    "tipo": "compras_anio",
-                    "parametros": {"anio": anios[0]},
-                    "debug": "fallback: ia_compras no disponible",
-                }
-        
         # ✅ EXTRAER PROVEEDORES CON COMA (MÚLTIPLES) - MEJORADO
         proveedores_multiples: List[str] = []
         parts = texto_lower_original.split()
         if "compras" in parts or "compra" in parts:
             idx = parts.index("compras") if "compras" in parts else parts.index("compra")
             after_compras = parts[idx+1:]
+
             # Encontrar el primer mes o año para detener
             first_stop = None
             for i, p in enumerate(after_compras):
@@ -1114,15 +1005,18 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 if clean_p in MESES or (clean_p.isdigit() and int(clean_p) in ANIOS_VALIDOS):
                     first_stop = i
                     break
+
             if first_stop is not None:
                 proveedores_texto = " ".join(after_compras[:first_stop])
             else:
                 proveedores_texto = " ".join(after_compras)
+
             if "," in proveedores_texto:
                 proveedores_multiples = [p.strip() for p in proveedores_texto.split(",") if p.strip()]
                 proveedores_multiples = [_alias_proveedor(p) for p in proveedores_multiples if p]
             else:
                 proveedores_multiples = [_alias_proveedor(proveedores_texto)] if proveedores_texto else []
+
         if proveedores_multiples:
             provs = proveedores_multiples  # Usar los múltiples
 
