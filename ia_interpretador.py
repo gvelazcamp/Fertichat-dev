@@ -915,14 +915,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         tipo = "facturas_proveedor"
 
     elif arts and anios:
-        return {
-            "tipo": "compras_articulo_anio",
-            "parametros": {
-                "articulo": arts[0],
-                "anios": anios
-            },
-            "debug": "compras articulo + año"
-        }
+        # ✅ FORZAR A IA_COMPRAS PARA COMPRAS ARTÍCULO + AÑO
+        from ia_compras import interpretar_compras
+        resultado = interpretar_compras(texto_original, anios)
+        return resultado
 
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
