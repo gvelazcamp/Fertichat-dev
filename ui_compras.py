@@ -1979,6 +1979,12 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
 # =========================
 def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
+    # 🔬 LOG: Entrada a la función  
+    debug.log("🔍 ejecutar_consulta_por_tipo INICIADO", {
+        "tipo": tipo,
+        "parametros": parametros
+    })
+
     _dbg_set_sql(
         tag=tipo,
         query=f"-- Ejecutando tipo: {tipo}\n-- (SQL real en sql_compras/sql_comparativas/sql_facturas)\n",
@@ -1988,17 +1994,22 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     # ===== FACTURAS =====
     if tipo == "detalle_factura_numero":  # ✅ CORREGIDO: era "detalle_factura"
+        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_detalle_factura_por_numero", "args": parametros})
         df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
         _dbg_set_result(df)
+        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
     
     # Mantener compatibilidad con nombre antiguo
     elif tipo == "detalle_factura":
+        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_detalle_factura_por_numero", "args": parametros})
         df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
         _dbg_set_result(df)
+        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     elif tipo == "facturas_proveedor":
+        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_facturas_proveedor", "args": parametros})
         # ✅ Usa la función corregida de sql_facturas.py
         df = sqlq_facturas.get_facturas_proveedor(
             proveedores=parametros.get("proveedores", []),
@@ -2011,23 +2022,29 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
             limite=parametros.get("limite", 5000),
         )
         _dbg_set_result(df)
+        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     elif tipo == "ultima_factura":
+        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_ultima_factura_inteligente", "args": parametros})
         df = sqlq_facturas.get_ultima_factura_inteligente(parametros["patron"])
         _dbg_set_result(df)
+        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     elif tipo == "resumen_facturas":
+        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_resumen_facturas_por_proveedor", "args": parametros})
         df = sqlq_facturas.get_resumen_facturas_por_proveedor(
             meses=parametros.get("meses"),
             anios=parametros.get("anios"),
             moneda=parametros.get("moneda"),
         )
         _dbg_set_result(df)
+        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     elif tipo == "facturas_rango_monto":
+        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_facturas_por_rango_monto", "args": parametros})
         df = sqlq_facturas.get_facturas_por_rango_monto(
             monto_min=parametros.get("monto_min", 0),
             monto_max=parametros.get("monto_max", 999999999),
@@ -2038,12 +2055,15 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
             limite=parametros.get("limite", 100),
         )
         _dbg_set_result(df)
+        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     # ===== COMPRAS =====
     elif tipo == "compras_anio":
+        debug.log("💾 Función SQL", {"nombre": "sqlq_compras.get_compras_anio", "args": parametros})
         df = sqlq_compras.get_compras_anio(parametros["anio"])
         _dbg_set_result(df)
+        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     elif tipo == "compras_mes":
