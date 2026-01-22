@@ -191,8 +191,18 @@ def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
 def detectar_articulo_valido(tokens, catalogo_articulos):
     for token in tokens:
         t = token.strip().lower()
+
+        # ❌ NO permitir tokens numéricos puros
+        if t.isdigit():
+            continue
+
+        # ❌ NO permitir tokens mayormente numéricos (ej: 2183118a)
+        if sum(c.isdigit() for c in t) >= len(t) * 0.6:
+            continue
+
         if len(t) < 4:
             continue
+
         for art in catalogo_articulos:
             if t in art.lower():
                 return art
@@ -567,7 +577,9 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     - NO ejecuta SQL, solo devuelve {tipo, parametros}.
     """
     if not pregunta or not str(pregunta).strip():
-        return {"tipo": "no_entendido", "parametros": {}, "debug": "pregunta vacía"}
+        return {"tipo": "no_entendido", "parametros": {}, "debug": {"origen": "ia_router", "intentos": ["router: pregunta_vacia"]}}
+
+    intentos = []  # 🔄 Lista de intentos para trazabilidad
 
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
@@ -578,6 +590,8 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # 🔒 BLOQUE DURO – COMPRAS SOLO POR AÑO
     # PRIORIDAD ABSOLUTA – ANTES DE TODO
     # ==================================================
+    intentos.append("router: hard_block_compras_anio")  # Registro de intento
+
     import re
 
     m = re.search(r"\b(compra|compras)\s+(\d{4})\b", texto_lower_original)
@@ -589,7 +603,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "parametros": {
                 "anio": anio
             },
-            "debug": "HARD BLOCK → compras solo por año"
+            "debug": {"origen": "ia_router", "intentos": intentos}
         }
 
     # ============================
@@ -609,7 +623,8 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "• 📊 **Comparativas**\n"
                 "• 🧪 **Artículos**\n\n"
                 "Escribí lo que necesites 👇"
-            )
+            ),
+            "debug": {"origen": "ia_router", "intentos": intentos}
         }
 
     # ============================
@@ -624,7 +639,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         return {
             "tipo": "conocimiento",
             "parametros": {},
-            "debug": f"pregunta de conocimiento: {texto_original}"
+            "debug": {"origen": "ia_router", "intentos": intentos}
         }
 
     # FAST-PATH: listado facturas por año
@@ -635,7 +650,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             return {
                 "tipo": "listado_facturas_anio",
                 "parametros": {"anio": anio},
-                "debug": f"listado facturas año {anio}",
+                "debug": {"origen": "ia_router", "intentos": intentos}
             }
 
     # FAST-PATH: detalle factura por número
@@ -645,7 +660,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             return {
                 "tipo": "detalle_factura_numero",
                 "parametros": {"nro_factura": nro},
-                "debug": f"factura nro={nro}",
+                "debug": {"origen": "ia_router", "intentos": intentos}
             }
 
     # FAST-PATH: total facturas por moneda año
@@ -656,7 +671,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             return {
                 "tipo": "total_facturas_por_moneda_anio",
                 "parametros": {"anio": anio},
-                "debug": f"total facturas por moneda año {anio}",
+                "debug": {"origen": "ia_router", "intentos": intentos}
             }
 
     # FAST-PATH: total facturas por moneda generico (sin año)
@@ -664,7 +679,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         return {
             "tipo": "total_facturas_por_moneda_generico",
             "parametros": {},
-            "debug": "total facturas por moneda generico",
+            "debug": {"origen": "ia_router", "intentos": intentos}
         }
 
     # FAST-PATH: total compras por moneda generico (sin año)
@@ -672,7 +687,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         return {
             "tipo": "total_compras_por_moneda_generico",
             "parametros": {},
-            "debug": "total compras por moneda generico",
+            "debug": {"origen": "ia_router", "intentos": intentos}
         }
 
     texto_limpio = limpiar_consulta(texto_original)
@@ -709,22 +724,37 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         and not provs
         and not anios
     ):
+        intentos.append("router: ruta_articulos_canonica")  # Registro de intento
         from ia_interpretador_articulos import interpretar_articulo
         meses = meses_nombre + meses_yyyymm
-        return interpretar_articulo(texto_original, [], meses)
+        try:
+            result = interpretar_articulo(texto_original, [], meses)
+            # Propagar intentos del módulo destino
+            if isinstance(result.get("debug"), dict) and "intentos" in result["debug"]:
+                intentos.extend(result["debug"]["intentos"])
+            result["debug"] = {"origen": "ia_router", "intentos": intentos}
+            return result
+        except Exception as e:
+            intentos.append(f"router: error_ruta_articulos - {str(e)}")
+            return {
+                "tipo": "no_entendido",
+                "parametros": {},
+                "debug": {"origen": "ia_router", "intentos": intentos}
+            }
 
     # COMPRAS POR PROVEEDOR / ARTÍCULO + AÑO
     if provs and anios:
         tipo = "facturas_proveedor"
 
     elif arts and anios:
+        intentos.append("router: evaluar_articulos")  # Registro de intento
         return {
             "tipo": "compras_articulo_anio",
             "parametros": {
                 "articulo": arts[0],
                 "anios": anios
             },
-            "debug": "compras articulo + año"
+            "debug": {"origen": "ia_router", "intentos": intentos}
         }
 
     # FACTURAS PROVEEDOR (LISTADO)
@@ -762,7 +792,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "tipo": "no_entendido",
                 "parametros": {},
                 "sugerencia": "Indicá el proveedor. Ej: todas las facturas de Roche noviembre 2025.",
-                "debug": "facturas_proveedor: no encontró proveedor (ni en BD ni libre)",
+                "debug": {"origen": "ia_router", "intentos": intentos}
             }
 
         desde, hasta = _extraer_rango_fechas(texto_original)
@@ -800,7 +830,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "moneda": moneda,
                 "limite": limite,
             },
-            "debug": f"facturas/compras proveedor(es): {', '.join(proveedores_lista)} | meses: {meses_out} | años: {anios}",
+            "debug": {"origen": "ia_router", "intentos": intentos}
         }
 
     # COMPRAS (fusionado con facturas_proveedor)
@@ -847,7 +877,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     "articulo": arts[0],
                     "anios": anios
                 },
-                "debug": "compras por articulo y año",
+                "debug": {"origen": "ia_router", "intentos": intentos}
             }
 
         # PRIORIZAR MES SOBRE AÑO
@@ -873,7 +903,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         "meses": meses_out,
                         "anios": anios,
                     },
-                    "debug": "compras múltiples proveedores mes/año",
+                    "debug": {"origen": "ia_router", "intentos": intentos}
                 }
 
             # UN SOLO PROVEEDOR
@@ -887,7 +917,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 return {
                     "tipo": "compras_proveedor_mes",
                     "parametros": {"proveedor": proveedor, "mes": mes},
-                    "debug": "compras proveedor mes",
+                    "debug": {"origen": "ia_router", "intentos": intentos}
                 }
 
         if provs and anios:
@@ -900,7 +930,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         "meses": None,
                         "anios": anios,
                     },
-                    "debug": "compras múltiples proveedores año",
+                    "debug": {"origen": "ia_router", "intentos": intentos}
                 }
 
             # UN SOLO PROVEEDOR
@@ -912,15 +942,15 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     "anios": anios,  # PASAR TODOS LOS AÑOS
                     "limite": 5000,
                 },
-                "debug": "compras proveedor años (fusionado con facturas_proveedor)",
+                "debug": {"origen": "ia_router", "intentos": intentos}
             }
 
         if meses_yyyymm:
             mes0 = meses_yyyymm[0]
-            return {"tipo": "compras_mes", "parametros": {"mes": mes0}, "debug": "compras mes (yyyymm)"}
+            return {"tipo": "compras_mes", "parametros": {"mes": mes0}, "debug": {"origen": "ia_router", "intentos": intentos}}
         if meses_nombre and anios:
             mes = _to_yyyymm(anios[0], meses_nombre[0])
-            return {"tipo": "compras_mes", "parametros": {"mes": mes}, "debug": "compras mes (nombre+año)"}
+            return {"tipo": "compras_mes", "parametros": {"mes": mes}, "debug": {"origen": "ia_router", "intentos": intentos}}
 
         if anios and not provs and not arts:
             return {
@@ -928,10 +958,11 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "parametros": {
                     "anio": anios[0]
                 },
-                "debug": "refuerzo compras_anio (sin proveedor ni artículo)"
+                "debug": {"origen": "ia_router", "intentos": intentos}
             }
 
         if anios:
+            intentos.append("router: fallback_compras_anio")  # Registro de intento
             from ia_compras import interpretar_compras
             resultado = interpretar_compras(texto_original, anios)
             return resultado
@@ -974,7 +1005,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         "label1": meses_cmp[0],
                         "label2": meses_cmp[1],
                     },
-                    "debug": f"comparar {len(proveedores_comparar)} proveedores meses",
+                    "debug": {"origen": "ia_router", "intentos": intentos}
                 }
             elif len(proveedores_comparar) == 1:
                 return {
@@ -986,7 +1017,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         "label1": meses_cmp[0],
                         "label2": meses_cmp[1],
                     },
-                    "debug": "comparar proveedor meses",
+                    "debug": {"origen": "ia_router", "intentos": intentos}
                 }
             else:
                 return {
@@ -995,7 +1026,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         "proveedores": [],  # Vacío = todos
                         "meses": meses_cmp,
                     },
-                    "debug": "comparar todos los proveedores meses",
+                    "debug": {"origen": "ia_router", "intentos": intentos}
                 }
         
         # COMPARAR AÑOS
@@ -1009,7 +1040,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         "label1": str(anios[0]),
                         "label2": str(anios[1]),
                     },
-                    "debug": f"comparar {len(proveedores_comparar)} proveedores años",
+                    "debug": {"origen": "ia_router", "intentos": intentos}
                 }
             elif len(proveedores_comparar) == 1:
                 return {
@@ -1020,7 +1051,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         "label1": str(anios[0]),
                         "label2": str(anios[1]),
                     },
-                    "debug": "comparar proveedor años",
+                    "debug": {"origen": "ia_router", "intentos": intentos}
                 }
             else:
                 return {
@@ -1029,21 +1060,21 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         "proveedores": [],  # Vacío = todos
                         "anios": anios[:2],
                     },
-                    "debug": "comparar todos los proveedores años",
+                    "debug": {"origen": "ia_router", "intentos": intentos}
                 }
         
         return {
             "tipo": "no_entendido",
             "parametros": {},
             "sugerencia": "Ej: comparar compras roche junio julio 2025 | comparar compras roche 2024 2025 | comparar 2024 2025",
-            "debug": "comparar: faltan 2 meses o 2 años",
+            "debug": {"origen": "ia_router", "intentos": intentos}
         }
 
     # STOCK
     if "stock" in texto_lower_original:
         if arts:
-            return {"tipo": "stock_articulo", "parametros": {"articulo": arts[0]}, "debug": "stock articulo"}
-        return {"tipo": "stock_total", "parametros": {}, "debug": "stock total"}
+            return {"tipo": "stock_articulo", "parametros": {"articulo": arts[0]}, "debug": {"origen": "ia_router", "intentos": intentos}}
+        return {"tipo": "stock_total", "parametros": {}, "debug": {"origen": "ia_router", "intentos": intentos}}
 
     # TOP PROVEEDORES POR AÑO/MES
     if (
@@ -1076,7 +1107,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "top_n": top_n,
                 "moneda": moneda_param,
             },
-            "debug": f"top proveedores año {anios[0]} {'mes ' + str(meses_param) if meses_param else ''} en {moneda_param}",
+            "debug": {"origen": "ia_router", "intentos": intentos}
         }
 
     out_ai = _interpretar_con_openai(texto_original)
@@ -1087,7 +1118,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         "tipo": "no_entendido",
         "parametros": {},
         "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025 | total 2025 | total facturas por moneda | total compras por moneda | comparar 2024 2025",
-        "debug": "no match",
+        "debug": {"origen": "ia_router", "intentos": intentos}
     }
 
 
@@ -1096,7 +1127,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 # =========================
 # Nota: En tu arquitectura, "Agentic AI" = este interpretador.
 # El orquestador sigue siendo el que ejecuta SQL/funciones.
-# Esto es solo un alias/wrapper para que lo uses explícítamente como "agente".
+# Esto es solo un alias/wrapper para que lo uses explítamente como "agente".
 
 def agentic_decidir(pregunta: str) -> Dict[str, Any]:
     """
