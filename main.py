@@ -50,6 +50,7 @@ from sql_compras import (
     get_detalle_compras_proveedor_mes,
     get_compras_multiples,
     get_compras_anio,
+    get_top_proveedores_por_anios,  # 🔥 AGREGADO: Función para top proveedores por año
 )
 from utils_format import formatear_dataframe
 from utils_openai import responder_con_openai
@@ -231,15 +232,20 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
 
         elif tipo == "compras_anio":
             anio = params.get("anio", 2025)
-            limite = params.get("limite", 5000)
+            limite = params.get("limite", 10)  # 🔥 Cambiar a 10 (top 10 proveedores)
 
-            df = get_compras_anio(anio, limite)
+            # 🔥 USAR FUNCIÓN CORRECTA QUE AGRUPA POR PROVEEDOR
+            df = get_top_proveedores_por_anios(anios=[anio], limite=limite)
 
             if df is None or df.empty:
                 return f"⚠️ No se encontraron compras en {anio}.", None, None
 
+            # 🔥 Calcular totales
+            total_general = df["Total"].sum() if "Total" in df.columns else 0
+
             return (
-                f"🛒 Todas las compras en {anio} ({len(df)} registros):",
+                f"📊 **Top {len(df)} Proveedores - Compras {anio}**\n\n"
+                f"💰 Total: ${total_general:,.2f}",
                 formatear_dataframe(df),
                 None,
             )
