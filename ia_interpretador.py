@@ -858,6 +858,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # ============================
     # COMPRAS SOLO POR AÑO
     # ============================
+    anios = _extraer_anios(texto_lower)    
     if (
         contiene_compras(texto_lower_original)
         and anios
