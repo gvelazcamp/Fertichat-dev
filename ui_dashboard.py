@@ -11,9 +11,11 @@ from imports_globales import *
 
 from config import DEBUG_MODE, POWERBI_URL
 from utils_format import _fmt_num_latam, _safe_float
-from sql_compras import (
+from sql_core import (
     ejecutar_consulta,
     _sql_total_num_expr_general,
+)
+from sql_compras import (
     get_dashboard_totales,
     get_dashboard_compras_por_mes,
     get_dashboard_top_proveedores,
