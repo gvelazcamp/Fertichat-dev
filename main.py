@@ -37,8 +37,10 @@ from sql_core import ejecutar_consulta
 from ia_router import interpretar_pregunta
 
 # NUEVOS IMPORTS PARA SOPORTE DE COMPRAS
-# from ia_interpretador import interpretar_pregunta
-# import ia_interpretador
+from ia_interpretador import interpretar_pregunta
+import ia_interpretador
+
+print(">>> IA INTERPRETADOR USADO:", ia_interpretador.__file__)
 
 print(">>> IA INTERPRETADOR USADO:", ia_interpretador.__file__)
 
