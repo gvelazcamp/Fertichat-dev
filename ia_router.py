@@ -747,15 +747,21 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         tipo = "facturas_proveedor"
 
     elif arts and anios:
-        intentos.append("router: evaluar_articulos")  # Registro de intento
-        return {
-            "tipo": "compras_articulo_anio",
-            "parametros": {
-                "articulo": arts[0],
-                "anios": anios
-            },
-            "debug": {"origen": "ia_router", "intentos": intentos}
-        }
+        intentos.append("router: delegar_a_interpretador_articulos")
+
+        from ia_interpretador_articulos import interpretar_articulo
+
+        resultado = interpretar_articulo(
+            texto_original,
+            arts,
+            anios
+        )
+
+        # Inyectar intentos del router en el debug final
+        resultado.setdefault("debug", {})
+        resultado["debug"]["intentos"] = intentos + resultado["debug"].get("intentos", [])
+
+        return resultado
 
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
