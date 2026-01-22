@@ -4,7 +4,9 @@ from datetime import datetime
 from typing import Optional
 from imports_globales import *
 
-from ia_interpretador import interpretar_pregunta, obtener_info_tipo
+# ✅ CAMBIO: Usar ia_router en lugar de ia_interpretador (viejo)
+from ia_router import interpretar_pregunta, obtener_info_tipo
+# from ia_interpretador import interpretar_pregunta, obtener_info_tipo  # ❌ Desactivado
 from utils_openai import responder_con_openai
 import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
