@@ -858,12 +858,15 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # ============================
     # RUTA ARTÍCULOS (CANÓNICA)
     # ============================
-    if contiene_compras(texto_lower_original) and not provs:
+    if (
+        contiene_compras(texto_lower_original)
+        and not provs
+        and not _extraer_anios(texto_lower)
+    ):
         from ia_interpretador_articulos import interpretar_articulo
-        # Extraer anios aquí para pasar a la función
-        anios = _extraer_anios(texto_lower)
+        # Extraer meses aquí para pasar a la función
         meses = _extraer_meses_nombre(texto_lower) + _extraer_meses_yyyymm(texto_lower)
-        return interpretar_articulo(texto_original, anios, meses)
+        return interpretar_articulo(texto_original, [], meses)
 
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
