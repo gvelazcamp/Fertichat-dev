@@ -60,10 +60,55 @@ try:
 except ImportError:
     print("⚠️ streamlit-aggrid no instalado")
 
+# ============ AUTO-REFRESH CONFIGURACIÓN ============
+AUTOREFRESH_HABILITADO = True  # ← Cambiar a False para desactivar en TODOS los menús
+AUTOREFRESH_INTERVALO = 60000   # ← Intervalo en milisegundos (60000 = 1 minuto)
+
 try:
     from streamlit_autorefresh import st_autorefresh
+    
+    def iniciar_autorefresh(intervalo_ms=None, key="autorefresh_global", solo_si_habilitado=True):
+        """
+        Inicia el autorefresh con configuración personalizada.
+        
+        Parámetros:
+        - intervalo_ms: Intervalo en milisegundos (None = usa AUTOREFRESH_INTERVALO)
+        - key: Clave única para el autorefresh
+        - solo_si_habilitado: Si True, respeta la variable AUTOREFRESH_HABILITADO
+        
+        Retorna:
+        - Contador de refrescos
+        
+        Ejemplos de uso:
+        
+        # Opción 1: Usar configuración global
+        iniciar_autorefresh()
+        
+        # Opción 2: Personalizar intervalo para este menú
+        iniciar_autorefresh(intervalo_ms=30000)  # 30 segundos
+        
+        # Opción 3: Forzar autorefresh aunque esté deshabilitado globalmente
+        iniciar_autorefresh(solo_si_habilitado=False)
+        """
+        if solo_si_habilitado and not AUTOREFRESH_HABILITADO:
+            return 0
+        
+        if intervalo_ms is None:
+            intervalo_ms = AUTOREFRESH_INTERVALO
+        
+        return st_autorefresh(interval=intervalo_ms, key=key)
+    
+    # AUTOREFRESH AUTOMÁTICO GLOBAL
+    # Si AUTOREFRESH_HABILITADO = True, se activará en todos los menús automáticamente
+    if AUTOREFRESH_HABILITADO:
+        _autorefresh_count = st_autorefresh(interval=AUTOREFRESH_INTERVALO, key="global_autorefresh")
+    
 except ImportError:
     print("⚠️ streamlit-autorefresh no instalado")
+    
+    def iniciar_autorefresh(intervalo_ms=None, key="autorefresh_global", solo_si_habilitado=True):
+        """Función dummy cuando autorefresh no está instalado"""
+        return 0
 
 # ============ UTILIDADES ============
 import os
@@ -89,3 +134,7 @@ load_dotenv()
 warnings.filterwarnings('ignore')
 
 print("✅ Imports globales cargados correctamente")
+if AUTOREFRESH_HABILITADO:
+    print(f"🔄 Autorefresh activado: {AUTOREFRESH_INTERVALO/1000}s")
+else:
+    print("⏸️  Autorefresh desactivado")
