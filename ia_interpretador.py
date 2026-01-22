@@ -14,7 +14,6 @@ def interpretar_pregunta(texto_lower, texto_lower_original):
  
 # ==================================================
 # 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
-# Prioridad ABSOLUTA – no pasa por aliases ni IA
 # ==================================================
 import re
 
@@ -36,6 +35,7 @@ if m:
         "df": df,
         "debug": f"bloque_compras_anio → compras {anio}"
     }
+
 # ==================================================
 # CONFIGURACIÓN OPENAI (opcional)
 # =====================================================================
