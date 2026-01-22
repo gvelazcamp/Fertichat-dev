@@ -35,10 +35,9 @@ from ui_chat_chainlit import mostrar_chat_chainlit
 from sql_core import ejecutar_consulta
 
 from ia_router import interpretar_pregunta
-
 # NUEVOS IMPORTS PARA SOPORTE DE COMPRAS
-from ia_interpretador import interpretar_pregunta
-import ia_interpretador
+# from ia_interpretador import interpretar_pregunta  # ← COMENTADO para usar router
+# import ia_interpretador  # ← COMENTADO también
 
 print(">>> IA INTERPRETADOR USADO:", ia_interpretador.__file__)
 
