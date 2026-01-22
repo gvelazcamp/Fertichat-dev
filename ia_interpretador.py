@@ -23,80 +23,80 @@ client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 # Si querés "sacar OpenAI" para datos: dejalo False (recomendado).
 USAR_OPENAI_PARA_DATOS = False
 
-📋 DOCUMENTACIÓN COMPLETA - AI INTÉRPRETE COMPRAS
+DOCUMENTACIÓN COMPLETA - AI INTÉRPRETE COMPRAS
 
-🎯 OBJETIVO:
+OBJETIVO:
     Interpretar consultas en lenguaje natural sobre compras de Fertilab y convertirlas
     en queries SQL precisas contra la tabla chatbot_raw en Supabase.
 
-📊 ESTRUCTURA DE LA TABLA chatbot_raw:
+ESTRUCTURA DE LA TABLA chatbot_raw:
     ╔══════════════════════════╗
     ║   chatbot_raw            ║
     ╠══════════════════════════╣
-    ║ 📄 Tipo Comprobante      ║ → "Compra Crédito", "Compra Contado"
-    ║ 📄 Tipo CFE              ║ → NULL (generalmente)
-    ║ 📄 Nro. Comprobante      ║ → "A00055313"
-    ║ 💰 Moneda                ║ → "UYU" o "USD"
-    ║ 💰 Cliente / Proveedor   ║ → "BIOKEY SRL", "ROCHE URUGUAY S.A."
-    ║ 📦 Familia               ║ → "FB", "AF", "TR"
-    ║ 📦 Tipo Articulo         ║ → "REACTIVOS", "INSUMOS"
-    ║ 📦 Articulo              ║ → "OBIS - PYR X 60 DET"
-    ║ 📅 Año                   ║ → 2025 (INTEGER)
-    ║ 📅 Mes                   ║ → "2025-12" (STRING formato YYYY-MM)
-    ║ 📅 Fecha                 ║ → "2025-12-23" (STRING formato YYYY-MM-DD)
-    ║ 💵 Cantidad              ║ → "  1,00 " (STRING con espacios)
-    ║ 💵 Monto Neto            ║ → "  194,40 " o "(194,40)" negativo
-    ║ 📊 stock_actual          ║ → 1.00 (NUMERIC, puede ser NULL)
+    ║ Tipo Comprobante         ║ → "Compra Crédito", "Compra Contado"
+    ║ Tipo CFE                 ║ → NULL (generalmente)
+    ║ Nro. Comprobante         ║ → "A00055313"
+    ║ Moneda                   ║ → "UYU" o "USD"
+    ║ Cliente / Proveedor      ║ → "BIOKEY SRL", "ROCHE URUGUAY S.A."
+    ║ Familia                  ║ → "FB", "AF", "TR"
+    ║ Tipo Articulo            ║ → "REACTIVOS", "INSUMOS"
+    ║ Articulo                 ║ → "OBIS - PYR X 60 DET"
+    ║ Año                      ║ → 2025 (INTEGER)
+    ║ Mes                      ║ → "2025-12" (STRING formato YYYY-MM)
+    ║ Fecha                    ║ → "2025-12-23" (STRING formato YYYY-MM-DD)
+    ║ Cantidad                 ║ → "  1,00 " (STRING con espacios)
+    ║ Monto Neto               ║ → "  194,40 " o "(194,40)" negativo
+    ║ stock_actual             ║ → 1.00 (NUMERIC, puede ser NULL)
     ╚══════════════════════════╝
 
-🔍 REGLAS CRÍTICAS DE INTERPRETACIÓN:
+REGLAS CRÍTICAS DE INTERPRETACIÓN:
 
-    1️⃣ EXTRACCIÓN DE AÑO:
+    1. EXTRACCIÓN DE AÑO:
         - Usuario NUNCA pregunta "2025", pregunta: "compras 2025" o "noviembre 2025"
         - Fuentes posibles:
-            ✅ Columna "Año" → Valor directo: 2025
-            ✅ Columna "Mes" → Extraer: "2025-12" → 2025
-            ✅ Columna "Fecha" → Extraer: "2025-12-23" → 2025
+            Columna "Año" → Valor directo: 2025
+            Columna "Mes" → Extraer: "2025-12" → 2025
+            Columna "Fecha" → Extraer: "2025-12-23" → 2025
         - SQL: WHERE "Año" = 2025
 
-    2️⃣ EXTRACCIÓN DE MES:
+    2. EXTRACCIÓN DE MES:
         - Usuario SIEMPRE pregunta con NOMBRE: "noviembre 2025", "compras diciembre"
         - Conversión necesaria: "noviembre" → "11" → "2025-11"
         - Fuentes posibles:
-            ✅ Columna "Mes" → Ya está en formato "2025-12"
-            ✅ Columna "Fecha" → Extraer: "2025-12-23" → "2025-12"
+            Columna "Mes" → Ya está en formato "2025-12"
+            Columna "Fecha" → Extraer: "2025-12-23" → "2025-12"
         - SQL: WHERE "Mes" = '2025-11' OR "Fecha" LIKE '2025-11-%'
 
-    3️⃣ EXTRACCIÓN DE PROVEEDOR:
+    3. EXTRACCIÓN DE PROVEEDOR:
         - Usuario puede preguntar:
-            ✅ Nombre exacto: "compras Roche"
-            ✅ Nombre parcial: "compras biokey"
-            ✅ Nombre completo: "compras ROCHE URUGUAY S.A."
+            Nombre exacto: "compras Roche"
+            Nombre parcial: "compras biokey"
+            Nombre completo: "compras ROCHE URUGUAY S.A."
         - Normalización: lowercase + sin acentos + TRIM
         - SQL: WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE '%roche%'
 
-    4️⃣ FORMATO DE MONTOS:
+    4. FORMATO DE MONTOS:
         A) Positivo: "  1.500,00 " → 1500.00
         B) Negativo: "(1.500,00)" → -1500.00
         - Punto (.) = separador de miles → ELIMINAR
         - Coma (,) = separador decimal → REEMPLAZAR por punto
         - Paréntesis = negativo → multiplicar por -1
 
-    5️⃣ FORMATO DE CANTIDADES:
+    5. FORMATO DE CANTIDADES:
         - Similar a montos pero SIEMPRE positivo
         - "  1,00 " → 1.00
         - " 150,50 " → 150.50
 
 
-🔧 VALIDACIONES OBLIGATORIAS:
+VALIDACIONES OBLIGATORIAS:
 
-    ✅ Año está en rango válido (2023-2026)
-    ✅ Mes está en rango válido (01-12)
-    ✅ Formato de mes es YYYY-MM
-    ✅ Proveedor/artículo no está vacío
-    ✅ Hay al menos UN filtro temporal (mes O año)
+    Año está en rango válido (2023-2026)
+    Mes está en rango válido (01-12)
+    Formato de mes es YYYY-MM
+    Proveedor/artículo no está vacío
+    Hay al menos UN filtro temporal (mes O año)
 
-🚀 SQL TEMPLATES PARA CADA TIPO:
+SQL TEMPLATES PARA CADA TIPO:
 
     compras_mes:
         SELECT "Cliente / Proveedor", COUNT(*), SUM(monto)
@@ -132,7 +132,7 @@ USAR_OPENAI_PARA_DATOS = False
         GROUP BY "Mes"
         ORDER BY "Mes" DESC
 
-📖 PARSEO DE MONTOS (SQL):
+PARSEO DE MONTOS (SQL):
 
     CASE
         -- Si tiene paréntesis (negativo)
@@ -157,7 +157,7 @@ USAR_OPENAI_PARA_DATOS = False
             )
     END
 
-��� PARSEO DE CANTIDADES (SQL):
+PARSEO DE CANTIDADES (SQL):
 
     CAST(
         REPLACE(REPLACE("Cantidad", '.', ''), ',', '.')
