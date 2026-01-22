@@ -15,6 +15,9 @@ from config import OPENAI_MODEL
 from ia_interpretador import interpretar_pregunta as interpretar_canonico
 from ia_comparativas import interpretar_comparativas
 from ia_facturas import interpretar_facturas, es_consulta_facturas
+from ia_interpretador_articulos import interpretar_articulo as interpretar_articulos
+from ia_stock import interpretar_stock as interpretar_stock_alt  # Si necesitas una alternativa o extensión
+from ia_compras import interpretar_compras  # Si necesitas una función específica de compras
 
 # =====================================================================
 # CONFIGURACIÓN OPENAI
@@ -181,13 +184,12 @@ def interpretar_pregunta(pregunta: str) -> Dict:
             return {"tipo": "conversacion", "parametros": {}, "debug": "saludo"}
 
     # 📌 CÓMO DEBE QUEDAR EL BLOQUE COMPLETO
-    # 🔒 FORZADO: "compras <AÑO>" �� SIEMPRE canónico
+    # 🔒 FORZADO: "compras <AÑO>" → SIEMPRE canónico
     if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
         return interpretar_canonico(pregunta)
 
     # Paso 1 — Regla simple para artículos (ANTES de ia_interpretador.py)
     if "articulo" in texto_normalizado or detecta_articulo_simple(pregunta):
-        from ia_interpretador_articulos import interpretar_articulo as interpretar_articulos
         return interpretar_articulos(pregunta)
 
     # ROUTING POR KEYWORDS (orden importa)
@@ -260,8 +262,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
 # NUEVA FUNCIÓN ROUTER PARA ARTÍCULOS
 # =====================================================================
 def interpretar_pregunta_router(pregunta: str) -> dict:
-    from ia_interpretador_articulos import interpretar_articulo
-
     texto = pregunta.lower()
 
     # si detecta proveedor → NO tocar
@@ -269,7 +269,7 @@ def interpretar_pregunta_router(pregunta: str) -> dict:
         return interpretar_canonico(pregunta)
 
     # si no, probar artículos
-    resultado_art = interpretar_articulo(pregunta)
+    resultado_art = interpretar_articulos(pregunta)
     if resultado_art and resultado_art.get("tipo") != "sin_resultado":
         return resultado_art
 
