@@ -803,7 +803,7 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
         return {
             "tipo": "compras_anio",
             "parametros": {
-                "anio": anios[0]
+                "anios": anios  # ✅ Cambiado de "anio" a "anios" (lista)
             },
             "debug": "compras solo año"
         }
@@ -849,7 +849,7 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
         if len(anios) >= 1:
             return {
                 "tipo": "compras_anio",
-                "parametros": {"anio": anios[0]},
+                "parametros": {"anios": anios},  # ✅ Cambiado de "anio" a "anios" (lista)
                 "moneda": moneda,
                 "debug": "compras año",
             }
