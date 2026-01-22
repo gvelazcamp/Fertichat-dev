@@ -1,253 +1,239 @@
 # ========================================
-# 🔬 DEBUG PANEL - Agregar a ui_compras.py
+# debug_panel.py - Módulo de Debug Independiente
 # ========================================
 """
-Agregar este código al final de la función Compras_IA(), 
-justo antes de las tabs principales (línea ~2400).
-
-Esto crea una pestaña "🔬 Debug" que muestra TODO el flujo.
+Módulo para debugging visual en Streamlit.
+Uso:
+    1. Importar: from debug_panel import DebugPanel
+    2. Inicializar: debug = DebugPanel()
+    3. Loggear pasos: debug.log("paso", data)
+    4. Mostrar panel: debug.render()
 """
 
-# ========================================
-# VARIABLES DE DEBUG (agregar al inicio del archivo, después de los imports)
-# ========================================
-if "debug_flow" not in st.session_state:
-    st.session_state["debug_flow"] = []
+import streamlit as st
+import pandas as pd
+import datetime
+import json
+import traceback
 
-def log_debug(step: str, data: any):
-    """Registra cada paso del flujo para debugging"""
-    import datetime
-    st.session_state["debug_flow"].append({
-        "timestamp": datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3],
-        "step": step,
-        "data": data
-    })
 
-# ========================================
-# PANEL DE DEBUG (agregar como nueva tab)
-# ========================================
-
-# MODIFICAR la línea donde defines las tabs para agregar tab_debug:
-# ANTES:
-# tab_chat, tab_comparativas = st.tabs(["💬 Chat", "📊 Menú Comparativas"])
-
-# DESPUÉS:
-tab_chat, tab_comparativas, tab_debug = st.tabs(["💬 Chat", "📊 Menú Comparativas", "🔬 Debug"])
-
-# ... (código existente de tab_chat y tab_comparativas) ...
-
-# ========================================
-# NUEVA TAB DEBUG (agregar al final)
-# ========================================
-with tab_debug:
-    st.markdown("### 🔬 Panel de Debug - Flujo Completo")
-    st.markdown("Visualiza todo el flujo de interpretación y ejecución en tiempo real.")
+class DebugPanel:
+    """Panel de debugging visual para Streamlit"""
     
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.caption("Se registran todos los pasos desde que ingresás una consulta hasta que se renderiza el resultado")
-    with col2:
-        if st.button("🗑️ Limpiar debug", key="clear_debug"):
-            st.session_state["debug_flow"] = []
-            st.rerun()
+    def __init__(self, session_key="debug_flow"):
+        """Inicializa el panel de debug"""
+        self.session_key = session_key
+        if self.session_key not in st.session_state:
+            st.session_state[self.session_key] = []
     
-    # Mostrar flow en orden inverso (más reciente primero)
-    if st.session_state.get("debug_flow"):
-        st.markdown("---")
+    def log(self, step: str, data: any):
+        """
+        Registra un paso en el flujo de debug
         
-        for i, entry in enumerate(reversed(st.session_state["debug_flow"])):
-            timestamp = entry["timestamp"]
-            step = entry["step"]
-            data = entry["data"]
+        Args:
+            step: Descripción del paso (ej: "📝 Input Usuario")
+            data: Datos a registrar (dict, DataFrame, string, etc)
+        """
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        
+        st.session_state[self.session_key].append({
+            "timestamp": timestamp,
+            "step": step,
+            "data": data
+        })
+    
+    def clear(self):
+        """Limpia todos los logs"""
+        st.session_state[self.session_key] = []
+    
+    def render(self):
+        """Renderiza el panel de debug completo"""
+        st.markdown("### 🔬 Panel de Debug - Flujo Completo")
+        st.markdown("Visualiza todo el flujo de interpretación y ejecución en tiempo real.")
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.caption("Se registran todos los pasos desde que ingresás una consulta hasta que se renderiza el resultado")
+        with col2:
+            if st.button("🗑️ Limpiar debug", key="clear_debug_btn"):
+                self.clear()
+                st.rerun()
+        
+        # Mostrar flow
+        if st.session_state.get(self.session_key):
+            st.markdown("---")
             
-            # Color según el tipo de paso
-            if "❌" in step or "error" in step.lower():
-                color = "#fee2e2"  # Rojo suave
-                icon = "❌"
-            elif "✅" in step or "success" in step.lower():
-                color = "#dcfce7"  # Verde suave
-                icon = "✅"
-            elif "🧠" in step or "interpret" in step.lower():
-                color = "#dbeafe"  # Azul suave
-                icon = "🧠"
-            elif "💾" in step or "sql" in step.lower():
-                color = "#fef3c7"  # Amarillo suave
-                icon = "💾"
-            elif "📊" in step or "dataframe" in step.lower():
-                color = "#e9d5ff"  # Púrpura suave
-                icon = "📊"
-            else:
-                color = "#f3f4f6"  # Gris suave
-                icon = "📝"
-            
-            with st.expander(f"{icon} `{timestamp}` - {step}", expanded=(i < 3)):
-                st.markdown(f"""
-                <div style="
-                    background: {color};
-                    padding: 12px;
-                    border-radius: 8px;
-                    border-left: 4px solid #{'ef4444' if '❌' in step else '10b981' if '✅' in step else '3b82f6'};
-                    margin: 8px 0;
-                ">
-                """, unsafe_allow_html=True)
+            for i, entry in enumerate(reversed(st.session_state[self.session_key])):
+                timestamp = entry["timestamp"]
+                step = entry["step"]
+                data = entry["data"]
                 
-                # Renderizar data según el tipo
-                if isinstance(data, dict):
-                    st.json(data)
-                elif isinstance(data, pd.DataFrame):
-                    st.dataframe(data.head(5), use_container_width=True)
-                    st.caption(f"Shape: {data.shape[0]} filas × {data.shape[1]} columnas")
-                    st.caption(f"Columnas: {', '.join(data.columns.tolist())}")
-                elif isinstance(data, str) and len(data) > 100:
-                    st.code(data, language="sql" if "SELECT" in data else "python")
-                else:
-                    st.code(str(data))
+                # Determinar color e icono
+                color, icon = self._get_style(step)
                 
-                st.markdown("</div>", unsafe_allow_html=True)
-    else:
-        st.info("👋 El debug flow estará vacío hasta que ejecutes una consulta en el chat.")
-        st.markdown("""
-        **Qué verás aquí:**
-        - 📝 Input del usuario
-        - 🧠 Interpretación (tipo y parámetros)
-        - 🔀 Router usado (ia_router, ia_compras, etc)
-        - 💾 SQL ejecutado
-        - 📊 DataFrame resultado
-        - 🎨 Función de renderizado
-        - ❌ Errores (si los hay)
-        """)
-
-# ========================================
-# MODIFICACIONES EN EL CÓDIGO EXISTENTE
-# ========================================
-
-"""
-Ahora necesitás agregar log_debug() en los lugares clave:
-
-1. CUANDO SE RECIBE INPUT:
-   (en la parte donde procesas st.chat_input)
-   
-   pregunta = st.chat_input("Escribe tu consulta...")
-   if pregunta:
-       log_debug("📝 Input Usuario", pregunta)
-
-2. DESPUÉS DE INTERPRETAR:
-   
-   resultado = interpretar_pregunta(pregunta)
-   log_debug("🧠 Interpretación", resultado)
-
-3. ANTES DE EJECUTAR SQL:
-   
-   tipo = resultado.get("tipo")
-   parametros = resultado.get("parametros")
-   log_debug("🔀 Router", {"tipo": tipo, "parametros": parametros})
-
-4. DESPUÉS DE EJECUTAR SQL:
-   
-   resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
-   log_debug("💾 SQL Resultado", {
-       "tipo": type(resultado_sql).__name__,
-       "shape": resultado_sql.shape if isinstance(resultado_sql, pd.DataFrame) else "N/A"
-   })
-   
-   if isinstance(resultado_sql, pd.DataFrame):
-       log_debug("📊 DataFrame", resultado_sql)
-
-5. AL RENDERIZAR:
-   
-   try:
-       render_dashboard_compras_vendible(df, titulo="Datos")
-       log_debug("✅ Renderizado exitoso", "Dashboard vendible")
-   except Exception as e:
-       log_debug("❌ Error en renderizado", str(e))
-
-6. CUANDO HAY ERRORES:
-   
-   except Exception as e:
-       log_debug("❌ Error", {"mensaje": str(e), "tipo": type(e).__name__})
-"""
-
-# ========================================
-# EJEMPLO DE INTEGRACIÓN COMPLETA
-# ========================================
-
-"""
-Aquí está cómo se vería el bloque del chat_input modificado:
-
-if pregunta:
-    log_debug("📝 Input Usuario", pregunta)
+                with st.expander(f"{icon} `{timestamp}` - {step}", expanded=(i < 3)):
+                    self._render_data(data, color, step)
+        else:
+            st.info("👋 El debug flow estará vacío hasta que ejecutes una consulta.")
+            st.markdown("""
+            **Qué verás aquí:**
+            - 📝 Input del usuario
+            - 🧠 Interpretación (tipo y parámetros)
+            - 🔀 Router usado
+            - 💾 SQL ejecutado
+            - 📊 DataFrame resultado
+            - 🎨 Función de renderizado
+            - ❌ Errores (si los hay)
+            """)
     
-    st.session_state["historial_compras"].append(
-        {"role": "user", "content": pregunta}
-    )
-
-    resultado = interpretar_pregunta(pregunta)
-    log_debug("🧠 Interpretación", resultado)
-    
-    tipo = resultado.get("tipo", "")
-    parametros = resultado.get("parametros", {})
-    
-    log_debug("🔀 Tipo detectado", {"tipo": tipo, "parametros": parametros})
-
-    respuesta_content = ""
-    respuesta_df = None
-
-    if tipo == "conversacion":
-        # ... código existente ...
-        log_debug("💬 Respuesta conversacional", respuesta_content)
+    def _get_style(self, step: str):
+        """Determina color e icono según el tipo de paso"""
+        step_lower = step.lower()
         
-    elif tipo == "no_entendido":
-        # ... código existente ...
-        log_debug("❓ No entendido", resultado.get("sugerencia", ""))
+        if "❌" in step or "error" in step_lower:
+            return "#fee2e2", "❌"  # Rojo
+        elif "✅" in step or "success" in step_lower or "exitoso" in step_lower:
+            return "#dcfce7", "✅"  # Verde
+        elif "🧠" in step or "interpret" in step_lower:
+            return "#dbeafe", "🧠"  # Azul
+        elif "💾" in step or "sql" in step_lower:
+            return "#fef3c7", "💾"  # Amarillo
+        elif "📊" in step or "dataframe" in step_lower:
+            return "#e9d5ff", "📊"  # Púrpura
+        else:
+            return "#f3f4f6", "📝"  # Gris
+    
+    def _render_data(self, data, color, step):
+        """Renderiza los datos según su tipo"""
+        border_color = "#ef4444" if "❌" in step else "#10b981" if "✅" in step else "#3b82f6"
         
-    else:
+        st.markdown(f"""
+        <div style="
+            background: {color};
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid {border_color};
+            margin: 8px 0;
+        ">
+        """, unsafe_allow_html=True)
+        
         try:
-            log_debug("⚙️ Ejecutando consulta", {"tipo": tipo})
-            
-            resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
-            
-            if isinstance(resultado_sql, pd.DataFrame):
-                log_debug("📊 DataFrame obtenido", {
-                    "shape": resultado_sql.shape,
-                    "columns": resultado_sql.columns.tolist()
-                })
-                log_debug("📊 Preview DataFrame", resultado_sql)
+            if isinstance(data, pd.DataFrame):
+                st.dataframe(data.head(10), use_container_width=True)
+                st.caption(f"📏 Shape: {data.shape[0]} filas × {data.shape[1]} columnas")
+                st.caption(f"📋 Columnas: {', '.join(data.columns.tolist())}")
                 
-                if len(resultado_sql) == 0:
-                    respuesta_content = "⚠️ No se encontraron resultados"
-                    log_debug("⚠️ Sin resultados", "DataFrame vacío")
+            elif isinstance(data, dict):
+                st.json(data)
+                
+            elif isinstance(data, str):
+                if len(data) > 100 or "\n" in data:
+                    # Detectar tipo de código
+                    if "SELECT" in data.upper() or "FROM" in data.upper():
+                        st.code(data, language="sql")
+                    elif "def " in data or "import " in data:
+                        st.code(data, language="python")
+                    else:
+                        st.code(data)
                 else:
-                    # Generar mensaje según tipo
-                    if tipo.startswith("compras_"):
-                        respuesta_content = f"✅ Encontré **{len(resultado_sql)}** compras"
-                        log_debug("✅ Compras encontradas", len(resultado_sql))
-                    # ... etc
+                    st.text(data)
                     
-                    respuesta_df = resultado_sql
+            elif isinstance(data, (list, tuple)):
+                st.json(data)
+                
             else:
-                respuesta_content = str(resultado_sql)
-                log_debug("📄 Resultado texto", respuesta_content)
+                st.code(str(data))
                 
         except Exception as e:
-            log_debug("❌ ERROR", {
-                "tipo": type(e).__name__,
-                "mensaje": str(e),
-                "traceback": traceback.format_exc()
-            })
-            respuesta_content = f"❌ Error: {str(e)}"
+            st.error(f"Error renderizando data: {e}")
+            st.code(str(data))
+        
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    st.session_state["historial_compras"].append({
-        "role": "assistant",
-        "content": respuesta_content,
-        "df": respuesta_df,
-        "tipo": tipo,
-        "pregunta": pregunta,
-    })
+
+# ========================================
+# WRAPPER DECORADOR (Opcional - Avanzado)
+# ========================================
+
+def debug_step(step_name: str):
+    """
+    Decorador para loggear automáticamente funciones
     
-    log_debug("✅ Agregado al historial", {
-        "tipo": tipo,
-        "tiene_df": respuesta_df is not None
-    })
+    Uso:
+        @debug_step("🔍 Buscando proveedores")
+        def buscar_proveedores(query):
+            return resultados
+    """
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            debug = DebugPanel()
+            try:
+                debug.log(f"⏩ Iniciando: {step_name}", {
+                    "funcion": func.__name__,
+                    "args": str(args)[:100],
+                    "kwargs": str(kwargs)[:100]
+                })
+                result = func(*args, **kwargs)
+                debug.log(f"✅ Completado: {step_name}", {
+                    "funcion": func.__name__,
+                    "resultado_tipo": type(result).__name__
+                })
+                return result
+            except Exception as e:
+                debug.log(f"❌ Error en: {step_name}", {
+                    "funcion": func.__name__,
+                    "error": str(e),
+                    "traceback": traceback.format_exc()
+                })
+                raise
+        return wrapper
+    return decorator
 
-    st.rerun()
-"""
+
+# ========================================
+# EJEMPLO DE USO
+# ========================================
+
+if __name__ == "__main__":
+    # Este es un ejemplo de cómo usarlo
+    st.set_page_config(page_title="Debug Panel Demo", layout="wide")
+    
+    debug = DebugPanel()
+    
+    st.title("Demo del Panel de Debug")
+    
+    # Tabs de ejemplo
+    tab1, tab2 = st.tabs(["Demo", "🔬 Debug"])
+    
+    with tab1:
+        st.header("Demo")
+        
+        if st.button("Simular consulta exitosa"):
+            debug.log("📝 Input Usuario", "compras 2025")
+            debug.log("🧠 Interpretación", {
+                "tipo": "compras_anio",
+                "parametros": {"anios": [2025]}
+            })
+            debug.log("💾 SQL Ejecutado", """
+                SELECT Proveedor, SUM(Total) AS Total
+                FROM chatbot_raw
+                WHERE Año = 2025
+                GROUP BY Proveedor
+                ORDER BY Total DESC
+                LIMIT 20
+            """)
+            debug.log("📊 DataFrame", pd.DataFrame({
+                "Proveedor": ["ROCHE", "BIOKEY"],
+                "Total": [1000000, 500000]
+            }))
+            debug.log("✅ Renderizado exitoso", "Dashboard mostrado correctamente")
+            st.success("¡Consulta simulada! Ve a la pestaña Debug")
+        
+        if st.button("Simular error"):
+            debug.log("📝 Input Usuario", "compras xyz")
+            debug.log("🧠 Interpretación", {"tipo": "no_entendido"})
+            debug.log("❌ Error", "No se pudo interpretar la consulta")
+            st.error("¡Error simulado! Ve a la pestaña Debug")
+    
+    with tab2:
+        debug.render()
