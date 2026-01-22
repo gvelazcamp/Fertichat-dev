@@ -16,8 +16,8 @@ from ia_interpretador import interpretar_pregunta as interpretar_canonico
 from ia_comparativas import interpretar_comparativas
 from ia_facturas import interpretar_facturas, es_consulta_facturas
 from ia_interpretador_articulos import interpretar_articulo as interpretar_articulos
-from ia_stock import interpretar_stock as interpretar_stock_alt  # Si necesitas una alternativa o extensión
-from ia_compras import interpretar_compras  # Si necesitas una función específica de compras
+from ia_stock import interpretar_stock as interpretar_stock_alt
+from ia_compras import interpretar_compras
 
 # =====================================================================
 # CONFIGURACIÓN OPENAI
@@ -61,9 +61,6 @@ def interpretar_stock(pregunta: str) -> Dict:
 # DETECTOR SIMPLE DE ARTÍCULOS
 # =====================================================================
 def detecta_articulo_simple(texto: str) -> bool:
-    """
-    Detección simple: si contiene palabras clave de artículos conocidos.
-    """
     texto_lower = texto.lower()
     keywords_articulos = ["vitek", "roche", "coba", "elecsys", "ast", "n422", "gn", "id20", "test", "kit"]
     return any(k in texto_lower for k in keywords_articulos)
@@ -72,11 +69,6 @@ def detecta_articulo_simple(texto: str) -> bool:
 # EJECUTOR POR INTERPRETACIÓN (SIEMPRE DEVUELVE ALGO)
 # =====================================================================
 def ejecutar_por_interpretacion(resultado):
-    """
-    Router principal.
-    NO decide por cantidad de filas.
-    Decide SOLO por tipo.
-    """
     from sql_facturas import get_facturas_proveedor as ejecutar_facturas_proveedor
     from sql_compras import get_compras_articulo_anio as ejecutar_compras_articulo_anio
 
@@ -89,9 +81,6 @@ def ejecutar_por_interpretacion(resultado):
     tipo = resultado["tipo"]
     params = resultado.get("parametros", {})
 
-    # -------------------------
-    # COMPRAS POR PROVEEDOR
-    # -------------------------
     if tipo == "facturas_proveedor":
         df = ejecutar_facturas_proveedor(**params)
         return {
@@ -100,9 +89,6 @@ def ejecutar_por_interpretacion(resultado):
             "df": df
         }
 
-    # -------------------------
-    # COMPRAS POR ARTÍCULO + AÑO
-    # -------------------------
     if tipo == "compras_articulo_anio":
         df = ejecutar_compras_articulo_anio(
             modo_sql=params["modo_sql"],
@@ -115,9 +101,6 @@ def ejecutar_por_interpretacion(resultado):
             "df": df
         }
 
-    # -------------------------
-    # ✅ AGREGADO: COMPRAS ARTÍCULOS ANIOS (MÚLTIPLES)
-    # -------------------------
     elif tipo == "compras_articulos_anios":
         from sql_compras import get_compras_articulos_anios
         df = get_compras_articulos_anios(**params)
@@ -127,9 +110,6 @@ def ejecutar_por_interpretacion(resultado):
             "df": df
         }
 
-    # -------------------------
-    # DASHBOARD TOP PROVEEDORES
-    # -------------------------
     elif tipo == "dashboard_top_proveedores":
         from sql_compras import get_dashboard_top_proveedores
         anio = params.get("anio")
@@ -147,9 +127,6 @@ def ejecutar_por_interpretacion(resultado):
             "df": df
         }
 
-    # -------------------------
-    # FALLBACK
-    # -------------------------
     return {
         "ok": False,
         "mensaje": f"Tipo no soportado: {tipo}"
@@ -160,11 +137,7 @@ def ejecutar_por_interpretacion(resultado):
 # =====================================================================
 def interpretar_pregunta(pregunta: str) -> Dict:
     """
-    Router principal:
-    - facturas -> ia_facturas
-    - comparativas -> ia_comparativas
-    - compras -> CANÓNICO (ia_interpretador)
-    - stock -> interpretar_stock
+    Router principal con PRIORIDAD ABSOLUTA para "compras <AÑO>"
     """
     if not pregunta or not str(pregunta).strip():
         return {
@@ -175,13 +148,14 @@ def interpretar_pregunta(pregunta: str) -> Dict:
         }
 
     texto_lower = str(pregunta).lower().strip()
-    texto_normalizado = re.sub(r'[^\w\s]', ' ', texto_lower).strip()  # Normalizar para búsqueda
+    texto_normalizado = re.sub(r'[^\w\s]', ' ', texto_lower).strip()
 
     # =================================================================
     # 🔥 PRIORIDAD ABSOLUTA: "compras <AÑO>" → SIEMPRE canónico
-    # Este bloque DEBE estar ANTES de todo para evitar falsos positivos
+    # Este bloque DEBE estar ANTES de todo
     # =================================================================
     if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
+        print(f"🔥 BLOQUE FORZADO ACTIVADO: '{pregunta}' → canónico")
         return interpretar_canonico(pregunta)
 
     # Saludos / conversación
@@ -190,13 +164,13 @@ def interpretar_pregunta(pregunta: str) -> Dict:
         if not any(k in texto_lower for k in ["compra", "compras", "compar", "stock", "factura", "facturas"]):
             return {"tipo": "conversacion", "parametros": {}, "debug": "saludo"}
 
-    # Paso 1 — Regla simple para artículos (DESPUÉS del bloque forzado)
+    # Artículos (DESPUÉS del bloque forzado)
     if "articulo" in texto_normalizado or detecta_articulo_simple(pregunta):
         return interpretar_articulos(pregunta)
 
-    # ROUTING POR KEYWORDS (orden importa)
+    # ROUTING POR KEYWORDS
     
-    # 1. FACTURAS (antes de compras para evitar conflictos)
+    # 1. FACTURAS
     if es_consulta_facturas(pregunta):
         return interpretar_facturas(pregunta)
 
@@ -204,13 +178,14 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     if "stock" in texto_lower:
         return interpretar_stock(pregunta)
 
-    # 3. COMPRAS (va al CANÓNICO)
+    # 3. COMPRAS
     if any(k in texto_lower for k in ["compra", "compras", "comprobante", "comprobantes"]):
-        # 🔥 EVITAR que "compras <AÑO>" pase por artículos
+        # 🔥 VALIDACIÓN ADICIONAL: evitar que "compras <AÑO>" vaya a artículos
         if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
+            print(f"🔥 BLOQUE FORZADO 2 ACTIVADO: '{pregunta}' → canónico")
             return interpretar_canonico(pregunta)
         
-        # ✅ Probar primero intérprete de artículos (solo si NO es compras+año)
+        # Probar intérprete de artículos
         from ia_interpretador_articulos import interpretar_articulo
         resultado_art = interpretar_articulo(pregunta)
         if isinstance(resultado_art, dict) and resultado_art.get("tipo") not in (
@@ -219,14 +194,14 @@ def interpretar_pregunta(pregunta: str) -> Dict:
         ):
             return resultado_art
 
-        # 🔁 Fallback al canónico
+        # Fallback al canónico
         return interpretar_canonico(pregunta)
 
     # 4. COMPARATIVAS
     if re.search(r"\b(comparar|comparame|compara)\b", texto_lower):
         return interpretar_comparativas(pregunta)
 
-    # OPENAI (opcional)
+    # OPENAI
     if client and USAR_OPENAI_PARA_DATOS:
         try:
             response = client.chat.completions.create(
@@ -265,34 +240,14 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     }
 
 # =====================================================================
-# NUEVA FUNCIÓN ROUTER PARA ARTÍCULOS
-# =====================================================================
-def interpretar_pregunta_router(pregunta: str) -> dict:
-    texto = pregunta.lower()
-
-    # si detecta proveedor → NO tocar
-    if "roche" in texto or "abbott" in texto:
-        return interpretar_canonico(pregunta)
-
-    # si no, probar artículos
-    resultado_art = interpretar_articulos(pregunta)
-    if resultado_art and resultado_art.get("tipo") != "sin_resultado":
-        return resultado_art
-
-    # fallback
-    return interpretar_canonico(pregunta)
-
-# =====================================================================
 # MAPEO TIPO → FUNCIÓN SQL
 # =====================================================================
 MAPEO_FUNCIONES = {
     # COMPRAS
-    "compras_anio": {"funcion": "get_top_proveedores_por_anios", "params": ["anios", "limite"]},  # 🔥 FIX: Usar función que agrupa por proveedor
+    "compras_anio": {"funcion": "get_top_proveedores_por_anios", "params": ["anios", "limite"]},
     "compras_proveedor_anio": {"funcion": "get_detalle_compras_proveedor_anio", "params": ["proveedor", "anio"]},
     "compras_proveedor_mes": {"funcion": "get_detalle_compras_proveedor_mes", "params": ["proveedor", "mes"]},
     "compras_mes": {"funcion": "get_compras_por_mes_excel", "params": ["mes"]},
-
-    # 🆕 COMPRAS POR ARTÍCULO
     "compras_articulo_anio": {
         "funcion": "get_compras_articulo_anio",
         "params": ["modo_sql", "valor", "anios"],
