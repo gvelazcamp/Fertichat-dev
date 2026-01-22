@@ -23,6 +23,7 @@ client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 # Si querés "sacar OpenAI" para datos: dejalo False (recomendado).
 USAR_OPENAI_PARA_DATOS = False
 
+"""
 DOCUMENTACIÓN COMPLETA - AI INTÉRPRETE COMPRAS
 
 OBJETIVO:
@@ -30,24 +31,20 @@ OBJETIVO:
     en queries SQL precisas contra la tabla chatbot_raw en Supabase.
 
 ESTRUCTURA DE LA TABLA chatbot_raw:
-    ╔══════════════════════════╗
-    ║   chatbot_raw            ║
-    ╠══════════════════════════╣
-    ║ Tipo Comprobante         ║ → "Compra Crédito", "Compra Contado"
-    ║ Tipo CFE                 ║ → NULL (generalmente)
-    ║ Nro. Comprobante         ║ → "A00055313"
-    ║ Moneda                   ║ → "UYU" o "USD"
-    ║ Cliente / Proveedor      ║ → "BIOKEY SRL", "ROCHE URUGUAY S.A."
-    ║ Familia                  ║ → "FB", "AF", "TR"
-    ║ Tipo Articulo            ║ → "REACTIVOS", "INSUMOS"
-    ║ Articulo                 ║ → "OBIS - PYR X 60 DET"
-    ║ Año                      ║ → 2025 (INTEGER)
-    ║ Mes                      ║ → "2025-12" (STRING formato YYYY-MM)
-    ║ Fecha                    ║ → "2025-12-23" (STRING formato YYYY-MM-DD)
-    ║ Cantidad                 ║ → "  1,00 " (STRING con espacios)
-    ║ Monto Neto               ║ → "  194,40 " o "(194,40)" negativo
-    ║ stock_actual             ║ → 1.00 (NUMERIC, puede ser NULL)
-    ╚══════════════════════════╝
+    - Tipo Comprobante: "Compra Crédito", "Compra Contado"
+    - Tipo CFE: NULL (generalmente)
+    - Nro. Comprobante: "A00055313"
+    - Moneda: "UYU" o "USD"
+    - Cliente / Proveedor: "BIOKEY SRL", "ROCHE URUGUAY S.A."
+    - Familia: "FB", "AF", "TR"
+    - Tipo Articulo: "REACTIVOS", "INSUMOS"
+    - Articulo: "OBIS - PYR X 60 DET"
+    - Año: 2025 (INTEGER)
+    - Mes: "2025-12" (STRING formato YYYY-MM)
+    - Fecha: "2025-12-23" (STRING formato YYYY-MM-DD)
+    - Cantidad: "  1,00 " (STRING con espacios)
+    - Monto Neto: "  194,40 " o "(194,40)" negativo
+    - stock_actual: 1.00 (NUMERIC, puede ser NULL)
 
 REGLAS CRÍTICAS DE INTERPRETACIÓN:
 
@@ -90,11 +87,11 @@ REGLAS CRÍTICAS DE INTERPRETACIÓN:
 
 VALIDACIONES OBLIGATORIAS:
 
-    Año está en rango válido (2023-2026)
-    Mes está en rango válido (01-12)
-    Formato de mes es YYYY-MM
-    Proveedor/artículo no está vacío
-    Hay al menos UN filtro temporal (mes O año)
+    - Año está en rango válido (2023-2026)
+    - Mes está en rango válido (01-12)
+    - Formato de mes es YYYY-MM
+    - Proveedor/artículo no está vacío
+    - Hay al menos UN filtro temporal (mes O año)
 
 SQL TEMPLATES PARA CADA TIPO:
 
@@ -163,6 +160,7 @@ PARSEO DE CANTIDADES (SQL):
         REPLACE(REPLACE("Cantidad", '.', ''), ',', '.')
         AS NUMERIC
     )
+"""
 
 # =========================================================================================
 # HELPER PARA GENERAR SQL (OPCIONAL - para referencia)
