@@ -681,32 +681,64 @@ def get_total_facturas_por_moneda_todos_anios():
             SUM(
                 CASE
                     WHEN TRIM("Moneda") = '$' THEN
-                        CAST(
-                            REPLACE(
-                                REPLACE(
-                                    REPLACE(TRIM("Monto Neto"), '.', ''),
-                                ',', '.'),
-                            ' ', ''
-                        ) AS numeric
-                        )
+                        CASE
+                            WHEN TRIM("Monto Neto") LIKE '(%'
+                            THEN
+                                -1 * CAST(
+                                    REPLACE(
+                                        REPLACE(
+                                            REPLACE(
+                                                REPLACE(TRIM("Monto Neto"), '(', ''),
+                                            ')', ''),
+                                        '.', ''),
+                                    ',', '.'
+                                    ) AS numeric
+                                )
+                            ELSE
+                                CAST(
+                                    REPLACE(
+                                        REPLACE(
+                                            REPLACE(TRIM("Monto Neto"), '.', ''),
+                                        ',', '.'),
+                                    ' ', ''
+                                    ) AS numeric
+                                )
+                        END
                     ELSE 0
                 END
             ) AS total_pesos,
             SUM(
                 CASE
                     WHEN TRIM("Moneda") = 'USD' THEN
-                        CAST(
-                            REPLACE(
-                                REPLACE(
-                                    REPLACE(TRIM("Monto Neto"), '.', ''),
-                                ',', '.'),
-                            ' ', ''
-                        ) AS numeric
-                        )
+                        CASE
+                            WHEN TRIM("Monto Neto") LIKE '(%'
+                            THEN
+                                -1 * CAST(
+                                    REPLACE(
+                                        REPLACE(
+                                            REPLACE(
+                                                REPLACE(TRIM("Monto Neto"), '(', ''),
+                                            ')', ''),
+                                        '.', ''),
+                                    ',', '.'
+                                    ) AS numeric
+                                )
+                            ELSE
+                                CAST(
+                                    REPLACE(
+                                        REPLACE(
+                                            REPLACE(TRIM("Monto Neto"), '.', ''),
+                                        ',', '.'),
+                                    ' ', ''
+                                    ) AS numeric
+                                )
+                        END
                     ELSE 0
                 END
             ) AS total_usd
         FROM chatbot_raw
+        WHERE TRIM("Moneda") IS NOT NULL
+          AND TRIM("Moneda") <> ''
         GROUP BY TRIM("Moneda")
         ORDER BY moneda;
     """
