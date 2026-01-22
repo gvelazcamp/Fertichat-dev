@@ -673,10 +673,14 @@ def buscar_facturas_similares(patron: str, limite: int = 10) -> pd.DataFrame:
 
 
 # =====================================================================
-# VERSIÓN SEGURA: TOTAL FACTURAS POR MONEDA TODOS LOS AÑOS
+# VERSIÓN ROBUSTA: TOTAL FACTURAS POR MONEDA TODOS LOS AÑOS
 # =====================================================================
 
 def get_total_facturas_por_moneda_todos_anios():
+    """
+    Devuelve totales por moneda (pesos y USD) para TODOS los años.
+    Si no hay datos, devuelve un DataFrame con monedas comunes con 0.
+    """
     sql = """
         SELECT
             TRIM("Moneda") AS moneda,
@@ -696,8 +700,21 @@ def get_total_facturas_por_moneda_todos_anios():
                 END
             ) AS total_usd
         FROM chatbot_raw
-        WHERE TRIM("Moneda") IS NOT NULL
+        WHERE TRIM("Moneda") IS NOT NULL AND TRIM("Moneda") != ''
         GROUP BY TRIM("Moneda")
         ORDER BY moneda;
     """
-    return ejecutar_consulta(sql)
+    
+    df = ejecutar_consulta(sql)
+    
+    # Si no hay datos (debido a errores en parsing), devolver estructura mínima
+    if df is None or df.empty:
+        print("⚠️ No se encontraron datos válidos en 'Monto Neto'. Verifica formatos de montos.")
+        return pd.DataFrame({
+            'moneda': ['$', 'USD'],
+            'registros': [0, 0],
+            'total_pesos': [0.0, 0.0],
+            'total_usd': [0.0, 0.0]
+        })
+    
+    return df
