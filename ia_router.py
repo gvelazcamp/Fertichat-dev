@@ -191,18 +191,8 @@ def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
 def detectar_articulo_valido(tokens, catalogo_articulos):
     for token in tokens:
         t = token.strip().lower()
-
-        # ❌ NO permitir tokens numéricos puros
-        if t.isdigit():
-            continue
-
-        # ❌ NO permitir tokens mayormente numéricos (ej: 2183118a)
-        if sum(c.isdigit() for c in t) >= len(t) * 0.6:
-            continue
-
         if len(t) < 4:
             continue
-
         for art in catalogo_articulos:
             if t in art.lower():
                 return art
@@ -562,7 +552,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
         return {
             "tipo": "no_entendido",
             "parametros": {},
-            "sugerencia": "Prob��: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279",
+            "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279",
             "debug": "openai error",
         }
 
@@ -728,8 +718,14 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         tipo = "facturas_proveedor"
 
     elif arts and anios:
-        from ia_interpretador_articulos import interpretar_articulo
-        return interpretar_articulo(texto_original, anios, None)
+        return {
+            "tipo": "compras_articulo_anio",
+            "parametros": {
+                "articulo": arts[0],
+                "anios": anios
+            },
+            "debug": "compras articulo + año"
+        }
 
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
@@ -1100,7 +1096,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 # =========================
 # Nota: En tu arquitectura, "Agentic AI" = este interpretador.
 # El orquestador sigue siendo el que ejecuta SQL/funciones.
-# Esto es solo un alias/wrapper para que lo uses explítamente como "agente".
+# Esto es solo un alias/wrapper para que lo uses explícítamente como "agente".
 
 def agentic_decidir(pregunta: str) -> Dict[str, Any]:
     """
@@ -1154,8 +1150,12 @@ MAPEO_FUNCIONES = {
         "params": ["proveedores", "meses", "anios"],
     },
     "compras_articulo_anio": {
-        "funcion": "get_compras_articulo_anio",
+        "funcion": "get_detalle_compras_articulo_anio",
         "params": ["articulo", "anios"],
+    },
+    "detalle_factura_numero": {
+        "funcion": "get_detalle_factura_por_numero",
+        "params": ["nro_factura"],
     },
     "comparar_proveedor_meses": {
         "funcion": "get_comparacion_proveedor_meses",
@@ -1167,34 +1167,18 @@ MAPEO_FUNCIONES = {
     },
     "comparar_proveedores_meses": {
         "funcion": "get_comparacion_proveedores_meses",
-        "params": ["proveedores", "mes1", "mes2", "label1", "label2"],
+        "parametros": ["proveedores", "mes1", "mes2", "label1", "label2"],
     },
     "comparar_proveedores_anios": {
         "funcion": "get_comparacion_proveedores_anios",
-        "params": ["proveedores", "anios", "label1", "label2"],
-    },
-    "comparar_proveedores_meses_multi": {
-        "funcion": "get_comparacion_proveedores_meses_multi",
-        "params": ["proveedores", "meses"],
-    },
-    "comparar_proveedores_anios_multi": {
-        "funcion": "get_comparacion_proveedores_anios_multi",
-        "params": ["proveedores", "anios"],
-    },
-    "detalle_factura_numero": {
-        "funcion": "get_detalle_factura_por_numero",
-        "params": ["nro_factura"],
-    },
-    "facturas_proveedor": {
-        "funcion": "get_facturas_proveedor",
-        "params": ["proveedores", "meses", "anios", "desde", "hasta", "articulo", "moneda", "limite"],
+        "parametros": ["proveedores", "anios", "label1", "label2"],
     },
     "ultima_factura": {
         "funcion": "get_ultima_factura_inteligente",
         "params": ["patron"],
     },
     "facturas_articulo": {
-        "funcion": "get_facturas_por_articulo",
+        "funcion": "get_facturas_articulo",
         "params": ["articulo"],
     },
     "stock_total": {
@@ -1204,6 +1188,10 @@ MAPEO_FUNCIONES = {
     "stock_articulo": {
         "funcion": "get_stock_articulo",
         "params": ["articulo"],
+    },
+    "facturas_proveedor": {
+        "funcion": "get_facturas_proveedor_detalle",
+        "params": ["proveedores", "meses", "anios", "desde", "hasta", "articulo", "moneda", "limite"],
     },
     "listado_facturas_anio": {
         "funcion": "get_listado_facturas_por_anio",
@@ -1223,6 +1211,9 @@ MAPEO_FUNCIONES = {
     },
     "dashboard_top_proveedores": {
         "funcion": "get_dashboard_top_proveedores",
-        "params": ["anio", "top_n", "moneda", "meses"],
+        "params": ["anio", "top_n", "moneda"],
     },
 }
+
+def obtener_info_tipo(tipo: str) -> Optional[Dict]:
+    return MAPEO_FUNCIONES.get(tipo)
