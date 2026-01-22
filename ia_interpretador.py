@@ -829,58 +829,58 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     texto_limpio = limpiar_consulta(texto_original)
     texto_lower = texto_limpio.lower()
 
-     idx_prov, idx_art = _get_indices()
-     provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
+    idx_prov, idx_art = _get_indices()
+    provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
 
-     # ✅ FIX: Excluir artículos problemáticos
-     ARTICULOS_EXCLUIDOS = [
-          "2183118 - IVA COMPRAS DEL ESTADO (DTOS 528/03 Y 319/06)",
-          "IVA COMPRAS DEL ESTADO",
-     ]
+    # ✅ FIX: Excluir artículos problemáticos
+    ARTICULOS_EXCLUIDOS = [
+        "2183118 - IVA COMPRAS DEL ESTADO (DTOS 528/03 Y 319/06)",
+        "IVA COMPRAS DEL ESTADO",
+    ]
 
-     idx_art_filtrado = [
-          (orig, norm) for orig, norm in idx_art
-          if not any(excl.lower() in orig.lower() for excl in ARTICULOS_EXCLUIDOS)
-     ]
+    idx_art_filtrado = [
+        (orig, norm) for orig, norm in idx_art
+        if not any(excl.lower() in orig.lower() for excl in ARTICULOS_EXCLUIDOS)
+    ]
 
-     # ✅ FIX SIMPLE: NO buscar artículos si hay "compra" + año
-     # Esto evita confusiones con códigos numéricos como "2183118"
-     anios_temp = _extraer_anios(texto_lower)
-     tiene_compra_y_anio = ("compra" in texto_lower) and (len(anios_temp) > 0)
+    # ✅ FIX SIMPLE: NO buscar artículos si hay "compra" + año
+    # Esto evita confusiones con códigos numéricos como "2183118"
+    anios_temp = _extraer_anios(texto_lower)
+    tiene_compra_y_anio = ("compra" in texto_lower) and (len(anios_temp) > 0)
 
-     if tiene_compra_y_anio:
-          arts = []  # NO buscar artículos cuando hay compras + año
-     else:
-          arts = _match_best(texto_lower, idx_art_filtrado, max_items=MAX_ARTICULOS)
+    if tiene_compra_y_anio:
+        arts = []  # NO buscar artículos cuando hay compras + año
+    else:
+        arts = _match_best(texto_lower, idx_art_filtrado, max_items=MAX_ARTICULOS)
 
-     if not provs:
-          prov_libre = _extraer_proveedor_libre(texto_lower_original)
-          if prov_libre:
-               provs = [_alias_proveedor(prov_libre)]
+    if not provs:
+        prov_libre = _extraer_proveedor_libre(texto_lower_original)
+        if prov_libre:
+            provs = [_alias_proveedor(prov_libre)]
 
-     tokens = _tokens(texto_lower_original)
+    tokens = _tokens(texto_lower_original)
 
-     # proveedor (YA EXISTE)
-     # provs = [...]
+    # proveedor (YA EXISTE)
+    # provs = [...]
 
-     # artículo fuerte (si ya lo tenías)
-     # arts = [...]
+    # artículo fuerte (si ya lo tenías)
+    # arts = [...]
 
-     # 👉 fallback de artículo (VALIDACIÓN CONTRA CATÁLOGO REAL)
-     if not arts:
-          listas = _cargar_listas_supabase()
-          articulos_db = listas.get("articulos", [])
+    # 👉 fallback de artículo (VALIDACIÓN CONTRA CATÁLOGO REAL)
+    if not arts:
+        listas = _cargar_listas_supabase()
+        articulos_db = listas.get("articulos", [])
 
-          # ✅ FIX: Excluir artículos de la lista también
-          articulos_db_filtrados = [
-               art for art in articulos_db
-               if not any(excl.lower() in art.lower() for excl in ARTICULOS_EXCLUIDOS)
-          ]
+        # ✅ FIX: Excluir artículos de la lista también
+        articulos_db_filtrados = [
+            art for art in articulos_db
+            if not any(excl.lower() in art.lower() for excl in ARTICULOS_EXCLUIDOS)
+        ]
 
-          tokens_restantes = [t for t in tokens if t not in provs]
-          articulo = detectar_articulo_valido(tokens_restantes, articulos_db_filtrados)
-          if articulo:
-               arts = [articulo]
+        tokens_restantes = [t for t in tokens if t not in provs]
+        articulo = detectar_articulo_valido(tokens_restantes, articulos_db_filtrados)
+        if articulo:
+            arts = [articulo]
 
 
     # ============================
