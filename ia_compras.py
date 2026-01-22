@@ -47,7 +47,7 @@
             },
             "debug": "BLOQUE_UNIVERSAL_COMPRAS_AÑO"
         }
-
+    # ==================================================
 
 🔍 REGLAS CRÍTICAS DE INTERPRETACIÓN:
 
