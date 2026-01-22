@@ -2,6 +2,8 @@
 # SQL_FACTURAS.PY - CONSULTAS DE FACTURAS
 # =========================
 
+print("🔥 sql_facturas.py CARGADO")
+
 import re
 import pandas as pd
 from typing import List, Optional, Any
@@ -343,7 +345,7 @@ def get_total_facturas_proveedor(
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
     # Artículo
-    if articulo and str(articulo).strip():
+    if articulo and str(artitulo).strip():
         where_parts.append('LOWER(TRIM("Articulo")) LIKE %s')
         params.append(f"%{str(articulo).lower().strip()}%")
 
@@ -670,7 +672,7 @@ def buscar_facturas_similares(patron: str, limite: int = 10) -> pd.DataFrame:
 
 
 # =====================================================================
-# SQL CORRECTO PROBADO: TOTAL FACTURAS POR MONEDA TODOS LOS AÑOS
+# SOLUCIÓN CORRECTA MÍNIMA: TOTAL FACTURAS POR MONEDA TODOS LOS AÑOS
 # =====================================================================
 
 def get_total_facturas_por_moneda_todos_anios():
@@ -750,6 +752,7 @@ def get_total_facturas_por_moneda_todos_anios():
 # =====================================================================
 
 def get_total_facturas_por_moneda_generico():
+    print("🔥 get_total_facturas_por_moneda_generico EJECUTADA")
     sql = """
     SELECT
         TRIM("Moneda") AS moneda,
