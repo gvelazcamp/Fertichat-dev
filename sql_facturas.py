@@ -699,7 +699,8 @@ def get_total_facturas_por_moneda_todos_anios():
                 END
             ), 0) AS total_usd
         FROM chatbot_raw
-        WHERE TRIM("Moneda") IS NOT NULL AND TRIM("Moneda") != ''
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" ILIKE 'Compra%')
+          AND TRIM("Moneda") IS NOT NULL AND TRIM("Moneda") != ''
         GROUP BY TRIM("Moneda")
         ORDER BY moneda;
     """
