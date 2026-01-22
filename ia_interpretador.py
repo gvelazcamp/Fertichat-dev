@@ -951,13 +951,30 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
     if provs and anios:
-        tipo = "facturas_proveedor"
+        entidad = detectar_entidad_real(provs[0])
+
+        if entidad == "proveedor":
+            tipo = "facturas_proveedor"
+
+        elif entidad == "articulo":
+            from ia_compras import interpretar_compras
+            resultado = interpretar_compras(texto_original, anios)
+            return resultado
+
+        elif entidad == "ambigua":
+            return {
+                "tipo": "no_entendido",
+                "parametros": {},
+                "sugerencia": f"¿Te referís al proveedor o al artículo '{provs[0]}'?",
+                "debug": "entidad ambigua proveedor/articulo"
+            }
 
     elif arts and anios:
         # ✅ FORZAR A IA_COMPRAS PARA COMPRAS ARTÍCULO + AÑO
         from ia_compras import interpretar_compras
         resultado = interpretar_compras(texto_original, anios)
         return resultado
+
 
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
