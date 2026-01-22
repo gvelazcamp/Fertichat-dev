@@ -578,7 +578,7 @@ MAPEO_FUNCIONES = {
     "compras_anio": {
         "funcion": "get_compras_anio",
         "params": ["anio"],
-        "resumen": "get_total_compras_anio",
+        # ✅ Removido "resumen" - siempre usar detalle
     },
     "compras_proveedor_mes": {
         "funcion": "get_detalle_compras_proveedor_mes",
@@ -713,21 +713,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             )
         }
 
-    # ============================
-    # CONOCIMIENTO (preguntas qué es, qué significa, etc.)
-    # ============================
-    palabras_conocimiento = ["qué es", "que es", "qué significa", "que significa", 
-                             "explica", "explicame", "explícame", "define", 
-                             "dime sobre", "qué son", "que son", "cuál es", "cual es",
-                             "para qué sirve", "para que sirve", "cómo funciona", "como funciona"]
-    
-    if any(palabra in texto_lower_original for palabra in palabras_conocimiento):
-        return {
-            "tipo": "conocimiento",
-            "parametros": {},
-            "debug": f"pregunta de conocimiento: {texto_original}"
-        }
-
     # FAST-PATH: listado facturas por año
     if re.search(r"\b(listado|lista)\b", texto_lower_original) and re.search(r"\bfacturas?\b", texto_lower_original):
         anios_listado = _extraer_anios(texto_lower_original)
@@ -831,7 +816,16 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     idx_prov, idx_art = _get_indices()
     provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
-    arts = _match_best(texto_lower, idx_art, max_items=MAX_ARTICULOS)
+    
+    # ✅ FIX SIMPLE: NO buscar artículos si hay "compra" + año
+    # Esto evita confusiones con códigos numéricos como "2183118"
+    anios_temp = _extraer_anios(texto_lower)
+    tiene_compra_y_anio = ("compra" in texto_lower) and (len(anios_temp) > 0)
+    
+    if tiene_compra_y_anio:
+        arts = []  # NO buscar artículos cuando hay compras + año
+    else:
+        arts = _match_best(texto_lower, idx_art, max_items=MAX_ARTICULOS)
 
     if not provs:
         prov_libre = _extraer_proveedor_libre(texto_lower_original)
@@ -856,14 +850,23 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             arts = [articulo]
 
     # ============================
-    # RUTA ARTÍCULOS (CANÓNICA)
+    # RUTA ARTÍCULOS (CANÓNICA) - DESHABILITADA PARA "COMPRAS + AÑO"
     # ============================
-    if contiene_compras(texto_lower_original) and not provs:
-        from ia_interpretador_articulos import interpretar_articulo
-        # Extraer anios aquí para pasar a la función
-        anios = _extraer_anios(texto_lower)
-        meses = _extraer_meses_nombre(texto_lower) + _extraer_meses_yyyymm(texto_lower)
-        return interpretar_articulo(texto_original, anios, meses)
+    # ✅ FIX: Comentado para que "compras 2025" se maneje como compras_anio
+    # Si querés volver a habilitar artículos, descomentá las líneas de abajo
+    
+    # anios_temp = _extraer_anios(texto_lower)
+    # es_compras_anio_solo = (
+    #     len(anios_temp) > 0 and 
+    #     not arts and 
+    #     len(texto_lower.split()) <= 3
+    # )
+    # 
+    # if contiene_compras(texto_lower_original) and not provs and not es_compras_anio_solo:
+    #     from ia_interpretador_articulos import interpretar_articulo
+    #     anios = _extraer_anios(texto_lower)
+    #     meses = _extraer_meses_nombre(texto_lower) + _extraer_meses_yyyymm(texto_lower)
+    #     return interpretar_articulo(texto_original, anios, meses)
 
     anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
@@ -1181,16 +1184,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             return {"tipo": "compras_mes", "parametros": {"mes": mes}, "debug": "compras mes (nombre+año)"}
 
         if anios:
-            # ✅ ESPECIAL: Para "compras 2025", delegar a ia_compras
-            if texto_lower.strip() == "compras 2025":
-                from ia_compras import interpretar_compras
-                resultado = interpretar_compras(texto_original, anios)
-                return resultado
-            else:
-                print("\n[INTÉRPRETE] COMPRAS_ANIO")
-                print(f"  Pregunta : {texto_original}")
-                print(f"  Año      : {anios[0]}")
-                return {"tipo": "compras_anio", "parametros": {"anio": anios[0]}, "debug": "compras año"}
+            print("\n[INTÉRPRETE] COMPRAS_ANIO")
+            print(f"  Pregunta : {texto_original}")
+            print(f"  Año      : {anios[0]}")
+            return {"tipo": "compras_anio", "parametros": {"anio": anios[0]}, "debug": "compras año"}
 
     # COMPARAR - ✅ MEJORADO CON SOPORTE PARA TODOS LOS PROVEEDORES
     if contiene_comparar(texto_lower_original):
