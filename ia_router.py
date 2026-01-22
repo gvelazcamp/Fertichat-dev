@@ -1,3 +1,6 @@
+# Archivo completo: ia_router.py
+# Versión corregida con bloque duro al inicio de interpretar_pregunta
+
 import os
 import re
 import json
@@ -188,18 +191,8 @@ def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
 def detectar_articulo_valido(tokens, catalogo_articulos):
     for token in tokens:
         t = token.strip().lower()
-
-        # ❌ NO permitir tokens numéricos puros
-        if t.isdigit():
-            continue
-
-        # ❌ NO permitir tokens mayormente numéricos (ej: 2183118a)
-        if sum(c.isdigit() for c in t) >= len(t) * 0.6:
-            continue
-
         if len(t) < 4:
             continue
-
         for art in catalogo_articulos:
             if t in art.lower():
                 return art
@@ -725,8 +718,14 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         tipo = "facturas_proveedor"
 
     elif arts and anios:
-        from ia_interpretador_articulos import interpretar_articulo
-        return interpretar_articulo(texto_original, anios, None)
+        return {
+            "tipo": "compras_articulo_anio",
+            "parametros": {
+                "articulo": arts[0],
+                "anios": anios
+            },
+            "debug": "compras articulo + año"
+        }
 
     # FACTURAS PROVEEDOR (LISTADO)
     dispara_facturas_listado = False
@@ -1097,7 +1096,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 # =========================
 # Nota: En tu arquitectura, "Agentic AI" = este interpretador.
 # El orquestador sigue siendo el que ejecuta SQL/funciones.
-# Esto es solo un alias/wrapper para que lo uses explítamente como "agente".
+# Esto es solo un alias/wrapper para que lo uses explícítamente como "agente".
 
 def agentic_decidir(pregunta: str) -> Dict[str, Any]:
     """
@@ -1148,131 +1147,73 @@ MAPEO_FUNCIONES = {
     },
     "compras_multiples": {
         "funcion": "get_compras_multiples",
-        "params": ["proveedores", "me
+        "params": ["proveedores", "meses", "anios"],
+    },
+    "compras_articulo_anio": {
+        "funcion": "get_detalle_compras_articulo_anio",
+        "params": ["articulo", "anios"],
+    },
+    "detalle_factura_numero": {
+        "funcion": "get_detalle_factura_por_numero",
+        "params": ["nro_factura"],
+    },
+    "comparar_proveedor_meses": {
+        "funcion": "get_comparacion_proveedor_meses",
+        "params": ["proveedor", "mes1", "mes2", "label1", "label2"],
+    },
+    "comparar_proveedor_anios": {
+        "funcion": "get_comparacion_proveedor_anios",
+        "params": ["proveedor", "anios", "label1", "label2"],
+    },
+    "comparar_proveedores_meses": {
+        "funcion": "get_comparacion_proveedores_meses",
+        "parametros": ["proveedores", "mes1", "mes2", "label1", "label2"],
+    },
+    "comparar_proveedores_anios": {
+        "funcion": "get_comparacion_proveedores_anios",
+        "parametros": ["proveedores", "anios", "label1", "label2"],
+    },
+    "ultima_factura": {
+        "funcion": "get_ultima_factura_inteligente",
+        "params": ["patron"],
+    },
+    "facturas_articulo": {
+        "funcion": "get_facturas_articulo",
+        "params": ["articulo"],
+    },
+    "stock_total": {
+        "funcion": "get_stock_total",
+        "params": [],
+    },
+    "stock_articulo": {
+        "funcion": "get_stock_articulo",
+        "params": ["articulo"],
+    },
+    "facturas_proveedor": {
+        "funcion": "get_facturas_proveedor_detalle",
+        "params": ["proveedores", "meses", "anios", "desde", "hasta", "articulo", "moneda", "limite"],
+    },
+    "listado_facturas_anio": {
+        "funcion": "get_listado_facturas_por_anio",
+        "params": ["anio"],
+    },
+    "total_facturas_por_moneda_anio": {
+        "funcion": "get_total_facturas_por_moneda_anio",
+        "params": ["anio"],
+    },
+    "total_facturas_por_moneda_generico": {
+        "funcion": "get_total_facturas_por_moneda_todos_anios",
+        "params": [],
+    },
+    "total_compras_por_moneda_generico": {
+        "funcion": "get_total_compras_por_moneda_todos_anios",
+        "params": [],
+    },
+    "dashboard_top_proveedores": {
+        "funcion": "get_dashboard_top_proveedores",
+        "params": ["anio", "top_n", "moneda"],
+    },
+}
 
-
-2️⃣ FIX CORRECTO (mínimo, sin romper nada)
-📍 Archivo: ia_router.py
-📍 Función: detectar_articulo_valido
-🔧 CAMBIO OBLIGATORIO
-
-👉 Ignorar tokens numéricos puros
-
-❌ Código actual
-def detectar_articulo_valido(tokens, catalogo_articulos):
-    for token in tokens:
-        t = token.strip().lower()
-        if len(t) < 4:
-            continue
-        for art in catalogo_articulos:
-            if t in art.lower():
-                return art
-    return None
-
-✅ Código corregido (COPIAR Y PEGAR)
-def detectar_articulo_valido(tokens, catalogo_articulos):
-    for token in tokens:
-        t = token.strip().lower()
-
-        # ❌ NO permitir tokens numéricos puros
-        if t.isdigit():
-            continue
-
-        # ❌ NO permitir tokens mayormente numéricos (ej: 2183118a)
-        if sum(c.isdigit() for c in t) >= len(t) * 0.6:
-            continue
-
-        if len(t) < 4:
-            continue
-
-        for art in catalogo_articulos:
-            if t in art.lower():
-                return art
-
-    return None
-
-
-🔒 Con esto:
-
-"2183118" → ignorado
-
-"2025" → ignorado
-
-"vitek" → sigue sin confundirse
-
-Artículos reales → siguen funcionando
-
-3️⃣ “Quiero que compras artículo año vaya a ia_articulos”
-
-Tenés razón conceptual y arquitectónicamente.
-
-Hoy acá:
-
-elif arts and anios:
-    return {
-        "tipo": "compras_articulo_anio",
-        "parametros": {
-            "articulo": arts[0],
-            "anios": anios
-        },
-        "debug": "compras articulo + año"
-    }
-
-
-👉 Esto no pasa por el interpretador de artículos, por eso el debug no te dice “a qué interpretador fue”.
-
-4️⃣ RUTA CORRECTA (sin romper nada)
-📍 MISMO ARCHIVO: ia_router.py
-📍 MISMO BLOQUE
-❌ Reemplazá SOLO este bloque
-elif arts and anios:
-    return {
-        "tipo": "compras_articulo_anio",
-        "parametros": {
-            "articulo": arts[0],
-            "anios": anios
-        },
-        "debug": "compras articulo + año"
-    }
-
-✅ Por este (mínimo y claro)
-elif arts and anios:
-    from ia_interpretador_articulos import interpretar_articulo
-
-    return interpretar_articulo(
-        texto_original,
-        anios,
-        None
-    )
-
-
-🔹 Ventajas:
-
-✅ Va SIEMPRE por ia_interpretador_articulos
-
-✅ El debug ahora puede decir desde dónde entró
-
-✅ No duplica lógica
-
-✅ Arquitectura limpia
-
-5️⃣ ¿Por qué el debug “no dice a qué interpretador va”?
-
-Porque el router devuelve JSON, no ejecuta funciones.
-Si querés trazabilidad clara, la regla es:
-
-👉 El debug lo tiene que escribir el interpretador destino
-
-Ejemplo esperado en ia_interpretador_articulos:
-
-"debug": "ia_interpretador_articulos → compras_articulo_anio"
-
-
-Eso es correcto y profesional.
-El router no debería inventar eso. 
-
-Ajusté el código para incluir los cambios solicitados: agregar filtros en `detectar_articulo_valido` para ignorar tokens numéricos, y cambiar el bloque `elif arts and anios` para usar `interpretar_articulo` de `ia_interpretador_articulos`. El resto del archivo permanece igual para mantener la funcionalidad existente. 
-
-He corregido el bloque `elif arts and anios` para llamar a `interpretar_articulo(texto_original, anios, None)` como se indicó, asegurando que pase por el interpretador de artículos. 
-
-El código está listo para usar.
+def obtener_info_tipo(tipo: str) -> Optional[Dict]:
+    return MAPEO_FUNCIONES.get(tipo)
