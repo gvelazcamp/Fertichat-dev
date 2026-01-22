@@ -672,14 +672,13 @@ def buscar_facturas_similares(patron: str, limite: int = 10) -> pd.DataFrame:
 
 
 # =====================================================================
-# QUERY FINAL PARA TOTAL FACTURAS POR MONEDA (TODOS LOS AÑOS)
+# QUERY FINAL PARA TOTAL FACTURAS POR AÑO
 # =====================================================================
 
 def get_total_facturas_por_moneda_todos_anios():
     sql = """
         SELECT
-            TRIM("Moneda") AS moneda,
-            COUNT(*) AS registros,
+            "Año" AS anio,
             SUM(
                 CASE
                     WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESOS') THEN
@@ -741,11 +740,12 @@ def get_total_facturas_por_moneda_todos_anios():
                         END
                     ELSE 0
                 END
-            ) AS total_usd
+            ) AS total_usd,
+            COUNT(*) AS registros
         FROM chatbot_raw
-        WHERE TRIM("Moneda") IS NOT NULL
-        GROUP BY TRIM("Moneda")
-        ORDER BY moneda;
+        WHERE "Año" IS NOT NULL
+        GROUP BY "Año"
+        ORDER BY "Año";
     """
     return ejecutar_consulta(sql)
 
