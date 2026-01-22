@@ -138,3 +138,18 @@ if AUTOREFRESH_HABILITADO:
     print(f"🔄 Autorefresh activado: {AUTOREFRESH_INTERVALO/1000}s")
 else:
     print("⏸️  Autorefresh desactivado")
+
+# CSS GLOBAL para todos
+st.markdown("""
+<style>
+    /* Color del sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #7C3AED !important;  /* Violeta fijo */
+    }
+    
+    /* Logo del chat */
+    .chat-logo {
+        filter: hue-rotate(270deg) !important;  /* Violeta */
+    }
+</style>
+""", unsafe_allow_html=True)
