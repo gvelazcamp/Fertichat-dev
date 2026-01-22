@@ -68,7 +68,6 @@ def get_unique_articulos():
 
 # ==================================================
 # 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
-# Prioridad ABSOLUTA – no pasa por aliases ni IA
 # ==================================================
 import re
 
@@ -90,6 +89,7 @@ if m:
         "df": df,
         "debug": f"bloque_compras_anio → compras {anio}"
     }
+
 
 # =========================
 # NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
