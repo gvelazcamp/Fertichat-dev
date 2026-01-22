@@ -66,31 +66,6 @@ def get_unique_articulos():
     except:
         return []
 
-# ==================================================
-# 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
-# ==================================================
-import re
-
-texto_q = texto_lower.strip()
-
-m = re.search(r"\b(compra|compras)\s+(\d{4})\b", texto_q)
-if m:
-    anio = int(m.group(2))
-
-    from sql_compras import get_compras_por_anio
-
-    df = get_compras_por_anio(anio)
-
-    return {
-        "tipo": "compras_anio",
-        "parametros": {
-            "anio": anio
-        },
-        "df": df,
-        "debug": f"bloque_compras_anio → compras {anio}"
-    }
-
-
 # =========================
 # NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
 # =========================
@@ -148,10 +123,8 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
                         -1 * CAST(
                             REPLACE(
                                 REPLACE(
-                                    SUBSTRING(
-                                        REPLACE("Monto Neto",' ',''), 2,
-                                        LENGTH(REPLACE("Monto Neto",' ','')) - 2
-                                    ),
+                                    SUBSTRING(REPLACE("Monto Neto",' ',''), 2,
+                                        LENGTH(REPLACE("Monto Neto",' ','')) - 2),
                                     '.',''
                                 ),
                                 ',','.'
@@ -160,10 +133,8 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
                     ELSE
                         CAST(
                             REPLACE(
-                                REPLACE(
-                                    REPLACE("Monto Neto",' ',''),'.',''
-                                ),
-                                ',','.'
+                                REPLACE(REPLACE("Monto Neto",' ',''), '.', ''),
+                                ',', '.'
                             ) AS NUMERIC
                         )
                 END AS monto_num
@@ -602,116 +573,74 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     st.markdown(
         """
         <style>
-        /* ==========================================
-           HEADER CON TÍTULO Y METADATA
-           ========================================== */
-        .fc-header-modern {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            padding: 20px 24px;
-            margin-bottom: 20px;
-            color: white;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        /* ========================================
+           HEADER MÁS COMPACTO
+           ======================================== */
+        .fc-header-modern,
+        .dash-header {
+            padding: 12px 16px !important;  /* Más pequeño */
+            margin-bottom: 16px !important;
+            border-radius: 10px !important;
         }
         
-        .fc-title-modern {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin: 0 0 8px 0;
-            color: white;
+        .fc-title-modern,
+        .dash-title {
+            font-size: 1rem !important;  /* Más pequeño */
+            margin-bottom: 4px !important;
+            font-weight: 700 !important;
         }
         
-        .fc-badge-modern {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: white;
+        .fc-badge-modern,
+        .dash-badge {
+            font-size: 0.7rem !important;  /* Más pequeño */
+            padding: 3px 8px !important;
+            border-radius: 10px !important;
+            margin-bottom: 4px !important;
         }
         
-        .fc-meta-modern {
-            font-size: 0.85rem;
-            opacity: 0.9;
-            margin: 0;
-            color: rgba(255,255,255,0.9);
+        .fc-meta-modern,
+        .dash-meta {
+            font-size: 0.7rem !important;  /* Más pequeño */
+            margin: 0 !important;
+            line-height: 1.2 !important;
         }
         
-        /* ==========================================
-           TARJETAS DE MÉTRICAS (4 columnas)
-           ========================================== */
-        .fc-metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 32px;  /* ← Aumentado de 16px a 32px para más separación */
-            margin-bottom: 20px;
+        /* ========================================
+           TARJETAS MÉTRICAS MÁS CHICAS
+           ======================================== */
+        .fc-metrics-grid,
+        .metrics-grid {
+            gap: 16px !important;  /* Más pequeño para más tarjetas visibles */
+            margin-bottom: 24px !important;
         }
         
-        .fc-metric-card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 18px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s ease;
+        .fc-metric-card,
+        .metric-card {
+            padding: 12px 16px !important;  /* Más pequeño */
+            border-radius: 10px !important;
         }
         
-        .fc-metric-card:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transform: translateY(-2px);
+        .fc-metric-label,
+        .metric-label {
+            font-size: 0.75rem !important;  /* Más pequeño */
+            margin-bottom: 4px !important;
         }
         
-        .fc-metric-label {
-            font-size: 0.85rem;
-            color: #6b7280;
-            margin: 0 0 6px 0;
-            font-weight: 500;
-        }
-        
-        .fc-metric-value {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #111827;
-            margin: 0;
+        .fc-metric-value,
+        .metric-value {
+            font-size: 1.2rem !important;  /* Más pequeño pero legible */
+            font-weight: 700 !important;
         }
         
         .fc-metric-help {
-            font-size: 0.75rem;
-            color: #9ca3af;
-            margin: 4px 0 0 0;
+            font-size: 0.65rem !important;  /* Más pequeño */
         }
         
-        /* ==========================================
-           CARD TOTAL GRANDE
-           ========================================== */
-        .total-summary-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            padding: 40px 32px;
-            margin-bottom: 24px;
-            color: white;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-            text-align: center;
-        }
+        /* ========================================
+           CARDS DE RESUMEN CON MISMO ALTO + MÁS ESPACIO
+           ======================================== */
         
-        .total-summary-value {
-            font-size: 3rem;
-            font-weight: 700;
-            margin: 0 0 8px 0;
-        }
-        
-        .total-summary-label {
-            font-size: 1.2rem;
-            opacity: 0.9;
-            margin: 0;
-        }
-        
-        /* ==========================================
-           CARD RESUMEN EJECUTIVO
-           ========================================== */
+        /* Todas las cards de resumen con altura uniforme */
         .resumen-card {
             background: white;
             border: 1px solid #e5e7eb;
@@ -724,6 +653,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             box-sizing: border-box !important;
         }
         
+        /* Título de la card */
         .resumen-title {
             font-size: 0.8rem !important;  /* Un poco más pequeño */
             font-weight: 700 !important;
@@ -731,6 +661,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             color: #374151;
         }
         
+        /* Texto de la card */
         .resumen-text {
             font-size: 0.7rem !important;  /* Un poco más pequeño */
             color: #6b7280;
@@ -738,9 +669,23 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             line-height: 1.3 !important;  /* Menos interlineado */
         }
         
-        /* ==========================================
-           PROVIDER CARD
-           ========================================== */
+        /* Badge para números en lista */
+        .numero-badge {
+            display: inline-block;
+            background: #667eea;  /* Violeta */
+            color: white;
+            border-radius: 50%;
+            padding: 1px 5px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-right: 4px;
+            width: 18px;
+            height: 18px;
+            text-align: center;
+            line-height: 16px;
+        }
+        
+        /* Provider card también con mismo alto */
         .provider-card {
             background: white;
             border: 1px solid #e5e7eb;
@@ -753,115 +698,62 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             flex-direction: column !important;
         }
         
-        .provider-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
+        /* Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 10px !important;  /* Más pequeño */
+            margin-bottom: 16px !important;
         }
         
-        .provider-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: white;
-            font-weight: 700;
+        .stTabs [data-baseweb="tab"] {
+            font-size: 0.8rem !important;  /* Más pequeño */
+            padding: 5px 10px !important;
         }
         
-        .provider-info {
-            flex: 1;
+        /* Total summary card */
+        .total-summary-card {
+            padding: 16px 14px !important;  /* Más pequeño */
+            margin-bottom: 16px !important;
         }
         
-        .provider-name {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #111827;
-            margin: 0 0 2px 0;
+        .total-summary-value {
+            font-size: 1.6rem !important;  /* Más pequeño */
         }
         
-        .provider-subtitle {
-            font-size: 0.8rem;
-            color: #6b7280;
-            margin: 0;
+        .total-summary-label {
+            font-size: 0.85rem !important;
         }
         
-        .provider-amount {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: #111827;
-            text-align: right;
+        /* Provider card destacado */
+        .single-provider-card {
+            padding: 16px 14px !important;  /* Más pequeño */
+            margin-bottom: 16px !important;
         }
         
-        .provider-amount-sub {
-            font-size: 0.8rem;
-            color: #6b7280;
-            text-align: right;
-            margin-top: 2px;
+        .single-provider-icon {
+            width: 40px !important;  /* Más pequeño */
+            height: 40px !important;
         }
         
-        .progress-bar {
-            width: 100%;
-            height: 6px;
-            background: #e5e7eb;
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 8px 0;
+        .single-provider-name {
+            font-size: 1rem !important;
         }
         
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            border-radius: 3px;
-        }
-        
-        /* ==========================================
-           RESPONSIVE (MOBILE)
-           ========================================== */
+        /* Responsive - Mobile */
         @media (max-width: 768px) {
-            .fc-metrics-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
+            .main .block-container {
+                padding: 0.5rem 1rem !important;
             }
-            .fc-metric-value {
-                font-size: 1.3rem;
+            
+            .fc-metrics-grid,
+            .metrics-grid {
+                gap: 8px !important;
+                grid-template-columns: repeat(2, 1fr) !important;
             }
-            .total-summary-value {
-                font-size: 2.5rem;
+            
+            .fc-metric-value,
+            .metric-value {
+                font-size: 1rem !important;
             }
-        }
-        
-        /* Legacy (mantener compatibilidad) */
-        .fc-subtle { color: rgba(49,51,63,0.65); font-size: 0.9rem; }
-        .fc-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px 0; }
-        
-        /* ==========================================
-           OCULTAR BOTÓN NATIVO DE STREAMLIT
-           ========================================== */
-        [data-testid="stDataFrameToolbar"] {
-            display: none !important;
-        }
-        
-        /* ==========================================
-           OCULTAR LÍNEAS HORIZONTALES (hr) GENERADAS POR st.markdown("---")
-           ========================================== */
-        hr {
-            display: none !important;
-        }
-        
-        /* Botón de exportación arriba */
-        .fc-export-btn {
-            text-align: right;
-            margin-bottom: 8px;
-        }
-        
-        /* Ajuste para Top 5 Artículos más largo */
-        .top5-card {
-            min-height: 260px !important;  /* Hacerlo más largo para alinear con Actividad */
         }
         """ + (".fc-metrics-grid { display: none !important; }" if hide_metrics else "") + """
         </style>
@@ -1574,7 +1466,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         }
         
         .metrics-grid {
-            margin-bottom: 20px !important;  /* Espacio entre tarjetas y gr��fico */
+            margin-bottom: 20px !important;  /* Espacio entre tarjetas y gráfico */
         }
         
         /* INTERLINEADO ENTRE BOTONES Y TARJETAS */
@@ -1603,7 +1495,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             ✅ Resultado: Se encontraron {len(df)} registros
         </div>
         <p class="dash-meta">
-            📅 Última actualización: {datetime.now().strftime("%d/%m/%Y %H:%M")}
+            Última actualización: {datetime.now().strftime("%d/%m/%Y %H:%M")}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -2085,6 +1977,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         LIMIT 5000
         """
         
+        debug.log("💾 Función SQL", {"nombre": "sqlq_compras.get_compras_anio", "args": parametros})
         debug.log_sql(
             function_name="sqlq_compras.get_compras_anio",
             params=parametros,
@@ -2399,7 +2292,7 @@ def Compras_IA():
     
     /* Total summary card */
     .total-summary-card {
-        padding: 16px 14px !important;  /* Más pequeño */
+        padding: 16px 14px !important;  /* M��s pequeño */
         margin-bottom: 16px !important;
     }
     
@@ -2435,7 +2328,7 @@ def Compras_IA():
         .fc-metrics-grid,
         .metrics-grid {
             gap: 8px !important;
-            grid-template-columns: repeat(2, 1fr) !important;
+                grid-template-columns: repeat(2, 1fr) !important;
         }
         
         .fc-metric-value,
@@ -2711,7 +2604,7 @@ def Compras_IA():
         st.markdown("### Menú Comparativas Fáciles")
         st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
-        # ✅ INICIALIZAR session_state para tipo de consulta si no existe
+        # ✅ INICIALIZAR FLAG PARA PAUSAR AUTOREFRESH
         if "menu_tipo_consulta" not in st.session_state:
             st.session_state["menu_tipo_consulta"] = "Compras"
 
