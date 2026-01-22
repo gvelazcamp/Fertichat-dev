@@ -854,10 +854,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         articulo = detectar_articulo_valido(tokens_restantes, articulos_db)
         if articulo:
             arts = [articulo]
-
+   
 
     # ============================
-    # COMPRAS SOLO POR AÑO (PRIORIDAD MÁXIMA)
+    # COMPRAS SOLO POR AÑO
     # ============================
     if (
         contiene_compras(texto_lower_original)
@@ -872,8 +872,9 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "parametros": {
                 "anio": anios[0]
             },
-            "debug": "compras año (forzado antes de artículos)"
+            "debug": "compras año (chat)"
         }
+
 
 
     # ============================
