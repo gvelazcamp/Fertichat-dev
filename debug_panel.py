@@ -162,7 +162,53 @@ class DebugPanel:
                         st.markdown("**💾 Query SQL Real:**")
                         st.code(data["query_sql"], language="sql")
                 else:
-                    st.json(data)
+                    # ========================================
+                    # MODO SUPER DETALLADO para debugging
+                    # ========================================
+                    st.json(data, expanded=True)
+                    
+                    st.markdown("---")
+                    
+                    # Mostrar claves importantes expandidas
+                    if "tipo" in data:
+                        st.markdown(f"### 🎯 Tipo detectado: `{data['tipo']}`")
+                    
+                    if "parametros" in data and data["parametros"]:
+                        st.markdown("### 📋 Parámetros:")
+                        st.json(data["parametros"], expanded=True)
+                    
+                    if "debug" in data:
+                        st.markdown(f"### 🐛 Debug info:")
+                        st.code(data['debug'])
+                    
+                    if "sugerencia" in data:
+                        st.markdown(f"### 💡 Sugerencia:")
+                        st.info(data['sugerencia'])
+                    
+                    # INFORMACIÓN DE ROUTING
+                    if "interpretador_usado" in data:
+                        st.markdown(f"### 🔀 Interpretador usado:")
+                        st.code(data['interpretador_usado'], language="python")
+                    
+                    if "match_regex" in data:
+                        st.markdown(f"### 🔍 Regex match:")
+                        st.code(data['match_regex'])
+                    
+                    if "texto_procesado" in data:
+                        st.markdown(f"### 📝 Texto procesado:")
+                        st.code(data['texto_procesado'])
+                    
+                    if "patron_detectado" in data:
+                        st.markdown(f"### 🎯 Patrón detectado:")
+                        st.code(data['patron_detectado'])
+                    
+                    if "bloques_ejecutados" in data:
+                        st.markdown(f"### ⚙️ Bloques ejecutados:")
+                        st.json(data['bloques_ejecutados'], expanded=True)
+                    
+                    if "validaciones" in data:
+                        st.markdown(f"### ✓ Validaciones:")
+                        st.json(data['validaciones'], expanded=True)
                 
             elif isinstance(data, str):
                 if len(data) > 100 or "\n" in data:
