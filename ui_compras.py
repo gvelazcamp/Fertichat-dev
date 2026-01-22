@@ -2060,7 +2060,29 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     # ===== COMPRAS =====
     elif tipo == "compras_anio":
-        debug.log("💾 Función SQL", {"nombre": "sqlq_compras.get_compras_anio", "args": parametros})
+        # 💾 LOG SQL con query real
+        query_sql = f"""
+        SELECT
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            TRIM("Nro. Comprobante") AS Nro_Factura,
+            "Fecha",
+            "Cantidad",
+            "Moneda",
+            TRIM("Monto Neto") AS Total
+        FROM chatbot_raw
+        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+          AND "Año" = {parametros['anio']}
+        ORDER BY "Fecha" DESC NULLS LAST
+        LIMIT 5000
+        """
+        
+        debug.log_sql(
+            function_name="sqlq_compras.get_compras_anio",
+            params=parametros,
+            query=query_sql
+        )
+        
         df = sqlq_compras.get_compras_anio(parametros["anio"])
         _dbg_set_result(df)
         debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
