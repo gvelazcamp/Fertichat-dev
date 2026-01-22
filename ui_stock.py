@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Tuple, Optional, Dict, Any
 import time
 import json
+from imports_globales import *
 
 from utils_format import formatear_dataframe, df_to_excel
 from sql_stock import (
