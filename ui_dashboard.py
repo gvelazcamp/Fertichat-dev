@@ -424,12 +424,13 @@ def mostrar_resumen_compras_rotativo():
     tick = 0
     
     # Solo hacer auto-refresh si NO hay comparativa Y NO está escribiendo
-    if not st.session_state.comparativa_activa and not usuario_escribiendo:
-        try:
-            from streamlit_autorefresh import st_autorefresh
-            tick = st_autorefresh(interval=5000, key="__rotar_proveedor_5s__") or 0
-        except Exception:
-            tick = 0
+    # # Auto-refresh desactivado temporalmente
+# if not st.session_state.comparativa_activa and not usuario_escribiendo:
+#     try:
+#         from streamlit_autorefresh import st_autorefresh
+#         tick = st_autorefresh(interval=5000, key="__rotar_proveedor_5s__") or 0
+#     except Exception:
+#         tick = 0
     
     # Usar 2025 ya que 2026 no tiene datos todavía
     anio = 2025
