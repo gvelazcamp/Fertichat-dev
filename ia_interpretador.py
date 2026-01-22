@@ -30,10 +30,6 @@ from sql_core import ejecutar_consulta
             "debug": "BLOQUE_UNIVERSAL_COMPRAS_AÑO"
         }
 
-# =========================
-# IA_INTERPRETADOR.PY - CANÓNICO (DETECCIÓN BD + COMPARATIVAS)
-# =========================
-
 # =====================================================================
 # CONFIGURACIÓN OPENAI (opcional)
 # =====================================================================
