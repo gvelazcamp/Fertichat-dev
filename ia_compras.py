@@ -662,10 +662,28 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
     
     # ======= EXTRAER ENTIDADES =======
     provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
-    arts = _match_best(texto_lower, idx_art, max_items=MAX_ARTICULOS)
+    
+    # ✅ FIX: Excluir artículo IVA COMPRAS DEL ESTADO
+    ARTICULOS_EXCLUIDOS = [
+        "2183118 - IVA COMPRAS DEL ESTADO (DTOS 528/03 Y 319/06)",
+        "IVA COMPRAS DEL ESTADO",
+    ]
+    idx_art_filtrado = [
+        (orig, norm) for orig, norm in idx_art 
+        if not any(excl.lower() in orig.lower() for excl in ARTICULOS_EXCLUIDOS)
+    ]
+    
+    # ✅ Usar años pasados como parámetro si existen, sino extraer
+    if anios is None:
+        anios = _extraer_anios(texto_lower)
+    
+    # ✅ NO buscar artículos cuando es "compras + año"
+    if len(anios) >= 1 and "compra" in texto_lower:
+        arts = []  # Por defecto vacío para compras
+    else:
+        arts = _match_best(texto_lower, idx_art_filtrado, max_items=MAX_ARTICULOS)
     
     # ======= EXTRAER TIEMPO =======
-    anios = _extraer_anios(texto_lower)
     meses_nombre = _extraer_meses_nombre(texto_lower)
     meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
     
