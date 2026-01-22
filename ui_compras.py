@@ -66,22 +66,31 @@ def get_unique_articulos():
     except:
         return []
 
-    # ==================================================
-    # 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
-    # Prioridad ABSOLUTA – no pasa por interpretación
-    # ==================================================
-    texto_q = str(texto_lower).strip().lower()
-    m = re.fullmatch(r"(compra|compras)\s+(\d{4})", texto_q)
-    if m:
-        anio = int(m.group(2))
-        return {
-            "tipo": "compras_anio",
-            "parametros": {
-                "anio": anio
-            },
-            "debug": "BLOQUE_UNIVERSAL_COMPRAS_AÑO"
-        }
-    # ==================================================
+# ==================================================
+# 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
+# Prioridad ABSOLUTA – no pasa por aliases ni IA
+# ==================================================
+import re
+
+texto_q = texto_lower.strip()
+
+m = re.search(r"\b(compra|compras)\s+(\d{4})\b", texto_q)
+if m:
+    anio = int(m.group(2))
+
+    from sql_compras import get_compras_por_anio
+
+    df = get_compras_por_anio(anio)
+
+    return {
+        "tipo": "compras_anio",
+        "parametros": {
+            "anio": anio
+        },
+        "df": df,
+        "debug": f"bloque_compras_anio → compras {anio}"
+    }
+# ==================================================
 
 # =========================
 # NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
