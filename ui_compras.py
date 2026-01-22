@@ -2292,7 +2292,7 @@ def Compras_IA():
     
     /* Total summary card */
     .total-summary-card {
-        padding: 16px 14px !important;  /* M��s pequeño */
+        padding: 16px 14px !important;  /* Más pequeño */
         margin-bottom: 16px !important;
     }
     
