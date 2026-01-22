@@ -244,9 +244,6 @@ def get_facturas_proveedor(
             where_parts.append('TRIM("Moneda") IN (\'U$S\', \'U$$\', \'USD\', \'US$\')')
         elif m in ("$", "PESOS", "UYU", "URU"):
             where_parts.append('TRIM("Moneda") = \'$\'')
-        else:
-            where_parts.append('UPPER(TRIM("Moneda")) LIKE %s')
-            params.append(f"%{m}%")
 
     # Tiempo (rango > meses > años)
     if desde and hasta:
@@ -673,7 +670,7 @@ def buscar_facturas_similares(patron: str, limite: int = 10) -> pd.DataFrame:
 
 
 # =====================================================================
-# SOLUCIÓN CORRECTA MÍNIMA: TOTAL FACTURAS POR MONEDA TODOS LOS AÑOS
+# SQL CORRECTO PROBADO: TOTAL FACTURAS POR MONEDA TODOS LOS AÑOS
 # =====================================================================
 
 def get_total_facturas_por_moneda_todos_anios():
@@ -686,8 +683,11 @@ def get_total_facturas_por_moneda_todos_anios():
                     WHEN TRIM("Moneda") = '$' THEN
                         CAST(
                             REPLACE(
-                                REPLACE(TRIM("Monto Neto"), '.', ''),
-                            ',', '.') AS numeric
+                                REPLACE(
+                                    REPLACE(TRIM("Monto Neto"), '.', ''),
+                                ',', '.'),
+                            ' ', ''
+                        ) AS numeric
                         )
                     ELSE 0
                 END
@@ -697,8 +697,11 @@ def get_total_facturas_por_moneda_todos_anios():
                     WHEN TRIM("Moneda") = 'USD' THEN
                         CAST(
                             REPLACE(
-                                REPLACE(TRIM("Monto Neto"), '.', ''),
-                            ',', '.') AS numeric
+                                REPLACE(
+                                    REPLACE(TRIM("Monto Neto"), '.', ''),
+                                ',', '.'),
+                            ' ', ''
+                        ) AS numeric
                         )
                     ELSE 0
                 END
