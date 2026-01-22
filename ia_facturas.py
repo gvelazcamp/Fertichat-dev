@@ -8,22 +8,6 @@ from datetime import datetime
 
 
 
-    # ==================================================
-    # 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
-    # Prioridad ABSOLUTA – no pasa por interpretación
-    # ==================================================
-    texto_q = str(texto_lower).strip().lower()
-    m = re.fullmatch(r"(compra|compras)\s+(\d{4})", texto_q)
-    if m:
-        anio = int(m.group(2))
-        return {
-            "tipo": "compras_anio",
-            "parametros": {
-                "anio": anio
-            },
-            "debug": "BLOQUE_UNIVERSAL_COMPRAS_AÑO"
-        }
-   
 # ==================================================
 # MESES Y HELPERS
 # =====================================================================
