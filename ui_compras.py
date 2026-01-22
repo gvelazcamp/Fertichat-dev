@@ -1,3 +1,7 @@
+# =========================
+# UI_COMPRAS.PY - INTERFAZ PARA COMPRAS Y FACTURAS
+# =========================
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -826,14 +830,14 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     # ==========================================
     # MÉTRICAS CON TARJETAS MODERNAS (ocultas si hide_metrics)
     # =========================================
-    # ✅ FIX DEFINITIVO: Top proveedores suma directa desde SQL (case insensitive)
+    # ✅ ARREGLO EXACTO: Para tipos por año (como total_facturas_por_moneda_todos_anios), suma global en lugar de primera fila
     cols_lower = [c.lower() for c in df_view.columns]
     if "total_$" in cols_lower and "total_usd" in cols_lower:
-        # Encontrar los nombres reales de las columnas
+        # Para casos por año: suma todas las filas
         col_pesos = [c for c in df_view.columns if c.lower() == "total_$"][0]
         col_usd = [c for c in df_view.columns if c.lower() == "total_usd"][0]
-        tot_uyu = float(df_view[col_pesos].fillna(0).sum())
-        tot_usd = float(df_view[col_usd].fillna(0).sum())
+        tot_uyu = float(df_view[col_pesos].sum())
+        tot_usd = float(df_view[col_usd].sum())
     else:
         tot_uyu = float(
             df_view.loc[
