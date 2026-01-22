@@ -4,6 +4,10 @@ from datetime import datetime
 from typing import Optional
 from imports_globales import *
 from debug_panel import DebugPanel
+
+# 🔬 Inicializar debug panel
+debug = DebugPanel()
+
 from ia_interpretador import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
 import sql_compras as sqlq_compras
@@ -2414,8 +2418,8 @@ def Compras_IA():
 
     art_options = get_unique_articulos()  # ✅ CAMBIO: TODOS LOS ARTÍCULOS (sin [:100])
 
-    # TABS PRINCIPALES: Chat IA + Comparativas
-    tab_chat, tab_comparativas = st.tabs(["💬Compras", " Comparativas"])
+    # TABS PRINCIPALES: Chat IA + Comparativas + Debug
+    tab_chat, tab_comparativas, tab_debug = st.tabs(["💬Compras", "📊 Comparativas", "🔬 Debug"])
 
     with tab_chat:
         # BOTÓN LIMPIAR (solo en chat)
@@ -2517,6 +2521,9 @@ def Compras_IA():
     pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
 
     if pregunta:
+        # 🔬 LOG: Input del usuario
+        debug.log("📝 Input Usuario", pregunta)
+        
         # ✅ PAUSAR AUTOREFRESH AL HACER UNA PREGUNTA
         st.session_state["pause_autorefresh"] = True
 
@@ -2532,18 +2539,26 @@ def Compras_IA():
 
         resultado = interpretar_pregunta(pregunta)
         _dbg_set_interpretacion(resultado)
+        
+        # 🔬 LOG: Resultado de interpretación
+        debug.log("🧠 Interpretación", resultado)
 
         tipo = resultado.get("tipo", "")
         parametros = resultado.get("parametros", {})
+        
+        # 🔬 LOG: Tipo y parámetros detectados
+        debug.log("🔀 Router", {"tipo": tipo, "parametros": parametros})
 
         respuesta_content = ""
         respuesta_df = None
 
         if tipo == "conversacion":
             respuesta_content = responder_con_openai(pregunta, tipo="conversacion")
+            debug.log("💬 Respuesta conversacional", respuesta_content[:200])
 
         elif tipo == "conocimiento":
             respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
+            debug.log("📚 Respuesta conocimiento", respuesta_content[:200])
 
         elif tipo == "saludo":
             # Usar OpenAI en vez de texto hardcodeado
@@ -2554,15 +2569,19 @@ def Compras_IA():
                 mensaje = pregunta
             
             respuesta_content = responder_con_openai(mensaje, tipo="conversacion")
+            debug.log("👋 Saludo", respuesta_content[:200])
 
         elif tipo == "no_entendido":
             respuesta_content = "🤔 No entendí bien tu pregunta."
             sugerencia = resultado.get("sugerencia", "")
             if sugerencia:
                 respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
+            debug.log("❓ No entendido", {"sugerencia": sugerencia})
 
         else:
             try:
+                debug.log("⚙️ Ejecutando consulta SQL", {"tipo": tipo})
+                
                 resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
 
                 # Convertir "Mes" a nombres antes de mostrar
@@ -2570,8 +2589,12 @@ def Compras_IA():
                     resultado_sql['Mes'] = resultado_sql['Mes'].apply(convertir_mes_a_nombre)
 
                 if isinstance(resultado_sql, pd.DataFrame):
+                    # 🔬 LOG: DataFrame obtenido
+                    debug.log("📊 DataFrame obtenido", resultado_sql)
+                    
                     if len(resultado_sql) == 0:
                         respuesta_content = "⚠️ No se encontraron resultados"
+                        debug.log("⚠️ Sin resultados", "DataFrame vacío")
                     else:
                         if tipo == "detalle_factura":
                             nro = parametros.get("nro_factura", "")
@@ -2597,11 +2620,21 @@ def Compras_IA():
                         else:
                             respuesta_content = f"✅ Encontré **{len(resultado_sql)}** resultados"
 
+                        debug.log("✅ Consulta exitosa", {"filas": len(resultado_sql), "columnas": list(resultado_sql.columns)})
                         respuesta_df = resultado_sql
                 else:
                     respuesta_content = str(resultado_sql)
+                    debug.log("📄 Resultado texto", respuesta_content[:200])
 
             except Exception as e:
+                # 🔬 LOG: Error
+                import traceback
+                debug.log("❌ ERROR", {
+                    "tipo": type(e).__name__,
+                    "mensaje": str(e),
+                    "traceback": traceback.format_exc()
+                })
+                
                 _dbg_set_sql(
                     tipo,
                     f"-- Error ejecutando consulta_por_tipo: {str(e)}",
@@ -2619,6 +2652,8 @@ def Compras_IA():
                 "pregunta": pregunta,
             }
         )
+        
+        debug.log("✅ Agregado al historial", {"tiene_df": respuesta_df is not None})
 
         st.rerun()
 
@@ -2885,6 +2920,10 @@ def Compras_IA():
                     df_guardado,
                     titulo=titulo_guardado
                 )
+    
+    # 🔬 TAB DEBUG - Panel de debugging visual
+    with tab_debug:
+        debug.render()
 
        # # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
         #if not st.session_state.get("pause_autorefresh", False):
