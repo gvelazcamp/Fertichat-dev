@@ -6,6 +6,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from typing import Tuple, Optional
+from imports_globales import *
 
 from utils_format import formatear_dataframe, df_to_excel
 from sql_core import (
