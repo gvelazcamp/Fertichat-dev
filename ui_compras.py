@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 from typing import Optional
 from imports_globales import *
-
+from debug_panel import DebugPanel
 from ia_interpretador import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
 import sql_compras as sqlq_compras
