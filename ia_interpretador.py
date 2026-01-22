@@ -713,6 +713,21 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             )
         }
 
+    # ============================
+    # CONOCIMIENTO (preguntas qué es, qué significa, etc.)
+    # ============================
+    palabras_conocimiento = ["qué es", "que es", "qué significa", "que significa", 
+                             "explica", "explicame", "explícame", "define", 
+                             "dime sobre", "qué son", "que son", "cuál es", "cual es",
+                             "para qué sirve", "para que sirve", "cómo funciona", "como funciona"]
+    
+    if any(palabra in texto_lower_original for palabra in palabras_conocimiento):
+        return {
+            "tipo": "conocimiento",
+            "parametros": {},
+            "debug": f"pregunta de conocimiento: {texto_original}"
+        }
+
     # FAST-PATH: listado facturas por año
     if re.search(r"\b(listado|lista)\b", texto_lower_original) and re.search(r"\bfacturas?\b", texto_lower_original):
         anios_listado = _extraer_anios(texto_lower_original)
