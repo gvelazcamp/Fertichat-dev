@@ -8,31 +8,36 @@ import streamlit as st
 from openai import OpenAI
 from config import OPENAI_MODEL
 from sql_core import ejecutar_consulta
-
-def interpretar_pregunta(texto_lower, texto_lower_original):
- 
-# ==================================================
-# 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
-# ==================================================
 import re
 
-texto_q = texto_lower.strip()
 
-m = re.search(r"\b(compra|compras)\s+(\d{4})\b", texto_q)
-if m:
-    anio = int(m.group(2))
+def interpretar_pregunta(texto_lower, texto_lower_original):
+    # ==================================================
+    # 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
+    # ==================================================
+    texto_q = texto_lower.strip()
 
-    from sql_compras import get_compras_por_anio
+    m = re.search(r"\b(compra|compras)\s+(\d{4})\b", texto_q)
+    if m:
+        anio = int(m.group(2))
 
-    df = get_compras_por_anio(anio)
+        from sql_compras import get_compras_por_anio
+        df = get_compras_por_anio(anio)
 
+        return {
+            "tipo": "compras_anio",
+            "parametros": {
+                "anio": anio
+            },
+            "df": df,
+            "debug": f"bloque_compras_anio → compras {anio}"
+        }
+
+    # ⬇️ SI NO MATCHEA, SEGUÍ CON TU LÓGICA NORMAL
     return {
-        "tipo": "compras_anio",
-        "parametros": {
-            "anio": anio
-        },
-        "df": df,
-        "debug": f"bloque_compras_anio → compras {anio}"
+        "tipo": "no_entendido",
+        "parametros": {},
+        "debug": "no match en bloque compras anio"
     }
 
 # ==================================================
