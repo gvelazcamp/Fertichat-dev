@@ -854,7 +854,8 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         articulo = detectar_articulo_valido(tokens_restantes, articulos_db)
         if articulo:
             arts = [articulo]
-   
+
+     anios = _extraer_anios(texto_lower)
 
     # ============================
     # COMPRAS SOLO POR AÑO
