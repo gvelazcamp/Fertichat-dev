@@ -743,3 +743,46 @@ def get_total_facturas_por_moneda_todos_anios():
         ORDER BY moneda;
     """
     return ejecutar_consulta(sql)
+
+
+# =====================================================================
+# NUEVA FUNCIÓN: TOTAL FACTURAS POR MONEDA GENÉRICO
+# =====================================================================
+
+def get_total_facturas_por_moneda_generico():
+    sql = """
+    SELECT
+        TRIM("Moneda") AS moneda,
+        COUNT(*) AS registros,
+        SUM(
+            CASE
+                WHEN TRIM("Monto Neto") LIKE '(%'
+                THEN
+                    -1 * CAST(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(
+                                    REPLACE(TRIM("Monto Neto"), '(', ''),
+                                ')', ''),
+                            '.', ''),
+                        ',', '.'
+                        ) AS numeric
+                    )
+                ELSE
+                    CAST(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(TRIM("Monto Neto"), '.', ''),
+                            ',', '.'),
+                        ' ', ''
+                        ) AS numeric
+                    )
+            END
+        ) AS total
+    FROM chatbot_raw
+    WHERE TRIM("Moneda") IS NOT NULL
+      AND TRIM("Moneda") <> ''
+    GROUP BY TRIM("Moneda")
+    ORDER BY moneda;
+    """
+    return ejecutar_consulta(sql)
