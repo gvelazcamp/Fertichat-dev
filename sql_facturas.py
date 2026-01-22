@@ -345,7 +345,7 @@ def get_total_facturas_proveedor(
         where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
     # Artículo
-    if articulo and str(artitulo).strip():
+    if articulo and str(articulo).strip():
         where_parts.append('LOWER(TRIM("Articulo")) LIKE %s')
         params.append(f"%{str(articulo).lower().strip()}%")
 
@@ -672,7 +672,7 @@ def buscar_facturas_similares(patron: str, limite: int = 10) -> pd.DataFrame:
 
 
 # =====================================================================
-# SOLUCIÓN CORRECTA MÍNIMA: TOTAL FACTURAS POR MONEDA TODOS LOS AÑOS
+# QUERY FINAL PARA TOTAL FACTURAS POR MONEDA (TODOS LOS AÑOS)
 # =====================================================================
 
 def get_total_facturas_por_moneda_todos_anios():
@@ -682,27 +682,29 @@ def get_total_facturas_por_moneda_todos_anios():
             COUNT(*) AS registros,
             SUM(
                 CASE
-                    WHEN TRIM("Moneda") = '$' THEN
+                    WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESOS') THEN
                         CASE
-                            WHEN TRIM("Monto Neto") LIKE '(%'
-                            THEN
-                                -1 * CAST(
+                            WHEN LEFT(TRIM("Monto Neto"), 1) = '(' THEN
+                                -CAST(
                                     REPLACE(
                                         REPLACE(
                                             REPLACE(
-                                                REPLACE(TRIM("Monto Neto"), '(', ''),
-                                            ')', ''),
-                                        '.', ''),
-                                    ',', '.'
+                                                SUBSTRING(TRIM("Monto Neto"), 2, LENGTH(TRIM("Monto Neto")) - 2),
+                                                ' ', ''
+                                            ),
+                                            '.', ''
+                                        ),
+                                        ',', '.'
                                     ) AS numeric
                                 )
                             ELSE
                                 CAST(
                                     REPLACE(
                                         REPLACE(
-                                            REPLACE(TRIM("Monto Neto"), '.', ''),
-                                        ',', '.'),
-                                    ' ', ''
+                                            REPLACE(TRIM("Monto Neto"), ' ', ''),
+                                            '.', ''
+                                        ),
+                                        ',', '.'
                                     ) AS numeric
                                 )
                         END
@@ -711,27 +713,29 @@ def get_total_facturas_por_moneda_todos_anios():
             ) AS total_pesos,
             SUM(
                 CASE
-                    WHEN TRIM("Moneda") = 'USD' THEN
+                    WHEN TRIM("Moneda") IN ('USD', 'US$', 'U$S', 'U$$') THEN
                         CASE
-                            WHEN TRIM("Monto Neto") LIKE '(%'
-                            THEN
-                                -1 * CAST(
+                            WHEN LEFT(TRIM("Monto Neto"), 1) = '(' THEN
+                                -CAST(
                                     REPLACE(
                                         REPLACE(
                                             REPLACE(
-                                                REPLACE(TRIM("Monto Neto"), '(', ''),
-                                            ')', ''),
-                                        '.', ''),
-                                    ',', '.'
+                                                SUBSTRING(TRIM("Monto Neto"), 2, LENGTH(TRIM("Monto Neto")) - 2),
+                                                ' ', ''
+                                            ),
+                                            '.', ''
+                                        ),
+                                        ',', '.'
                                     ) AS numeric
                                 )
                             ELSE
                                 CAST(
                                     REPLACE(
                                         REPLACE(
-                                            REPLACE(TRIM("Monto Neto"), '.', ''),
-                                        ',', '.'),
-                                    ' ', ''
+                                            REPLACE(TRIM("Monto Neto"), ' ', ''),
+                                            '.', ''
+                                        ),
+                                        ',', '.'
                                     ) AS numeric
                                 )
                         END
@@ -740,7 +744,6 @@ def get_total_facturas_por_moneda_todos_anios():
             ) AS total_usd
         FROM chatbot_raw
         WHERE TRIM("Moneda") IS NOT NULL
-          AND TRIM("Moneda") <> ''
         GROUP BY TRIM("Moneda")
         ORDER BY moneda;
     """
