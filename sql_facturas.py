@@ -679,22 +679,21 @@ def buscar_facturas_similares(patron: str, limite: int = 10) -> pd.DataFrame:
 def get_total_facturas_por_moneda_todos_anios():
     """
     Devuelve totales por moneda (pesos y USD) para TODOS los años.
-    Usa la expresión robusta de parsing de montos.
+    Usa la columna "Total" ya parseada.
     """
-    monto_expr = _sql_monto_neto_num_expr()
     sql = f"""
         SELECT
             TRIM("Moneda") AS moneda,
             COUNT(*) AS registros,
             COALESCE(SUM(
                 CASE
-                    WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESOS') THEN {monto_expr}
+                    WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESOS') THEN "Total"
                     ELSE 0
                 END
             ), 0) AS total_pesos,
             COALESCE(SUM(
                 CASE
-                    WHEN TRIM("Moneda") IN ('USD', 'US$', 'U$S', 'U$$') THEN {monto_expr}
+                    WHEN TRIM("Moneda") IN ('USD', 'US$', 'U$S', 'U$$') THEN "Total"
                     ELSE 0
                 END
             ), 0) AS total_usd
@@ -708,7 +707,7 @@ def get_total_facturas_por_moneda_todos_anios():
     df = ejecutar_consulta(sql)
     
     if df is None or df.empty:
-        print("⚠️ No se encontraron datos válidos en 'Monto Neto'. Verifica formatos de montos.")
+        print("⚠️ No se encontraron datos válidos en 'Total'. Verifica la columna Total.")
         return pd.DataFrame({
             'moneda': ['$', 'USD'],
             'registros': [0, 0],
