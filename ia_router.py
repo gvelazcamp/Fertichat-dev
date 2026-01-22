@@ -1,9 +1,570 @@
-# Archivo: ia_router.py (actualizado con el bloque duro al inicio)
+# Archivo completo: ia_router.py
+# Versión corregida con bloque duro al inicio de interpretar_pregunta
+
+import os
+import re
+import json
+import unicodedata
+from typing import Dict, Optional, List, Tuple, Any
+from datetime import datetime
+
+import streamlit as st
+from openai import OpenAI
+from config import OPENAI_MODEL
+from sql_core import ejecutar_consulta
+
+# =====================================================================
+# CONFIGURACIÓN OPENAI (opcional)
+# =====================================================================
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
+# Si querés "sacar OpenAI" para datos: dejalo False (recomendado).
+USAR_OPENAI_PARA_DATOS = False
+
+# =====================================================================
+# REGLAS FIJAS
+# =====================================================================
+MESES = {
+    "enero": "01",
+    "febrero": "02",
+    "marzo": "03",
+    "abril": "04",
+    "mayo": "05",
+    "junio": "06",
+    "julio": "07",
+    "agosto": "08",
+    "septiembre": "09",
+    "setiembre": "09",
+    "octubre": "10",
+    "noviembre": "11",
+    "diciembre": "12",
+}
+ANIOS_VALIDOS = {2023, 2024, 2025, 2026}
+
+MAX_PROVEEDORES = 5
+MAX_ARTICULOS = 5
+MAX_MESES = 6
+MAX_ANIOS = 4
+
+# =====================================================================
+# EXCLUSIÓN DE NOMBRES PERSONALES
+# =====================================================================
+NOMBRES_PERSONALES_EXCLUIR = [
+    "gonzalo",
+    "daniela",
+    "andres",
+    "sndres",
+    "juan",
+]
+
+# =====================================================================
+# EXCLUSIÓN DE PALABRAS CLAVE DE ARTÍCULOS PARA NO CONFUNDIR CON PROVEEDORES
+# =====================================================================
+PALABRAS_CLAVE_ARTICULOS = [
+    "vitek", "ast", "gn", "id20", "test", "kit", "coba", "elecsys"
+]
+
+# =====================================================================
+# ALIAS / SINÓNIMOS DE PROVEEDOR (fallback cuando BD falla)
+# =====================================================================
+ALIAS_PROVEEDOR = {
+    "roche": "roche",
+    "rocheinternational": "roche",
+    "laboratoriotresul": "tresul",
+    "tresul": "tresul",
+    "tesul": "tresul",
+    "biodiagnostico": "biodiagnostico",
+    "bio": "biodiagnostico",
+    "cabinsur": "biodiagnostico",
+}
+
+# =====================================================================
+# HELPERS NORMALIZACIÓN
+# =====================================================================
+def _strip_accents(s: str) -> str:
+    if not s:
+        return ""
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != "Mn"
+    )
+
+def _key(s: str) -> str:
+    s = _strip_accents((s or "").lower().strip())
+    s = re.sub(r"[^a-z0-9]+", "", s)
+    return s
+
+def _alias_proveedor(prov: str) -> str:
+    k = _key(prov)
+    return ALIAS_PROVEEDOR.get(k, prov)
+
+_NOMBRES_PERSONALES_KEYS = set(_key(n) for n in (NOMBRES_PERSONALES_EXCLUIR or []) if n)
+
+def _tokens(texto: str) -> List[str]:
+    raw = re.findall(r"[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9]+", (texto or "").lower())
+    out: List[str] = []
+    for t in raw:
+        k = _key(t)
+        if len(k) >= 3:
+            if k in _NOMBRES_PERSONALES_KEYS:
+                continue
+            out.append(k)
+    return out
+
+def normalizar_texto(texto: str) -> str:
+    texto = texto.lower()
+    texto = unicodedata.normalize("NFD", texto)
+    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
+    texto = re.sub(r"(.)\1{1,}", r"\1", texto)  # elimina letras repetidas
+    texto = re.sub(r"[^a-z0-9 ]+", " ", texto)
+    texto = re.sub(r"\s+", " ", texto).strip()
+    return texto
+
+def limpiar_consulta(texto: str) -> str:
+    if not texto:
+        return ""
+
+    texto = texto.lower().strip()
+    texto = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("utf-8")
+
+    for nombre in NOMBRES_PERSONALES_EXCLUIR:
+        texto = re.sub(rf"\b{re.escape(nombre)}\b", " ", texto)
+
+    ruido = [
+        "quiero", "por favor", "las", "los", "un", "una", "a", "de", "en", "para",
+        "cuáles fueron", "cuales fueron", "dame", "analisis", "realizadas", "durante"
+    ]
+    for palabra in ruido:
+        texto = re.sub(rf"\b{re.escape(palabra)}\b", " ", texto)
+
+    texto = re.sub(r"\s{2,}", " ", texto).strip()
+    return texto
+
+def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
+    """
+    Fallback para NO depender de listas de Supabase.
+    Devuelve un proveedor "usable" (ej: 'roche', 'tresul', 'biodiagnostico') si aparece.
+    """
+    if not texto_lower_original:
+        return None
+
+    toks = _tokens(texto_lower_original)
+
+    ignorar = set(
+        [
+            "todas", "todoas", "toda", "todaslas",
+            "factura", "facturas", "comprobante", "comprobantes",
+            "compra", "compras",
+            "gasto", "gastos", "documento", "documentos",
+            "comparar", "comparame", "compara",
+            "detalle", "nro", "numero",
+            "total", "totales",
+            "enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "setiembre", "octubre", "noviembre", "diciembre",
+            "2023", "2024", "2025", "2026",
+            "usd", "dolar", "dolares", "dólar", "dólares", "dollar",
+            "pesos", "peso", "uyu", "uru",
+        ]
+    )
+
+    for tk in toks:
+        if not tk or tk in ignorar:
+            continue
+        # EXCLUSIÓN: Si es palabra clave de artículo, no considerarlo proveedor
+        if tk in PALABRAS_CLAVE_ARTICULOS:
+            continue
+        if tk in ALIAS_PROVEEDOR:
+            return ALIAS_PROVEEDOR[tk]
+
+    for tk in toks:
+        if not tk or tk in ignorar:
+            continue
+        # EXCLUSIÓN: Si es palabra clave de artículo, no considerarlo proveedor
+        if tk in PALABRAS_CLAVE_ARTICULOS:
+            continue
+        if len(tk) >= 3:
+            return tk
+
+    return None
+
+def detectar_articulo_valido(tokens, catalogo_articulos):
+    for token in tokens:
+        t = token.strip().lower()
+        if len(t) < 4:
+            continue
+        for art in catalogo_articulos:
+            if t in art.lower():
+                return art
+    return None
+
+def es_saludo(texto: str) -> bool:
+    saludos = [
+        "hola",
+        "buenas",
+        "buen día",
+        "buen dia",
+        "buenas tardes",
+        "buenas noches",
+        "como andas",
+        "como estás",
+        "qué tal",
+        "que tal"
+    ]
+    t = texto.lower().strip()
+    return any(t.startswith(s) or s in t for s in saludos)
+
+# =====================================================================
+# HELPERS DE KEYWORDS
+# =====================================================================
+def contiene_compras(texto: str) -> bool:
+    if not texto:
+        return False
+    t = texto.lower()
+    return bool(re.search(r"\bcompras?\b", t))
+
+def contiene_comparar(texto: str) -> bool:
+    if not texto:
+        return False
+    t = texto.lower()
+    return bool(re.search(r"\b(comparar|comparame|compara)\b", t))
+
+def contiene_gastos_o_documentos(texto: str) -> bool:
+    if not texto:
+        return False
+    t = texto.lower()
+    return bool(re.search(r"\b(gastos?|documentos?)\b", t))
+
+# =====================================================================
+# FACTURAS
+# =====================================================================
+def contiene_factura(texto: str) -> bool:
+    if not texto:
+        return False
+    t = texto.lower()
+    return bool(
+        re.search(
+            r"\b(detalle\s+)?factura(s)?\b"
+            r"|\bnro\.?\s*(comprobante|factura)\b"
+            r"|\bnro\.?\s*comprobante\b"
+            r"|\bcomprobante(s)?\b",
+            t,
+            flags=re.IGNORECASE
+        )
+    )
+
+def _normalizar_nro_factura(nro: str) -> str:
+    return (nro or "").strip().upper()
+
+def _extraer_nro_factura(texto: str) -> Optional[str]:
+    if not texto:
+        return None
+
+    t = str(texto).strip()
+
+    m = re.search(
+        r"\b(detalle\s+)?(factura|comprobante|nro\.?\s*comprobante|nro\.?\s*factura)\b\s*[:#-]?\s*([A-Za-z]?\d{3,})\b",
+        t,
+        flags=re.IGNORECASE
+    )
+    if m:
+        raw = str(m.group(3)).strip()
+
+        if raw.isdigit():
+            try:
+                n = int(raw)
+                if n in ANIOS_VALIDOS:
+                    return None
+            except Exception:
+                pass
+
+        nro = _normalizar_nro_factura(raw)
+        return nro or None
+
+    if re.fullmatch(r"[A-Za-z]?\d{3,}", t):
+        if t.isdigit():
+            try:
+                n = int(t)
+                if n in ANIOS_VALIDOS:
+                    return None
+            except Exception:
+                pass
+
+        nro = _normalizar_nro_factura(t)
+        return nro or None
+
+    return None
+
+# =====================================================================
+# Extraer limite
+# =====================================================================
+def _extraer_limite(texto: str, predeterminado: int = 500) -> int:
+    import re
+    numeros = re.findall(r"\b\d+\b", texto)
+    for numero in numeros:
+        n = int(numero)
+        if n > 0:
+            return n
+    return predeterminado
+
+# =====================================================================
+# Extraer Monedas
+# =====================================================================
+def _extraer_moneda(texto: str) -> Optional[str]:
+    texto = texto.lower()
+    patrones_moneda = {
+        "USD": ["usd", "u$s", "u$$", "dólares", "dolares", "dollar", "dólar", "dolar"],
+        "UYU": ["pesos", "uyu", "$", "moneda nacional"],
+    }
+    for moneda, palabras_clave in patrones_moneda.items():
+        for palabra in palabras_clave:
+            if palabra in texto:
+                return moneda
+    return None
+
+# =====================================================================
+# Extraer rango fechas
+# =====================================================================
+def _extraer_rango_fechas(texto: str) -> Tuple[Optional[str], Optional[str]]:
+    patron_fecha = r"\b(\d{4}-\d{2}-\d{2})\b"
+    fechas = re.findall(patron_fecha, texto)
+    if len(fechas) >= 2:
+        return fechas[0], fechas[1]
+    elif len(fechas) == 1:
+        return fechas[0], None
+    return None, None
+
+# =====================================================================
+# CARGA LISTAS DESDE SUPABASE
+# =====================================================================
+@st.cache_data(ttl=60 * 60)
+def _cargar_listas_supabase() -> Dict[str, List[str]]:
+    proveedores: List[str] = []
+    articulos: List[str] = []
+
+    try:
+        from supabase_client import supabase
+        if supabase is None:
+            return {"proveedores": [], "articulos": []}
+
+        for col in ["nombre", "Nombre", "NOMBRE"]:
+            try:
+                res = supabase.table("proveedores").select(col).execute()
+                data = res.data or []
+                proveedores = [str(r.get(col)).strip() for r in data if r.get(col)]
+                if proveedores:
+                    break
+            except Exception:
+                continue
+
+        for col in ["Descripción", "Descripcion", "descripcion", "DESCRIPCION", "DESCRIPCIÓN"]:
+            try:
+                res = supabase.table("articulos").select(col).execute()
+                data = res.data or []
+                articulos = [str(r.get(col)).strip() for r in data if r.get(col)]
+                if articulos:
+                    break
+            except Exception:
+                continue
+
+    except Exception:
+        return {"proveedores": [], "articulos": []}
+
+    proveedores = sorted(list(set([p for p in proveedores if p])))
+    articulos = sorted(list(set([a for a in articulos if a])))
+
+    return {"proveedores": proveedores, "articulos": articulos}
+
+def _get_indices() -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
+    listas = _cargar_listas_supabase()
+    prov = [(p, _key(p)) for p in (listas.get("proveedores") or []) if p]
+    art = [(a, _key(a)) for a in (listas.get("articulos") or []) if a]
+    return prov, art
+
+def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) -> List[str]:
+    toks = _tokens(texto)
+    # Filter out common words that shouldn't match articles/providers
+    ignore_words = {"compras", "compra", "factura", "facturas", "total", "totales", "comparar", "compara", "2023", "2024", "2025", "2026", "usd", "u$s", "pesos", "uyu"}
+    toks = [t for t in toks if t not in ignore_words]
+    if not toks or not index:
+        return []
+
+    toks_set = set(toks)
+    for orig, norm in index:
+        if norm in toks_set:
+            return [orig]
+
+    candidatos: List[Tuple[int, str]] = []
+    for orig, norm in index:
+        for tk in toks:
+            if tk and tk in norm:
+                score = (len(tk) * 1000) - len(norm)
+                candidatos.append((score, orig))
+
+    if not candidatos:
+        return []
+
+    candidatos.sort(key=lambda x: (-x[0], x[1]))
+    out: List[str] = []
+    seen = set()
+    for _, orig in candidatos:
+        if orig not in seen:
+            seen.add(orig)
+            out.append(orig)
+        if len(out) >= max_items:
+            break
+
+    return out
+
+# =====================================================================
+# PARSEO DE PARÁMETROS: Mes a Meses
+# =====================================================================
+def normalizar_parametros(params: dict) -> dict:
+    if "mes" in params:
+        mes = params.get("mes")
+        params["meses"] = [mes] if isinstance(mes, str) else mes
+    return params
+
+# =====================================================================
+# PARSEO DE RANGO DE FECHAS + MONEDA + LÍMITE
+# =====================================================================
+def _extraer_anios(texto: str) -> List[int]:
+    anios = re.findall(r"(2023|2024|2025|2026)", texto)
+    out: List[int] = []
+    for a in anios:
+        try:
+            out.append(int(a))
+        except Exception:
+            pass
+
+    seen = set()
+    out2: List[int] = []
+    for x in out:
+        if x not in seen:
+            seen.add(x)
+            out2.append(x)
+    return out2[:MAX_ANIOS]
+
+def _extraer_meses_nombre(texto: str) -> List[str]:
+    ms = [m for m in MESES.keys() if m in texto.lower()]
+    seen = set()
+    out: List[str] = []
+    for m in ms:
+        if m not in seen:
+            seen.add(m)
+            out.append(m)
+    return out[:MAX_MESES]
+
+def _extraer_meses_yyyymm(texto: str) -> List[str]:
+    ms = re.findall(r"(2023|2024|2025|2026)[-/](0[1-9]|1[0-2])", texto)
+    out = [f"{a}-{m}" for a, m in ms]
+    seen = set()
+    out2: List[str] = []
+    for x in out:
+        if x not in seen:
+            seen.add(x)
+            out2.append(x)
+    return out2[:MAX_MESES]
+
+def _to_yyyymm(anio: int, mes_nombre: str) -> str:
+    return f"{anio}-{MESES[mes_nombre]}"
+
+# =====================================================================
+# PROMPT OpenAI
+# =====================================================================
+def _get_system_prompt() -> str:
+    hoy = datetime.now()
+    mes_actual = hoy.strftime("%Y-%m")
+    anio_actual = hoy.year
+    fecha_str = hoy.strftime("%Y-%m-%d")
+    return f"""Eres un intérprete de consultas.
+- Mes SIEMPRE YYYY-MM.
+- Años válidos: 2023–2026.
+- Devuelve SOLO JSON: tipo, parametros, debug/sugerencia si aplica.
+
+TABLA TIPOS:
+| TIPO | DESCRIPCIÓN | PARÁMETROS | EJEMPLOS |
+|------|-------------|------------|----------|
+| compras_anio | Todas las compras de un año | anio | "compras 2025" |
+| compras_mes | Todas las compras de un mes | mes (YYYY-MM) | "compras noviembre 2025" |
+| compras_proveedor_mes | Compras de un proveedor en un mes | proveedor, mes (YYYY-MM) | "compras roche noviembre 2025" |
+| compras_multiples | Compras de múltiples proveedores, meses y años | proveedores, meses, anios | "compras roche, biodiagnostico noviembre 2025" |
+| comparar_proveedor_meses | Comparar proveedor mes vs mes | proveedor, mes1, mes2, label1, label2 | "comparar compras roche junio julio 2025" |
+| comparar_proveedor_anios | Comparar proveedor año vs año | proveedor, anios | "comparar compras roche 2024 2025" |
+| detalle_factura_numero | Detalle por número de factura | nro_factura | "detalle factura 273279" / "detalle factura A00273279" |
+| facturas_proveedor | Listado de facturas/compras de un proveedor (fusionado) | proveedores, meses?, anios?, desde?, hasta?, articulo?, moneda?, limite? | "todas las facturas roche noviembre 2025" / "compras roche 2025" |
+| ultima_factura | Última factura de un artículo/proveedor | patron | "ultima factura vitek" |
+| facturas_articulo | Todas las facturas de un artículo | articulo | "cuando vino vitek" |
+| stock_total | Resumen total de stock | (ninguno) | "stock total" |
+| stock_articulo | Stock de un artículo | articulo | "stock vitek" |
+| listado_facturas_anio | Listado/resumen de facturas por año agrupadas por proveedor | anio | "listado facturas 2025" / "total facturas 2025" |
+| total_facturas_por_moneda_anio | Total de facturas por moneda en un año | anio | "total 2025" / "totales 2025" |
+| total_facturas_por_moneda_generico | Total de facturas por moneda (todos los años) | (ninguno) | "total facturas por moneda" |
+| total_compras_por_moneda_generico | Total de compras por moneda (todos los años) | (ninguno) | "total compras por moneda" |
+| conversacion | Saludos | (ninguno) | "hola", "gracias" |
+| conocimiento | Preguntas generales | (ninguno) | "que es HPV" |
+| no_entendido | No se entiende | sugerencia | - |
+
+CANÓNICA:
+| # | ACCIÓN | OBJETO | TIEMPO | MULTI | TIPO (output) | PARAMS |
+|---|--------|--------|--------|-------|---------------|--------|
+| 01 | compras | (ninguno) | anio | no | compras_anio | anio |
+| 02 | compras | (ninguno) | mes | no | compras_mes | mes |
+| 03 | compras | proveedor | anio | no | facturas_proveedor | proveedores, anios |
+| 04 | compras | proveedor | mes | no | compras_proveedor_mes | proveedor, mes |
+| 05 | compras | proveedores | mes | si | compras_multiples | proveedores, meses, anios |
+
+FECHA: {fecha_str} (mes actual {mes_actual}, año {anio_actual})""".strip()
+
+# =====================================================================
+# OPENAI (opcional)
+# =====================================================================
+def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
+    if not (client and USAR_OPENAI_PARA_DATOS):
+        return None
+
+    try:
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": _get_system_prompt()},
+                {"role": "user", "content": pregunta},
+            ],
+            temperature=0.1,
+            max_tokens=500,
+        )
+        content = response.choices[0].message.content.strip()
+        content = re.sub(r"```json\s*", "", content)
+        content = re.sub(r"```json\s*", "", content).strip()
+        content = re.sub(r"```\s*", "", content).strip()
+        out = json.loads(content)
+
+        if "tipo" not in out:
+            out["tipo"] = "no_entendido"
+        if "parametros" not in out:
+            out["parametros"] = {}
+        if "debug" not in out:
+            out["debug"] = "openai"
+
+        return out
+
+    except Exception:
+        return {
+            "tipo": "no_entendido",
+            "parametros": {},
+            "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279",
+            "debug": "openai error",
+        }
+
+# =====================================================================
+# INTERPRETADOR PRINCIPAL (AGENTIC AI = DECIDE, NO EJECUTA)
+# =====================================================================
 
 def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     """
-    Interpretador principal (router): decide intención y extrae parámetros.
-    BLOQUE DURO: compras solo por año tiene prioridad absoluta.
+    Interpretador canónico (Agentic AI):
+    - Detecta intención y extrae parámetros sin inventar.
+    - NO ejecuta SQL, solo devuelve {tipo, parametros}.
     """
     if not pregunta or not str(pregunta).strip():
         return {"tipo": "no_entendido", "parametros": {}, "debug": "pregunta vacía"}
@@ -31,7 +592,9 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "debug": "HARD BLOCK → compras solo por año"
         }
 
-    # SALUDOS (continúa con el resto de la lógica)
+    # ============================
+    # SALUDOS
+    # ============================
     if es_saludo(texto_lower_original):
         usuario = st.session_state.get("nombre", "👋")
 
@@ -49,7 +612,9 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             )
         }
 
+    # ============================
     # CONOCIMIENTO (preguntas qué es, etc.)
+    # ============================
     palabras_conocimiento = ["qué es", "que es", "qué significa", "que significa", 
                              "explica", "explicame", "explícame", "define", 
                              "dime sobre", "qué son", "que son", "cuál es", "cual es",
@@ -514,3 +1079,131 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         "sugerencia": "Probá: compras roche noviembre 2025 | comparar compras roche junio julio 2025 | detalle factura 273279 | todas las facturas roche 2025 | listado facturas 2025 | total 2025 | total facturas por moneda | total compras por moneda | comparar 2024 2025",
         "debug": "no match",
     }
+
+
+# =========================
+# AGENTIC AI - API PÚBLICA (NO EJECUTA SQL)
+# =========================
+# Nota: En tu arquitectura, "Agentic AI" = este interpretador.
+# El orquestador sigue siendo el que ejecuta SQL/funciones.
+# Esto es solo un alias/wrapper para que lo uses explícítamente como "agente".
+
+def agentic_decidir(pregunta: str) -> Dict[str, Any]:
+    """
+    API Agentic:
+    - Devuelve una DECISIÓN (tipo + parametros)
+    - Mantiene compatibilidad: retorna exactamente lo mismo que interpretar_pregunta()
+    """
+    return interpretar_pregunta(pregunta)
+
+
+def agentic_es_ejecutable(decision: Dict[str, Any]) -> bool:
+    """
+    True si la decisión tiene tipo válido para el orquestador.
+    No ejecuta nada: solo valida formato mínimo.
+    """
+    if not isinstance(decision, dict):
+        return False
+    tipo = decision.get("tipo")
+    if not tipo:
+        return False
+    tipos_especiales = [
+        "conversacion",
+        "conocimiento",
+        "no_entendido",
+        "comparar_proveedor_meses",
+        "comparar_proveedor_anios",
+        "comparar_proveedores_meses",
+        "comparar_proveedores_anios",
+        "comparar_proveedores_meses_multi",
+        "comparar_proveedores_anios_multi",
+    ]
+    return tipo in MAPEO_FUNCIONES or tipo in tipos_especiales
+
+# Agregado: Mapeo de tipos a funciones SQL (para compatibilidad)
+MAPEO_FUNCIONES = {
+    "compras_anio": {
+        "funcion": "get_compras_anio",
+        "params": ["anio"],
+        "resumen": "get_total_compras_anio",
+    },
+    "compras_proveedor_mes": {
+        "funcion": "get_detalle_compras_proveedor_mes",
+        "params": ["proveedor", "mes"],
+    },
+    "compras_mes": {
+        "funcion": "get_compras_por_mes_excel",
+        "params": ["mes"],
+    },
+    "compras_multiples": {
+        "funcion": "get_compras_multiples",
+        "params": ["proveedores", "meses", "anios"],
+    },
+    "compras_articulo_anio": {
+        "funcion": "get_detalle_compras_articulo_anio",
+        "params": ["articulo", "anios"],
+    },
+    "detalle_factura_numero": {
+        "funcion": "get_detalle_factura_por_numero",
+        "params": ["nro_factura"],
+    },
+    "comparar_proveedor_meses": {
+        "funcion": "get_comparacion_proveedor_meses",
+        "params": ["proveedor", "mes1", "mes2", "label1", "label2"],
+    },
+    "comparar_proveedor_anios": {
+        "funcion": "get_comparacion_proveedor_anios",
+        "params": ["proveedor", "anios", "label1", "label2"],
+    },
+    "comparar_proveedores_meses": {
+        "funcion": "get_comparacion_proveedores_meses",
+        "parametros": ["proveedores", "mes1", "mes2", "label1", "label2"],
+    },
+    "comparar_proveedores_anios": {
+        "funcion": "get_comparacion_proveedores_anios",
+        "parametros": ["proveedores", "anios", "label1", "label2"],
+    },
+    "ultima_factura": {
+        "funcion": "get_ultima_factura_inteligente",
+        "params": ["patron"],
+    },
+    "facturas_articulo": {
+        "funcion": "get_facturas_articulo",
+        "params": ["articulo"],
+    },
+    "stock_total": {
+        "funcion": "get_stock_total",
+        "params": [],
+    },
+    "stock_articulo": {
+        "funcion": "get_stock_articulo",
+        "params": ["articulo"],
+    },
+    "facturas_proveedor": {
+        "funcion": "get_facturas_proveedor_detalle",
+        "params": ["proveedores", "meses", "anios", "desde", "hasta", "articulo", "moneda", "limite"],
+    },
+    "listado_facturas_anio": {
+        "funcion": "get_listado_facturas_por_anio",
+        "params": ["anio"],
+    },
+    "total_facturas_por_moneda_anio": {
+        "funcion": "get_total_facturas_por_moneda_anio",
+        "params": ["anio"],
+    },
+    "total_facturas_por_moneda_generico": {
+        "funcion": "get_total_facturas_por_moneda_todos_anios",
+        "params": [],
+    },
+    "total_compras_por_moneda_generico": {
+        "funcion": "get_total_compras_por_moneda_todos_anios",
+        "params": [],
+    },
+    "dashboard_top_proveedores": {
+        "funcion": "get_dashboard_top_proveedores",
+        "params": ["anio", "top_n", "moneda"],
+    },
+}
+
+def obtener_info_tipo(tipo: str) -> Optional[Dict]:
+    return MAPEO_FUNCIONES.get(tipo)
