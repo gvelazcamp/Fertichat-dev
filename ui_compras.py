@@ -2018,13 +2018,6 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         _dbg_set_result(df)
         return df
 
-    elif tipo == "compras_articulo_anio":
-        df = sqlq_compras.get_detalle_compras_articulo_anio(
-            parametros.get("articulo"),
-            parametros.get("anio"),
-        )
-        return df
-
     # ===== COMPARATIVAS =====
     elif tipo == "comparar_proveedor_meses":
         df = sqlq_comparativas.get_comparacion_proveedor_meses(
