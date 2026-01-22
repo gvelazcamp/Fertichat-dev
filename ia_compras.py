@@ -660,8 +660,12 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
     # ======= CARGAR ÍNDICES =======
     idx_prov, idx_art = _get_indices()
     
-    # ======= EXTRAER ENTIDADES =======
     provs = _match_best(texto_lower, idx_prov, max_items=MAX_PROVEEDORES)
+    
+    # ✅ FILTRAR PROVEEDORES QUE SON PALABRAS CLAVE DE ARTÍCULOS
+    if provs:
+        provs_filtrados = [p for p in provs if _key(p) not in PALABRAS_CLAVE_ARTICULOS]
+        provs = provs_filtrados
     
     # ✅ FIX: Excluir artículo IVA COMPRAS DEL ESTADO
     ARTICULOS_EXCLUIDOS = [
