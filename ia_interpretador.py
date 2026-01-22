@@ -845,6 +845,12 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
 
     # artículo fuerte (si ya lo tenías)
     # arts = [...]
+    # ============================
+    # EXTRACCIÓN BASE (OBLIGATORIA ANTES DE LOS IF)
+    # ============================
+    anios = _extraer_anios(texto_lower)
+    meses_nombre = _extraer_meses_nombre(texto_lower)
+    meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
 
     # 👉 fallback de artículo (VALIDACIÓN CONTRA CATÁLOGO REAL)
     if not arts:
@@ -858,14 +864,13 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # ============================
     # COMPRAS SOLO POR AÑO
     # ============================
-    anios = _extraer_anios(texto_lower)    
     if (
         contiene_compras(texto_lower_original)
         and anios
         and not provs
         and not arts
-        and not _extraer_meses_nombre(texto_lower)
-        and not _extraer_meses_yyyymm(texto_lower)
+        and not meses_nombre
+        and not meses_yyyymm
     ):
         return {
             "tipo": "compras_anio",
@@ -875,11 +880,8 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "debug": "compras año (chat)"
         }
 
-
-
     # ============================
     # RUTA ARTÍCULOS (CANÓNICA)
-    # ============================
     # ============================
     if (
         contiene_compras(texto_lower_original)
@@ -887,15 +889,12 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         and not anios
     ):
         from ia_interpretador_articulos import interpretar_articulo
-        # Extraer meses aquí para pasar a la función
-        meses = _extraer_meses_nombre(texto_lower) + _extraer_meses_yyyymm(texto_lower)
+        meses = meses_nombre + meses_yyyymm
         return interpretar_articulo(texto_original, [], meses)
 
-
-    anios = _extraer_anios(texto_lower)
-    meses_nombre = _extraer_meses_nombre(texto_lower)
-    meses_yyyymm = _extraer_meses_yyyymm(texto_lower)
-
+    # ============================
+    # COMPRAS POR PROVEEDOR / ARTÍCULO + AÑO
+    # ============================
     if provs and anios:
         tipo = "facturas_proveedor"
 
