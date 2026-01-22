@@ -27,14 +27,16 @@ class DebugPanel:
         if self.session_key not in st.session_state:
             st.session_state[self.session_key] = []
     
-    def log(self, titulo: str, contenido=None):
+    def log(self, step: str, data=None):
         if self.session_key not in st.session_state:
             st.session_state[self.session_key] = []
 
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
+
         st.session_state[self.session_key].append({
-            "ts": datetime.now().strftime("%H:%M:%S.%f")[:-3],
-            "titulo": titulo,
-            "contenido": contenido
+            "timestamp": timestamp,
+            "step": step,
+            "data": data
         })
     
     def log_module(self, module_name: str, file_path: str = None):
