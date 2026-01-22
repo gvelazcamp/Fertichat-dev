@@ -2,6 +2,22 @@ import re
 from typing import Dict, List, Any
 
 # =====================================================================
+# ARTÍCULOS EXCLUIDOS (para filtrar términos no deseados del catálogo)
+# =====================================================================
+ARTICULOS_EXCLUIDOS = [
+    "IVA",
+    "IMPUESTO",
+    "IMPUESTOS",
+    "RETENCION",
+    "RETENCIONES",
+    "PERCEPCION",
+    "PERCEPCIONES",
+    "ESTADO",
+    "DGI",
+    "BPS",
+]
+
+# =====================================================================
 # MESES MAP (para normalizar nombres a YYYY-MM)
 # =====================================================================
 MESES_MAP = {
@@ -81,7 +97,7 @@ def detectar_articulo(tokens, catalogo_articulos):
         if len(t) < 4:
             continue
         for art in catalogo_articulos:
-            if art and t in art.lower():  # ✅ Agregado check if art para evitar 'NoneType' object has no attribute 'lower'
+            if art and art.upper() not in ARTICULOS_EXCLUIDOS and t in art.lower():  # ✅ Agregado filtro de exclusión
                 return art
     return None
 
