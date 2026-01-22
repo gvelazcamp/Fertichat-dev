@@ -2038,7 +2038,9 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
     # ===== COMPRAS =====
     elif tipo == "compras_anio":
-        df = sqlq_compras.get_compras_anio(parametros["anio"])
+        # ✅ Usar get_top_proveedores_por_anios para tener el formato correcto del dashboard
+        anios = parametros.get("anios", [parametros.get("anio")])  # Manejar ambos formatos
+        df = sqlq_compras.get_top_proveedores_por_anios(anios, limite=20)
         _dbg_set_result(df)
         return df
 
