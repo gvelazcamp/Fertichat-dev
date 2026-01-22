@@ -679,26 +679,25 @@ def buscar_facturas_similares(patron: str, limite: int = 10) -> pd.DataFrame:
 def get_total_facturas_por_moneda_todos_anios():
     """
     Devuelve totales por moneda (pesos y USD) para TODOS los años.
-    Si no hay datos, devuelve un DataFrame con monedas comunes con 0.
+    Usa la expresión robusta de parsing de montos.
     """
-    sql = """
+    monto_expr = _sql_monto_neto_num_expr()
+    sql = f"""
         SELECT
             TRIM("Moneda") AS moneda,
             COUNT(*) AS registros,
-            SUM(
+            COALESCE(SUM(
                 CASE
-                    WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESOS') THEN
-                        REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.')::numeric
+                    WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESOS') THEN {monto_expr}
                     ELSE 0
                 END
-            ) AS total_pesos,
-            SUM(
+            ), 0) AS total_pesos,
+            COALESCE(SUM(
                 CASE
-                    WHEN TRIM("Moneda") IN ('USD', 'US$', 'U$S', 'U$$') THEN
-                        REPLACE(REPLACE(TRIM("Monto Neto"), '.', ''), ',', '.')::numeric
+                    WHEN TRIM("Moneda") IN ('USD', 'US$', 'U$S', 'U$$') THEN {monto_expr}
                     ELSE 0
                 END
-            ) AS total_usd
+            ), 0) AS total_usd
         FROM chatbot_raw
         WHERE TRIM("Moneda") IS NOT NULL AND TRIM("Moneda") != ''
         GROUP BY TRIM("Moneda")
@@ -707,7 +706,6 @@ def get_total_facturas_por_moneda_todos_anios():
     
     df = ejecutar_consulta(sql)
     
-    # Si no hay datos (debido a errores en parsing), devolver estructura mínima
     if df is None or df.empty:
         print("⚠️ No se encontraron datos válidos en 'Monto Neto'. Verifica formatos de montos.")
         return pd.DataFrame({
