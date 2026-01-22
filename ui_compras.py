@@ -8,7 +8,7 @@ from debug_panel import DebugPanel
 # 🔬 Inicializar debug panel
 debug = DebugPanel()
 
-from ia_interpretador import interpretar_pregunta, obtener_info_tipo
+from ia_router import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
 import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
