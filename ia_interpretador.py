@@ -182,6 +182,8 @@ def limpiar_consulta(texto: str) -> str:
     texto = re.sub(r"\s{2,}", " ", texto).strip()
     return texto
 
+# ... existing code ...
+
 def _extraer_proveedor_libre(texto_lower_original: str) -> Optional[str]:
     """
     Fallback para NO depender de listas de Supabase.
