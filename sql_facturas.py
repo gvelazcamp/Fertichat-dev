@@ -641,12 +641,6 @@ def get_facturas_por_rango_monto(
 
 
 # =========================
-# WRAPPER – TOTAL FACTURAS POR MONEDA (TODOS LOS AÑOS)
-# =========================
-from sql_compras import get_total_facturas_por_moneda_todos_anios
-
-
-# =========================
 # BÚSQUEDA DE FACTURAS SIMILARES (DEBUG)
 # =========================
 
