@@ -11,7 +11,7 @@ from sql_core import ejecutar_consulta
 import re
 
 
-def interpretar_pregunta(texto_lower, texto_lower_original):
+def interpretar_canonico(texto_lower, texto_lower_original):
     # ==================================================
     # 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
     # ==================================================
