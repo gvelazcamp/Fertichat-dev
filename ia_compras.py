@@ -28,18 +28,16 @@
     ║ 📊 stock_actual          ║ → 1.00 (NUMERIC, puede ser NULL)
     ╚══════════════════════════╝
 
+ 
     # ==================================================
     # 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
     # Prioridad ABSOLUTA – no pasa por interpretación
     # ==================================================
-    import re
-
     texto_q = texto_lower.strip() if isinstance(texto_lower, str) else texto_lower_original.strip().lower()
 
     m = re.fullmatch(r"(compra|compras)\s+(\d{4})", texto_q)
     if m:
         anio = int(m.group(2))
-
         return {
             "tipo": "compras_anio",
             "parametros": {
