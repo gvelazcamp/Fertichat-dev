@@ -180,6 +180,11 @@ def interpretar_pregunta(pregunta: str) -> Dict:
         if not any(k in texto_lower for k in ["compra", "compras", "compar", "stock", "factura", "facturas"]):
             return {"tipo": "conversacion", "parametros": {}, "debug": "saludo"}
 
+    # 📌 CÓMO DEBE QUEDAR EL BLOQUE COMPLETO
+    # 🔒 FORZADO: "compras <AÑO>" �� SIEMPRE canónico
+    if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
+        return interpretar_canonico(pregunta)
+
     # Paso 1 — Regla simple para artículos (ANTES de ia_interpretador.py)
     if "articulo" in texto_normalizado or detecta_articulo_simple(pregunta):
         from ia_interpretador_articulos import interpretar_articulo as interpretar_articulos
@@ -197,10 +202,6 @@ def interpretar_pregunta(pregunta: str) -> Dict:
 
     # 3. COMPRAS (va al CANÓNICO)
     if any(k in texto_lower for k in ["compra", "compras", "comprobante", "comprobantes"]):
-        # 🔒 Caso simple: "compras <AÑO>" → ir directo al canónico
-        if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
-            return interpretar_canonico(pregunta)
-
         # ✅ Probar primero intérprete de artículos
         from ia_interpretador_articulos import interpretar_articulo
         resultado_art = interpretar_articulo(pregunta)
