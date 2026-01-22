@@ -759,8 +759,12 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             meses=meses
         )
 
-        # Inyectar intentos del router en el debug final
-        resultado.setdefault("debug", {})
+        # Normalizar debug a dict
+        if "debug" not in resultado or not isinstance(resultado["debug"], dict):
+            resultado["debug"] = {
+                "mensaje": resultado.get("debug")
+            }
+
         resultado["debug"]["intentos"] = intentos + resultado["debug"].get("intentos", [])
 
         return resultado
