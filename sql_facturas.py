@@ -673,46 +673,39 @@ def buscar_facturas_similares(patron: str, limite: int = 10) -> pd.DataFrame:
 
 
 # =====================================================================
-# VERSIÓN ROBUSTA: TOTAL FACTURAS POR MONEDA TODOS LOS AÑOS
+# VERSIÓN FINAL CORRECTA: TOTAL FACTURAS POR MONEDA TODOS LOS AÑOS
 # =====================================================================
 
 def get_total_facturas_por_moneda_todos_anios():
-    """
-    Devuelve totales por moneda (pesos y USD) para TODOS los años.
-    Usa la columna "Total" ya parseada.
-    """
-    sql = f"""
+    sql = """
         SELECT
             TRIM("Moneda") AS moneda,
             COUNT(*) AS registros,
-            COALESCE(SUM(
+            SUM(
                 CASE
-                    WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESOS') THEN "Total"
+                    WHEN TRIM("Moneda") IN ('$', 'UYU', 'PESOS') THEN
+                        CAST(
+                            REPLACE(
+                                REPLACE(TRIM("Monto Neto"), '.', ''),
+                            ',', '.') AS numeric
+                        )
                     ELSE 0
                 END
-            ), 0) AS total_pesos,
-            COALESCE(SUM(
+            ) AS total_pesos,
+            SUM(
                 CASE
-                    WHEN TRIM("Moneda") IN ('USD', 'US$', 'U$S', 'U$$') THEN "Total"
+                    WHEN TRIM("Moneda") IN ('USD', 'US$', 'U$S') THEN
+                        CAST(
+                            REPLACE(
+                                REPLACE(TRIM("Monto Neto"), '.', ''),
+                            ',', '.') AS numeric
+                        )
                     ELSE 0
                 END
-            ), 0) AS total_usd
+            ) AS total_usd
         FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" ILIKE 'Compra%')
-          AND TRIM("Moneda") IS NOT NULL AND TRIM("Moneda") != ''
+        WHERE TRIM("Monto Neto") <> ''
         GROUP BY TRIM("Moneda")
         ORDER BY moneda;
     """
-    
-    df = ejecutar_consulta(sql)
-    
-    if df is None or df.empty:
-        print("⚠️ No se encontraron datos válidos en 'Total'. Verifica la columna Total.")
-        return pd.DataFrame({
-            'moneda': ['$', 'USD'],
-            'registros': [0, 0],
-            'total_pesos': [0.0, 0.0],
-            'total_usd': [0.0, 0.0]
-        })
-    
-    return df
+    return ejecutar_consulta(sql)
