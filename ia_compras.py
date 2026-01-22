@@ -66,36 +66,40 @@
         - "  1,00 " → 1.00
         - " 150,50 " → 150.50
 
-🎯 TIPOS DE CONSULTAS SOPORTADAS:
+🎯 TIPOS DE CONSULTAS SOPORTADAS (en orden de prioridad):
 
-    📌 TIPO 1: compras_mes
-        - "compras noviembre 2025"
-        - "compras diciembre"
-        - Parámetros: {"mes": "2025-11"}
-
-    📌 TIPO 2: compras_anio
-        - "compras 2025"
-        - "compras del año pasado"
-        - Parámetros: {"anio": 2025}
-
-    📌 TIPO 3: compras_proveedor_mes
+    📌 PRIORIDAD 1: compras_proveedor_mes
         - "compras roche noviembre 2025"
         - "cuánto compré a biokey en diciembre"
         - Parámetros: {"proveedor": "roche", "mes": "2025-11"}
 
-    📌 TIPO 4: compras_proveedor_anio
+    📌 PRIORIDAD 2: compras_proveedor_anio
         - "compras roche 2025"
         - "cuánto gasté en biokey este año"
         - Parámetros: {"proveedor": "roche", "anio": 2025}
 
-    📌 TIPO 5: compras_articulo_mes
+    📌 PRIORIDAD 3: compras_mes
+        - "compras noviembre 2025"
+        - "compras diciembre"
+        - Parámetros: {"mes": "2025-11"}
+        - ⚠️ IMPORTANTE: Se evalúa ANTES que artículos para evitar falsos positivos
+
+    📌 PRIORIDAD 4: compras_anio
+        - "compras 2025"
+        - "compras del año pasado"
+        - Parámetros: {"anio": 2025}
+        - ⚠️ IMPORTANTE: Se evalúa ANTES que artículos para evitar falsos positivos
+
+    📌 PRIORIDAD 5: compras_articulo_mes
         - "compras de reactivos noviembre 2025"
         - "cuánto compré de OBIS en diciembre"
         - Parámetros: {"articulo": "reactivos", "mes": "2025-11"}
+        - Solo se evalúa si NO hay mes/año solo
 
-    📌 TIPO 6: compras_articulo_anio
+    📌 PRIORIDAD 6: compras_articulo_anio
         - "compras de reactivos 2025"
         - Parámetros: {"articulo": "reactivos", "anio": 2025}
+        - Solo se evalúa si NO hay mes/año solo
 
 ⚠️ CASOS ESPECIALES:
 
@@ -739,7 +743,54 @@ def interpretar_compras(pregunta: str) -> Dict:
                 }
 
         # =========================================================================================
-        # CASO 3: COMPRAS ARTÍCULO + MES
+        # CASO 3: COMPRAS (SIN PROVEEDOR/ARTÍCULO) + MES
+        # PRIORIDAD ALTA: Antes de artículos para evitar falsos positivos
+        # =========================================================================================
+        
+        # Mes en formato YYYY-MM explícito
+        if len(meses_yyyymm) >= 1:
+            return {
+                "tipo": "compras_mes",
+                "parametros": {"mes": meses_yyyymm[0]},
+                "moneda": moneda,
+                "debug": "compras mes (YYYY-MM)",
+            }
+
+        # Mes nombre + año
+        if len(meses_nombre) >= 1 and len(anios) >= 1:
+            mes_key = _to_yyyymm(anios[0], meses_nombre[0])
+            return {
+                "tipo": "compras_mes",
+                "parametros": {"mes": mes_key},
+                "moneda": moneda,
+                "debug": "compras mes (nombre+anio)",
+            }
+        
+        # Solo mes nombre (asume año actual)
+        if len(meses_nombre) >= 1:
+            mes_key = _to_yyyymm(ANIO_DEFAULT, meses_nombre[0])
+            return {
+                "tipo": "compras_mes",
+                "parametros": {"mes": mes_key},
+                "moneda": moneda,
+                "debug": f"compras mes (nombre, asume año {ANIO_DEFAULT})",
+            }
+
+        # =========================================================================================
+        # CASO 4: COMPRAS (SIN PROVEEDOR/ARTÍCULO) + AÑO
+        # PRIORIDAD ALTA: Antes de artículos para evitar falsos positivos
+        # =========================================================================================
+        if len(anios) >= 1:
+            return {
+                "tipo": "compras_anio",
+                "parametros": {"anio": anios[0]},
+                "moneda": moneda,
+                "debug": "compras año",
+            }
+
+        # =========================================================================================
+        # CASO 5: COMPRAS ARTÍCULO + MES
+        # PRIORIDAD BAJA: Solo si NO hay mes/año detectado
         # =========================================================================================
         if articulo_final:
             # Mes en formato YYYY-MM explícito
@@ -781,7 +832,8 @@ def interpretar_compras(pregunta: str) -> Dict:
                 }
 
         # =========================================================================================
-        # CASO 4: COMPRAS ARTÍCULO + AÑO
+        # CASO 6: COMPRAS ARTÍCULO + AÑO
+        # PRIORIDAD BAJA: Solo si NO hay mes/año detectado
         # =========================================================================================
             if len(anios) >= 1:
                 return {
@@ -793,50 +845,6 @@ def interpretar_compras(pregunta: str) -> Dict:
                     "moneda": moneda,
                     "debug": "compras articulo año",
                 }
-
-        # =========================================================================================
-        # CASO 5: COMPRAS (SIN PROVEEDOR/ARTÍCULO) + MES
-        # =========================================================================================
-        
-        # Mes en formato YYYY-MM explícito
-        if len(meses_yyyymm) >= 1:
-            return {
-                "tipo": "compras_mes",
-                "parametros": {"mes": meses_yyyymm[0]},
-                "moneda": moneda,
-                "debug": "compras mes (YYYY-MM)",
-            }
-
-        # Mes nombre + año
-        if len(meses_nombre) >= 1 and len(anios) >= 1:
-            mes_key = _to_yyyymm(anios[0], meses_nombre[0])
-            return {
-                "tipo": "compras_mes",
-                "parametros": {"mes": mes_key},
-                "moneda": moneda,
-                "debug": "compras mes (nombre+anio)",
-            }
-        
-        # Solo mes nombre (asume año actual)
-        if len(meses_nombre) >= 1:
-            mes_key = _to_yyyymm(ANIO_DEFAULT, meses_nombre[0])
-            return {
-                "tipo": "compras_mes",
-                "parametros": {"mes": mes_key},
-                "moneda": moneda,
-                "debug": f"compras mes (nombre, asume año {ANIO_DEFAULT})",
-            }
-
-        # =========================================================================================
-        # CASO 6: COMPRAS (SIN PROVEEDOR/ARTÍCULO) + AÑO
-        # =========================================================================================
-        if len(anios) >= 1:
-            return {
-                "tipo": "compras_anio",
-                "parametros": {"anio": anios[0]},
-                "moneda": moneda,
-                "debug": "compras año",
-            }
 
     # =========================================================================================
     # FALLBACK FINAL - NO ENTENDIDO
