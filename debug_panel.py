@@ -21,26 +21,20 @@ import traceback
 class DebugPanel:
     """Panel de debugging visual para Streamlit con trazabilidad y validaciones"""
     
-    def __init__(self, session_key="debug_flow"):
-        """Inicializa el panel de debug"""
+    def __init__(self, session_key: str = "debug_panel"):
         self.session_key = session_key
+
         if self.session_key not in st.session_state:
             st.session_state[self.session_key] = []
     
-    def log(self, step: str, data: any):
-        """
-        Registra un paso en el flujo de debug
-        
-        Args:
-            step: Descripción del paso (ej: "📝 Input Usuario")
-            data: Datos a registrar (dict, DataFrame, string, etc)
-        """
-        timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        
+    def log(self, titulo: str, contenido=None):
+        if self.session_key not in st.session_state:
+            st.session_state[self.session_key] = []
+
         st.session_state[self.session_key].append({
-            "timestamp": timestamp,
-            "step": step,
-            "data": data
+            "ts": datetime.now().strftime("%H:%M:%S.%f")[:-3],
+            "titulo": titulo,
+            "contenido": contenido
         })
     
     def log_module(self, module_name: str, file_path: str = None):
