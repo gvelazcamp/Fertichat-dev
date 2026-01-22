@@ -177,18 +177,20 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     texto_lower = str(pregunta).lower().strip()
     texto_normalizado = re.sub(r'[^\w\s]', ' ', texto_lower).strip()  # Normalizar para búsqueda
 
+    # =================================================================
+    # 🔥 PRIORIDAD ABSOLUTA: "compras <AÑO>" → SIEMPRE canónico
+    # Este bloque DEBE estar ANTES de todo para evitar falsos positivos
+    # =================================================================
+    if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
+        return interpretar_canonico(pregunta)
+
     # Saludos / conversación
     saludos = {"hola", "buenas", "buenos", "gracias", "ok", "dale", "perfecto", "genial"}
     if any(re.search(rf"\b{re.escape(w)}\b", texto_lower) for w in saludos):
         if not any(k in texto_lower for k in ["compra", "compras", "compar", "stock", "factura", "facturas"]):
             return {"tipo": "conversacion", "parametros": {}, "debug": "saludo"}
 
-    # 📌 CÓMO DEBE QUEDAR EL BLOQUE COMPLETO
-    # 🔒 FORZADO: "compras <AÑO>" → SIEMPRE canónico
-    if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
-        return interpretar_canonico(pregunta)
-
-    # Paso 1 — Regla simple para artículos (ANTES de ia_interpretador.py)
+    # Paso 1 — Regla simple para artículos (DESPUÉS del bloque forzado)
     if "articulo" in texto_normalizado or detecta_articulo_simple(pregunta):
         return interpretar_articulos(pregunta)
 
@@ -204,7 +206,11 @@ def interpretar_pregunta(pregunta: str) -> Dict:
 
     # 3. COMPRAS (va al CANÓNICO)
     if any(k in texto_lower for k in ["compra", "compras", "comprobante", "comprobantes"]):
-        # ✅ Probar primero intérprete de artículos
+        # 🔥 EVITAR que "compras <AÑO>" pase por artículos
+        if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
+            return interpretar_canonico(pregunta)
+        
+        # ✅ Probar primero intérprete de artículos (solo si NO es compras+año)
         from ia_interpretador_articulos import interpretar_articulo
         resultado_art = interpretar_articulo(pregunta)
         if isinstance(resultado_art, dict) and resultado_art.get("tipo") not in (
@@ -281,7 +287,7 @@ def interpretar_pregunta_router(pregunta: str) -> dict:
 # =====================================================================
 MAPEO_FUNCIONES = {
     # COMPRAS
-    "compras_anio": {"funcion": "get_compras_anio", "params": ["anio"]},
+    "compras_anio": {"funcion": "get_top_proveedores_por_anios", "params": ["anios", "limite"]},  # 🔥 FIX: Usar función que agrupa por proveedor
     "compras_proveedor_anio": {"funcion": "get_detalle_compras_proveedor_anio", "params": ["proveedor", "anio"]},
     "compras_proveedor_mes": {"funcion": "get_detalle_compras_proveedor_mes", "params": ["proveedor", "mes"]},
     "compras_mes": {"funcion": "get_compras_por_mes_excel", "params": ["mes"]},
