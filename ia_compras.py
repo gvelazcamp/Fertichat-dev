@@ -770,6 +770,26 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
                     "debug": "compras proveedor año",
                 }
 
+   
+    # ============================
+    # COMPRAS SOLO POR AÑO
+    # ============================
+    if (
+        contiene_compras(texto_lower)
+        and anios
+        and not provs
+        and not arts
+        and not meses_nombre
+        and not meses_yyyymm
+    ):
+        return {
+            "tipo": "compras_anio",
+            "parametros": {
+                "anio": anios[0]
+            },
+            "debug": "compras solo año"
+        }
+        
         # =========================================================================================
         # CASO 3: COMPRAS (SIN PROVEEDOR/ARTÍCULO) + MES
         # PRIORIDAD ALTA: Antes de artículos para evitar falsos positivos
