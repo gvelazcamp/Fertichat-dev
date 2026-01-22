@@ -100,6 +100,7 @@ class DebugPanel:
         files = []
         sqls = []
         functions = []
+        interpretations = []
         
         for entry in logs:
             if "Módulo usado" in entry["step"]:
@@ -118,6 +119,21 @@ class DebugPanel:
                     errors.append(f"❌ Error en '{entry['timestamp']}': SQL de FACTURAS usado en función '{func}'. El error está aquí - este SQL no corresponde a la función de compras.")
                 if "COMPRAS" in sql and "facturas" in func:
                     errors.append(f"❌ Error en '{entry['timestamp']}': SQL de COMPRAS usado en función '{func}'. El error está aquí - este SQL no corresponde a la función de facturas.")
+            
+            if "Interpretación" in entry["step"]:
+                interpretations.append(entry["data"])
+        
+        # Validación especial: Patrón detectado pero no_entendido
+        for interp in interpretations:
+            if interp.get("tipo") == "no_entendido" and "patron_detectado" in interp:
+                patron = interp.get("patron_detectado", "")
+                match_text = ""
+                if "validaciones" in interp:
+                    for bloque, val in interp["validaciones"].items():
+                        if val.get("match"):
+                            match_text = val.get("match_text", "")
+                            break
+                errors.append(f"❌ Patrón '{patron}' detectado en '{match_text}', pero el sistema lo clasificó como 'no_entendido'. El error está aquí - revisa la lógica del interpretador: probablemente el patrón no está siendo procesado correctamente en el router, o falta en aliases/BD.")
         
         # Detectar SQLs duplicados
         unique_sqls = set(sql for sql in sqls if sql)
@@ -246,6 +262,31 @@ class DebugPanel:
                     if data.get("query_sql"):
                         st.markdown("**💾 Query SQL Real:**")
                         st.code(data["query_sql"], language="sql")
+                
+                # Renderizado especial para interpretaciones con detalles
+                elif "tipo" in data and "interpretador_usado" in data:
+                    st.markdown("**🎯 Tipo detectado:**")
+                    tipo_color = "#10b981" if data.get("tipo") != "no_entendido" else "#ef4444"
+                    st.markdown(f"<span style='color: {tipo_color}; font-weight: bold;'>{data.get('tipo', 'N/A')}</span>", unsafe_allow_html=True)
+                    
+                    if "patron_detectado" in data:
+                        st.markdown("**🔍 Patrón detectado:**")
+                        st.code(data["patron_detectado"], language="regex")
+                    
+                    if "debug" in data:
+                        st.markdown("**🐛 Debug info:**")
+                        st.text(data["debug"])
+                    
+                    if "validaciones" in data:
+                        st.markdown("**✅ Validaciones:**")
+                        st.json(data["validaciones"])
+                    
+                    st.markdown("**📝 Parámetros:**")
+                    st.json(data.get("parametros", {}))
+                    
+                    if "sugerencia" in data:
+                        st.markdown("**💡 Sugerencia:**")
+                        st.info(data["sugerencia"])
                 else:
                     st.json(data)
                 
@@ -377,6 +418,29 @@ if __name__ == "__main__":
             debug.log_sql("get_compras_anio", {"anios": [2025]}, "SELECT * FROM compras")
             debug.log_sql("get_compras_anio", {"anios": [2025]}, "SELECT * FROM compras")  # Duplicado
             st.warning("¡SQL duplicado simulado! Ve a la pestaña Debug")
+        
+        if st.button("Simular patrón detectado pero no_entendido"):
+            debug.log("📝 Input Usuario", "compras 2025")
+            debug.log("🧠 Interpretación", {
+                "tipo": "no_entendido",
+                "parametros": {},
+                "sugerencia": "Ej: compras vitek 2025 | compras fb 2024 | compras kit noviembre 2025",
+                "debug": "no encontrado en aliases ni BD",
+                "interpretador_usado": "interpretar_canonico",
+                "bloques_ejecutados": ["BLOQUE_FORZADO_COMPRAS_ANIO"],
+                "validaciones": {
+                    "bloque_compras_anio": {
+                        "patron": r"\b(compra|compras)\s+\d{4}\b",
+                        "match": True,
+                        "match_text": "compras 2025"
+                    }
+                },
+                "patron_detectado": r"\b(compra|compras)\s+\d{4}\b"
+            })
+            debug.log("❓ No entendido", {
+                "sugerencia": "Ej: compras vitek 2025 | compras fb 2024 | compras kit noviembre 2025"
+            })
+            st.error("¡Patrón detectado pero no_entendido simulado! Ve a la pestaña Debug")
     
     with tab2:
         debug.render()
