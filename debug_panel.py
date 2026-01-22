@@ -1,13 +1,14 @@
 # ========================================
-# debug_panel.py - Módulo de Debug Independiente
+# debug_panel.py - Módulo de Debug Independiente con Trazabilidad
 # ========================================
 """
-Módulo para debugging visual en Streamlit.
+Módulo para debugging visual en Streamlit con detección automática de errores.
 Uso:
     1. Importar: from debug_panel import DebugPanel
     2. Inicializar: debug = DebugPanel()
     3. Loggear pasos: debug.log("paso", data)
-    4. Mostrar panel: debug.render()
+    4. Loggear módulo: debug.log_module("ui_compras", "ui_compras.py")
+    5. Mostrar panel: debug.render()
 """
 
 import streamlit as st
@@ -18,7 +19,7 @@ import traceback
 
 
 class DebugPanel:
-    """Panel de debugging visual para Streamlit"""
+    """Panel de debugging visual para Streamlit con trazabilidad y validaciones"""
     
     def __init__(self, session_key="debug_flow"):
         """Inicializa el panel de debug"""
@@ -41,6 +42,20 @@ class DebugPanel:
             "step": step,
             "data": data
         })
+    
+    def log_module(self, module_name: str, file_path: str = None):
+        """
+        Registra el módulo o archivo usado en el flujo
+        
+        Args:
+            module_name: Nombre del módulo (ej: "ui_compras")
+            file_path: Ruta del archivo (opcional, ej: "ui_compras.py")
+        """
+        data = {"module": module_name}
+        if file_path:
+            data["file"] = file_path
+        
+        self.log(f"🔀 Módulo usado: {module_name}", data)
     
     def log_sql(self, function_name: str, params: dict, query: str = None):
         """
@@ -72,18 +87,77 @@ class DebugPanel:
         """Limpia todos los logs"""
         st.session_state[self.session_key] = []
     
+    def validate(self):
+        """
+        Valida automáticamente el flujo en busca de errores comunes
+        
+        Returns:
+            list: Lista de mensajes de error encontrados
+        """
+        logs = st.session_state.get(self.session_key, [])
+        errors = []
+        modules = []
+        files = []
+        sqls = []
+        functions = []
+        
+        for entry in logs:
+            if "Módulo usado" in entry["step"]:
+                modules.append(entry["data"].get("module", ""))
+                if "file" in entry["data"]:
+                    files.append(entry["data"]["file"])
+            
+            if entry.get("is_sql"):
+                sql = entry["data"].get("query_sql", "").upper()
+                func = entry["data"].get("función", "").lower()
+                sqls.append(sql)
+                functions.append(func)
+                
+                # Validación específica: SQL vs Función
+                if "FACTURAS" in sql and "compras" in func:
+                    errors.append(f"❌ Error en '{entry['timestamp']}': SQL de FACTURAS usado en función '{func}'. El error está aquí - este SQL no corresponde a la función de compras.")
+                if "COMPRAS" in sql and "facturas" in func:
+                    errors.append(f"❌ Error en '{entry['timestamp']}': SQL de COMPRAS usado en función '{func}'. El error está aquí - este SQL no corresponde a la función de facturas.")
+        
+        # Detectar SQLs duplicados
+        unique_sqls = set(sql for sql in sqls if sql)
+        if len(unique_sqls) < len([sql for sql in sqls if sql]):
+            errors.append("❌ Hay consultas SQL duplicadas en el flujo. Revisa los logs para identificar cuáles se están pisando.")
+        
+        # Detectar archivos duplicados
+        if len(set(files)) < len(files):
+            errors.append("❌ Hay archivos duplicados o el mismo archivo usado múltiples veces. Verifica si hay módulos redundantes.")
+        
+        # Múltiples módulos inconsistentes
+        unique_modules = set(modules)
+        if len(unique_modules) > 1:
+            module_list = ", ".join(unique_modules)
+            errors.append(f"⚠️ Se usaron múltiples módulos: {module_list}. Verifica si esto es correcto o si se está yendo al módulo equivocado (ej: ui_compras en lugar de ui_facturas).")
+        
+        return errors
+    
     def render(self):
-        """Renderiza el panel de debug completo"""
-        st.markdown("### 🔬 Panel de Debug - Flujo Completo")
-        st.markdown("Visualiza todo el flujo de interpretación y ejecución en tiempo real.")
+        """Renderiza el panel de debug completo con validaciones"""
+        st.markdown("### 🔬 Panel de Debug - Flujo Completo con Trazabilidad")
+        st.markdown("Visualiza todo el flujo de interpretación y ejecución en tiempo real, con detección automática de errores.")
         
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.caption("Se registran todos los pasos desde que ingresás una consulta hasta que se renderiza el resultado")
+            st.caption("Se registran todos los pasos desde que ingresás una consulta hasta que se renderiza el resultado, incluyendo módulos y validaciones.")
         with col2:
             if st.button("🗑️ Limpiar debug", key="clear_debug_btn"):
                 self.clear()
                 st.rerun()
+        
+        # Validaciones automáticas
+        validations = self.validate()
+        if validations:
+            st.markdown("### ⚠️ Validaciones Automáticas")
+            for error in validations:
+                st.error(error)
+            st.markdown("**💡 Solución:** Revisa los logs abajo para identificar exactamente dónde ocurre el error y corrígelo profesionalmente.")
+        else:
+            st.success("✅ Flujo validado correctamente - no se detectaron errores comunes.")
         
         # Mostrar flow
         if st.session_state.get(self.session_key):
@@ -105,11 +179,12 @@ class DebugPanel:
             **Qué verás aquí:**
             - 📝 Input del usuario
             - 🧠 Interpretación (tipo y parámetros)
-            - 🔀 Router usado
+            - 🔀 Módulo usado (con archivo si se especifica)
             - 💾 SQL ejecutado
             - 📊 DataFrame resultado
             - 🎨 Función de renderizado
             - ❌ Errores (si los hay)
+            - ⚠️ Validaciones automáticas para detectar inconsistencias
             """)
     
     def _get_style(self, step: str):
@@ -126,6 +201,8 @@ class DebugPanel:
             return "#fef3c7", "💾"  # Amarillo
         elif "📊" in step or "dataframe" in step_lower:
             return "#e9d5ff", "📊"  # Púrpura
+        elif "🔀" in step or "módulo" in step_lower:
+            return "#fed7aa", "🔀"  # Naranja
         else:
             return "#f3f4f6", "📝"  # Gris
     
@@ -150,8 +227,16 @@ class DebugPanel:
                 st.caption(f"📋 Columnas: {', '.join(data.columns.tolist())}")
                 
             elif isinstance(data, dict):
+                # Renderizado especial para módulos
+                if "module" in data:
+                    st.markdown("**🏗️ Módulo:**")
+                    st.code(data["module"], language="python")
+                    if "file" in data:
+                        st.markdown("**📁 Archivo:**")
+                        st.code(data["file"], language="text")
+                
                 # Renderizado especial para SQL queries
-                if "query_sql" in data:
+                elif "query_sql" in data:
                     st.markdown("**🎯 Función SQL:**")
                     st.code(data.get("función", "N/A"), language="python")
                     
@@ -162,53 +247,7 @@ class DebugPanel:
                         st.markdown("**💾 Query SQL Real:**")
                         st.code(data["query_sql"], language="sql")
                 else:
-                    # ========================================
-                    # MODO SUPER DETALLADO para debugging
-                    # ========================================
-                    st.json(data, expanded=True)
-                    
-                    st.markdown("---")
-                    
-                    # Mostrar claves importantes expandidas
-                    if "tipo" in data:
-                        st.markdown(f"### 🎯 Tipo detectado: `{data['tipo']}`")
-                    
-                    if "parametros" in data and data["parametros"]:
-                        st.markdown("### 📋 Parámetros:")
-                        st.json(data["parametros"], expanded=True)
-                    
-                    if "debug" in data:
-                        st.markdown(f"### 🐛 Debug info:")
-                        st.code(data['debug'])
-                    
-                    if "sugerencia" in data:
-                        st.markdown(f"### 💡 Sugerencia:")
-                        st.info(data['sugerencia'])
-                    
-                    # INFORMACIÓN DE ROUTING
-                    if "interpretador_usado" in data:
-                        st.markdown(f"### 🔀 Interpretador usado:")
-                        st.code(data['interpretador_usado'], language="python")
-                    
-                    if "match_regex" in data:
-                        st.markdown(f"### 🔍 Regex match:")
-                        st.code(data['match_regex'])
-                    
-                    if "texto_procesado" in data:
-                        st.markdown(f"### 📝 Texto procesado:")
-                        st.code(data['texto_procesado'])
-                    
-                    if "patron_detectado" in data:
-                        st.markdown(f"### 🎯 Patrón detectado:")
-                        st.code(data['patron_detectado'])
-                    
-                    if "bloques_ejecutados" in data:
-                        st.markdown(f"### ⚙️ Bloques ejecutados:")
-                        st.json(data['bloques_ejecutados'], expanded=True)
-                    
-                    if "validaciones" in data:
-                        st.markdown(f"### ✓ Validaciones:")
-                        st.json(data['validaciones'], expanded=True)
+                    st.json(data)
                 
             elif isinstance(data, str):
                 if len(data) > 100 or "\n" in data:
@@ -284,7 +323,7 @@ if __name__ == "__main__":
     
     debug = DebugPanel()
     
-    st.title("Demo del Panel de Debug")
+    st.title("Demo del Panel de Debug con Trazabilidad")
     
     # Tabs de ejemplo
     tab1, tab2 = st.tabs(["Demo", "🔬 Debug"])
@@ -298,9 +337,10 @@ if __name__ == "__main__":
                 "tipo": "compras_anio",
                 "parametros": {"anios": [2025]}
             })
-            debug.log("💾 SQL Ejecutado", """
+            debug.log_module("ui_compras", "ui_compras.py")
+            debug.log_sql("get_compras_anio", {"anios": [2025]}, """
                 SELECT Proveedor, SUM(Total) AS Total
-                FROM chatbot_raw
+                FROM compras_raw
                 WHERE Año = 2025
                 GROUP BY Proveedor
                 ORDER BY Total DESC
@@ -313,11 +353,30 @@ if __name__ == "__main__":
             debug.log("✅ Renderizado exitoso", "Dashboard mostrado correctamente")
             st.success("¡Consulta simulada! Ve a la pestaña Debug")
         
-        if st.button("Simular error"):
-            debug.log("📝 Input Usuario", "compras xyz")
-            debug.log("🧠 Interpretación", {"tipo": "no_entendido"})
-            debug.log("❌ Error", "No se pudo interpretar la consulta")
+        if st.button("Simular error de módulo"):
+            debug.log("📝 Input Usuario", "facturas 2025")
+            debug.log("🧠 Interpretación", {
+                "tipo": "facturas_anio",
+                "parametros": {"anios": [2025]}
+            })
+            debug.log_module("ui_compras", "ui_compras.py")  # Error: módulo equivocado
+            debug.log_sql("get_facturas_anio", {"anios": [2025]}, """
+                SELECT Proveedor, SUM(Total) AS Total
+                FROM facturas_raw
+                WHERE Año = 2025
+                GROUP BY Proveedor
+                ORDER BY Total DESC
+                LIMIT 20
+            """)
+            debug.log("❌ Error", "Módulo incorrecto usado")
             st.error("¡Error simulado! Ve a la pestaña Debug")
+        
+        if st.button("Simular SQL duplicado"):
+            debug.log("📝 Input Usuario", "compras 2025")
+            debug.log_module("ui_compras", "ui_compras.py")
+            debug.log_sql("get_compras_anio", {"anios": [2025]}, "SELECT * FROM compras")
+            debug.log_sql("get_compras_anio", {"anios": [2025]}, "SELECT * FROM compras")  # Duplicado
+            st.warning("¡SQL duplicado simulado! Ve a la pestaña Debug")
     
     with tab2:
         debug.render()
