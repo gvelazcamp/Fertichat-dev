@@ -2876,13 +2876,13 @@ Escribí lo que necesites 👇
                     titulo=titulo_guardado
                 )
 
-        # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
-        if not st.session_state.get("pause_autorefresh", False):
-            try:
-                from streamlit_autorefresh import st_autorefresh
-                st_autorefresh(interval=5000, key="fc_keepalive")
-            except Exception:
-                pass
+       # # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
+        #if not st.session_state.get("pause_autorefresh", False):
+           #try:
+              #from streamlit_autorefresh import st_autorefresh
+              #st_autorefresh(interval=5000, key="fc_keepalive")
+           #except Exception:
+                #pass
 
 # Ejecutar la función principal si se ejecuta directamente
 if __name__ == "__main__":
