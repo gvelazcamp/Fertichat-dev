@@ -151,26 +151,27 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     texto_normalizado = re.sub(r'[^\w\s]', ' ', texto_lower).strip()
 
     # =================================================================
-    # 🔥 PRIORIDAD ABSOLUTA: "compras <AÑO>" → SIEMPRE canónico
-    # Este bloque DEBE estar ANTES de todo
+    # 🔥 PRIORIDAD ABSOLUTA #1: "compras <AÑO>" → SIEMPRE canónico
+    # DEBE ESTAR PRIMERO, ANTES DE TODO
     # =================================================================
-    if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
-        print(f"🔥 BLOQUE FORZADO ACTIVADO: '{pregunta}' → canónico")
+    # Match exacto: "compras 2025", "compra 2024", etc.
+    if re.search(r'\b(compra|compras)\s+\d{4}\b', texto_lower):
+        print(f"🔥 BLOQUE FORZADO: '{pregunta}' → intérprete canónico")
         return interpretar_canonico(pregunta)
 
+    # =================================================================
     # Saludos / conversación
+    # =================================================================
     saludos = {"hola", "buenas", "buenos", "gracias", "ok", "dale", "perfecto", "genial"}
     if any(re.search(rf"\b{re.escape(w)}\b", texto_lower) for w in saludos):
         if not any(k in texto_lower for k in ["compra", "compras", "compar", "stock", "factura", "facturas"]):
             return {"tipo": "conversacion", "parametros": {}, "debug": "saludo"}
 
-    # Artículos (DESPUÉS del bloque forzado)
-    if "articulo" in texto_normalizado or detecta_articulo_simple(pregunta):
-        return interpretar_articulos(pregunta)
-
-    # ROUTING POR KEYWORDS
+    # =================================================================
+    # ROUTING POR KEYWORDS (en orden de prioridad)
+    # =================================================================
     
-    # 1. FACTURAS
+    # 1. FACTURAS (prioridad alta)
     if es_consulta_facturas(pregunta):
         return interpretar_facturas(pregunta)
 
@@ -178,14 +179,18 @@ def interpretar_pregunta(pregunta: str) -> Dict:
     if "stock" in texto_lower:
         return interpretar_stock(pregunta)
 
-    # 3. COMPRAS
+    # 3. COMPARATIVAS
+    if re.search(r"\b(comparar|comparame|compara)\b", texto_lower):
+        return interpretar_comparativas(pregunta)
+
+    # 4. COMPRAS (antes de artículos)
     if any(k in texto_lower for k in ["compra", "compras", "comprobante", "comprobantes"]):
-        # 🔥 VALIDACIÓN ADICIONAL: evitar que "compras <AÑO>" vaya a artículos
-        if re.fullmatch(r"\s*(compra|compras)\s+\d{4}\s*", texto_lower):
-            print(f"🔥 BLOQUE FORZADO 2 ACTIVADO: '{pregunta}' → canónico")
+        # 🔥 VALIDACIÓN ADICIONAL: protección extra para "compras <AÑO>"
+        if re.search(r'\b(compra|compras)\s+\d{4}\b', texto_lower):
+            print(f"🔥 BLOQUE FORZADO 2: '{pregunta}' → intérprete canónico")
             return interpretar_canonico(pregunta)
         
-        # Probar intérprete de artículos
+        # Probar intérprete de artículos SOLO si no matcheó "compras <año>"
         from ia_interpretador_articulos import interpretar_articulo
         resultado_art = interpretar_articulo(pregunta)
         if isinstance(resultado_art, dict) and resultado_art.get("tipo") not in (
@@ -194,14 +199,17 @@ def interpretar_pregunta(pregunta: str) -> Dict:
         ):
             return resultado_art
 
-        # Fallback al canónico
+        # Fallback al canónico para otras consultas de compras
         return interpretar_canonico(pregunta)
 
-    # 4. COMPARATIVAS
-    if re.search(r"\b(comparar|comparame|compara)\b", texto_lower):
-        return interpretar_comparativas(pregunta)
+    # 5. ARTÍCULOS (último recurso)
+    # Solo llega acá si NO tiene keywords de compras/facturas/stock/comparativas
+    if "articulo" in texto_normalizado or detecta_articulo_simple(pregunta):
+        return interpretar_articulos(pregunta)
 
-    # OPENAI
+    # =================================================================
+    # OPENAI (fallback)
+    # =================================================================
     if client and USAR_OPENAI_PARA_DATOS:
         try:
             response = client.chat.completions.create(
