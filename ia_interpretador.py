@@ -23,6 +23,297 @@ client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 # Si querés "sacar OpenAI" para datos: dejalo False (recomendado).
 USAR_OPENAI_PARA_DATOS = False
 
+📋 DOCUMENTACIÓN COMPLETA - AI INTÉRPRETE COMPRAS
+
+🎯 OBJETIVO:
+    Interpretar consultas en lenguaje natural sobre compras de Fertilab y convertirlas
+    en queries SQL precisas contra la tabla chatbot_raw en Supabase.
+
+📊 ESTRUCTURA DE LA TABLA chatbot_raw:
+    ╔══════════════════════════╗
+    ║   chatbot_raw            ║
+    ╠══════════════════════════╣
+    ║ 📄 Tipo Comprobante      ║ → "Compra Crédito", "Compra Contado"
+    ║ 📄 Tipo CFE              ║ → NULL (generalmente)
+    ║ 📄 Nro. Comprobante      ║ → "A00055313"
+    ║ 💰 Moneda                ║ → "UYU" o "USD"
+    ║ 💰 Cliente / Proveedor   ║ → "BIOKEY SRL", "ROCHE URUGUAY S.A."
+    ║ 📦 Familia               ║ → "FB", "AF", "TR"
+    ║ 📦 Tipo Articulo         ║ → "REACTIVOS", "INSUMOS"
+    ║ 📦 Articulo              ║ → "OBIS - PYR X 60 DET"
+    ║ 📅 Año                   ║ → 2025 (INTEGER)
+    ║ 📅 Mes                   ║ → "2025-12" (STRING formato YYYY-MM)
+    ║ 📅 Fecha                 ║ → "2025-12-23" (STRING formato YYYY-MM-DD)
+    ║ 💵 Cantidad              ║ → "  1,00 " (STRING con espacios)
+    ║ 💵 Monto Neto            ║ → "  194,40 " o "(194,40)" negativo
+    ║ 📊 stock_actual          ║ → 1.00 (NUMERIC, puede ser NULL)
+    ╚══════════════════════════╝
+
+🔍 REGLAS CRÍTICAS DE INTERPRETACIÓN:
+
+    1️⃣ EXTRACCIÓN DE AÑO:
+        - Usuario NUNCA pregunta "2025", pregunta: "compras 2025" o "noviembre 2025"
+        - Fuentes posibles:
+            ✅ Columna "Año" → Valor directo: 2025
+            ✅ Columna "Mes" → Extraer: "2025-12" → 2025
+            ✅ Columna "Fecha" → Extraer: "2025-12-23" → 2025
+        - SQL: WHERE "Año" = 2025
+
+    2️⃣ EXTRACCIÓN DE MES:
+        - Usuario SIEMPRE pregunta con NOMBRE: "noviembre 2025", "compras diciembre"
+        - Conversión necesaria: "noviembre" → "11" → "2025-11"
+        - Fuentes posibles:
+            ✅ Columna "Mes" → Ya está en formato "2025-12"
+            ✅ Columna "Fecha" → Extraer: "2025-12-23" → "2025-12"
+        - SQL: WHERE "Mes" = '2025-11' OR "Fecha" LIKE '2025-11-%'
+
+    3️⃣ EXTRACCIÓN DE PROVEEDOR:
+        - Usuario puede preguntar:
+            ✅ Nombre exacto: "compras Roche"
+            ✅ Nombre parcial: "compras biokey"
+            ✅ Nombre completo: "compras ROCHE URUGUAY S.A."
+        - Normalización: lowercase + sin acentos + TRIM
+        - SQL: WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE '%roche%'
+
+    4️⃣ FORMATO DE MONTOS:
+        A) Positivo: "  1.500,00 " → 1500.00
+        B) Negativo: "(1.500,00)" → -1500.00
+        - Punto (.) = separador de miles → ELIMINAR
+        - Coma (,) = separador decimal → REEMPLAZAR por punto
+        - Paréntesis = negativo → multiplicar por -1
+
+    5️⃣ FORMATO DE CANTIDADES:
+        - Similar a montos pero SIEMPRE positivo
+        - "  1,00 " → 1.00
+        - " 150,50 " → 150.50
+
+
+🔧 VALIDACIONES OBLIGATORIAS:
+
+    ✅ Año está en rango válido (2023-2026)
+    ✅ Mes está en rango válido (01-12)
+    ✅ Formato de mes es YYYY-MM
+    ✅ Proveedor/artículo no está vacío
+    ✅ Hay al menos UN filtro temporal (mes O año)
+
+🚀 SQL TEMPLATES PARA CADA TIPO:
+
+    compras_mes:
+        SELECT "Cliente / Proveedor", COUNT(*), SUM(monto)
+        FROM chatbot_raw
+        WHERE "Mes" = '2025-11'
+        AND "Moneda" = 'UYU'
+        GROUP BY "Cliente / Proveedor"
+        ORDER BY SUM(monto) DESC
+
+    compras_anio:
+        SELECT "Cliente / Proveedor", COUNT(*), SUM(monto)
+        FROM chatbot_raw
+        WHERE "Año" = 2025
+        AND "Moneda" = 'UYU'
+        GROUP BY "Cliente / Proveedor"
+        ORDER BY SUM(monto) DESC
+
+    compras_proveedor_mes:
+        SELECT "Articulo", COUNT(*), SUM(cantidad), SUM(monto)
+        FROM chatbot_raw
+        WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE '%roche%'
+        AND "Mes" = '2025-11'
+        AND "Moneda" = 'UYU'
+        GROUP BY "Articulo"
+        ORDER BY SUM(monto) DESC
+
+    compras_proveedor_anio:
+        SELECT "Mes", COUNT(*), SUM(monto)
+        FROM chatbot_raw
+        WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE '%roche%'
+        AND "Año" = 2025
+        AND "Moneda" = 'UYU'
+        GROUP BY "Mes"
+        ORDER BY "Mes" DESC
+
+📖 PARSEO DE MONTOS (SQL):
+
+    CASE
+        -- Si tiene paréntesis (negativo)
+        WHEN REPLACE("Monto Neto",' ','') LIKE '(%)' THEN
+            -1 * CAST(
+                REPLACE(
+                    REPLACE(
+                        SUBSTRING(REPLACE("Monto Neto",' ',''), 2,
+                            LENGTH(REPLACE("Monto Neto",' ','')) - 2),
+                        '.', ''
+                    ),
+                    ',', '.'
+                ) AS NUMERIC
+            )
+        -- Si es monto normal
+        ELSE
+            CAST(
+                REPLACE(
+                    REPLACE(REPLACE("Monto Neto",' ',''), '.', ''),
+                    ',', '.'
+                ) AS NUMERIC
+            )
+    END
+
+📖 PARSEO DE CANTIDADES (SQL):
+
+    CAST(
+        REPLACE(REPLACE("Cantidad", '.', ''), ',', '.')
+        AS NUMERIC
+    )
+
+# =========================================================================================
+# HELPER PARA GENERAR SQL (OPCIONAL - para referencia)
+# =========================================================================================
+
+def generar_sql_referencia(resultado: Dict) -> str:
+    """
+    Genera SQL de referencia para cada tipo de consulta.
+    
+    NOTA: Esta función es solo para DOCUMENTACIÓN. El SQL real se genera
+          en el módulo que consume este intérprete.
+    
+    Args:
+        resultado: Dict retornado por interpretar_compras()
+    
+    Retorna:
+        String con SQL de ejemplo
+    """
+    tipo = resultado.get("tipo")
+    params = resultado.get("parametros", {})
+    moneda = resultado.get("moneda", "UYU")
+    
+    # Template de parseo de montos
+    monto_parse = """
+        CASE
+            WHEN REPLACE("Monto Neto",' ','') LIKE '(%)' THEN
+                -1 * CAST(
+                    REPLACE(
+                        REPLACE(
+                            SUBSTRING(REPLACE("Monto Neto",' ',''), 2, 
+                                LENGTH(REPLACE("Monto Neto",' ','')) - 2),
+                            '.', ''
+                        ),
+                        ',', '.'
+                    ) AS NUMERIC
+                )
+            ELSE
+                CAST(
+                    REPLACE(
+                        REPLACE(REPLACE("Monto Neto",' ',''), '.', ''),
+                        ',', '.'
+                    ) AS NUMERIC
+                )
+        END
+    """
+    
+    if tipo == "compras_mes":
+        mes = params.get("mes")
+        return f"""
+SELECT 
+    "Cliente / Proveedor" as proveedor,
+    COUNT(*) as operaciones,
+    SUM({monto_parse}) as total_{moneda.lower()}
+FROM chatbot_raw
+WHERE "Mes" = '{mes}'
+    AND "Moneda" = '{moneda}'
+    AND "Monto Neto" IS NOT NULL
+GROUP BY "Cliente / Proveedor"
+ORDER BY total_{moneda.lower()} DESC
+LIMIT 10;
+        """
+    
+    elif tipo == "compras_anio":
+        anio = params.get("anio")
+        return f"""
+SELECT 
+    "Cliente / Proveedor" as proveedor,
+    COUNT(*) as operaciones,
+    SUM({monto_parse}) as total_{moneda.lower()}
+FROM chatbot_raw
+WHERE "Año" = {anio}
+    AND "Moneda" = '{moneda}'
+    AND "Monto Neto" IS NOT NULL
+GROUP BY "Cliente / Proveedor"
+ORDER BY total_{moneda.lower()} DESC
+LIMIT 10;
+        """
+    
+    elif tipo == "compras_proveedor_mes":
+        proveedor = params.get("proveedor", "").lower()
+        mes = params.get("mes")
+        return f"""
+SELECT 
+    "Articulo",
+    COUNT(*) as operaciones,
+    SUM({monto_parse}) as monto_total
+FROM chatbot_raw
+WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE '%{proveedor}%'
+    AND "Mes" = '{mes}'
+    AND "Moneda" = '{moneda}'
+    AND "Monto Neto" IS NOT NULL
+GROUP BY "Articulo"
+ORDER BY monto_total DESC
+LIMIT 10;
+        """
+    
+    elif tipo == "compras_proveedor_anio":
+        proveedor = params.get("proveedor", "").lower()
+        anio = params.get("anio")
+        return f"""
+SELECT 
+    "Mes",
+    COUNT(*) as operaciones,
+    SUM({monto_parse}) as monto_total
+FROM chatbot_raw
+WHERE LOWER(TRIM("Cliente / Proveedor")) LIKE '%{proveedor}%'
+    AND "Año" = {anio}
+    AND "Moneda" = '{moneda}'
+    AND "Monto Neto" IS NOT NULL
+GROUP BY "Mes"
+ORDER BY "Mes" DESC;
+        """
+    
+    elif tipo == "compras_articulo_mes":
+        articulo = params.get("articulo", "").lower()
+        mes = params.get("mes")
+        return f"""
+SELECT 
+    "Cliente / Proveedor" as proveedor,
+    COUNT(*) as operaciones,
+    SUM({monto_parse}) as monto_total
+FROM chatbot_raw
+WHERE LOWER(TRIM("Articulo")) LIKE '%{articulo}%'
+    AND "Mes" = '{mes}'
+    AND "Moneda" = '{moneda}'
+    AND "Monto Neto" IS NOT NULL
+GROUP BY "Cliente / Proveedor"
+ORDER BY monto_total DESC
+LIMIT 10;
+        """
+    
+    elif tipo == "compras_articulo_anio":
+        articulo = params.get("articulo", "").lower()
+        anio = params.get("anio")
+        return f"""
+SELECT 
+    "Mes",
+    COUNT(*) as operaciones,
+    SUM({monto_parse}) as monto_total
+FROM chatbot_raw
+WHERE LOWER(TRIM("Articulo")) LIKE '%{articulo}%'
+    AND "Año" = {anio}
+    AND "Monto Neto" IS NOT NULL
+    AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
+GROUP BY "Mes"
+ORDER BY "Mes" DESC;
+        """
+    
+    else:
+        return "-- Tipo de consulta no reconocido"
+
 # =====================================================================
 # REGLAS FIJAS
 # =====================================================================
