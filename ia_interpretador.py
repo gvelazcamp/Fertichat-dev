@@ -580,13 +580,13 @@ MAPEO_FUNCIONES = {
         "params": ["anio"],
         # ✅ Removido "resumen" - siempre usar detalle
     },
-    "compras_proveedor_mes": {
-        "funcion": "get_detalle_compras_proveedor_mes",
-        "params": ["proveedor", "mes"],
-    },
     "compras_mes": {
         "funcion": "get_compras_por_mes_excel",
         "params": ["mes"],
+    },
+    "compras_proveedor_mes": {
+        "funcion": "get_detalle_compras_proveedor_mes",
+        "params": ["proveedor", "mes"],
     },
     "compras_multiples": {
         "funcion": "get_compras_multiples",
@@ -595,6 +595,10 @@ MAPEO_FUNCIONES = {
     "compras_articulo_anio": {
         "funcion": "get_detalle_compras_articulo_anio",
         "params": ["articulo", "anios"],
+    },
+    "compras_proveedor_anio": {  # ✅ AGREGADO: Para manejar casos donde se clasifica como compras_proveedor_anio
+        "funcion": "get_facturas_proveedor_detalle",
+        "params": ["proveedores", "anios"],
     },
     "detalle_factura_numero": {
         "funcion": "get_detalle_factura_por_numero",
@@ -657,6 +661,7 @@ MAPEO_FUNCIONES = {
         "params": ["anio", "top_n", "moneda"],
     },
 }
+
 
 def obtener_info_tipo(tipo: str) -> Optional[Dict]:
     return MAPEO_FUNCIONES.get(tipo)
