@@ -751,10 +751,11 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
         # =========================================================================================
             if len(anios) >= 1:
                 return {
-                    "tipo": "compras_proveedor_anio",
+                    "tipo": "facturas_proveedor",
                     "parametros": {
-                        "proveedor": proveedor_final,
-                        "anio": anios[0]
+                        "proveedores": [proveedor_final],
+                        "anios": anios,
+                        "limite": 5000,
                     },
                     "moneda": moneda,
                     "debug": "compras proveedor año",
