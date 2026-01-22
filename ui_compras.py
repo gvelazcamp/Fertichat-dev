@@ -90,7 +90,6 @@ if m:
         "df": df,
         "debug": f"bloque_compras_anio → compras {anio}"
     }
-# ==================================================
 
 # =========================
 # NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
