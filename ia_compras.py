@@ -622,7 +622,7 @@ def _extraer_proveedor_libre(texto: str, meses_encontrados: List[str], anios_enc
 # INTÉRPRETE PRINCIPAL
 # =========================================================================================
 
-def interpretar_compras(pregunta: str) -> Dict:
+def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
     """
     Interpreta una consulta de compras en lenguaje natural.
     
