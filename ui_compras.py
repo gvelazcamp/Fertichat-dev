@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from typing import Optional
-from imports_globales import *
 
 from ia_interpretador import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
@@ -10,27 +9,6 @@ import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
 import sql_facturas as sqlq_facturas
 from sql_core import get_unique_proveedores, get_unique_articulos, ejecutar_consulta  # Agregado ejecutar_consulta
-
-# Agregado: Mapeo de meses para display amigable
-month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-month_num = {name: f"{i+1:02d}" for i, name in enumerate(month_names)}
-
-MONTH_MAPPING = {}
-for year in [2023, 2024, 2025, 2026]:
-    for month, num in month_num.items():
-        MONTH_MAPPING[f"{year}-{num}"] = f"{month} {year}"
-
-def code_to_display(code: str) -> str:
-    return MONTH_MAPPING.get(code, code)
-
-def display_to_code(display: str) -> str:
-    reverse_mapping = {v: k for k, v in MONTH_MAPPING.items()}
-    return reverse_mapping.get(display, display)
-
-def rename_month_columns(df: pd.DataFrame) -> pd.DataFrame:
-    df_renamed = df.copy()
-    df_renamed.rename(columns=MONTH_MAPPING, inplace=True)
-    return df_renamed
 
 # Temporary fix for get_unique functions
 def get_unique_proveedores():
@@ -61,23 +39,6 @@ def get_unique_articulos():
         return df['art'].tolist() if not df.empty else []
     except:
         return []
-
-    # ==================================================
-    # 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
-    # Prioridad ABSOLUTA – no pasa por interpretación
-    # ==================================================
-    texto_q = str(texto_lower).strip().lower()
-    m = re.fullmatch(r"(compra|compras)\s+(\d{4})", texto_q)
-    if m:
-        anio = int(m.group(2))
-        return {
-            "tipo": "compras_anio",
-            "parametros": {
-                "anio": anio
-            },
-            "debug": "BLOQUE_UNIVERSAL_COMPRAS_AÑO"
-        }
-    # ==================================================
 
 # =========================
 # NUEVA FUNCIÓN PARA TOP 5 ARTÍCULOS EXCLUSIVA
@@ -228,7 +189,7 @@ def get_top_5_periodos_por_articulo(articulo, anios, meses=None, proveedores=Non
                             CAST(REPLACE(REPLACE(REPLACE("Monto Neto",' ',''), '.', ''), ',', '.') AS NUMERIC)
                     END
                 ) AS total
-            FROM montos
+            FROM chatbot_raw
             WHERE {where_sql}
                 AND TRIM("Articulo") IS NOT NULL AND TRIM("Articulo") <> ''
             GROUP BY "{group_by}"
@@ -378,23 +339,28 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
     # Buscar columna de moneda
     col_moneda = None
     for col in df.columns:
-        if col.lower() == 'moneda':
+        if col.lower() in ["moneda", "currency"]:
             col_moneda = col
             break
 
-    # Buscar columnas de períodos (excluir 'Proveedor', 'Articulo', 'Moneda', 'Diferencia')
-    cols_periodos = []
-    for c in df.columns:
-        # Es un período si es numérica o tiene guión y no es excluida
-        if pd.api.types.is_numeric_dtype(df[c]) and c not in ['Diferencia']:
-            cols_periodos.append(c)
-        elif isinstance(c, str) and ('-' in c or c.isdigit()) and c not in ['Proveedor', 'Articulo', 'Moneda', 'Cliente / Proveedor']:
-            cols_periodos.append(c)
+    # Buscar columnas de períodos (excluir columnas que NO son períodos)
+    numeric_cols = []
+    for col in df.columns:
+        # Excluir columnas obvias que NO son períodos
+        if col in [col_moneda, 'Articulo', 'Proveedor', 'Cliente / Proveedor', 'Diferencia']:
+            continue
+        
+        # Si es numérica, incluirla
+        if pd.api.types.is_numeric_dtype(df[col]):
+            numeric_cols.append(col)
+        # Si el nombre parece un año o período, incluirla
+        elif isinstance(col, str) and (col.isdigit() or '-' in col):
+            numeric_cols.append(col)
     
     # Si no hay columna moneda, asumir todo en UYU
     if not col_moneda:
         total_general = 0
-        for col in cols_periodos:
+        for col in numeric_cols:
             try:
                 total_general += pd.to_numeric(df[col], errors='coerce').fillna(0).sum()
             except:
@@ -413,7 +379,7 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
             
             # Sumar las columnas numéricas de esta fila
             suma_fila = 0
-            for col in cols_periodos:
+            for col in numeric_cols:
                 try:
                     val = row[col]
                     if pd.notna(val):
@@ -579,6 +545,28 @@ def _paginate(df_in: pd.DataFrame, page: int, page_size: int) -> pd.DataFrame:
     start = (page - 1) * page_size
     end = start + page_size
     return df_in.iloc[start:end]
+
+
+# Agregado: Mapeo de meses para display amigable
+month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+month_num = {name: f"{i+1:02d}" for i, name in enumerate(month_names)}
+
+MONTH_MAPPING = {}
+for year in [2023, 2024, 2025, 2026]:
+    for month, num in month_num.items():
+        MONTH_MAPPING[f"{year}-{num}"] = f"{month} {year}"
+
+def code_to_display(code: str) -> str:
+    return MONTH_MAPPING.get(code, code)
+
+def display_to_code(display: str) -> str:
+    reverse_mapping = {v: k for k, v in MONTH_MAPPING.items()}
+    return reverse_mapping.get(display, display)
+
+def rename_month_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df_renamed = df.copy()
+    df_renamed.rename(columns=MONTH_MAPPING, inplace=True)
+    return df_renamed
 
 
 def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado", key_prefix: str = "", hide_metrics: bool = False):
@@ -921,63 +909,36 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
 
     # ==========================================
     # MÉTRICAS CON TARJETAS MODERNAS (ocultas si hide_metrics)
-    # =========================================
-# ✅ FIX DEFINITIVO: Top proveedores suma directa desde SQL (case insensitive)
-    cols_lower = [c.lower() for c in df_view.columns]
-    if "total_$" in cols_lower and "total_usd" in cols_lower:
-        # Encontrar los nombres reales de las columnas
-        col_pesos = [c for c in df_view.columns if c.lower() == "total_$"][0]
-        col_usd = [c for c in df_view.columns if c.lower() == "total_usd"][0]
-        tot_uyu = float(df_view[col_pesos].fillna(0).sum())
-        tot_usd = float(df_view[col_usd].fillna(0).sum())
-    else:
-        tot_uyu = float(
-            df_view.loc[
-                df_view["__moneda_view__"] == "UYU",
-                "__total_num__"
-            ].sum()
-        )
-        tot_usd = float(
-            df_view.loc[
-                df_view["__moneda_view__"] == "USD",
-                "__total_num__"
-            ].sum()
-        )
-        # FIX: Si no hay columna moneda (como en comparaciones),
-        # mostrar total general en UYU
-        if not col_moneda:
-            tot_uyu = float(df_view["__total_num__"].sum())
-            tot_usd = 0.0
+    # ==========================================
+    tot_uyu = float(df_view.loc[df_view["__moneda_view__"] == "UYU", "__total_num__"].sum())
+    tot_usd = float(df_view.loc[df_view["__moneda_view__"] == "USD", "__total_num__"].sum())
+    # FIX: Si no hay columna moneda (como en comparaciones), mostrar total general en UYU
+    if not col_moneda:
+        tot_uyu = float(df_view["__total_num__"].sum())
+        tot_usd = 0.0
 
-    st.markdown(
-        f"""
-        <div class="fc-metrics-grid">
-            <div class="fc-metric-card">
-                <p class="fc-metric-label">Total UYU 💰</p>
-                <p class="fc-metric-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
-                <p class="fc-metric-help">Valor exacto: $ {tot_uyu:,.2f}</p>
-            </div>
-            <div class="fc-metric-card">
-                <p class="fc-metric-label">Total USD 💵</p>
-                <p class="fc-metric-value">{_fmt_compact_money(tot_usd, "USD")}</p>
-                <p class="fc-metric-help">Valor exacto: U$S {tot_usd:,.2f}</p>
-            </div>
-            <div class="fc-metric-card">
-                <p class="fc-metric-label">
-                    {"Facturas 📄" if col_nro else "Registros 📄"}
-                </p>
-                <p class="fc-metric-value">
-                    {facturas if col_nro else filas_total}
-                </p>
-            </div>
-            <div class="fc-metric-card">
-                <p class="fc-metric-label">Proveedores 🏭</p>
-                <p class="fc-metric-value">{proveedores}</p>
-            </div>
+    st.markdown(f"""
+    <div class="fc-metrics-grid">
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">Total UYU 💰</p>
+            <p class="fc-metric-value">{_fmt_compact_money(tot_uyu, "UYU")}</p>
+            <p class="fc-metric-help">Valor exacto: $ {tot_uyu:,.2f}</p>
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">Total USD 💵</p>
+            <p class="fc-metric-value">{_fmt_compact_money(tot_usd, "USD")}</p>
+            <p class="fc-metric-help">Valor exacto: U$S {tot_usd:,.2f}</p>
+        </div>
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">{"Facturas 📄" if col_nro else "Registros 📄"}</p>
+            <p class="fc-metric-value">{facturas if col_nro else filas_total}</p>
+        </div>
+        <div class="fc-metric-card">
+            <p class="fc-metric-label">Proveedores 🏭</p>
+            <p class="fc-metric-value">{proveedores}</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # ============================================================
     # SIN FILTROS (mostrar todo)
@@ -1562,7 +1523,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         }
         
         .metrics-grid {
-            margin-bottom: 20px !important;  /* Espacio entre tarjetas y gr��fico */
+            margin-bottom: 20px !important;  /* Espacio entre tarjetas y gráfico */
         }
         
         /* INTERLINEADO ENTRE BOTONES Y TARJETAS */
@@ -1755,7 +1716,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
                         ))
                         fig.add_trace(go.Bar(
                             name=str(p2),
-                            x=df_graph[p2].astype(float),
+                            x=df_graph[entity_col],
                             y=df_graph[p2].astype(float),
                             marker_color='#764ba2',
                             text=df_graph[p2].apply(lambda x: f'${float(x)/1_000_000:.1f}M' if x >= 1_000_000 else f'${float(x):,.0f}'.replace(",", ".") if pd.notna(x) else "0"),
@@ -1983,13 +1944,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
     )
 
     # ===== FACTURAS =====
-    if tipo == "detalle_factura_numero":  # ✅ CORREGIDO: era "detalle_factura"
-        df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
-        _dbg_set_result(df)
-        return df
-    
-    # Mantener compatibilidad con nombre antiguo
-    elif tipo == "detalle_factura":
+    if tipo == "detalle_factura":
         df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
         _dbg_set_result(df)
         return df
@@ -2064,24 +2019,9 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     elif tipo == "compras_articulo_anio":
-        # ✅ CORREGIDO: Usar "valor" en lugar de "articulo"
-        modo_sql = parametros.get("modo_sql", "LIKE_NORMALIZADO")
-        valor = parametros.get("valor", "")
-        anios = parametros.get("anios", [])
-        meses = parametros.get("meses", None)  # ✅ Agregado
-        
-        # ✅ Validar que tengamos datos
-        if not valor or not anios:
-            st.error("❌ No se pudo interpretar el artículo o año")
-            return
-        
-        # ✅ Llamar a la función SQL con los parámetros correctos
-        df = sqlq_compras.get_compras_articulo_anio(
-            modo_sql=modo_sql,
-            valor=valor,
-            anios=anios,
-            meses=meses,  # ✅ Agregado
-            limite=5000
+        df = sqlq_compras.get_detalle_compras_articulo_anio(
+            parametros.get("articulo"),
+            parametros.get("anio"),
         )
         return df
 
@@ -2144,22 +2084,6 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         _dbg_set_result(df)
         return df
 
-    # ===== DASHBOARD TOP PROVEEDORES =====
-    elif tipo == "dashboard_top_proveedores":
-        anio = parametros.get("anio")
-        top_n = parametros.get("top_n", 10)
-        moneda = parametros.get("moneda", "$")
-        meses = parametros.get("meses")  # ✅ NUEVO: obtener meses
-
-        # ✅ NUEVO: pasar meses a la función SQL
-        return sqlq_compras.get_dashboard_top_proveedores(
-            anio=anio, 
-            top_n=top_n, 
-            moneda=moneda,
-            meses=meses  # ✅ NUEVO parámetro
-        )
-
-
     # ===== STOCK =====
     elif tipo == "stock_total":
         df = sqlq_compras.get_stock_total()  # Ajusta si es otro módulo
@@ -2196,6 +2120,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     raise ValueError(f"Tipo '{tipo}' no implementado en ejecutar_consulta_por_tipo")
+
 
 # =========================
 # UI PRINCIPAL
@@ -2366,6 +2291,7 @@ def Compras_IA():
     .single-provider-icon {
         width: 40px !important;  /* Más pequeño */
         height: 40px !important;
+        font-size: 1.3rem !important;
     }
     
     .single-provider-name {
@@ -2545,16 +2471,6 @@ def Compras_IA():
         elif tipo == "conocimiento":
             respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
 
-        elif tipo == "saludo":
-            # Usar OpenAI en vez de texto hardcodeado
-            nombre = st.session_state.get("nombre", "")
-            if nombre:
-                mensaje = f"Hola, soy {nombre}. {pregunta}"
-            else:
-                mensaje = pregunta
-            
-            respuesta_content = responder_con_openai(mensaje, tipo="conversacion")
-
         elif tipo == "no_entendido":
             respuesta_content = "🤔 No entendí bien tu pregunta."
             sugerencia = resultado.get("sugerencia", "")
@@ -2626,25 +2542,8 @@ def Compras_IA():
         st.markdown("### Menú Comparativas Fáciles")
         st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
-        # ✅ INICIALIZAR session_state para tipo de consulta si no existe
-        if "menu_tipo_consulta" not in st.session_state:
-            st.session_state["menu_tipo_consulta"] = "Compras"
-
         # Agregado: Submenús Compras y Comparativas
-        # ✅ Usar valor del session_state como índice inicial
-        opciones = ["Compras", "Comparativas"]
-        idx_inicial = opciones.index(st.session_state["menu_tipo_consulta"])
-        
-        tipo_consulta = st.selectbox(
-            "Tipo de consulta", 
-            options=opciones, 
-            index=idx_inicial, 
-            key="tipo_consulta_widget"  # ✅ Key diferente
-        )
-        
-        # ✅ Actualizar session_state cuando cambia
-        if tipo_consulta != st.session_state["menu_tipo_consulta"]:
-            st.session_state["menu_tipo_consulta"] = tipo_consulta
+        tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
 
         if tipo_consulta == "Compras":
             st.markdown("#### 🛒 Consultas de Compras")
@@ -2660,28 +2559,13 @@ def Compras_IA():
                 
                 render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
                 
-# ✅ BOTÓN PARA LIMPIAR PRIMERO (antes de mostrar resultados)
-            if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
-                # ✅ MANTENER EN COMPRAS después del rerun
-                st.session_state["menu_tipo_consulta"] = "Compras"
-                
-                if "compras_resultado" in st.session_state:
+                # Botón para limpiar
+                if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
                     del st.session_state["compras_resultado"]
-                if "compras_titulo" in st.session_state:
                     del st.session_state["compras_titulo"]
-                st.rerun()
-            
-            # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
-            if "compras_resultado" in st.session_state:
-                df_guardado = st.session_state["compras_resultado"]
-                titulo_guardado = st.session_state.get("compras_titulo", "Compras")
-                
-                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado, key_prefix="guardado_")
+                    st.rerun()
             
             if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
-                # ✅ MANTENER EN COMPRAS después del rerun
-                st.session_state["menu_tipo_consulta"] = "Compras"
-                
                 # ✅ PAUSAR AUTOREFRESH AL PRESIONAR BOTÓN DE BÚSQUEDA
                 st.session_state["pause_autorefresh"] = True
 
@@ -2694,17 +2578,11 @@ def Compras_IA():
                     )
 
                     if df is not None and not df.empty:
-                        # ✅ FILTRAR MANUALMENTE POR AÑO SELECCIONADO (fix para selectbox)
-                        if "Año" in df.columns:
-                            df = df[df["Año"].astype(str) == str(anio_compras)]
-                        
-                        if not df.empty:
-                            # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
-                            st.session_state["compras_resultado"] = df
-                            st.session_state["compras_titulo"] = "Compras"
-                            st.rerun()
-                        else:
-                            st.warning(f"⚠️ No hay datos para el año {anio_compras}.")
+                        # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
+                        st.session_state["compras_resultado"] = df
+                        st.session_state["compras_titulo"] = "Compras"
+
+                        render_dashboard_compras_vendible(df, titulo="Compras")
                     elif df is not None:
                         st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
                 except Exception as e:
@@ -2749,12 +2627,7 @@ def Compras_IA():
             col_cmp, col_clr, col_csv, col_xls = st.columns(4)  # Equal size for all buttons
             
             with col_cmp:
-                btn_compare = st.button(
-                    "🔍 Comparar",
-                    key="btn_comparar_horizontal",
-                    use_container_width=True
-                )
-
+                btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
             
             with col_clr:
                 btn_clear = st.button("🗑️ Limpiar resultados", key="btn_limpiar_horizontal", use_container_width=True)
@@ -2807,9 +2680,6 @@ def Compras_IA():
 
             # Botón comparar (oculto, pero funcionalidad en el botón de arriba)
             if btn_compare:
-                # ✅ MANTENER EN COMPARATIVAS después del rerun
-                st.session_state["menu_tipo_consulta"] = "Comparativas"
-                
                 # ✅ VALIDAR: necesitamos al menos 2 períodos (años O meses)
                 tiene_anios = len(anios) >= 2
                 tiene_meses = len(meses) >= 2
@@ -2872,9 +2742,6 @@ def Compras_IA():
                 
                 # Botón para limpiar (oculto, funcionalidad en botón de arriba)
                 if btn_clear:
-                    # ✅ MANTENER EN COMPARATIVAS después del rerun
-                    st.session_state["menu_tipo_consulta"] = "Comparativas"
-                    
                     del st.session_state["comparativa_resultado"]
                     del st.session_state["comparativa_titulo"]
                     st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
@@ -2886,14 +2753,19 @@ def Compras_IA():
                     titulo=titulo_guardado
                 )
 
-       # # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
-        #if not st.session_state.get("pause_autorefresh", False):
-           #try:
-              #from streamlit_autorefresh import st_autorefresh
-              #st_autorefresh(interval=5000, key="fc_keepalive")
-           #except Exception:
-                #pass
+        # Botón para reanudar auto-refresh (opcional, si se pausa)
+        if st.session_state.get("pause_autorefresh", False):
+            st.markdown("---")
+            col1, col2 = st.columns([3, 1])
+            with col2:
+                if st.button("▶️ Reanudar auto-refresh", help="Reactivar auto-refresh automático"):
+                    st.session_state["pause_autorefresh"] = False
+                    st.rerun()
 
-# Ejecutar la función principal si se ejecuta directamente
-if __name__ == "__main__":
-    Compras_IA()
+    # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
+    if not st.session_state.get("pause_autorefresh", False):
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            st_autorefresh(interval=5000, key="fc_keepalive")
+        except Exception:
+            pass
