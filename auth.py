@@ -2,19 +2,24 @@
 # 🔐 MÓDULO DE AUTENTICACIÓN - FERTI CHAT
 # =====================================================================
 # Login por USUARIO (no email)
-# DB: SQLite (users.db)
+# Base de datos: SQLite (users.db)
+# Uso: Auth local simple (Streamlit Cloud)
 # =====================================================================
 
+import os
 import sqlite3
 import hashlib
 from datetime import datetime
 from typing import Optional, Tuple
 
-# Ruta de la base de datos
-import os
+# =====================================================================
+# 📁 RUTA DE LA BASE DE DATOS
+# Siempre relativa a este archivo (evita errores en cloud)
+# =====================================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "users.db")
+
 
 # =====================================================================
 # 👥 USUARIOS PREDEFINIDOS (SOLO ESTOS PUEDEN ENTRAR)
