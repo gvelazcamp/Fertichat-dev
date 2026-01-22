@@ -1,5 +1,4 @@
 import os
-import re
 import json
 import unicodedata
 from typing import Dict, Optional, List, Tuple, Any
