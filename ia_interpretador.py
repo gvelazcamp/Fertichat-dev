@@ -1004,15 +1004,33 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "debug": f"facturas/compras proveedor(es): {', '.join(proveedores_lista)} | meses: {meses_out} | años: {anios}",
         }
 
-    # COMPRAS (fusionado con facturas_proveedor para proveedor+año)
+ # COMPRAS (fusionado con facturas_proveedor para proveedor+año)
     if contiene_compras(texto_lower_original) and not contiene_comparar(texto_lower_original):
+        # ✅ FIX: "compras [año]" sin proveedor ni mes → ia_compras.py
+        if anios and not provs and not meses_nombre and not meses_yyyymm:
+            print("\n[INTÉRPRETE] DELEGANDO A ia_compras.py")
+            print(f"  Pregunta : {texto_original}")
+            print(f"  Año(s)   : {anios}")
+            
+            try:
+                from ia_compras import interpretar_compras
+                resultado = interpretar_compras(texto_original, anios)
+                print(f"  ✅ Resultado de ia_compras: {resultado.get('tipo')}")
+                return resultado
+            except ImportError as e:
+                print(f"  ⚠️ Error importando ia_compras: {e}")
+                return {
+                    "tipo": "compras_anio",
+                    "parametros": {"anio": anios[0]},
+                    "debug": "fallback: ia_compras no disponible",
+                }
+        
         # ✅ EXTRAER PROVEEDORES CON COMA (MÚLTIPLES) - MEJORADO
         proveedores_multiples: List[str] = []
         parts = texto_lower_original.split()
         if "compras" in parts or "compra" in parts:
             idx = parts.index("compras") if "compras" in parts else parts.index("compra")
             after_compras = parts[idx+1:]
-
             # Encontrar el primer mes o año para detener
             first_stop = None
             for i, p in enumerate(after_compras):
@@ -1020,18 +1038,15 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 if clean_p in MESES or (clean_p.isdigit() and int(clean_p) in ANIOS_VALIDOS):
                     first_stop = i
                     break
-
             if first_stop is not None:
                 proveedores_texto = " ".join(after_compras[:first_stop])
             else:
                 proveedores_texto = " ".join(after_compras)
-
             if "," in proveedores_texto:
                 proveedores_multiples = [p.strip() for p in proveedores_texto.split(",") if p.strip()]
                 proveedores_multiples = [_alias_proveedor(p) for p in proveedores_multiples if p]
             else:
                 proveedores_multiples = [_alias_proveedor(proveedores_texto)] if proveedores_texto else []
-
         if proveedores_multiples:
             provs = proveedores_multiples  # Usar los múltiples
 
