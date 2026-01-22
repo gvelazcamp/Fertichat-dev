@@ -855,6 +855,27 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if articulo:
             arts = [articulo]
 
+
+    # ============================
+    # COMPRAS SOLO POR AÑO (PRIORIDAD MÁXIMA)
+    # ============================
+    if (
+        contiene_compras(texto_lower_original)
+        and anios
+        and not provs
+        and not arts
+        and not _extraer_meses_nombre(texto_lower)
+        and not _extraer_meses_yyyymm(texto_lower)
+    ):
+        return {
+            "tipo": "compras_anio",
+            "parametros": {
+                "anio": anios[0]
+            },
+            "debug": "compras año (forzado antes de artículos)"
+        }
+
+
     # ============================
     # RUTA ARTÍCULOS (CANÓNICA)
     # ============================
