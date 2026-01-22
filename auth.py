@@ -11,7 +11,10 @@ from datetime import datetime
 from typing import Optional, Tuple
 
 # Ruta de la base de datos
-DB_PATH = "users.db"
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 # =====================================================================
 # 👥 USUARIOS PREDEFINIDOS (SOLO ESTOS PUEDEN ENTRAR)
