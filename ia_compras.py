@@ -53,7 +53,7 @@ if m:
         "df": df,
         "debug": f"bloque_compras_anio → compras {anio}"
     }
-
+# ==================================================
 🔍 REGLAS CRÍTICAS DE INTERPRETACIÓN:
 
     1️⃣ EXTRACCIÓN DE AÑO:
