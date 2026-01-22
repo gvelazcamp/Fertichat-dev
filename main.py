@@ -35,13 +35,23 @@ from ui_chat_chainlit import mostrar_chat_chainlit
 from sql_core import ejecutar_consulta
 
 from ia_router import interpretar_pregunta
-# NUEVOS IMPORTS PARA SOPORTE DE COMPRAS
-# from ia_interpretador import interpretar_pregunta  # ← COMENTADO para usar router
-# import ia_interpretador  # ← COMENTADO también
 
-print(">>> IA INTERPRETADOR USADO:", ia_interpretador.__file__)
+print(">>> 🚀 USANDO IA_ROUTER: ia_router.interpretar_pregunta")
 
-print(">>> IA INTERPRETADOR USADO:", ia_interpretador.__file__)
+from sql_facturas import (
+    get_facturas_proveedor as get_facturas_proveedor_detalle,
+    get_detalle_factura_por_numero,
+    buscar_facturas_similares,
+)
+from sql_compras import (
+    get_compras_proveedor_anio,
+    get_detalle_compras_proveedor_mes,
+    get_compras_multiples,
+    get_compras_anio,
+    get_top_proveedores_por_anios,
+)
+from utils_format import formatear_dataframe
+from utils_openai import responder_con_openai
 
 from sql_facturas import (
     get_facturas_proveedor as get_facturas_proveedor_detalle,
