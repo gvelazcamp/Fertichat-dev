@@ -922,10 +922,20 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             mes = _to_yyyymm(anios[0], meses_nombre[0])
             return {"tipo": "compras_mes", "parametros": {"mes": mes}, "debug": "compras mes (nombre+año)"}
 
+        if anios and not provs and not arts:
+            return {
+                "tipo": "compras_anio",
+                "parametros": {
+                    "anio": anios[0]
+                },
+                "debug": "refuerzo compras_anio (sin proveedor ni artículo)"
+            }
+
         if anios:
             from ia_compras import interpretar_compras
             resultado = interpretar_compras(texto_original, anios)
             return resultado
+
 
     # COMPARAR
     if contiene_comparar(texto_lower_original):
