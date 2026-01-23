@@ -2412,16 +2412,17 @@ def Compras_IA(modo="compras"):
     # =========================
     # TABS PRINCIPALES (según modo)
     # =========================
+    tab_chat = None
+    tab_debug = None
+    tab_buscador = None
+    tab_comparativas = None
+
     if modo == "comparar":
         tab_comparativas, = st.tabs(["Comparativas"])
-        tab_chat = None
-        tab_debug = None
-
     else:
         tab_chat, tab_debug, tab_buscador = st.tabs(
             ["Compras", "Debug", "Buscador Fácil"]
         )
-        tab_comparativas = None
 
     # =========================
     # TAB COMPRAS (solo modo compras)
@@ -2834,7 +2835,7 @@ Escribí lo que necesites 👇
                 options=["Todos"] + art_options,
                 index=0,
                 key="articulo_compras_buscador"
-            )            
+            )
 
             # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
             if "compras_resultado" in st.session_state:
