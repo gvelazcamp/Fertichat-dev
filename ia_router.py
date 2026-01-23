@@ -321,14 +321,14 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
 # =====================================================================
 # Extraer limite
 # =====================================================================
-def _extraer_limite(texto: str, predeterminado: int = None) -> int:
+def _extraer_limite(texto: str, predeterminado: int = 500) -> int:
     import re
     numeros = re.findall(r"\b\d+\b", texto)
     for numero in numeros:
         n = int(numero)
         if n > 0:
             return n
-    return predeterminado  # ← SIN LÍMITE POR DEFECTO (None)
+    return predeterminado
 
 # =====================================================================
 # Extraer Monedas
@@ -930,7 +930,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                     "hasta": None,
                     "articulo": None,
                     "moneda": None,
-                    "limite": limite,
+                    "limite": 500,
                 },
                 "debug": {"origen": "ia_router", "intentos": intentos}
             }
