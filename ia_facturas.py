@@ -320,6 +320,28 @@ def interpretar_facturas(pregunta: str) -> Dict:
     }
 
 
+# ==================================================
+# DETALLE FACTURA POR NÚMERO (MATCH ROBUSTO)
+# ==================================================
+
+def get_detalle_factura_por_numero(nro_factura: str):
+    """
+    Devuelve el detalle de una factura buscando por coincidencia parcial
+    en 'Nro. Comprobante' (tolera prefijos tipo A000, ceros, etc.)
+    """
+
+    sql = """
+        SELECT
+            *
+        FROM chatbot_raw
+        WHERE
+            REPLACE(TRIM("Nro. Comprobante"), ' ', '') ILIKE '%' || %s || '%'
+        ORDER BY "Fecha"
+    """
+
+    return ejecutar_consulta(sql, (nro_factura,))
+
+
 # =====================================================================
 # VALIDACIÓN Y HELPERS
 # =====================================================================
