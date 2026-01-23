@@ -12,14 +12,9 @@ from sql_core import get_unique_proveedores, get_unique_articulos, ejecutar_cons
 
 try:
     from debug_panel import DebugPanel
-    debug = DebugPanel()
     HAS_DEBUG = True
 except:
     HAS_DEBUG = False
-    class FakeDebug:
-        def log(self, *args, **kwargs): pass
-        def render(self): pass
-    debug = FakeDebug()
 
 # Agregado: Mapeo de meses para display amigable
 month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -2188,6 +2183,21 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 # UI PRINCIPAL
 # =========================
 def Compras_IA():
+    
+    # ========================================
+    # INICIALIZAR DEBUG PANEL EN SESSION STATE
+    # ========================================
+    if "debug" not in st.session_state:
+        if HAS_DEBUG:
+            st.session_state["debug"] = DebugPanel()
+        else:
+            class FakeDebug:
+                def log(self, *args, **kwargs): pass
+                def render(self): pass
+            st.session_state["debug"] = FakeDebug()
+    
+    # Acceso rápido
+    debug = st.session_state["debug"]
 
     # =========================
     # DISEÑO MÁS COMPACTO Y VISIBLE
