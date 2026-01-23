@@ -526,7 +526,8 @@ user = get_current_user() or {}
 
 # Grupos del menú - SIN EMOJIS
 groups = {
-    "PRINCIPAL": ["Inicio", "Compras IA", "Buscador IA", "Stock IA"],
+    "PRINCIPAL": ["Inicio", "Buscador IA", "Stock IA"],
+    "COMPRAS": ["Compras", "Comparar"],
     "GESTIÓN": ["Pedidos internos", "Baja de stock", "Órdenes de compra", "Ingreso de comprobantes", "Sugerencia de pedidos"],
     "CATÁLOGO": ["Artículos", "Familias", "Depósitos", "Comprobantes"],
     "ANÁLISIS": ["Dashboard", "Indicadores (Power BI)"],
