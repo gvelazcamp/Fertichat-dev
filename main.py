@@ -912,7 +912,7 @@ with st.sidebar:
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
     # =========================
-    # Menu agrupado (PRINCIPAL con submenú Compras IA)
+    # Menu agrupado (PRINCIPAL con submenú inline)
     # =========================
     for group, options in groups.items():
         st.markdown(
@@ -922,36 +922,36 @@ with st.sidebar:
 
         # ===== PRINCIPAL =====
         if group == "PRINCIPAL":
-            # Radio principal SIN "Compras IA"
-            opciones_principal = [o for o in options if o != "Compras IA"]
-
+            # Radio principal (incluye Compras IA)
             st.radio(
                 "Opciones",
-                opciones_principal,
+                options,
                 key=f"radio_{group.lower()}",
                 label_visibility="collapsed",
                 on_change=update_pagina,
                 args=(group,),
             )
 
-            # Submenú visual para Compras IA (NO cambia lógica)
-            with st.expander(
-                "🛒 Compras IA",
-                expanded=(st.session_state.pagina == "Compras IA"),
-            ):
+            # Submenú SOLO si está seleccionado "Compras IA"
+            if st.session_state.get("radio_principal") == "Compras IA":
+                st.markdown(
+                    "<div style='margin-left:18px; margin-top:2px;'>",
+                    unsafe_allow_html=True
+                )
+
                 sub = st.radio(
                     "",
-                    ["🛒 Compras", "🔄 Comparar"],
+                    ["Compras", "Comparar"],
                     key="submenu_compras_ia",
                     label_visibility="collapsed",
                 )
 
-                # ⚠️ SOLO VISUAL
-                # Ambos sub-items siguen yendo a la MISMA página: "Compras IA"
-                if sub in ("🛒 Compras", "🔄 Comparar"):
-                    st.session_state.pagina = "Compras IA"
+                # SOLO VISUAL: no cambia página real
+                st.session_state.pagina = "Compras IA"
 
-        # ===== RESTO DE LOS GRUPOS (SIN CAMBIOS) =====
+                st.markdown("</div>", unsafe_allow_html=True)
+
+        # ===== RESTO DE LOS GRUPOS =====
         else:
             st.radio(
                 "Opciones",
@@ -981,6 +981,7 @@ with st.sidebar:
     })();
     </script>
     """, height=0)
+
 
 # =========================
 # FUNCIÓN DEBUG SQL FACTURA (pestaña aparte)
