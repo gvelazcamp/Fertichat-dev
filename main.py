@@ -1043,7 +1043,7 @@ with main_container:
         mostrar_resumen_compras_rotativo()
         Compras_IA()
 
-        # Panel de debug general (última consulta)
+        # Panel de debug general (ultima consulta)
         if st.session_state.get("DEBUG_SQL", False):
             with st.expander("Debug (ultima consulta)", expanded=True):
                 st.subheader("Interpretacion")
@@ -1059,9 +1059,8 @@ with main_container:
     # =========================
     elif st.session_state.pagina == "Comparar":
         # Reutiliza el modulo de Compras IA
-        # El menu de comparativas ya existe dentro de ese modulo
-        Compras_IA()
-
+        # Se fuerza modo comparativas para ocultar Compras y Debug
+        Compras_IA(modo="comparar")  # <-- CAMBIO CLAVE (no tocar nada mas)
 
     # =========================
     # DEBUG FACTURAS
