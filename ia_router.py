@@ -267,11 +267,16 @@ def _normalizar_nro_factura(nro: str) -> str:
     return (nro or "").strip().upper()
 
 def _extraer_nro_factura(texto: str) -> Optional[str]:
+    """
+    Extrae número de factura del texto.
+    CRÍTICO: debe detectar números después de "detalle factura", "factura", etc.
+    """
     if not texto:
         return None
 
     t = str(texto).strip()
 
+    # Patrón 1: "detalle factura 60907", "factura 60907", etc.
     m = re.search(
         r"\b(detalle\s+)?(factura|comprobante|nro\.?\s*comprobante|nro\.?\s*factura)\b\s*[:#-]?\s*([A-Za-z]?\d{3,})\b",
         t,
@@ -280,6 +285,7 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
     if m:
         raw = str(m.group(3)).strip()
 
+        # ❌ NO confundir años con números de factura
         if raw.isdigit():
             try:
                 n = int(raw)
@@ -291,10 +297,13 @@ def _extraer_nro_factura(texto: str) -> Optional[str]:
         nro = _normalizar_nro_factura(raw)
         return nro or None
 
+    # Patrón 2: Si el texto es SOLO un número (fallback)
+    # Ejemplo: "60907" → debe ser factura, no año
     if re.fullmatch(r"[A-Za-z]?\d{3,}", t):
         if t.isdigit():
             try:
                 n = int(t)
+                # ❌ NO confundir años (2023, 2024, etc)
                 if n in ANIOS_VALIDOS:
                     return None
             except Exception:
@@ -399,138 +408,82 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
     if not toks or not index:
         return []
 
-    toks_set = set(toks)
-    for orig, norm in index:
-        if norm in toks_set:
-            return [orig]
+    scores: Dict[str, int] = {}
+    for tok in toks:
+        for orig, key_val in index:
+            if tok in key_val:
+                scores[orig] = scores.get(orig, 0) + len(tok)
 
-    candidatos: List[Tuple[int, str]] = []
-    for orig, norm in index:
-        for tk in toks:
-            if tk and tk in norm:
-                score = (len(tk) * 1000) - len(norm)
-                candidatos.append((score, orig))
-
-    if not candidatos:
+    if not scores:
         return []
 
-    candidatos.sort(key=lambda x: (-x[0], x[1]))
-    out: List[str] = []
-    seen = set()
-    for _, orig in candidatos:
-        if orig not in seen:
-            seen.add(orig)
-            out.append(orig)
-        if len(out) >= max_items:
-            break
-
-    return out
+    sorted_items = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    return [it[0] for it in sorted_items[:max_items]]
 
 # =====================================================================
-# PARSEO DE PARÁMETROS: Mes a Meses
-# =====================================================================
-def normalizar_parametros(params: dict) -> dict:
-    if "mes" in params:
-        mes = params.get("mes")
-        params["meses"] = [mes] if isinstance(mes, str) else mes
-    return params
-
-# =====================================================================
-# PARSEO DE RANGO DE FECHAS + MONEDA + LÍMITE
+# EXTRACCIONES TEMPORALES
 # =====================================================================
 def _extraer_anios(texto: str) -> List[int]:
-    anios = re.findall(r"(2023|2024|2025|2026)", texto)
-    out: List[int] = []
-    for a in anios:
-        try:
-            out.append(int(a))
-        except Exception:
-            pass
-
-    seen = set()
-    out2: List[int] = []
-    for x in out:
-        if x not in seen:
-            seen.add(x)
-            out2.append(x)
-    return out2[:MAX_ANIOS]
+    """Extrae años válidos (2023-2026)"""
+    anios = []
+    for m in re.finditer(r"\b(20\d{2})\b", texto):
+        a = int(m.group(1))
+        if a in ANIOS_VALIDOS:
+            anios.append(a)
+    return sorted(list(set(anios)))
 
 def _extraer_meses_nombre(texto: str) -> List[str]:
-    ms = [m for m in MESES.keys() if m in texto.lower()]
-    seen = set()
+    """Extrae meses mencionados por nombre (enero, febrero, etc)"""
+    t = texto.lower()
     out: List[str] = []
-    for m in ms:
-        if m not in seen:
-            seen.add(m)
-            out.append(m)
-    return out[:MAX_MESES]
+    for nombre, cod in MESES.items():
+        if nombre in t:
+            out.append(cod)
+    return sorted(list(set(out)))
 
 def _extraer_meses_yyyymm(texto: str) -> List[str]:
-    ms = re.findall(r"(2023|2024|2025|2026)[-/](0[1-9]|1[0-2])", texto)
-    out = [f"{a}-{m}" for a, m in ms]
-    seen = set()
-    out2: List[str] = []
-    for x in out:
-        if x not in seen:
-            seen.add(x)
-            out2.append(x)
-    return out2[:MAX_MESES]
+    """Extrae meses en formato YYYY-MM"""
+    out: List[str] = []
+    for m in re.finditer(r"\b(20\d{2})[/-](0[1-9]|1[0-2])\b", texto):
+        out.append(f"{m.group(1)}-{m.group(2)}")
+    return sorted(list(set(out)))
 
-def _to_yyyymm(anio: int, mes_nombre: str) -> str:
-    return f"{anio}-{MESES[mes_nombre]}"
+def _to_yyyymm(anio: int, mes_cod: str) -> str:
+    """Convierte año + código mes → YYYY-MM"""
+    return f"{anio}-{mes_cod}"
 
 # =====================================================================
-# PROMPT OpenAI
+# OPENAI (OPCIONAL)
 # =====================================================================
 def _get_system_prompt() -> str:
-    hoy = datetime.now()
-    mes_actual = hoy.strftime("%Y-%m")
-    anio_actual = hoy.year
-    fecha_str = hoy.strftime("%Y-%m-%d")
-    return f"""Eres un intérprete de consultas.
-- Mes SIEMPRE YYYY-MM.
-- Años válidos: 2023–2026.
-- Devuelve SOLO JSON: tipo, parametros, debug/sugerencia si aplica.
+    return """
+Sos un asistente que interpreta preguntas sobre compras de un laboratorio.
+Devolvé SIEMPRE JSON con esta estructura:
+{
+  "tipo": "<tipo_de_consulta>",
+  "parametros": { ... }
+}
 
-TABLA TIPOS:
-| TIPO | DESCRIPCIÓN | PARÁMETROS | EJEMPLOS |
-|------|-------------|------------|----------|
-| compras_anio | Todas las compras de un año | anio | "compras 2025" |
-| compras_mes | Todas las compras de un mes | mes (YYYY-MM) | "compras noviembre 2025" |
-| compras_proveedor_mes | Compras de un proveedor en un mes | proveedor, mes (YYYY-MM) | "compras roche noviembre 2025" |
-| compras_multiples | Compras de múltiples proveedores, meses y años | proveedores, meses, anios | "compras roche, biodiagnostico noviembre 2025" |
-| comparar_proveedor_meses | Comparar proveedor mes vs mes | proveedor, mes1, mes2, label1, label2 | "comparar compras roche junio julio 2025" |
-| comparar_proveedor_anios | Comparar proveedor año vs año | proveedor, anios | "comparar compras roche 2024 2025" |
-| detalle_factura_numero | Detalle por número de factura | nro_factura | "detalle factura 273279" / "detalle factura A00273279" |
-| facturas_proveedor | Listado de facturas/compras de un proveedor (fusionado) | proveedores, meses?, anios?, desde?, hasta?, articulo?, moneda?, limite? | "todas las facturas roche noviembre 2025" / "compras roche 2025" |
-| ultima_factura | Última factura de un artículo/proveedor | patron | "ultima factura vitek" |
-| facturas_articulo | Todas las facturas de un artículo | articulo | "cuando vino vitek" |
-| stock_total | Resumen total de stock | (ninguno) | "stock total" |
-| stock_articulo | Stock de un artículo | articulo | "stock vitek" |
-| listado_facturas_anio | Listado/resumen de facturas por año agrupadas por proveedor | anio | "listado facturas 2025" / "total facturas 2025" |
-| total_facturas_por_moneda_anio | Total de facturas por moneda en un año | anio | "total 2025" / "totales 2025" |
-| total_facturas_por_moneda_generico | Total de facturas por moneda (todos los años) | (ninguno) | "total facturas por moneda" |
-| total_compras_por_moneda_generico | Total de compras por moneda (todos los años) | (ninguno) | "total compras por moneda" |
-| conversacion | Saludos | (ninguno) | "hola", "gracias" |
-| conocimiento | Preguntas generales | (ninguno) | "que es HPV" |
-| no_entendido | No se entiende | sugerencia | - |
+TIPOS VÁLIDOS:
+- compras_anio: si pregunta por compras de un año completo
+- compras_proveedor_mes: si pregunta compras de proveedor + mes
+- compras_mes: si pregunta compras de un mes sin proveedor
+- detalle_factura_numero: si pregunta por número de factura
+- comparar_proveedor_meses: comparar un proveedor entre 2 meses
+- comparar_proveedor_anios: comparar un proveedor entre 2 años
+- stock_total: si pregunta stock general
+- stock_articulo: si pregunta stock de un artículo
+- no_entendido: si no entendés la pregunta
 
-CANÓNICA:
-| # | ACCIÓN | OBJETO | TIEMPO | MULTI | TIPO (output) | PARAMS |
-|---|--------|--------|--------|-------|---------------|--------|
-| 01 | compras | (ninguno) | anio | no | compras_anio | anio |
-| 02 | compras | (ninguno) | mes | no | compras_mes | mes |
-| 03 | compras | proveedor | anio | no | facturas_proveedor | proveedores, anios |
-| 04 | compras | proveedor | mes | no | compras_proveedor_mes | proveedor, mes |
-| 05 | compras | proveedores | mes | si | compras_multiples | proveedores, meses, anios |
+IMPORTANTE:
+- Si hay número de factura: tipo = detalle_factura_numero
+- Si hay años 2023-2026: extraelos como enteros
+- Si hay meses: extraelos como "01", "02", etc
+- Si hay proveedor: normaliza el nombre
+"""
 
-FECHA: {fecha_str} (mes actual {mes_actual}, año {anio_actual})""".strip()
-
-# =====================================================================
-# OPENAI (opcional)
-# =====================================================================
-def _interpretar_con_openai(pregunta: str) -> Optional[Dict]:
-    if not (client and USAR_OPENAI_PARA_DATOS):
+def _interpretar_con_openai(pregunta: str) -> Optional[Dict[str, Any]]:
+    if not USAR_OPENAI_PARA_DATOS or not client:
         return None
 
     try:
@@ -587,16 +540,27 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     texto_norm = normalizar_texto(texto_original)
 
     # ==================================================
-    # 🔒 BLOQUE DURO – COMPRAS SOLO POR AÑO
-    # PRIORIDAD ABSOLUTA – ANTES DE TODO
+    # 🔒 FAST-PATH: DETALLE FACTURA POR NÚMERO
+    # PRIORIDAD MÁXIMA - ANTES DEL HARD_BLOCK
     # ==================================================
-    intentos.append("router: hard_block_compras_anio")  # Registro de intento
+    if contiene_factura(texto_lower_original):
+        nro = _extraer_nro_factura(texto_original)
+        if nro:
+            intentos.append("router: fast_path_detalle_factura")
+            return {
+                "tipo": "detalle_factura_numero",
+                "parametros": {"nro_factura": nro},
+                "debug": {"origen": "ia_router", "intentos": intentos}
+            }
 
-    import re
-
+    # ==================================================
+    # 🔒 BLOQUE DURO – COMPRAS SOLO POR AÑO
+    # PRIORIDAD ABSOLUTA – DESPUÉS DE FACTURA
+    # ==================================================
     m = re.search(r"\b(compra|compras)\s+(\d{4})\b", texto_lower_original)
     if m:
         anio = int(m.group(2))
+        intentos.append("router: hard_block_compras_anio_match")
 
         return {
             "tipo": "compras_anio",
@@ -650,16 +614,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             return {
                 "tipo": "listado_facturas_anio",
                 "parametros": {"anio": anio},
-                "debug": {"origen": "ia_router", "intentos": intentos}
-            }
-
-    # FAST-PATH: detalle factura por número
-    if contiene_factura(texto_lower_original):
-        nro = _extraer_nro_factura(texto_original)
-        if nro:
-            return {
-                "tipo": "detalle_factura_numero",
-                "parametros": {"nro_factura": nro},
                 "debug": {"origen": "ia_router", "intentos": intentos}
             }
 
@@ -898,115 +852,96 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 # MÚLTIPLES PROVEEDORES + MES/AÑO
                 meses_out = []
                 if meses_yyyymm:
-                    meses_out = meses_yyyymm
-                elif meses_nombre and anios:
-                    for a in anios[:1]:  # Solo el primer año
-                        for mn in meses_nombre[:MAX_MESES]:
-                            meses_out.append(_to_yyyymm(a, mn))
+                    meses_out = meses_yyyymm[:MAX_MESES]
+                else:
+                    if meses_nombre and anios:
+                        for a in anios:
+                            for mn in meses_nombre:
+                                meses_out.append(_to_yyyymm(a, mn))
+                                if len(meses_out) >= MAX_MESES:
+                                    break
                             if len(meses_out) >= MAX_MESES:
                                 break
-                        if len(meses_out) >= MAX_MESES:
-                            break
 
                 return {
                     "tipo": "compras_multiples",
                     "parametros": {
-                        "proveedores": provs,
-                        "meses": meses_out,
-                        "anios": anios,
+                        "proveedores": provs[:MAX_PROVEEDORES],
+                        "meses": meses_out or None,
+                        "anios": anios or None
                     },
                     "debug": {"origen": "ia_router", "intentos": intentos}
                 }
+            else:
+                # UN SOLO PROVEEDOR + MES
+                if meses_yyyymm:
+                    mes = meses_yyyymm[0]
+                elif meses_nombre and anios:
+                    mes = _to_yyyymm(anios[0], meses_nombre[0])
+                else:
+                    mes = None
 
-            # UN SOLO PROVEEDOR
-            proveedor = _alias_proveedor(provs[0])
+                if mes:
+                    return {
+                        "tipo": "compras_proveedor_mes",
+                        "parametros": {
+                            "proveedor": provs[0],
+                            "mes": mes
+                        },
+                        "debug": {"origen": "ia_router", "intentos": intentos}
+                    }
+
+        # COMPRAS SOLO MES (SIN PROVEEDOR)
+        if (meses_yyyymm or (meses_nombre and anios)) and not provs:
             if meses_yyyymm:
                 mes = meses_yyyymm[0]
             else:
-                mes = _to_yyyymm(anios[0], meses_nombre[0]) if anios and meses_nombre else None
+                mes = _to_yyyymm(anios[0], meses_nombre[0])
 
-            if mes:
-                return {
-                    "tipo": "compras_proveedor_mes",
-                    "parametros": {"proveedor": proveedor, "mes": mes},
-                    "debug": {"origen": "ia_router", "intentos": intentos}
-                }
+            return {
+                "tipo": "compras_mes",
+                "parametros": {
+                    "mes": mes
+                },
+                "debug": {"origen": "ia_router", "intentos": intentos}
+            }
 
+        # COMPRAS PROVEEDOR + AÑO (SIN MES)
         if provs and anios:
-            if len(provs) > 1:
-                # MÚLTIPLES PROVEEDORES + AÑO
-                return {
-                    "tipo": "compras_multiples",
-                    "parametros": {
-                        "proveedores": provs,
-                        "meses": None,
-                        "anios": anios,
-                    },
-                    "debug": {"origen": "ia_router", "intentos": intentos}
-                }
-
-            # UN SOLO PROVEEDOR
-            proveedor = _alias_proveedor(provs[0])
             return {
                 "tipo": "facturas_proveedor",
                 "parametros": {
-                    "proveedores": [proveedor],
-                    "anios": anios,  # PASAR TODOS LOS AÑOS
-                    "limite": 5000,
+                    "proveedores": [provs[0]],
+                    "meses": None,
+                    "anios": anios,
+                    "desde": None,
+                    "hasta": None,
+                    "articulo": None,
+                    "moneda": None,
+                    "limite": 500,
                 },
                 "debug": {"origen": "ia_router", "intentos": intentos}
             }
 
-        if meses_yyyymm:
-            mes0 = meses_yyyymm[0]
-            return {"tipo": "compras_mes", "parametros": {"mes": mes0}, "debug": {"origen": "ia_router", "intentos": intentos}}
-        if meses_nombre and anios:
-            mes = _to_yyyymm(anios[0], meses_nombre[0])
-            return {"tipo": "compras_mes", "parametros": {"mes": mes}, "debug": {"origen": "ia_router", "intentos": intentos}}
-
-        if anios and not provs and not arts:
-            return {
-                "tipo": "compras_anio",
-                "parametros": {
-                    "anio": anios[0]
-                },
-                "debug": {"origen": "ia_router", "intentos": intentos}
-            }
-
-        if anios:
-            intentos.append("router: fallback_compras_anio")  # Registro de intento
-            from ia_compras import interpretar_compras
-            resultado = interpretar_compras(texto_original, anios)
-            return resultado
-
-
-    # COMPARAR
+    # COMPARACIONES
     if contiene_comparar(texto_lower_original):
-        # EXTRAER MÚLTIPLES PROVEEDORES CON COMA
         proveedores_comparar: List[str] = []
-        if "," in texto_lower_original:
-            parts = texto_lower_original.split()
-            for i, p in enumerate(parts):
-                if "," in p or (i > 0 and parts[i-1].endswith(",")):
-                    clean = re.sub(r"[^\w]", "", p)
-                    if clean and clean not in MESES and clean not in ["comparar", "compara", "comparame"]:
-                        match_prov = _match_best(clean, idx_prov, max_items=1)
-                        if match_prov:
-                            proveedores_comparar.append(_alias_proveedor(match_prov[0]))
-        
-        if not proveedores_comparar:
-            proveedores_comparar = [_alias_proveedor(p) for p in provs] if provs else []
-        
-        # EXTRAER MESES PARA COMPARAR
+
+        if provs:
+            proveedores_comparar = provs
+        else:
+            prov_libre = _extraer_proveedor_libre(texto_lower_original)
+            if prov_libre:
+                proveedores_comparar = [_alias_proveedor(prov_libre)]
+
+        # COMPARAR MESES
         meses_cmp: List[str] = []
         if meses_yyyymm:
             meses_cmp = meses_yyyymm[:2]
-        elif meses_nombre and anios:
-            for mn in meses_nombre[:2]:
-                meses_cmp.append(_to_yyyymm(anios[0], mn))
-        
-        # COMPARAR MESES
-        if len(meses_cmp) == 2:
+        elif len(meses_nombre) >= 2 and anios:
+            meses_cmp = [_to_yyyymm(anios[0], meses_nombre[0]), _to_yyyymm(anios[0], meses_nombre[1])]
+
+        if len(meses_cmp) >= 2:
             if len(proveedores_comparar) >= 2:
                 return {
                     "tipo": "comparar_proveedores_meses",
