@@ -2618,9 +2618,9 @@ def Compras_IA():
 
         # Mostrar historial
         for idx, msg in enumerate(st.session_state["historial_compras"]):
-            # ✅ FIX: Generar key único basado en contenido + índice para evitar duplicados
-            msg_hash = abs(hash(str(msg.get("content", ""))[:100] + str(idx))) % 1000000
-            unique_key = f"hist_{idx}_{msg_hash}_"
+            # ✅ FIX: Generar key único usando timestamp + índice
+            timestamp = msg.get("timestamp", idx * 1000)  # Fallback a idx si no hay timestamp
+            unique_key = f"hist_{idx}_{int(timestamp)}_"
             
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
