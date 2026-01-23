@@ -574,7 +574,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     nro_factura = _extraer_nro_factura(texto_original)
     if nro_factura:
         return {
-            "tipo": "detalle_factura_numero",
+            "tipo": "detalle_factura",
             "parametros": {"nro_factura": nro_factura},
             "debug": {"origen": "ia_router", "regla": "detalle_factura_numero"}
         }
