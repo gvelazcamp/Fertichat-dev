@@ -2825,6 +2825,8 @@ Escribí lo que necesites 👇
                 key="proveedor_compras_buscador"
             )
 
+            
+
             # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
             if "compras_resultado" in st.session_state:
                 df_guardado = st.session_state["compras_resultado"]
@@ -2846,6 +2848,7 @@ Escribí lo que necesites 👇
                         anio=anio_compras,
                         mes=None if mes_compras == "Todos" else mes_compras,
                         proveedor=None if proveedor_compras == "Todos" else proveedor_compras,
+                        articulo=None if articulo_compras == "Todos" else articulo_compras,
                         limite=5000
                     )
 
@@ -2857,7 +2860,7 @@ Escribí lo que necesites 👇
                         st.warning("⚠️ No se encontraron resultados.")
                 except Exception as e:
                     st.error(f"❌ Error en búsqueda: {e}")
-    # ========================= 
+    # ===================================================================================================== 
 
     # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
     # if modo != "comparar" and not st.session_state.get("pause_autorefresh", False):
