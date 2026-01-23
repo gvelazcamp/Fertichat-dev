@@ -1,9 +1,18 @@
+# =========================
+# UI_COMPRAS.PY - INTERFAZ PARA COMPRAS Y FACTURAS
+# =========================
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 from typing import Optional
+from imports_globales import *
+from debug_panel import DebugPanel
 
-from ia_interpretador import interpretar_pregunta, obtener_info_tipo
+# 🔬 Inicializar debug panel
+debug = DebugPanel()
+
+from ia_router import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
 import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
@@ -118,10 +127,8 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
                         -1 * CAST(
                             REPLACE(
                                 REPLACE(
-                                    SUBSTRING(
-                                        REPLACE("Monto Neto",' ',''), 2,
-                                        LENGTH(REPLACE("Monto Neto",' ','')) - 2
-                                    ),
+                                    SUBSTRING(REPLACE("Monto Neto",' ',''), 2,
+                                        LENGTH(REPLACE("Monto Neto",' ','')) - 2),
                                     '.',''
                                 ),
                                 ',','.'
@@ -130,10 +137,8 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
                     ELSE
                         CAST(
                             REPLACE(
-                                REPLACE(
-                                    REPLACE("Monto Neto",' ',''),'.',''
-                                ),
-                                ',','.'
+                                REPLACE(REPLACE("Monto Neto",' ',''), '.', ''),
+                                ',', '.'
                             ) AS NUMERIC
                         )
                 END AS monto_num
@@ -416,7 +421,6 @@ def calcular_totales_por_moneda_comparativas(df: pd.DataFrame) -> dict:
         import traceback
         traceback.print_exc()
         return {"Pesos": 0, "USD": 0}
-
 
 # =========================
 # DASHBOARD VENDIBLE (UI) - NUEVO
