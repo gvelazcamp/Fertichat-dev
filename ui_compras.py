@@ -2184,7 +2184,7 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 # =========================
 # UI PRINCIPAL
 # =========================
-def Compras_IA():
+def Compras_IA(modo="compras"):
     
     # ========================================
     # INICIALIZAR DEBUG PANEL EN SESSION STATE
