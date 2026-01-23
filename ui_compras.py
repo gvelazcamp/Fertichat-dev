@@ -2414,40 +2414,21 @@ def Compras_IA(modo="compras"):
     art_options = get_unique_articulos()  # ✅ CAMBIO: TODOS LOS ARTÍCULOS (sin [:100])
 
     # =========================
-    # TABS PRINCIPALES
+    # TABS PRINCIPALES (según modo)
     # =========================
     if modo == "comparar":
-        # En modo comparar: SOLO Comparativas
         tab_comparativas = st.tabs(["Comparativas"])[0]
-
-        with tab_comparativas:
-            # TODO el contenido que ya tenías dentro de `with tab_comparativas`
-            # va acá SIN MODIFICAR
-            pass
-
+        tab_chat = None
+        tab_debug = None
     else:
-        # En modo compras: SOLO Compras + Debug
         tab_chat, tab_debug = st.tabs(["Compras", "Debug"])
+        tab_comparativas = None
 
+    # =========================
+    # TAB COMPRAS (solo modo compras)
+    # =========================
+    if tab_chat is not None:
         with tab_chat:
-            # TODO el contenido que ya tenías dentro de `with tab_chat`
-            # va acá SIN MODIFICAR
-            pass
-
-        with tab_debug:
-            if HAS_DEBUG:
-                debug.render()
-            else:
-                st.info("Debug panel no disponible")
-
-    else:
-        # Modo normal: Compras + Comparativas + Debug
-        tab_chat, tab_comparativas, tab_debug = st.tabs(
-            ["Compras", "Comparativas", "Debug"]
-        )
-
-        with tab_chat:
-            # BOTÓN LIMPIAR (solo en chat)
             if st.button("Limpiar chat"):
                 st.session_state["historial_compras"] = []
                 _dbg_set_interpretacion({})
@@ -2455,59 +2436,71 @@ def Compras_IA(modo="compras"):
                 st.session_state["pause_autorefresh"] = False
                 st.rerun()
 
-        # st.markdown("---")  # ← COMENTADA - ocupaba espacio al pedo
+            for idx, msg in enumerate(st.session_state["historial_compras"]):
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
 
-        # Mostrar historial
-        for idx, msg in enumerate(st.session_state["historial_compras"]):
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+                    if "df" in msg and msg["df"] is not None:
+                        df = msg["df"]
 
-                if "df" in msg and msg["df"] is not None:
-                    df = msg["df"]
+                        try:
+                            st.markdown("---")
+                            render_dashboard_compras_vendible(
+                                df,
+                                titulo="Datos",
+                                key_prefix=f"hist_{idx}_"
+                            )
+                        except Exception as e:
+                            totales = calcular_totales_por_moneda(df)
+                            if totales:
+                                col1, col2, col3 = st.columns([2, 2, 3])
 
-                    # Dashboard vendible compacto
-                    try:
-                        st.markdown("---")
-                        render_dashboard_compras_vendible(
-                            df,
-                            titulo="Datos",
-                            key_prefix=f"hist_{idx}_"
-                        )
-                    except Exception as e:
-                        # Fallback viejo (no romper nada)
-                        totales = calcular_totales_por_moneda(df)
-                        if totales:
-                            col1, col2, col3 = st.columns([2, 2, 3])
+                                with col1:
+                                    pesos = totales.get("Pesos", 0)
+                                    pesos_str = (
+                                        f"${pesos/1_000_000:,.2f}M"
+                                        if pesos >= 1_000_000
+                                        else f"${pesos:,.2f}"
+                                    )
+                                    st.metric(
+                                        "Total Pesos",
+                                        pesos_str,
+                                        help=f"Valor exacto: ${pesos:,.2f}",
+                                    )
 
-                            with col1:
-                                pesos = totales.get("Pesos", 0)
-                                pesos_str = (
-                                    f"${pesos/1_000_000:,.2f}M"
-                                    if pesos >= 1_000_000
-                                    else f"${pesos:,.2f}"
-                                )
-                                st.metric(
-                                    "💵 Total Pesos",
-                                    pesos_str,
-                                    help=f"Valor exacto: ${pesos:,.2f}",
-                                )
+                                with col2:
+                                    usd = totales.get("USD", 0)
+                                    usd_str = (
+                                        f"${usd/1_000_000:,.2f}M"
+                                        if usd >= 1_000_000
+                                        else f"${usd:,.2f}"
+                                    )
+                                    st.metric(
+                                        "Total USD",
+                                        usd_str,
+                                        help=f"Valor exacto: ${usd:,.2f}",
+                                    )
 
-                            with col2:
-                                usd = totales.get("USD", 0)
-                                usd_str = (
-                                    f"${usd/1_000_000:,.2f}M"
-                                    if usd >= 1_000_000
-                                    else f"${usd:,.2f}"
-                                )
-                                st.metric(
-                                    "💵 Total USD",
-                                    usd_str,
-                                    help=f"Valor exacto: ${usd:,.2f}",
-                                )
+                            st.markdown("---")
+                            st.dataframe(df, use_container_width=True, height=400)
+                            st.caption(f"Dashboard vendible falló: {e}")
 
-                        st.markdown("---")
-                        st.dataframe(df, use_container_width=True, height=400)
-                        st.caption(f"⚠️ Dashboard vendible falló: {e}")
+    # =========================
+    # TAB COMPARATIVAS (solo modo comparar)
+    # =========================
+    if tab_comparativas is not None:
+        with tab_comparativas:
+            mostrar_menu_comparativas()
+
+    # =========================
+    # TAB DEBUG (solo modo compras)
+    # =========================
+    if tab_debug is not None:
+        with tab_debug:
+            if HAS_DEBUG:
+                debug.render()
+            else:
+                st.info("Debug panel no disponible")
 
         # =========================
         # TIPS / EJEMPLOS (CAJA AMARILLA ANTES DEL INPUT)
