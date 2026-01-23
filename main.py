@@ -253,6 +253,15 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
             st.session_state["DBG_INT_LAST"] = {
                 "tipo": tipo,
                 "parametros": params,
+                "pregunta": pregunta_original,
+            }
+
+            # =========================
+            # DEBUG – ROUTER
+            # =========================
+            st.session_state["DBG_ROUTER_LAST"] = {
+                "tipo": tipo,
+                "parametros": params,
             }
 
             # =========================
@@ -264,6 +273,7 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
             # DEBUG – SQL
             # =========================
             st.session_state["DBG_SQL_LAST_TAG"] = "sql_compras.get_top_proveedores_por_anios"
+            st.session_state["DBG_SQL_PARAMS"] = {"anios": [anio], "limite": limite}
 
             if df is None or df.empty:
                 st.session_state["DBG_SQL_ROWS"] = 0
@@ -293,7 +303,7 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
             moneda = params.get("moneda", "$")
 
             if not anio:
-                return "❌ Indicá el año. Ej: top proveedores 2025", None, None
+                return "❌ Indic�� el año. Ej: top proveedores 2025", None, None
 
             df = get_dashboard_top_proveedores(anio=anio, top_n=top_n, moneda=moneda)
 
@@ -1023,7 +1033,7 @@ with main_container:
     elif st.session_state.pagina == "Órdenes de compra":
         mostrar_ordenes_compra()
 
-    elif st.session_state.pagina == "Ficha de stock":
+    elif st.session_state.pagina == "📒 Ficha de stock":
         mostrar_ficha_stock()
 
     elif st.session_state.pagina == "Artículos":
