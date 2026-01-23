@@ -567,80 +567,42 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     texto_lower_original = texto_original.lower()
 
     # ==================================================
-    # 🔒 PRIORIDAD ABSOLUTA – COMPRAS SOLO POR AÑO
+    # 🔒 COMPRAS SOLO POR AÑO (ESTRICTO)
+    # Solo cuando la consulta sea exactamente: "compras 2025" o "compra 2025"
+    # (No debe activarse si hay proveedor/artículo/mes junto al año)
     # ==================================================
     texto_q = texto_lower_original.strip()
-
-    m = re.search(r"\b(compras?|compra)\s+(202[3-6])\b", texto_q)
-    if m:
-        anio = int(m.group(2))
-
-        from sql_compras import get_total_compras_anio
-
-        return {
-            "tipo": "compras_anio",
-            "parametros": {
-                "anio": anio
-            },
-            "debug": f"router → compras {anio}"
-        }
-
-    texto_q = texto_lower_original.strip()
-
     m = re.fullmatch(r"(compras|compra)\s+(\d{4})", texto_q)
     if m:
         anio = int(m.group(2))
-
-        from sql_facturas import get_compras_totales_por_anio
-        resultado = get_compras_totales_por_anio(anio)
-
         return {
             "tipo": "compras_anio",
             "parametros": {"anio": anio},
-            "resultado": resultado
+            "debug": {"origen": "ia_router", "regla": "compras solo año (estricto)"}
         }
 
-    # ==================================================
-    # COMPRAS POR AÑO (IA ROUTER NATURAL)
-    # ==================================================
-    anios = _extraer_anios(texto_lower_original)
-
-    if contiene_compras(texto_lower_original) and len(anios) == 1:
-        return {
-            "tipo": "compras_anio",
-            "parametros": {
-                "anio": anios[0]
-            },
-            "debug": {
-                "origen": "ia_router",
-                "regla": "compras + año"
-            }
-        }
-
-    # ----------------------------------
+# ----------------------------------
     # 2️⃣ NORMALIZACIÓN (DESPUÉS)
     # ----------------------------------
     texto_norm = normalizar_texto(texto_original)
 
     # ==================================================
-    # 🔒 HARD BLOCK – COMPRAS SOLO POR AÑO
-    # PRIORIDAD ABSOLUTA – DESPUÉS DE FACTURA
     # ==================================================
-    anios = _extraer_anios(texto_lower_original)
-
-    if contiene_compras(texto_lower_original) and anios:
+    # 🔒 HARD BLOCK – COMPRAS SOLO POR AÑO (ESTRICTO)
+    # Solo si la consulta es EXACTAMENTE "compras 2025" / "compra 2025"
+    # (No debe pisar consultas con proveedor/artículo/mes)
+    # ==================================================
+    texto_q = texto_lower_original.strip()
+    m = re.fullmatch(r"(compras|compra)\s+(\d{4})", texto_q)
+    if m:
+        anio = int(m.group(2))
         return {
             "tipo": "compras_anio",
-            "parametros": {
-                "anio": anios[0]
-            },
-            "debug": {
-                "origen": "ia_router",
-                "hard_block": "compras_anio"
-            }
+            "parametros": {"anio": anio},
+            "debug": {"origen": "ia_router", "hard_block": "compras_anio_estricto"}
         }
 
-    # ============================
+# ============================
     # SALUDOS
     # ============================
     if es_saludo(texto_lower_original):
@@ -927,8 +889,10 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             return {
                 "tipo": "compras_articulo_anio",
                 "parametros": {
-                    "articulo": arts[0],
-                    "anios": anios
+                    "modo_sql": "LIKE_NORMALIZADO",
+                    "valor": arts[0],
+                    "anios": anios,
+                    "meses": (meses_nombre + meses_yyyymm) if (meses_nombre or meses_yyyymm) else None
                 },
                 "debug": {"origen": "ia_router", "intentos": intentos}
             }
