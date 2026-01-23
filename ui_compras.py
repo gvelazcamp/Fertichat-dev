@@ -1,18 +1,23 @@
+# =========================
+# UI_COMPRAS.PY - INTERFAZ PARA COMPRAS Y FACTURAS
+# =========================
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 from typing import Optional
+from imports_globales import *
+from debug_panel import DebugPanel
 
-from ia_interpretador import interpretar_pregunta, obtener_info_tipo
+# 🔬 Inicializar debug panel
+debug = DebugPanel()
+
+from ia_router import interpretar_pregunta, obtener_info_tipo
 from utils_openai import responder_con_openai
 import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
 import sql_facturas as sqlq_facturas
 from sql_core import get_unique_proveedores, get_unique_articulos, ejecutar_consulta  # Agregado ejecutar_consulta
-from debug_panel import DebugPanel
-
-# Inicializar panel de debug
-debug = DebugPanel()
 
 # Agregado: Mapeo de meses para display amigable
 month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -122,10 +127,8 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
                         -1 * CAST(
                             REPLACE(
                                 REPLACE(
-                                    SUBSTRING(
-                                        REPLACE("Monto Neto",' ',''), 2,
-                                        LENGTH(REPLACE("Monto Neto",' ','')) - 2
-                                    ),
+                                    SUBSTRING(REPLACE("Monto Neto",' ',''), 2,
+                                        LENGTH(REPLACE("Monto Neto",' ','')) - 2),
                                     '.',''
                                 ),
                                 ',','.'
@@ -134,10 +137,8 @@ def get_top_5_articulos(anios, meses=None, proveedores=None):
                     ELSE
                         CAST(
                             REPLACE(
-                                REPLACE(
-                                    REPLACE("Monto Neto",' ',''),'.',''
-                                ),
-                                ',','.'
+                                REPLACE(REPLACE("Monto Neto",' ',''), '.', ''),
+                                ',', '.'
                             ) AS NUMERIC
                         )
                 END AS monto_num
@@ -576,116 +577,74 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     st.markdown(
         """
         <style>
-        /* ==========================================
-           HEADER CON TÍTULO Y METADATA
-           ========================================== */
-        .fc-header-modern {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            padding: 20px 24px;
-            margin-bottom: 20px;
-            color: white;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        /* ========================================
+           HEADER MÁS COMPACTO
+           ======================================== */
+        .fc-header-modern,
+        .dash-header {
+            padding: 12px 16px !important;  /* Más pequeño */
+            margin-bottom: 16px !important;
+            border-radius: 10px !important;
         }
         
-        .fc-title-modern {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin: 0 0 8px 0;
-            color: white;
+        .fc-title-modern,
+        .dash-title {
+            font-size: 1rem !important;  /* Más pequeño */
+            margin-bottom: 4px !important;
+            font-weight: 700 !important;
         }
         
-        .fc-badge-modern {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: white;
+        .fc-badge-modern,
+        .dash-badge {
+            font-size: 0.7rem !important;  /* Más pequeño */
+            padding: 3px 8px !important;
+            border-radius: 10px !important;
+            margin-bottom: 4px !important;
         }
         
-        .fc-meta-modern {
-            font-size: 0.85rem;
-            opacity: 0.9;
-            margin: 0;
-            color: rgba(255,255,255,0.9);
+        .fc-meta-modern,
+        .dash-meta {
+            font-size: 0.7rem !important;  /* Más pequeño */
+            margin: 0 !important;
+            line-height: 1.2 !important;
         }
         
-        /* ==========================================
-           TARJETAS DE MÉTRICAS (4 columnas)
-           ========================================== */
-        .fc-metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 32px;  /* ← Aumentado de 16px a 32px para más separación */
-            margin-bottom: 20px;
+        /* ========================================
+           TARJETAS MÉTRICAS MÁS CHICAS
+           ======================================== */
+        .fc-metrics-grid,
+        .metrics-grid {
+            gap: 16px !important;  /* Más pequeño para más tarjetas visibles */
+            margin-bottom: 24px !important;
         }
         
-        .fc-metric-card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 18px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s ease;
+        .fc-metric-card,
+        .metric-card {
+            padding: 12px 16px !important;  /* Más pequeño */
+            border-radius: 10px !important;
         }
         
-        .fc-metric-card:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transform: translateY(-2px);
+        .fc-metric-label,
+        .metric-label {
+            font-size: 0.75rem !important;  /* Más pequeño */
+            margin-bottom: 4px !important;
         }
         
-        .fc-metric-label {
-            font-size: 0.85rem;
-            color: #6b7280;
-            margin: 0 0 6px 0;
-            font-weight: 500;
-        }
-        
-        .fc-metric-value {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #111827;
-            margin: 0;
+        .fc-metric-value,
+        .metric-value {
+            font-size: 1.2rem !important;  /* Más pequeño pero legible */
+            font-weight: 700 !important;
         }
         
         .fc-metric-help {
-            font-size: 0.75rem;
-            color: #9ca3af;
-            margin: 4px 0 0 0;
+            font-size: 0.65rem !important;  /* Más pequeño */
         }
         
-        /* ==========================================
-           CARD TOTAL GRANDE
-           ========================================== */
-        .total-summary-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            padding: 40px 32px;
-            margin-bottom: 24px;
-            color: white;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-            text-align: center;
-        }
+        /* ========================================
+           CARDS DE RESUMEN CON MISMO ALTO + MÁS ESPACIO
+           ======================================== */
         
-        .total-summary-value {
-            font-size: 3rem;
-            font-weight: 700;
-            margin: 0 0 8px 0;
-        }
-        
-        .total-summary-label {
-            font-size: 1.2rem;
-            opacity: 0.9;
-            margin: 0;
-        }
-        
-        /* ==========================================
-           CARD RESUMEN EJECUTIVO
-           ========================================== */
+        /* Todas las cards de resumen con altura uniforme */
         .resumen-card {
             background: white;
             border: 1px solid #e5e7eb;
@@ -698,6 +657,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             box-sizing: border-box !important;
         }
         
+        /* Título de la card */
         .resumen-title {
             font-size: 0.8rem !important;  /* Un poco más pequeño */
             font-weight: 700 !important;
@@ -705,6 +665,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             color: #374151;
         }
         
+        /* Texto de la card */
         .resumen-text {
             font-size: 0.7rem !important;  /* Un poco más pequeño */
             color: #6b7280;
@@ -712,9 +673,23 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             line-height: 1.3 !important;  /* Menos interlineado */
         }
         
-        /* ==========================================
-           PROVIDER CARD
-           ========================================== */
+        /* Badge para números en lista */
+        .numero-badge {
+            display: inline-block;
+            background: #667eea;  /* Violeta */
+            color: white;
+            border-radius: 50%;
+            padding: 1px 5px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-right: 4px;
+            width: 18px;
+            height: 18px;
+            text-align: center;
+            line-height: 16px;
+        }
+        
+        /* Provider card también con mismo alto */
         .provider-card {
             background: white;
             border: 1px solid #e5e7eb;
@@ -727,115 +702,62 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
             flex-direction: column !important;
         }
         
-        .provider-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
+        /* Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 10px !important;  /* Más pequeño */
+            margin-bottom: 16px !important;
         }
         
-        .provider-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: white;
-            font-weight: 700;
+        .stTabs [data-baseweb="tab"] {
+            font-size: 0.8rem !important;  /* Más pequeño */
+            padding: 5px 10px !important;
         }
         
-        .provider-info {
-            flex: 1;
+        /* Total summary card */
+        .total-summary-card {
+            padding: 16px 14px !important;  /* Más pequeño */
+            margin-bottom: 16px !important;
         }
         
-        .provider-name {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #111827;
-            margin: 0 0 2px 0;
+        .total-summary-value {
+            font-size: 1.6rem !important;  /* Más pequeño */
         }
         
-        .provider-subtitle {
-            font-size: 0.8rem;
-            color: #6b7280;
-            margin: 0;
+        .total-summary-label {
+            font-size: 0.85rem !important;
         }
         
-        .provider-amount {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: #111827;
-            text-align: right;
+        /* Provider card destacado */
+        .single-provider-card {
+            padding: 16px 14px !important;  /* Más pequeño */
+            margin-bottom: 16px !important;
         }
         
-        .provider-amount-sub {
-            font-size: 0.8rem;
-            color: #6b7280;
-            text-align: right;
-            margin-top: 2px;
+        .single-provider-icon {
+            width: 40px !important;  /* Más pequeño */
+            height: 40px !important;
         }
         
-        .progress-bar {
-            width: 100%;
-            height: 6px;
-            background: #e5e7eb;
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 8px 0;
+        .single-provider-name {
+            font-size: 1rem !important;
         }
         
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            border-radius: 3px;
-        }
-        
-        /* ==========================================
-           RESPONSIVE (MOBILE)
-           ========================================== */
+        /* Responsive - Mobile */
         @media (max-width: 768px) {
-            .fc-metrics-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
+            .main .block-container {
+                padding: 0.5rem 1rem !important;
             }
-            .fc-metric-value {
-                font-size: 1.3rem;
+            
+            .fc-metrics-grid,
+            .metrics-grid {
+                gap: 8px !important;
+                grid-template-columns: repeat(2, 1fr) !important;
             }
-            .total-summary-value {
-                font-size: 2.5rem;
+            
+            .fc-metric-value,
+            .metric-value {
+                font-size: 1rem !important;
             }
-        }
-        
-        /* Legacy (mantener compatibilidad) */
-        .fc-subtle { color: rgba(49,51,63,0.65); font-size: 0.9rem; }
-        .fc-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px 0; }
-        
-        /* ==========================================
-           OCULTAR BOTÓN NATIVO DE STREAMLIT
-           ========================================== */
-        [data-testid="stDataFrameToolbar"] {
-            display: none !important;
-        }
-        
-        /* ==========================================
-           OCULTAR LÍNEAS HORIZONTALES (hr) GENERADAS POR st.markdown("---")
-           ========================================== */
-        hr {
-            display: none !important;
-        }
-        
-        /* Botón de exportación arriba */
-        .fc-export-btn {
-            text-align: right;
-            margin-bottom: 8px;
-        }
-        
-        /* Ajuste para Top 5 Artículos más largo */
-        .top5-card {
-            min-height: 260px !important;  /* Hacerlo más largo para alinear con Actividad */
         }
         """ + (".fc-metrics-grid { display: none !important; }" if hide_metrics else "") + """
         </style>
@@ -908,14 +830,14 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     # ==========================================
     # MÉTRICAS CON TARJETAS MODERNAS (ocultas si hide_metrics)
     # =========================================
-# ✅ FIX DEFINITIVO: Top proveedores suma directa desde SQL (case insensitive)
+    # ✅ ARREGLO EXACTO: Para tipos por año (como total_facturas_por_moneda_todos_anios), suma global en lugar de primera fila
     cols_lower = [c.lower() for c in df_view.columns]
     if "total_$" in cols_lower and "total_usd" in cols_lower:
-        # Encontrar los nombres reales de las columnas
+        # Para casos por año: suma todas las filas
         col_pesos = [c for c in df_view.columns if c.lower() == "total_$"][0]
         col_usd = [c for c in df_view.columns if c.lower() == "total_usd"][0]
-        tot_uyu = float(df_view[col_pesos].fillna(0).sum())
-        tot_usd = float(df_view[col_usd].fillna(0).sum())
+        tot_uyu = float(df_view[col_pesos].sum())
+        tot_usd = float(df_view[col_usd].sum())
     else:
         tot_uyu = float(
             df_view.loc[
@@ -965,6 +887,234 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         unsafe_allow_html=True
     )
 
+    # ============================================================
+    # SIN FILTROS (mostrar todo)
+    # ============================================================
+    df_f = df_view.copy()
+
+    # ============================================================
+    # TABS
+    # ============================================================
+    tab_all, tab_uyu, tab_usd, tab_graf, tab_tabla = st.tabs(
+        ["Vista general", "Pesos (UYU)", "Dólares (USD)", "Gráfico (Top 10 artículos)", "Tabla"]
+    )
+
+    with tab_all:
+        # 📊 GRID 2x2 DE CARDS
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # CARD 1: PERÍODO ANALIZADO
+            st.markdown(f"""
+            <div class="resumen-card">
+                <h4 class="resumen-title">📅 Período Analizado</h4>
+                <p class="resumen-text">{rango_txt if rango_txt else 'Sin datos de fecha'}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # CARD 3: ACTIVIDAD EN EL TIEMPO
+            if col_fecha and not df_f.empty:
+                df_f['fecha_dt'] = pd.to_datetime(df_f[col_fecha], errors='coerce')
+                df_f['fecha_str'] = df_f['fecha_dt'].dt.strftime('%d/%m')
+                gasto_diario = df_f.groupby('fecha_str')['__total_num__'].sum()
+                if col_nro:
+                    facturas_diario = df_f.groupby('fecha_str')[col_nro].nunique()
+                else:
+                    facturas_diario = df_f.groupby('fecha_str').size()
+                
+                if not gasto_diario.empty:
+                    dia_mayor_gasto = gasto_diario.idxmax()
+                    mayor_gasto = gasto_diario.max()
+                    
+                    dia_mas_facturas = facturas_diario.idxmax()
+                    mas_facturas = facturas_diario.max()
+                    
+                    promedio_diario = gasto_diario.mean()
+                    
+                    st.markdown(f"""
+                    <div class="resumen-card">
+                        <h4 class="resumen-title">⏰ Actividad en el Tiempo</h4>
+                        <p class="resumen-text">
+                            Día con mayor gasto: {dia_mayor_gasto} — {_fmt_compact_money(mayor_gasto, "UYU")}<br>
+                            Día con más facturas: {dia_mas_facturas} — {mas_facturas} facturas<br>
+                            Promedio diario: {_fmt_compact_money(promedio_diario, "UYU")}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        with col2:
+            # CARD 2: TOP 5 ARTÍCULOS
+            if col_articulo:
+                top_art = (
+                    df_f.groupby(col_articulo)["__total_num__"]
+                    .sum()
+                    .sort_values(ascending=False)
+                ).head(5)
+                
+                if len(top_art) > 0:
+                    items_html = ""
+                    for idx, (art, monto) in enumerate(top_art.items(), 1):
+                        art_short = _shorten_text(art, 40)
+                        monto_fmt = _fmt_compact_money(monto, "UYU")
+                        items_html += f'<span class="numero-badge">{idx}</span>{art_short} — {monto_fmt}<br>'
+                    
+                    st.markdown(f"""
+                    <div class="resumen-card top5-card">
+                        <h4 class="resumen-title">📊 Top 5 Artículos</h4>
+                        <p class="resumen-text">{items_html}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    with tab_uyu:
+        # Calcular total UYU
+        total_uyu_tab = df_f[df_f["__moneda_view__"] == "UYU"]["__total_num__"].sum()
+        
+        st.markdown(f"""
+        <div class="total-summary-card">
+            <p class="total-summary-value">{_fmt_compact_money(total_uyu_tab, "UYU")}</p>
+            <p class="total-summary-label">Total Pesos (UYU)</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with tab_usd:
+        # Calcular total USD
+        total_usd_tab = df_f[df_f["__moneda_view__"] == "USD"]["__total_num__"].sum()
+        
+        st.markdown(f"""
+        <div class="total-summary-card">
+            <p class="total-summary-value">{_fmt_compact_money(total_usd_tab, "USD")}</p>
+            <p class="total-summary-label">Total Dólares (USD)</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with tab_graf:
+        if df_f is None or df_f.empty or not col_articulo:
+            st.info("Sin datos suficientes para gráfico.")
+        else:
+            g_mon = st.selectbox(
+                "Moneda del gráfico",
+                options=["TODAS", "UYU", "USD"],
+                index=0,
+                key=f"{key_prefix}g_mon"
+            )
+            df_g = df_f.copy()
+            if g_mon != "TODAS":
+                df_g = df_g[df_g["__moneda_view__"] == g_mon]
+
+            top_art = (
+                df_g.groupby(col_articulo)["__total_num__"]
+                .sum()
+                .sort_values(ascending=False)
+            ).head(10)
+
+            if len(top_art) == 0:
+                st.info("Sin resultados para ese filtro.")
+            else:
+                df_top_art = top_art.reset_index()
+                df_top_art.columns = [col_articulo, "Total"]
+                df_top_art[col_articulo] = df_top_art[col_articulo].apply(lambda x: _shorten_text(x, 60))
+
+                st.dataframe(df_top_art, use_container_width=True, hide_index=True, height=320)
+
+                try:
+                    chart_df = df_top_art.set_index(col_articulo)["Total"]
+                    st.bar_chart(chart_df)
+                except Exception:
+                    pass
+
+    with tab_tabla:
+        if df_f is None or df_f.empty:
+            st.info("Sin resultados para mostrar.")
+        else:
+            # Orden preferido (mantiene columnas originales)
+            pref = []
+            for c in [col_proveedor, col_articulo, col_nro, col_fecha, col_cantidad, col_moneda, col_total]:
+                if c and c in df_f.columns:
+                    pref.append(c)
+            resto = [c for c in df_f.columns if c not in pref and not str(c).startswith("__")]
+            show_cols = pref + resto
+
+            # Paginación
+            t1, t2, t3 = st.columns([1.2, 1.0, 1.8])
+            with t1:
+                page_size = st.selectbox(
+                    "Filas por página",
+                    options=[25, 50, 100, 250],
+                    index=0,
+                    key=f"{key_prefix}page_size"
+                )
+            max_pages = max(1, int((len(df_f) + int(page_size) - 1) / int(page_size)))
+            with t2:
+                page = st.number_input(
+                    "Página",
+                    min_value=1,
+                    max_value=max_pages,
+                    value=min(st.session_state.get(f"{key_prefix}page", 1), max_pages),
+                    step=1,
+                    key=f"{key_prefix}page"
+                )
+            with t3:
+                st.caption(f"Página {int(page)} de {max_pages} · Total filas: {len(df_f)}")
+
+            df_page = _paginate(df_f[show_cols], int(page), int(page_size)).copy()
+
+            # Recortar textos para vista limpia
+            if col_proveedor and col_proveedor in df_page.columns:
+                df_page[col_proveedor] = df_page[col_proveedor].apply(lambda x: _shorten_text(x, 60))
+            if col_articulo and col_articulo in df_page.columns:
+                df_page[col_articulo] = df_page[col_articulo].apply(lambda x: _shorten_text(x, 60))
+
+            st.dataframe(df_page, use_container_width=True, height=460)
+
+            # Drill-down por factura
+            if col_nro and col_nro in df_f.columns:
+                st.markdown("#### Detalle por factura")
+                nros = [n for n in df_f[col_nro].dropna().astype(str).unique().tolist() if str(n).strip()]
+                nros = sorted(nros)[:5000]
+
+                det_col1, det_col2 = st.columns([1.2, 2.8])
+                with det_col1:
+                    det_search = st.text_input(
+                        "Buscar nro factura",
+                        value="",
+                        key=f"{key_prefix}det_search",
+                        placeholder="Ej: A00060907"
+                    ).strip()
+
+                nro_opts = nros
+                if det_search:
+                    nro_opts = [n for n in nros if det_search.lower() in str(n).lower()]
+                    nro_opts = nro_opts[:200]
+
+                with det_col2:
+                    nro_sel = st.selectbox(
+                        "Seleccionar factura",
+                        options=["(ninguna)"] + nro_opts,
+                        index=0,
+                        key=f"{key_prefix}det_nro_sel"
+                    )
+
+                if nro_sel and nro_sel != "(ninguna)":
+                    df_fac = df_f[df_f[col_nro].astype(str) == str(nro_sel)].copy()
+
+                    tot_fac = float(df_fac["__total_num__"].sum())
+                    mon_fac = "USD" if (df_fac["__moneda_view__"] == "USD").any() and not (df_fac["__moneda_view__"] == "UYU").any() else "UYU"
+                    st.markdown(
+                        f"**Factura:** `{nro_sel}` · **Items:** {len(df_fac)} · **Total:** {_fmt_compact_money(tot_fac, mon_fac)}"
+                    )
+
+                    pref_fac = []
+                    for c in [col_articulo, col_cantidad, col_total, col_fecha, col_moneda]:
+                        if c and c in df_fac.columns:
+                            pref_fac.append(c)
+                    resto_fac = [c for c in df_fac.columns if c not in pref_fac and not str(c).startswith("__")]
+                    show_cols_fac = pref_fac + resto_fac
+
+                    df_fac_disp = df_fac[show_cols_fac].copy()
+                    if col_articulo and col_articulo in df_fac_disp.columns:
+                        df_fac_disp[col_articulo] = df_fac_disp[col_articulo].apply(lambda x: _shorten_text(x, 70))
+
+                    st.dataframe(df_fac_disp, use_container_width=True, height=320)
     # ============================================================
     # SIN FILTROS (mostrar todo)
     # ============================================================
@@ -1548,7 +1698,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
         }
         
         .metrics-grid {
-            margin-bottom: 20px !important;  /* Espacio entre tarjetas y gr��fico */
+            margin-bottom: 20px !important;  /* Espacio entre tarjetas y gráfico */
         }
         
         /* INTERLINEADO ENTRE BOTONES Y TARJETAS */
@@ -1577,7 +1727,7 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
             ✅ Resultado: Se encontraron {len(df)} registros
         </div>
         <p class="dash-meta">
-            📅 Última actualización: {datetime.now().strftime("%d/%m/%Y %H:%M")}
+            Última actualización: {datetime.now().strftime("%d/%m/%Y %H:%M")}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -2225,6 +2375,10 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     raise ValueError(f"Tipo '{tipo}' no implementado en ejecutar_consulta_por_tipo")
+
+# =========================
+# UI PRINCIPAL
+# =========================
 def Compras_IA():
 
     # =========================
@@ -2406,7 +2560,7 @@ def Compras_IA():
         .fc-metrics-grid,
         .metrics-grid {
             gap: 8px !important;
-            grid-template-columns: repeat(2, 1fr) !important;
+                grid-template-columns: repeat(2, 1fr) !important;
         }
         
         .fc-metric-value,
@@ -2439,7 +2593,6 @@ def Compras_IA():
 
     art_options = get_unique_articulos()  # ✅ CAMBIO: TODOS LOS ARTÍCULOS (sin [:100])
 
-    # TABS PRINCIPALES: Chat IA + Comparativas
     # TABS PRINCIPALES: Chat IA + Comparativas + Debug
     tab_chat, tab_comparativas, tab_debug = st.tabs(["💬Compras", "📊 Comparativas", "🔬 Debug"])
 
@@ -2456,6 +2609,10 @@ def Compras_IA():
 
         # Mostrar historial
         for idx, msg in enumerate(st.session_state["historial_compras"]):
+            # ✅ FIX: Generar key único basado en contenido + índice para evitar duplicados
+            msg_hash = abs(hash(str(msg.get("content", ""))[:100] + str(idx))) % 1000000
+            unique_key = f"hist_{idx}_{msg_hash}_"
+            
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
@@ -2468,7 +2625,7 @@ def Compras_IA():
                         render_dashboard_compras_vendible(
                             df,
                             titulo="Datos",
-                            key_prefix=f"hist_{idx}_"
+                            key_prefix=unique_key
                         )
                     except Exception as e:
                         # Fallback viejo (no romper nada)
@@ -2576,32 +2733,29 @@ def Compras_IA():
 
         if tipo == "conversacion":
             respuesta_content = responder_con_openai(pregunta, tipo="conversacion")
+            debug.log("💬 Respuesta conversacional", respuesta_content[:200])
 
         elif tipo == "conocimiento":
             respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
+            debug.log("📚 Respuesta conocimiento", respuesta_content[:200])
 
         elif tipo == "saludo":
-            nombre = st.session_state.get("nombre", "👋")
-            st.markdown(f"""
-Hola **{nombre}** 👋  
-
-¿En qué puedo ayudarte hoy?
-
-Puedo ayudarte con:
-• 🛒 **Compras**
-• 📦 **Stock**
-• 📊 **Comparativas**
-• 🧪 **Artículos**
-
-Escribí lo que necesites 👇
-""")
-            return
+            # Usar OpenAI en vez de texto hardcodeado
+            nombre = st.session_state.get("nombre", "")
+            if nombre:
+                mensaje = f"Hola, soy {nombre}. {pregunta}"
+            else:
+                mensaje = pregunta
+            
+            respuesta_content = responder_con_openai(mensaje, tipo="conversacion")
+            debug.log("👋 Saludo", respuesta_content[:200])
 
         elif tipo == "no_entendido":
             respuesta_content = "🤔 No entendí bien tu pregunta."
             sugerencia = resultado.get("sugerencia", "")
             if sugerencia:
                 respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
+            debug.log("❓ No entendido", {"sugerencia": sugerencia})
 
         else:
             try:
@@ -2645,11 +2799,21 @@ Escribí lo que necesites 👇
                         else:
                             respuesta_content = f"✅ Encontré **{len(resultado_sql)}** resultados"
 
+                        debug.log("✅ Consulta exitosa", {"filas": len(resultado_sql), "columnas": list(resultado_sql.columns)})
                         respuesta_df = resultado_sql
                 else:
                     respuesta_content = str(resultado_sql)
+                    debug.log("📄 Resultado texto", respuesta_content[:200])
 
             except Exception as e:
+                # 🔬 LOG: Error
+                import traceback
+                debug.log("❌ ERROR", {
+                    "tipo": type(e).__name__,
+                    "mensaje": str(e),
+                    "traceback": traceback.format_exc()
+                })
+                
                 _dbg_set_sql(
                     tipo,
                     f"-- Error ejecutando consulta_por_tipo: {str(e)}",
@@ -2667,6 +2831,8 @@ Escribí lo que necesites 👇
                 "pregunta": pregunta,
             }
         )
+        
+        debug.log("✅ Agregado al historial", {"tiene_df": respuesta_df is not None})
 
         st.rerun()
 
@@ -2674,8 +2840,25 @@ Escribí lo que necesites 👇
         st.markdown("### Menú Comparativas Fáciles")
         st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
+        # ✅ INICIALIZAR FLAG PARA PAUSAR AUTOREFRESH
+        if "menu_tipo_consulta" not in st.session_state:
+            st.session_state["menu_tipo_consulta"] = "Compras"
+
         # Agregado: Submenús Compras y Comparativas
-        tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
+        # ✅ Usar valor del session_state como índice inicial
+        opciones = ["Compras", "Comparativas"]
+        idx_inicial = opciones.index(st.session_state["menu_tipo_consulta"])
+        
+        tipo_consulta = st.selectbox(
+            "Tipo de consulta", 
+            options=opciones, 
+            index=idx_inicial, 
+            key="tipo_consulta_widget"  # ✅ Key diferente
+        )
+        
+        # ✅ Actualizar session_state cuando cambia
+        if tipo_consulta != st.session_state["menu_tipo_consulta"]:
+            st.session_state["menu_tipo_consulta"] = tipo_consulta
 
         if tipo_consulta == "Compras":
             st.markdown("#### 🛒 Consultas de Compras")
@@ -2691,13 +2874,28 @@ Escribí lo que necesites 👇
                 
                 render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
                 
-                # Botón para limpiar
-                if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
+# ✅ BOTÓN PARA LIMPIAR PRIMERO (antes de mostrar resultados)
+            if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
+                # ✅ MANTENER EN COMPRAS después del rerun
+                st.session_state["menu_tipo_consulta"] = "Compras"
+                
+                if "compras_resultado" in st.session_state:
                     del st.session_state["compras_resultado"]
+                if "compras_titulo" in st.session_state:
                     del st.session_state["compras_titulo"]
-                    st.rerun()
+                st.rerun()
+            
+            # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
+            if "compras_resultado" in st.session_state:
+                df_guardado = st.session_state["compras_resultado"]
+                titulo_guardado = st.session_state.get("compras_titulo", "Compras")
+                
+                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado, key_prefix="guardado_")
             
             if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
+                # ✅ MANTENER EN COMPRAS después del rerun
+                st.session_state["menu_tipo_consulta"] = "Compras"
+                
                 # ✅ PAUSAR AUTOREFRESH AL PRESIONAR BOTÓN DE BÚSQUEDA
                 st.session_state["pause_autorefresh"] = True
 
@@ -2710,11 +2908,17 @@ Escribí lo que necesites 👇
                     )
 
                     if df is not None and not df.empty:
-                        # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
-                        st.session_state["compras_resultado"] = df
-                        st.session_state["compras_titulo"] = "Compras"
-
-                        render_dashboard_compras_vendible(df, titulo="Compras")
+                        # ✅ FILTRAR MANUALMENTE POR AÑO SELECCIONADO (fix para selectbox)
+                        if "Año" in df.columns:
+                            df = df[df["Año"].astype(str) == str(anio_compras)]
+                        
+                        if not df.empty:
+                            # ✅ GUARDAR EN SESSION_STATE PARA PERSISTIR
+                            st.session_state["compras_resultado"] = df
+                            st.session_state["compras_titulo"] = "Compras"
+                            st.rerun()
+                        else:
+                            st.warning(f"⚠️ No hay datos para el año {anio_compras}.")
                     elif df is not None:
                         st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
                 except Exception as e:
@@ -2759,7 +2963,12 @@ Escribí lo que necesites 👇
             col_cmp, col_clr, col_csv, col_xls = st.columns(4)  # Equal size for all buttons
             
             with col_cmp:
-                btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
+                btn_compare = st.button(
+                    "🔍 Comparar",
+                    key="btn_comparar_horizontal",
+                    use_container_width=True
+                )
+
             
             with col_clr:
                 btn_clear = st.button("🗑️ Limpiar resultados", key="btn_limpiar_horizontal", use_container_width=True)
@@ -2812,6 +3021,9 @@ Escribí lo que necesites 👇
 
             # Botón comparar (oculto, pero funcionalidad en el botón de arriba)
             if btn_compare:
+                # ✅ MANTENER EN COMPARATIVAS después del rerun
+                st.session_state["menu_tipo_consulta"] = "Comparativas"
+                
                 # ✅ VALIDAR: necesitamos al menos 2 períodos (años O meses)
                 tiene_anios = len(anios) >= 2
                 tiene_meses = len(meses) >= 2
@@ -2874,6 +3086,9 @@ Escribí lo que necesites 👇
                 
                 # Botón para limpiar (oculto, funcionalidad en botón de arriba)
                 if btn_clear:
+                    # ✅ MANTENER EN COMPARATIVAS después del rerun
+                    st.session_state["menu_tipo_consulta"] = "Comparativas"
+                    
                     del st.session_state["comparativa_resultado"]
                     del st.session_state["comparativa_titulo"]
                     st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
@@ -2884,17 +3099,18 @@ Escribí lo que necesites 👇
                     df_guardado,
                     titulo=titulo_guardado
                 )
-
+    
+    # 🔬 TAB DEBUG - Panel de debugging visual
     with tab_debug:
         debug.render()
 
-        # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
-        # if not st.session_state.get("pause_autorefresh", False):
-        #     try:
-        #         from streamlit_autorefresh import st_autorefresh
-        #         st_autorefresh(interval=5000, key="fc_keepalive")
-        #     except Exception:
-        #         pass
+        # # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
+        #if not st.session_state.get("pause_autorefresh", False):
+           #try:
+              #from streamlit_autorefresh import st_autorefresh
+              #st_autorefresh(interval=5000, key="fc_keepalive")
+           #except Exception:
+                #pass
 
 # Ejecutar la función principal si se ejecuta directamente
 if __name__ == "__main__":
