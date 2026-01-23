@@ -2646,7 +2646,7 @@ Escribí lo que necesites 👇
             st.markdown("### Menú Comparativas Fáciles")
             st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
 
-            tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
+            tipo_consulta = st.selectbox("Tipo de consulta", options=["Comparativas"], index=0, key="tipo_consulta")
 
             if tipo_consulta == "Comparativas":
                 st.session_state["pause_autorefresh"] = True
