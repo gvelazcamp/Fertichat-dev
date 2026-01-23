@@ -2413,94 +2413,77 @@ def Compras_IA(modo="compras"):
 
     art_options = get_unique_articulos()  # ✅ CAMBIO: TODOS LOS ARTÍCULOS (sin [:100])
 
-    # =========================
-    # TABS PRINCIPALES (según modo)
-    # =========================
-    if modo == "comparar":
-        tab_comparativas = st.tabs(["Comparativas"])[0]
-        tab_chat = None
-        tab_debug = None
-    else:
-        tab_chat, tab_debug = st.tabs(["Compras", "Debug"])
-        tab_comparativas = None
+# =========================
+# TABS PRINCIPALES (según modo)
+# =========================
+if modo == "comparar":
+    tab_comparativas = st.tabs(["Comparativas"])[0]
+    tab_chat = None
+    tab_debug = None
+else:
+    tab_chat, tab_debug = st.tabs(["Compras", "Debug"])
+    tab_comparativas = None
 
-    # =========================
-    # TAB COMPRAS (solo modo compras)
-    # =========================
-    if tab_chat is not None:
-        with tab_chat:
-            if st.button("Limpiar chat"):
-                st.session_state["historial_compras"] = []
-                _dbg_set_interpretacion({})
-                _dbg_set_sql(None, "", [], None)
-                st.session_state["pause_autorefresh"] = False
-                st.rerun()
+# =========================
+# TAB COMPRAS (solo modo compras)
+# =========================
+if tab_chat is not None:
+    with tab_chat:
+        if st.button("Limpiar chat"):
+            st.session_state["historial_compras"] = []
+            _dbg_set_interpretacion({})
+            _dbg_set_sql(None, "", [], None)
+            st.session_state["pause_autorefresh"] = False
+            st.rerun()
 
-            for idx, msg in enumerate(st.session_state["historial_compras"]):
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
+        for idx, msg in enumerate(st.session_state["historial_compras"]):
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
-                    if "df" in msg and msg["df"] is not None:
-                        df = msg["df"]
+                if "df" in msg and msg["df"] is not None:
+                    df = msg["df"]
 
-                        try:
-                            st.markdown("---")
-                            render_dashboard_compras_vendible(
-                                df,
-                                titulo="Datos",
-                                key_prefix=f"hist_{idx}_"
-                            )
-                        except Exception as e:
-                            totales = calcular_totales_por_moneda(df)
-                            if totales:
-                                col1, col2, col3 = st.columns([2, 2, 3])
+                    try:
+                        st.markdown("---")
+                        render_dashboard_compras_vendible(
+                            df,
+                            titulo="Datos",
+                            key_prefix=f"hist_{idx}_"
+                        )
+                    except Exception as e:
+                        totales = calcular_totales_por_moneda(df)
+                        if totales:
+                            col1, col2, col3 = st.columns([2, 2, 3])
 
-                                with col1:
-                                    pesos = totales.get("Pesos", 0)
-                                    pesos_str = (
-                                        f"${pesos/1_000_000:,.2f}M"
-                                        if pesos >= 1_000_000
-                                        else f"${pesos:,.2f}"
-                                    )
-                                    st.metric(
-                                        "Total Pesos",
-                                        pesos_str,
-                                        help=f"Valor exacto: ${pesos:,.2f}",
-                                    )
+                            with col1:
+                                pesos = totales.get("Pesos", 0)
+                                pesos_str = (
+                                    f"${pesos/1_000_000:,.2f}M"
+                                    if pesos >= 1_000_000
+                                    else f"${pesos:,.2f}"
+                                )
+                                st.metric(
+                                    "Total Pesos",
+                                    pesos_str,
+                                    help=f"Valor exacto: ${pesos:,.2f}",
+                                )
 
-                                with col2:
-                                    usd = totales.get("USD", 0)
-                                    usd_str = (
-                                        f"${usd/1_000_000:,.2f}M"
-                                        if usd >= 1_000_000
-                                        else f"${usd:,.2f}"
-                                    )
-                                    st.metric(
-                                        "Total USD",
-                                        usd_str,
-                                        help=f"Valor exacto: ${usd:,.2f}",
-                                    )
+                            with col2:
+                                usd = totales.get("USD", 0)
+                                usd_str = (
+                                    f"${usd/1_000_000:,.2f}M"
+                                    if usd >= 1_000_000
+                                    else f"${usd:,.2f}"
+                                )
+                                st.metric(
+                                    "Total USD",
+                                    usd_str,
+                                    help=f"Valor exacto: ${usd:,.2f}",
+                                )
 
-                            st.markdown("---")
-                            st.dataframe(df, use_container_width=True, height=400)
-                            st.caption(f"Dashboard vendible falló: {e}")
-
-    # =========================
-    # TAB COMPARATIVAS (solo modo comparar)
-    # =========================
-    if tab_comparativas is not None:
-        with tab_comparativas:
-            mostrar_menu_comparativas()
-
-    # =========================
-    # TAB DEBUG (solo modo compras)
-    # =========================
-    if tab_debug is not None:
-        with tab_debug:
-            if HAS_DEBUG:
-                debug.render()
-            else:
-                st.info("Debug panel no disponible")
+                        st.markdown("---")
+                        st.dataframe(df, use_container_width=True, height=400)
+                        st.caption(f"Dashboard vendible falló: {e}")
 
         # =========================
         # TIPS / EJEMPLOS (CAJA AMARILLA ANTES DEL INPUT)
@@ -2535,141 +2518,142 @@ def Compras_IA(modo="compras"):
         """
         st.markdown(tips_html, unsafe_allow_html=True)
 
-    # Input
-    pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
+        # Input
+        pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
 
-    if pregunta:
-        # 🔬 LOG: Input del usuario
-        debug.log("📝 Input Usuario", pregunta)
-        
-        # ✅ PAUSAR AUTOREFRESH AL HACER UNA PREGUNTA
-        st.session_state["pause_autorefresh"] = True
+        if pregunta:
+            # 🔬 LOG: Input del usuario
+            debug.log("📝 Input Usuario", pregunta)
+            
+            # ✅ PAUSAR AUTOREFRESH AL HACER UNA PREGUNTA
+            st.session_state["pause_autorefresh"] = True
 
-        st_session_state = st.session_state  # Typo fix, but assuming it's st.session_state
+            st.session_state["historial_compras"].append(
+                {
+                    "role": "user",
+                    "content": pregunta,
+                    "timestamp": datetime.now().timestamp(),
+                }
+            )
 
-        st.session_state["historial_compras"].append(
-            {
-                "role": "user",
-                "content": pregunta,
-                "timestamp": datetime.now().timestamp(),
-            }
-        )
+            resultado = interpretar_pregunta(pregunta)
+            _dbg_set_interpretacion(resultado)
+            
+            # 🔬 LOG: Resultado de interpretación
+            debug.log("🧠 Interpretación", resultado)
 
-        resultado = interpretar_pregunta(pregunta)
-        _dbg_set_interpretacion(resultado)
-        
-        # 🔬 LOG: Resultado de interpretación
-        debug.log("🧠 Interpretación", resultado)
+            tipo = resultado.get("tipo", "")
+            parametros = resultado.get("parametros", {})
+            
+            # 🔬 LOG: Tipo y parámetros detectados
+            debug.log("🔀 Router", {"tipo": tipo, "parametros": parametros})
 
-        tipo = resultado.get("tipo", "")
-        parametros = resultado.get("parametros", {})
-        
-        # 🔬 LOG: Tipo y parámetros detectados
-        debug.log("🔀 Router", {"tipo": tipo, "parametros": parametros})
+            respuesta_content = ""
+            respuesta_df = None
 
-        respuesta_content = ""
-        respuesta_df = None
+            if tipo == "conversacion":
+                respuesta_content = responder_con_openai(pregunta, tipo="conversacion")
+                debug.log("💬 Respuesta conversacional", respuesta_content[:200])
 
-        if tipo == "conversacion":
-            respuesta_content = responder_con_openai(pregunta, tipo="conversacion")
-            debug.log("💬 Respuesta conversacional", respuesta_content[:200])
+            elif tipo == "conocimiento":
+                respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
+                debug.log("📚 Respuesta conocimiento", respuesta_content[:200])
 
-        elif tipo == "conocimiento":
-            respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
-            debug.log("📚 Respuesta conocimiento", respuesta_content[:200])
-
-        elif tipo == "saludo":
-            nombre = st.session_state.get("nombre", "👋")
-            st.markdown(f"""
+            elif tipo == "saludo":
+                nombre = st.session_state.get("nombre", "👋")
+                respuesta_content = f"""
 Hola **{nombre}** 👋  
 
 ¿En qué puedo ayudarte hoy?
 
 Puedo ayudarte con:
-• 🛒 **Compras**
-• 📦 **Stock**
-• 📊 **Comparativas**
-• 🧪 **Artículos**
+- 🛒 **Compras**
+- 📦 **Stock**
+- 📊 **Comparativas**
+- 🧪 **Artículos**
 
 Escribí lo que necesites 👇
-""")
-            debug.log("👋 Saludo", f"Saludado a {nombre}")
-            return
+"""
+                debug.log("👋 Saludo", f"Saludado a {nombre}")
 
-        elif tipo == "no_entendido":
-            respuesta_content = "🤔 No entendí bien tu pregunta."
-            sugerencia = resultado.get("sugerencia", "")
-            if sugerencia:
-                respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
-            debug.log("❓ No entendido", {"sugerencia": sugerencia})
+            elif tipo == "no_entendido":
+                respuesta_content = "🤔 No entendí bien tu pregunta."
+                sugerencia = resultado.get("sugerencia", "")
+                if sugerencia:
+                    respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
+                debug.log("❓ No entendido", {"sugerencia": sugerencia})
 
-        else:
-            try:
-                debug.log("⚙️ Ejecutando consulta SQL", {"tipo": tipo})
-                
-                resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
-
-                # Convertir "Mes" a nombres antes de mostrar
-                if isinstance(resultado_sql, pd.DataFrame) and 'Mes' in resultado_sql.columns:
-                    resultado_sql['Mes'] = resultado_sql['Mes'].apply(convertir_mes_a_nombre)
-
-                if isinstance(resultado_sql, pd.DataFrame):
-                    # 🔬 LOG: DataFrame obtenido
-                    debug.log("📊 DataFrame obtenido", resultado_sql)
+            else:
+                try:
+                    debug.log("⚙️ Ejecutando consulta SQL", {"tipo": tipo})
                     
-                    if len(resultado_sql) == 0:
-                        respuesta_content = "⚠️ No se encontraron resultados"
-                        debug.log("⚠️ Sin resultados", "DataFrame vacío")
-                    else:
-                        if tipo == "detalle_factura":
-                            nro = parametros.get("nro_factura", "")
-                            respuesta_content = f"✅ **Factura {nro}** - {len(resultado_sql)} artículos"
-                        elif tipo.startswith("facturas_"):
-                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** facturas"
-                        elif tipo.startswith("compras_"):
-                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** compras"
-                        elif tipo.startswith("comparar_"):
-                            respuesta_content = f"✅ Comparación lista - {len(resultado_sql)} filas"
-                        elif tipo.startswith("stock_"):
-                            respuesta_content = f"✅ Stock encontrado - {len(resultado_sql)} filas"
-                        elif tipo == "listado_facturas_anio":
-                            anio = parametros.get("anio", "")
-                            respuesta_content = f"✅ **Listado de Facturas {anio}** - {len(resultado_sql)} proveedores"
-                        elif tipo == "total_facturas_por_moneda_anio":
-                            anio = parametros.get("anio", "")
-                            respuesta_content = f"✅ **Totales de Facturas {anio} por Moneda** - {len(resultado_sql)} monedas"
-                        elif tipo == "total_facturas_por_moneda_generico":
-                            respuesta_content = f"✅ **Totales de Facturas por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
-                        elif tipo == "total_compras_por_moneda_generico":
-                            respuesta_content = f"✅ **Totales de Compras por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
+                    resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
+
+                    # Convertir "Mes" a nombres antes de mostrar
+                    if isinstance(resultado_sql, pd.DataFrame) and 'Mes' in resultado_sql.columns:
+                        resultado_sql['Mes'] = resultado_sql['Mes'].apply(convertir_mes_a_nombre)
+
+                    if isinstance(resultado_sql, pd.DataFrame):
+                        # 🔬 LOG: DataFrame obtenido
+                        debug.log("📊 DataFrame obtenido", resultado_sql)
+                        
+                        if len(resultado_sql) == 0:
+                            respuesta_content = "⚠️ No se encontraron resultados"
+                            debug.log("⚠️ Sin resultados", "DataFrame vacío")
                         else:
-                            respuesta_content = f"✅ Encontré **{len(resultado_sql)}** resultados"
+                            if tipo == "detalle_factura":
+                                nro = parametros.get("nro_factura", "")
+                                respuesta_content = f"✅ **Factura {nro}** - {len(resultado_sql)} artículos"
+                            elif tipo.startswith("facturas_"):
+                                respuesta_content = f"✅ Encontré **{len(resultado_sql)}** facturas"
+                            elif tipo.startswith("compras_"):
+                                respuesta_content = f"✅ Encontré **{len(resultado_sql)}** compras"
+                            elif tipo.startswith("comparar_"):
+                                respuesta_content = f"✅ Comparación lista - {len(resultado_sql)} filas"
+                            elif tipo.startswith("stock_"):
+                                respuesta_content = f"✅ Stock encontrado - {len(resultado_sql)} filas"
+                            elif tipo == "listado_facturas_anio":
+                                anio = parametros.get("anio", "")
+                                respuesta_content = f"✅ **Listado de Facturas {anio}** - {len(resultado_sql)} proveedores"
+                            elif tipo == "total_facturas_por_moneda_anio":
+                                anio = parametros.get("anio", "")
+                                respuesta_content = f"✅ **Totales de Facturas {anio} por Moneda** - {len(resultado_sql)} monedas"
+                            elif tipo == "total_facturas_por_moneda_generico":
+                                respuesta_content = f"✅ **Totales de Facturas por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
+                            elif tipo == "total_compras_por_moneda_generico":
+                                respuesta_content = f"✅ **Totales de Compras por Moneda (Todos los años)** - {len(resultado_sql)} monedas"
+                            else:
+                                respuesta_content = f"✅ Encontré **{len(resultado_sql)}** resultados"
 
-                        respuesta_df = resultado_sql
-                else:
-                    respuesta_content = str(resultado_sql)
+                            respuesta_df = resultado_sql
+                    else:
+                        respuesta_content = str(resultado_sql)
 
-            except Exception as e:
-                _dbg_set_sql(
-                    tipo,
-                    f"-- Error ejecutando consulta_por_tipo: {str(e)}",
-                    parametros,
-                    None,
-                )
-                respuesta_content = f"❌ Error: {str(e)}"
+                except Exception as e:
+                    _dbg_set_sql(
+                        tipo,
+                        f"-- Error ejecutando consulta_por_tipo: {str(e)}",
+                        parametros,
+                        None,
+                    )
+                    respuesta_content = f"❌ Error: {str(e)}"
 
-        st.session_state["historial_compras"].append(
-            {
-                "role": "assistant",
-                "content": respuesta_content,
-                "df": respuesta_df,
-                "tipo": tipo,
-                "pregunta": pregunta,
-            }
-        )
+            st.session_state["historial_compras"].append(
+                {
+                    "role": "assistant",
+                    "content": respuesta_content,
+                    "df": respuesta_df,
+                    "tipo": tipo,
+                    "pregunta": pregunta,
+                }
+            )
 
-        st.rerun()
+            st.rerun()
 
+# =========================
+# TAB COMPARATIVAS (solo modo comparar)
+# =========================
+if tab_comparativas is not None:
     with tab_comparativas:
         st.markdown("### Menú Comparativas Fáciles")
         st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
@@ -2720,7 +2704,6 @@ Escribí lo que necesites 👇
                 except Exception as e:
                     st.error(f"❌ Error en búsqueda: {e}")
 
-
         elif tipo_consulta == "Comparativas":
             # ✅ PAUSAR AUTOREFRESH EN COMPARATIVAS
             st.session_state["pause_autorefresh"] = True
@@ -2755,8 +2738,8 @@ Escribí lo que necesites 👇
             # Separar la barra del formulario
             st.markdown('<div style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 16px;"></div>', unsafe_allow_html=True)
 
-            # Barra de acciones en una sola fila horizontal - MODIFICADA
-            col_cmp, col_clr, col_csv, col_xls = st.columns(4)  # Equal size for all buttons
+            # Barra de acciones en una sola fila horizontal
+            col_cmp, col_clr, col_csv, col_xls = st.columns(4)
             
             with col_cmp:
                 btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
@@ -2776,16 +2759,16 @@ Escribí lo que necesites 👇
             /* Barra de acciones compacta */
             .action-bar {
                 flex-wrap: nowrap !important;
-                height: 48px !important;  /* Altura máxima de la barra */
-                gap: 8px !important;  /* Separación uniforme */
+                height: 48px !important;
+                gap: 8px !important;
             }
             
             /* Botones compactos */
             .stButton button {
-                height: 36px !important;  /* Altura objetivo */
-                padding: 6px 12px !important;  /* Padding vertical y horizontal reducido */
-                font-size: 0.85rem !important;  /* Tamaño de fuente */
-                white-space: nowrap !important;  /* Texto en una línea */
+                height: 36px !important;
+                padding: 6px 12px !important;
+                font-size: 0.85rem !important;
+                white-space: nowrap !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
@@ -2794,13 +2777,13 @@ Escribí lo que necesites 👇
             
             /* Íconos más pequeños */
             .stButton button span {
-                font-size: 14px !important;  /* Tamaño de íconos reducido */
+                font-size: 14px !important;
             }
             
             /* Botón primario "Comparar" menos prominente */
             .stButton button[data-testid*="btn_comparar_horizontal"] {
-                font-weight: 600 !important;  /* Menos bold */
-                padding: 6px 14px !important;  /* Un poco más padding horizontal pero no vertical */
+                font-weight: 600 !important;
+                padding: 6px 14px !important;
             }
             
             /* Asegurar que todos los botones tengan el mismo ancho si es necesario */
@@ -2810,7 +2793,7 @@ Escribí lo que necesites 👇
             </style>
             """, unsafe_allow_html=True)
 
-            # Botón comparar (oculto, pero funcionalidad en el botón de arriba)
+            # Botón comparar
             if btn_compare:
                 # ✅ VALIDAR: necesitamos al menos 2 períodos (años O meses)
                 tiene_anios = len(anios) >= 2
@@ -2826,10 +2809,10 @@ Escribí lo que necesites 👇
                         try:
                             # ✅ PASAR TODOS LOS PARÁMETROS RELEVANTES
                             df = sqlq_comparativas.comparar_compras(
-                                anios=anios if not meses else None,  # Si hay meses, no usar años
-                                meses=meses if meses else None,       # Pasar meses si hay
+                                anios=anios if not meses else None,
+                                meses=meses if meses else None,
                                 proveedores=proveedores,
-                                articulos=articulos if articulos else None  # Pasar artículos si hay
+                                articulos=articulos if articulos else None
                             )
                             
                             if df is not None and not df.empty:
@@ -2844,13 +2827,10 @@ Escribí lo que necesites 👇
                                 titulo_provs = ""
                                 if proveedores_sel:
                                     if len(proveedores_sel) == 1:
-                                        # Un solo proveedor: mostrar nombre completo
                                         titulo_provs = f"{proveedores_sel[0]} - "
                                     elif len(proveedores_sel) <= 3:
-                                        # 2-3 proveedores: mostrar todos
                                         titulo_provs = f"{', '.join(proveedores_sel)} - "
                                     else:
-                                        # Más de 3: mostrar cantidad
                                         titulo_provs = f"{len(proveedores_sel)} proveedores - "
                                 else:
                                     titulo_provs = f"{todos_entidad_titulo} - "
@@ -2872,11 +2852,11 @@ Escribí lo que necesites 👇
                 df_guardado = st.session_state["comparativa_resultado"]
                 titulo_guardado = st.session_state.get("comparativa_titulo", "Comparación")
                 
-                # Botón para limpiar (oculto, funcionalidad en botón de arriba)
+                # Botón para limpiar
                 if btn_clear:
                     del st.session_state["comparativa_resultado"]
                     del st.session_state["comparativa_titulo"]
-                    st.session_state["comparativa_activa"] = False  # Reactivar auto-refresh
+                    st.session_state["comparativa_activa"] = False
                     st.rerun()
                 
                 # Mostrar dashboard con datos guardados
@@ -2885,20 +2865,23 @@ Escribí lo que necesites 👇
                     titulo=titulo_guardado
                 )
 
-    if modo != "comparar":
-        with tab_debug:
-            if HAS_DEBUG:
-                debug.render()
-            else:
-                st.info("🔬 Debug panel no disponible. Instala debug_panel.py")
+# =========================
+# TAB DEBUG (solo modo compras)
+# =========================
+if tab_debug is not None:
+    with tab_debug:
+        if HAS_DEBUG:
+            debug.render()
+        else:
+            st.info("🔬 Debug panel no disponible. Instala debug_panel.py")
 
-        # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
-        # if not st.session_state.get("pause_autorefresh", False):
-        #     try:
-        #         from streamlit_autorefresh import st_autorefresh
-        #         st_autorefresh(interval=5000, key="fc_keepalive")
-        #     except Exception:
-        #         pass
+# ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
+# if modo != "comparar" and not st.session_state.get("pause_autorefresh", False):
+#     try:
+#         from streamlit_autorefresh import st_autorefresh
+#         st_autorefresh(interval=5000, key="fc_keepalive")
+#     except Exception:
+#         pass
 
 # Ejecutar la función principal si se ejecuta directamente
 if __name__ == "__main__":
