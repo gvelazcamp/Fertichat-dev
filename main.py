@@ -1058,8 +1058,10 @@ with main_container:
     # COMPRAS - COMPARATIVAS
     # =========================
     elif st.session_state.pagina == "Comparar":
-        st.subheader("Comparativas de compras")
-        st.info("Modulo de comparativas en construccion.")
+        # Reutiliza el modulo de Compras IA
+        # El menu de comparativas ya existe dentro de ese modulo
+        Compras_IA()
+
 
     # =========================
     # DEBUG FACTURAS
