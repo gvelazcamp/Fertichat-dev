@@ -1074,6 +1074,24 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "debug": {"origen": "ia_router", "intentos": intentos}
         }
 
+    # ==================================================
+    # 🛒 DERIVACIÓN A INTÉRPRETE DE COMPRAS
+    # ==================================================
+    if "compra" in texto_lower_original or "compras" in texto_lower_original:
+        from ia_compras import interpretar_compras
+
+        anios = _extraer_anios(texto_lower_original)
+
+        resultado = interpretar_compras(
+            texto_lower_original,
+            anios=anios
+        )
+
+        if resultado and resultado.get("tipo") != "no_entendido":
+            resultado.setdefault("debug", {})
+            resultado["debug"]["origen"] = "ia_router → ia_compras"
+            return resultado
+
     out_ai = _interpretar_con_openai(texto_original)
     if out_ai:
         return out_ai
