@@ -2416,8 +2416,9 @@ def Compras_IA(modo="compras"):
         tab_comparativas = st.tabs(["Comparativas"])[0]
         tab_chat = None
         tab_debug = None
+        tab_buscador = None
     else:
-        tab_chat, tab_debug = st.tabs(["Compras", "Debug"])
+        tab_chat, tab_debug, tab_buscador = st.tabs(["Chat Compras", "Debug", "Buscador Fácil"])
         tab_comparativas = None
 
     # =========================
@@ -2833,6 +2834,14 @@ Escribí lo que necesites 👇
                 debug.render()
             else:
                 st.info("🔬 Debug panel no disponible. Instala debug_panel.py")
+                
+    # =========================
+    # TAB BUSCADOR FÁCIL (solo modo compras)
+    # =========================
+    if tab_buscador is not None:
+        with tab_buscador:
+            st.info("🔍 Buscador fácil de compras (próximamente)")
+    # ========================= 
 
     # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
     # if modo != "comparar" and not st.session_state.get("pause_autorefresh", False):
