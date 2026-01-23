@@ -30,7 +30,7 @@
 
  
 # ==================================================
-# 🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
+🔒 BLOQUE UNIVERSAL – COMPRAS SOLO POR AÑO
 # ==================================================
 import re
 
@@ -125,7 +125,7 @@ if m:
     📌 PRIORIDAD 6: compras_articulo_anio
         - "compras de reactivos 2025"
         - Parámetros: {"articulo": "reactivos", "anio": 2025}
-        - Solo se evalúa si NO hay mes/año solo
+        - Solo se evalúa si NO hay mes/año detectado
 
 ⚠️ CASOS ESPECIALES:
 
@@ -434,8 +434,8 @@ def _get_indices() -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
          [("OBIS - PYR X 60 DET", "obispyrx60det"), ...])
     """
     listas = _cargar_listas_supabase()
-    prov = [(p, _key(p)) for p in (listas.get("proveedores") or []) if p]
-    art = [(a, _key(a)) for a in (listas.get("articulos") or []) if a]
+    prov = [(p, _key(p)) for p in listas.get("proveedores", []) if p]
+    art = [(a, _key(a)) for a in listas.get("articulos", []) if a]
     return prov, art
 
 
@@ -725,6 +725,18 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
     # ======= DETECTAR MONEDA =======
     moneda = _detectar_moneda(texto_lower)
 
+    # ==================================================
+    # COMPRAS SOLO POR AÑO (ej: "compras 2025")
+    # ==================================================
+    if anios and len(anios) == 1 and texto.strip() in [f"compras {anios[0]}", "compras"]:
+        return {
+            "tipo": "compras_anio",
+            "parametros": {
+                "anio": anios[0]
+            },
+            "debug": "ia_compras: compras solo por año"
+        }
+
     # =========================================================================================
     # LÓGICA DE INTERPRETACIÓN - COMPRAS
     # =========================================================================================
@@ -959,7 +971,7 @@ def generar_sql_referencia(resultado: Dict) -> str:
                 -1 * CAST(
                     REPLACE(
                         REPLACE(
-                            SUBSTRING(REPLACE("Monto Neto",' ',''), 2, 
+                            SUBSTRING(REPLACE("Monto Neto",' ',''), 2,
                                 LENGTH(REPLACE("Monto Neto",' ','')) - 2),
                             '.', ''
                         ),
@@ -1072,8 +1084,8 @@ SELECT
 FROM chatbot_raw
 WHERE LOWER(TRIM("Articulo")) LIKE '%{articulo}%'
     AND "Año" = {anio}
+    AND "Moneda" = '{moneda}'
     AND "Monto Neto" IS NOT NULL
-    AND ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
 GROUP BY "Mes"
 ORDER BY "Mes" DESC;
         """
@@ -1095,7 +1107,6 @@ if __name__ == "__main__":
         "compras roche 2025",
         "compras de reactivos noviembre 2025",
         "compras biokey",
-        "compras en dólares noviembre",
     ]
     
     print("=" * 80)
