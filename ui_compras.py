@@ -9,10 +9,17 @@ import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
 import sql_facturas as sqlq_facturas
 from sql_core import get_unique_proveedores, get_unique_articulos, ejecutar_consulta  # Agregado ejecutar_consulta
-from debug_panel import DebugPanel
 
-# Inicializar panel de debug
-debug = DebugPanel()
+try:
+    from debug_panel import DebugPanel
+    debug = DebugPanel()
+    HAS_DEBUG = True
+except:
+    HAS_DEBUG = False
+    class FakeDebug:
+        def log(self, *args, **kwargs): pass
+        def render(self): pass
+    debug = FakeDebug()
 
 # Agregado: Mapeo de meses para display amigable
 month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -1961,12 +1968,6 @@ def render_dashboard_comparativas_moderno(df: pd.DataFrame, titulo: str = "Compa
 # =========================
 def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
 
-    # 🔬 LOG: Entrada a la función  
-    debug.log("🔍 ejecutar_consulta_por_tipo INICIADO", {
-        "tipo": tipo,
-        "parametros": parametros
-    })
-
     _dbg_set_sql(
         tag=tipo,
         query=f"-- Ejecutando tipo: {tipo}\n-- (SQL real en sql_compras/sql_comparativas/sql_facturas)\n",
@@ -1975,23 +1976,12 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
     )
 
     # ===== FACTURAS =====
-    if tipo == "detalle_factura_numero":  # ✅ CORREGIDO: era "detalle_factura"
-        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_detalle_factura_por_numero", "args": parametros})
+    if tipo == "detalle_factura":
         df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
         _dbg_set_result(df)
-        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
-        return df
-    
-    # Mantener compatibilidad con nombre antiguo
-    elif tipo == "detalle_factura":
-        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_detalle_factura_por_numero", "args": parametros})
-        df = sqlq_facturas.get_detalle_factura_por_numero(parametros["nro_factura"])
-        _dbg_set_result(df)
-        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     elif tipo == "facturas_proveedor":
-        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_facturas_proveedor", "args": parametros})
         # ✅ Usa la función corregida de sql_facturas.py
         df = sqlq_facturas.get_facturas_proveedor(
             proveedores=parametros.get("proveedores", []),
@@ -2004,29 +1994,23 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
             limite=parametros.get("limite", 5000),
         )
         _dbg_set_result(df)
-        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     elif tipo == "ultima_factura":
-        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_ultima_factura_inteligente", "args": parametros})
         df = sqlq_facturas.get_ultima_factura_inteligente(parametros["patron"])
         _dbg_set_result(df)
-        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     elif tipo == "resumen_facturas":
-        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_resumen_facturas_por_proveedor", "args": parametros})
         df = sqlq_facturas.get_resumen_facturas_por_proveedor(
             meses=parametros.get("meses"),
             anios=parametros.get("anios"),
             moneda=parametros.get("moneda"),
         )
         _dbg_set_result(df)
-        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     elif tipo == "facturas_rango_monto":
-        debug.log("💾 Función SQL", {"nombre": "sqlq_facturas.get_facturas_por_rango_monto", "args": parametros})
         df = sqlq_facturas.get_facturas_por_rango_monto(
             monto_min=parametros.get("monto_min", 0),
             monto_max=parametros.get("monto_max", 999999999),
@@ -2037,38 +2021,12 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
             limite=parametros.get("limite", 100),
         )
         _dbg_set_result(df)
-        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     # ===== COMPRAS =====
     elif tipo == "compras_anio":
-        # 💾 LOG SQL con query real
-        query_sql = f"""
-        SELECT
-            TRIM("Cliente / Proveedor") AS Proveedor,
-            TRIM("Articulo") AS Articulo,
-            TRIM("Nro. Comprobante") AS Nro_Factura,
-            "Fecha",
-            "Cantidad",
-            "Moneda",
-            TRIM("Monto Neto") AS Total
-        FROM chatbot_raw
-        WHERE ("Tipo Comprobante" = 'Compra Contado' OR "Tipo Comprobante" LIKE 'Compra%%')
-          AND "Año" = {parametros['anio']}
-        ORDER BY "Fecha" DESC NULLS LAST
-        LIMIT 5000
-        """
-        
-        debug.log("💾 Función SQL", {"nombre": "sqlq_compras.get_compras_anio", "args": parametros})
-        debug.log_sql(
-            function_name="sqlq_compras.get_compras_anio",
-            params=parametros,
-            query=query_sql
-        )
-        
         df = sqlq_compras.get_compras_anio(parametros["anio"])
         _dbg_set_result(df)
-        debug.log("✅ SQL ejecutado", {"filas": len(df) if df is not None else 0})
         return df
 
     elif tipo == "compras_mes":
@@ -2225,6 +2183,10 @@ def ejecutar_consulta_por_tipo(tipo: str, parametros: dict):
         return df
 
     raise ValueError(f"Tipo '{tipo}' no implementado en ejecutar_consulta_por_tipo")
+
+# =========================
+# UI PRINCIPAL
+# =========================
 def Compras_IA():
 
     # =========================
@@ -2543,9 +2505,6 @@ def Compras_IA():
     pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
 
     if pregunta:
-        # 🔬 LOG: Input del usuario
-        debug.log("📝 Input Usuario", pregunta)
-        
         # ✅ PAUSAR AUTOREFRESH AL HACER UNA PREGUNTA
         st.session_state["pause_autorefresh"] = True
 
@@ -2561,15 +2520,9 @@ def Compras_IA():
 
         resultado = interpretar_pregunta(pregunta)
         _dbg_set_interpretacion(resultado)
-        
-        # 🔬 LOG: Resultado de interpretación
-        debug.log("🧠 Interpretación", resultado)
 
         tipo = resultado.get("tipo", "")
         parametros = resultado.get("parametros", {})
-        
-        # 🔬 LOG: Tipo y parámetros detectados
-        debug.log("🔀 Router", {"tipo": tipo, "parametros": parametros})
 
         respuesta_content = ""
         respuesta_df = None
@@ -2605,8 +2558,6 @@ Escribí lo que necesites 👇
 
         else:
             try:
-                debug.log("⚙️ Ejecutando consulta SQL", {"tipo": tipo})
-                
                 resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
 
                 # Convertir "Mes" a nombres antes de mostrar
@@ -2614,12 +2565,8 @@ Escribí lo que necesites 👇
                     resultado_sql['Mes'] = resultado_sql['Mes'].apply(convertir_mes_a_nombre)
 
                 if isinstance(resultado_sql, pd.DataFrame):
-                    # 🔬 LOG: DataFrame obtenido
-                    debug.log("📊 DataFrame obtenido", resultado_sql)
-                    
                     if len(resultado_sql) == 0:
                         respuesta_content = "⚠️ No se encontraron resultados"
-                        debug.log("⚠️ Sin resultados", "DataFrame vacío")
                     else:
                         if tipo == "detalle_factura":
                             nro = parametros.get("nro_factura", "")
@@ -2886,7 +2833,10 @@ Escribí lo que necesites 👇
                 )
 
     with tab_debug:
-        debug.render()
+        if HAS_DEBUG:
+            debug.render()
+        else:
+            st.info("🔬 Debug panel no disponible. Instala debug_panel.py")
 
         # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
         # if not st.session_state.get("pause_autorefresh", False):
