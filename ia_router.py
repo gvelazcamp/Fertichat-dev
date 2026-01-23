@@ -530,28 +530,39 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     - NO ejecuta SQL, solo devuelve {tipo, parametros}.
     """
     if not pregunta or not str(pregunta).strip():
-        return {"tipo": "no_entendido", "parametros": {}, "debug": {"origen": "ia_router", "intentos": ["router: pregunta_vacia"]}}
+        return {
+            "tipo": "no_entendido",
+            "parametros": {},
+            "debug": {
+                "origen": "ia_router",
+                "intentos": ["router: pregunta_vacia"]
+            }
+        }
 
     intentos = []  # 🔄 Lista de intentos para trazabilidad
 
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
 
-    texto_norm = normalizar_texto(texto_original)
+    # ==================================================
+    # 🔒 HARD BLOCK – COMPRAS SOLO POR AÑO
+    # PRIORIDAD ABSOLUTA (FAST-PATH)
+    # ==================================================
+    anios = _extraer_anios(texto_lower_original)
 
-    # ==================================================
-    # 🔒 FAST-PATH: DETALLE FACTURA POR NÚMERO
-    # PRIORIDAD MÁXIMA - ANTES DEL HARD_BLOCK
-    # ==================================================
-    if contiene_factura(texto_lower_original):
-        nro = _extraer_nro_factura(texto_original)
-        if nro:
-            intentos.append("router: fast_path_detalle_factura")
-            return {
-                "tipo": "detalle_factura_numero",
-                "parametros": {"nro_factura": nro},
-                "debug": {"origen": "ia_router", "intentos": intentos}
+    if contiene_compras(texto_lower_original) and anios:
+        return {
+            "tipo": "compras_anio",
+            "parametros": {
+                "anios": anios
+            },
+            "debug": {
+                "origen": "ia_router",
+                "hard_block": "compras_anio"
             }
+        }
+
+    texto_norm = normalizar_texto(texto_original)
 
     # ==================================================
     # 🔒 BLOQUE DURO – COMPRAS SOLO POR AÑO
