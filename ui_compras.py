@@ -2879,9 +2879,10 @@ Escribí lo que necesites 👇
 
     if modo != "comparar":
         with tab_debug:
-            debug.render()
-        else:
-            st.info("🔬 Debug panel no disponible. Instala debug_panel.py")
+            if HAS_DEBUG:
+                debug.render()
+            else:
+                st.info("🔬 Debug panel no disponible. Instala debug_panel.py")
 
         # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
         # if not st.session_state.get("pause_autorefresh", False):
