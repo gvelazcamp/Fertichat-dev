@@ -2638,7 +2638,7 @@ Escribí lo que necesites 👇
 
                 st.rerun()
 
-                # =========================
+# =========================
                 # TAB COMPARATIVAS (solo modo comparar)
                 # =========================
                 if tab_comparativas is not None:
@@ -2650,145 +2650,140 @@ Escribí lo que necesites 👇
                         st.session_state["pause_autorefresh"] = True
                         st.markdown("#### Comparativas")
 
-                
-                proveedores_disponibles = prov_options
-                proveedores_sel = st.multiselect(
-                
-                proveedores_disponibles = prov_options
-                proveedores_sel = st.multiselect(
-                    "Proveedores",
-                    options=proveedores_disponibles,
-                    default=[],
-                    key="comparativas_proveedores_multi",
-                    help="Dejá vacío para comparar TODOS. Escribí para filtrar y seleccioná con Enter."
-                )
-                
-                proveedores = proveedores_sel if proveedores_sel else None
-                
-                meses_sel = st.multiselect("Meses", options=month_names, default=[], key="meses_sel")
-                anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
-                
-                meses = []
-                for a in anios:
-                    for m in meses_sel:
-                        meses.append(f"{a}-{month_num[m]}")
-                st.session_state["meses_multi"] = meses
-                
-                articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
-
-                st.markdown('<div style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 16px;"></div>', unsafe_allow_html=True)
-
-                col_cmp, col_clr, col_csv, col_xls = st.columns(4)
-                
-                with col_cmp:
-                    btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
-                
-                with col_clr:
-                    btn_clear = st.button("🗑️ Limpiar resultados", key="btn_limpiar_horizontal", use_container_width=True)
-                
-                with col_csv:
-                    btn_csv = st.button("📊 CSV", key="btn_csv_horizontal", use_container_width=True)
-                
-                with col_xls:
-                    btn_excel = st.button("📥 Excel", key="btn_excel_horizontal", use_container_width=True)
-
-                st.markdown("""
-                <style>
-                .action-bar {
-                    flex-wrap: nowrap !important;
-                    height: 48px !important;
-                    gap: 8px !important;
-                }
-                
-                .stButton button {
-                    height: 36px !important;
-                    padding: 6px 12px !important;
-                    font-size: 0.85rem !important;
-                    white-space: nowrap !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    border-radius: 6px !important;
-                }
-                
-                .stButton button span {
-                    font-size: 14px !important;
-                }
-                
-                .stButton button[data-testid*="btn_comparar_horizontal"] {
-                    font-weight: 600 !important;
-                    padding: 6px 14px !important;
-                }
-                
-                .stButton {
-                    flex: 1 !important;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-
-                if btn_compare:
-                    tiene_anios = len(anios) >= 2
-                    tiene_meses = len(meses) >= 2
-                    
-                    if not tiene_anios and not tiene_meses:
-                        st.error("Seleccioná al menos 2 años O al menos 2 combinaciones de mes-año para comparar")
-                    else:
-                        st.session_state["comparativa_activa"] = True
+                        proveedores_disponibles = prov_options
+                        proveedores_sel = st.multiselect(
+                            "Proveedores",
+                            options=proveedores_disponibles,
+                            default=[],
+                            key="comparativas_proveedores_multi",
+                            help="Dejá vacío para comparar TODOS. Escribí para filtrar y seleccioná con Enter."
+                        )
                         
-                        with st.spinner("Comparando..."):
-                            try:
-                                df = sqlq_comparativas.comparar_compras(
-                                    anios=anios if not meses else None,
-                                    meses=meses if meses else None,
-                                    proveedores=proveedores,
-                                    articulos=articulos if articulos else None
-                                )
-                                
-                                if df is not None and not df.empty:
-                                    if articulos:
-                                        entidad_titulo = 'Artículos'
-                                        todos_entidad_titulo = "Todos los artículos"
-                                    else:
-                                        entidad_titulo = 'Proveedores'
-                                        todos_entidad_titulo = "Todos los proveedores"
-                                    
-                                    titulo_provs = ""
-                                    if proveedores_sel:
-                                        if len(proveedores_sel) == 1:
-                                            titulo_provs = f"{proveedores_sel[0]} - "
-                                        elif len(proveedores_sel) <= 3:
-                                            titulo_provs = f"{', '.join(proveedores_sel)} - "
-                                        else:
-                                            titulo_provs = f"{len(proveedores_sel)} proveedores - "
-                                    else:
-                                        titulo_provs = f"{todos_entidad_titulo} - "
-                                    
-                                    st.session_state["comparativa_resultado"] = df
-                                    st.session_state["comparativa_titulo"] = f"{titulo_provs}Comparación {' vs '.join(map(str, anios))}"
-                                    st.session_state["comparativa_activa"] = True
-                                    
-                                    st.success(f"✅ Comparación lista - {len(df)} filas")
-                                else:
-                                    st.warning("No se encontraron datos")
-                            except Exception as e:
-                                st.error(f"❌ Error: {e}")
-                                st.exception(e)
-                
-                if "comparativa_resultado" in st.session_state:
-                    df_guardado = st.session_state["comparativa_resultado"]
-                    titulo_guardado = st.session_state.get("comparativa_titulo", "Comparación")
-                    
-                    if btn_clear:
-                        del st.session_state["comparativa_resultado"]
-                        del st.session_state["comparativa_titulo"]
-                        st.session_state["comparativa_activa"] = False
-                        st.rerun()
-                    
-                    render_dashboard_comparativas_moderno(
-                        df_guardado,
-                        titulo=titulo_guardado
-                    )
+                        proveedores = proveedores_sel if proveedores_sel else None
+                        
+                        meses_sel = st.multiselect("Meses", options=month_names, default=[], key="meses_sel")
+                        anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
+                        
+                        meses = []
+                        for a in anios:
+                            for m in meses_sel:
+                                meses.append(f"{a}-{month_num[m]}")
+                        st.session_state["meses_multi"] = meses
+                        
+                        articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
+                        st.markdown('<div style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 16px;"></div>', unsafe_allow_html=True)
+
+                        col_cmp, col_clr, col_csv, col_xls = st.columns(4)
+                        
+                        with col_cmp:
+                            btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
+                        
+                        with col_clr:
+                            btn_clear = st.button("🗑️ Limpiar resultados", key="btn_limpiar_horizontal", use_container_width=True)
+                        
+                        with col_csv:
+                            btn_csv = st.button("📊 CSV", key="btn_csv_horizontal", use_container_width=True)
+                        
+                        with col_xls:
+                            btn_excel = st.button("📥 Excel", key="btn_excel_horizontal", use_container_width=True)
+
+                        st.markdown("""
+                        <style>
+                        .action-bar {
+                            flex-wrap: nowrap !important;
+                            height: 48px !important;
+                            gap: 8px !important;
+                        }
+                        
+                        .stButton button {
+                            height: 36px !important;
+                            padding: 6px 12px !important;
+                            font-size: 0.85rem !important;
+                            white-space: nowrap !important;
+                            display: flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            border-radius: 6px !important;
+                        }
+                        
+                        .stButton button span {
+                            font-size: 14px !important;
+                        }
+                        
+                        .stButton button[data-testid*="btn_comparar_horizontal"] {
+                            font-weight: 600 !important;
+                            padding: 6px 14px !important;
+                        }
+                        
+                        .stButton {
+                            flex: 1 !important;
+                        }
+                        </style>
+                        """, unsafe_allow_html=True)
+
+                        if btn_compare:
+                            tiene_anios = len(anios) >= 2
+                            tiene_meses = len(meses) >= 2
+                            
+                            if not tiene_anios and not tiene_meses:
+                                st.error("Seleccioná al menos 2 años O al menos 2 combinaciones de mes-año para comparar")
+                            else:
+                                st.session_state["comparativa_activa"] = True
+                                
+                                with st.spinner("Comparando..."):
+                                    try:
+                                        df = sqlq_comparativas.comparar_compras(
+                                            anios=anios if not meses else None,
+                                            meses=meses if meses else None,
+                                            proveedores=proveedores,
+                                            articulos=articulos if articulos else None
+                                        )
+                                        
+                                        if df is not None and not df.empty:
+                                            if articulos:
+                                                entidad_titulo = 'Artículos'
+                                                todos_entidad_titulo = "Todos los artículos"
+                                            else:
+                                                entidad_titulo = 'Proveedores'
+                                                todos_entidad_titulo = "Todos los proveedores"
+                                            
+                                            titulo_provs = ""
+                                            if proveedores_sel:
+                                                if len(proveedores_sel) == 1:
+                                                    titulo_provs = f"{proveedores_sel[0]} - "
+                                                elif len(proveedores_sel) <= 3:
+                                                    titulo_provs = f"{', '.join(proveedores_sel)} - "
+                                                else:
+                                                    titulo_provs = f"{len(proveedores_sel)} proveedores - "
+                                            else:
+                                                titulo_provs = f"{todos_entidad_titulo} - "
+                                            
+                                            st.session_state["comparativa_resultado"] = df
+                                            st.session_state["comparativa_titulo"] = f"{titulo_provs}Comparación {' vs '.join(map(str, anios))}"
+                                            st.session_state["comparativa_activa"] = True
+                                            
+                                            st.success(f"✅ Comparación lista - {len(df)} filas")
+                                        else:
+                                            st.warning("No se encontraron datos")
+                                    except Exception as e:
+                                        st.error(f"❌ Error: {e}")
+                                        st.exception(e)
+                        
+                        if "comparativa_resultado" in st.session_state:
+                            df_guardado = st.session_state["comparativa_resultado"]
+                            titulo_guardado = st.session_state.get("comparativa_titulo", "Comparación")
+                            
+                            if btn_clear:
+                                del st.session_state["comparativa_resultado"]
+                                del st.session_state["comparativa_titulo"]
+                                st.session_state["comparativa_activa"] = False
+                                st.rerun()
+                            
+                            render_dashboard_comparativas_moderno(
+                                df_guardado,
+                                titulo=titulo_guardado
+                            )
     # =========================
     # TAB DEBUG (solo modo compras)
     # =========================
