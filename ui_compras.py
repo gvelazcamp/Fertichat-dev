@@ -2609,6 +2609,10 @@ def Compras_IA():
 
         # Mostrar historial
         for idx, msg in enumerate(st.session_state["historial_compras"]):
+            # ✅ FIX: Generar key único basado en contenido + índice para evitar duplicados
+            msg_hash = abs(hash(str(msg.get("content", ""))[:100] + str(idx))) % 1000000
+            unique_key = f"hist_{idx}_{msg_hash}_"
+            
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
@@ -2621,7 +2625,7 @@ def Compras_IA():
                         render_dashboard_compras_vendible(
                             df,
                             titulo="Datos",
-                            key_prefix=f"hist_{idx}_"
+                            key_prefix=unique_key
                         )
                     except Exception as e:
                         # Fallback viejo (no romper nada)
