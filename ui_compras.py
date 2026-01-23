@@ -2877,8 +2877,8 @@ Escribí lo que necesites 👇
                     titulo=titulo_guardado
                 )
 
-    with tab_debug:
-        if HAS_DEBUG:
+    if modo != "comparar":
+        with tab_debug:
             debug.render()
         else:
             st.info("🔬 Debug panel no disponible. Instala debug_panel.py")
