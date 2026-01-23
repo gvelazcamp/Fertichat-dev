@@ -2652,6 +2652,9 @@ Escribí lo que necesites 👇
                 
                 proveedores_disponibles = prov_options
                 proveedores_sel = st.multiselect(
+                
+                proveedores_disponibles = prov_options
+                proveedores_sel = st.multiselect(
                     "Proveedores",
                     options=proveedores_disponibles,
                     default=[],
