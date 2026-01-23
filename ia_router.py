@@ -494,7 +494,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict[str, Any]]:
         response = client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[
-                {"role": "system", "content": "_get_system_prompt()},
+                {"role": "system", "content": _get_system_prompt()},
                 {"role": "user", "content": pregunta},
             ],
             temperature=0.1,
