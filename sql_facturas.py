@@ -150,6 +150,22 @@ def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
         ORDER BY TRIM("Articulo")
     """
 
+    # SQL final sin filtro de tipo (último recurso)
+    sql_ilike_sin_tipo = f"""
+        SELECT
+            TRIM("Nro. Comprobante") AS nro_factura,
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            "Fecha",
+            "Cantidad",
+            "Moneda",
+            {total_expr} AS Total
+        FROM chatbot_raw
+        WHERE "Nro. Comprobante" ILIKE %s
+          AND TRIM("Nro. Comprobante") <> 'A0000000'
+        ORDER BY TRIM("Articulo")
+    """
+
     variantes = _factura_variantes(nro_factura)
     
     # DEBUG: Imprimir variantes generadas
@@ -198,6 +214,25 @@ def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
             df.attrs["nro_factura_fallback"] = solo_digitos
             return df
 
+
+    # ===================================================
+    # FASE 4: ÚLTIMO FALLBACK (SIN FILTRO DE TIPO COMPROBANTE)
+    # ===================================================
+    print(f"⚠️ No encontrada con filtros de tipo. Probando ILIKE sin filtrar Tipo Comprobante...")
+
+    patrones_finales = []
+    if solo_digitos and len(solo_digitos) >= 4:
+        patrones_finales.append(f"%{solo_digitos}%")
+    # Variante principal (la que vino en el input/primer variante)
+    patrones_finales.append(f"%{variantes[0]}%")
+
+    for patron in patrones_finales:
+        print(f"🔍 [SIN-TIPO] Probando: '{patron}'")
+        df = ejecutar_consulta(sql_ilike_sin_tipo, (patron,))
+        if df is not None and not df.empty:
+            print(f"✅ [SIN-TIPO] Encontrada con '{patron}' ({len(df)} líneas)")
+            df.attrs["nro_factura_fallback"] = patron.strip("%")
+            return df
     print(f"❌ No encontrada con ninguna estrategia")
     return pd.DataFrame()
 
