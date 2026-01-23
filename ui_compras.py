@@ -2397,7 +2397,7 @@ def Compras_IA(modo="compras"):
     if "pause_autorefresh" not in st.session_state:
         st.session_state["pause_autorefresh"] = False
 
-    st.markdown("### Asistente de Compras y Facturas")
+    #st.markdown("### Asistente de Compras y Facturas")
 
     # Persistencia de selecciones en Comparativas
     if "prov_multi" not in st.session_state:
