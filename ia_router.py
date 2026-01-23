@@ -1,3 +1,7 @@
+# =========================================================================================
+# 🔥 IA_ROUTER CARGADO DESDE ESTE ARCHIVO 🔥
+# =========================================================================================
+
 # Archivo completo: ia_router.py
 # Versión corregida con bloque duro al inicio de interpretar_pregunta
 
