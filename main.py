@@ -245,34 +245,15 @@ def ejecutar_consulta_por_tipo(tipo: str, params: dict, pregunta_original: str):
 
         elif tipo == "compras_anio":
             anio = params.get("anio", 2025)
-            limite = params.get("limite", 10)
+            limite = params.get("limite", 10)  # 🔥 Cambiar a 10 (top 10 proveedores)
 
-            # =========================
-            # DEBUG – INTERPRETACIÓN
-            # =========================
-            st.session_state["DBG_INT_LAST"] = {
-                "tipo": tipo,
-                "parametros": params,
-            }
-
-            # =========================
-            # EJECUCIÓN SQL
-            # =========================
+            # 🔥 USAR FUNCIÓN CORRECTA QUE AGRUPA POR PROVEEDOR
             df = get_top_proveedores_por_anios(anios=[anio], limite=limite)
 
-            # =========================
-            # DEBUG – SQL
-            # =========================
-            st.session_state["DBG_SQL_LAST_TAG"] = "sql_compras.get_top_proveedores_por_anios"
-
             if df is None or df.empty:
-                st.session_state["DBG_SQL_ROWS"] = 0
-                st.session_state["DBG_SQL_COLS"] = []
                 return f"⚠️ No se encontraron compras en {anio}.", None, None
 
-            st.session_state["DBG_SQL_ROWS"] = len(df)
-            st.session_state["DBG_SQL_COLS"] = list(df.columns)
-
+            # 🔥 Calcular totales
             total_general = df["Total"].sum() if "Total" in df.columns else 0
 
             return (
@@ -469,6 +450,11 @@ section[data-testid="stMain"] {
     animation: none !important;
 }
 
+/* Ocultar loader superior */
+div[data-testid="stDecoration"] {
+    display: none !important;
+}
+
 /* Quitar shimmer / placeholders */
 [data-testid="stSkeleton"] {
     display: none !important;
@@ -516,7 +502,7 @@ user = get_current_user() or {}
 
 # Grupos del menú - CAMBIADO A "Sugerencia de pedidos"
 groups = {
-    "PRINCIPAL": ["🏠 Inicio", "�� Compras IA", "🔎 Buscador IA", "📦 Stock IA"],
+    "PRINCIPAL": ["🏠 Inicio", "🛒 Compras IA", "🔎 Buscador IA", "📦 Stock IA"],
     "GESTIÓN": ["📄 Pedidos internos", "🧾 Baja de stock", "📦 Órdenes de compra", "📥 Ingreso de comprobantes", "Sugerencia de pedidos"],  # ← CAMBIADO
     "CATÁLOGO": ["📚 Artículos", "🧩 Familias", "🏬 Depósitos", "📑 Comprobantes"],
     "ANÁLISIS": ["📊 Dashboard", "📈 Indicadores (Power BI)"],
@@ -542,7 +528,7 @@ st.session_state["ORQUESTADOR_CARGADO"] = True
 st.markdown(f"<style>{CSS_GLOBAL}</style>", unsafe_allow_html=True)
 
 # =========================
-# INICIALIZACIÓN
+# INICIALIZAR DETECCIÓN DE DISPOSITIVO
 # =========================
 inicializar_deteccion_dispositivo()
 
