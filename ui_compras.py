@@ -2390,8 +2390,8 @@ def Compras_IA():
 
     art_options = get_unique_articulos()  # ✅ CAMBIO: TODOS LOS ARTÍCULOS (sin [:100])
 
-    # TABS PRINCIPALES: Chat IA + Comparativas
-    tab_chat, tab_comparativas = st.tabs(["💬Compras", " Comparativas"])
+    # TABS PRINCIPALES: Chat IA + Comparativas + Debug
+    tab_chat, tab_comparativas, tab_debug = st.tabs(["💬Compras", "📊 Comparativas", "🔬 Debug"])
 
     with tab_chat:
         # BOTÓN LIMPIAR (solo en chat)
@@ -2824,13 +2824,16 @@ Escribí lo que necesites 👇
                     titulo=titulo_guardado
                 )
 
+    with tab_debug:
+        debug.render()
+
         # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
-        if not st.session_state.get("pause_autorefresh", False):
-            try:
-                from streamlit_autorefresh import st_autorefresh
-                st_autorefresh(interval=5000, key="fc_keepalive")
-            except Exception:
-                pass
+        # if not st.session_state.get("pause_autorefresh", False):
+        #     try:
+        #         from streamlit_autorefresh import st_autorefresh
+        #         st_autorefresh(interval=5000, key="fc_keepalive")
+        #     except Exception:
+        #         pass
 
 # Ejecutar la función principal si se ejecuta directamente
 if __name__ == "__main__":
