@@ -2426,6 +2426,21 @@ def Compras_IA(modo="compras"):
             pass
 
     else:
+        # En modo compras: SOLO Compras + Debug
+        tab_chat, tab_debug = st.tabs(["Compras", "Debug"])
+
+        with tab_chat:
+            # TODO el contenido que ya tenías dentro de `with tab_chat`
+            # va acá SIN MODIFICAR
+            pass
+
+        with tab_debug:
+            if HAS_DEBUG:
+                debug.render()
+            else:
+                st.info("Debug panel no disponible")
+
+    else:
         # Modo normal: Compras + Comparativas + Debug
         tab_chat, tab_comparativas, tab_debug = st.tabs(
             ["Compras", "Comparativas", "Debug"]
