@@ -3,12 +3,14 @@ import pandas as pd
 from datetime import datetime
 from typing import Optional
 
-from ia_interpretador import interpretar_pregunta, obtener_info_tipo
+from ia_router import interpretar_pregunta
+from ia_interpretador import obtener_info_tipo
 from utils_openai import responder_con_openai
+
 import sql_compras as sqlq_compras
 import sql_comparativas as sqlq_comparativas
 import sql_facturas as sqlq_facturas
-from sql_core import get_unique_proveedores, get_unique_articulos, ejecutar_consulta  # Agregado ejecutar_consulta
+from sql_core import get_unique_proveedores, get_unique_articulos, ejecutar_consulta
 
 try:
     from debug_panel import DebugPanel
