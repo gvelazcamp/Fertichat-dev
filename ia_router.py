@@ -567,78 +567,18 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     texto_lower_original = texto_original.lower()
 
     # ==================================================
-    # 🔒 PRIORIDAD ABSOLUTA – COMPRAS SOLO POR AÑO
+    # 🧾 PRIORIDAD: DETALLE DE FACTURA POR NÚMERO
     # ==================================================
-    texto_q = texto_lower_original.strip()
-
-    m = re.search(r"\b(compras?|compra)\s+(202[3-6])\b", texto_q)
-    if m:
-        anio = int(m.group(2))
-
-        from sql_compras import get_total_compras_anio
-
-        return {
-            "tipo": "compras_anio",
-            "parametros": {
-                "anio": anio
-            },
-            "debug": f"router → compras {anio}"
-        }
-
-    texto_q = texto_lower_original.strip()
-
-    m = re.fullmatch(r"(compras|compra)\s+(\d{4})", texto_q)
-    if m:
-        anio = int(m.group(2))
-
-        from sql_facturas import get_compras_totales_por_anio
-        resultado = get_compras_totales_por_anio(anio)
-
-        return {
-            "tipo": "compras_anio",
-            "parametros": {"anio": anio},
-            "resultado": resultado
-        }
-
-    # ==================================================
-    # COMPRAS POR AÑO (IA ROUTER NATURAL)
-    # ==================================================
-    anios = _extraer_anios(texto_lower_original)
-
-    if contiene_compras(texto_lower_original) and len(anios) == 1:
-        return {
-            "tipo": "compras_anio",
-            "parametros": {
-                "anio": anios[0]
-            },
-            "debug": {
-                "origen": "ia_router",
-                "regla": "compras + año"
+    if contiene_factura(texto_lower_original):
+        nro = _extraer_nro_factura(texto_original)
+        if nro:
+            intentos.append("router: detalle_factura_numero")
+            return {
+                "tipo": "detalle_factura_numero",
+                "parametros": {"nro_factura": nro},
+                "debug": {"origen": "ia_router", "intentos": intentos, "debug": f"factura nro={nro}"}
             }
-        }
 
-    # ----------------------------------
-    # 2️⃣ NORMALIZACIÓN (DESPUÉS)
-    # ----------------------------------
-    texto_norm = normalizar_texto(texto_original)
-
-    # ==================================================
-    # 🔒 HARD BLOCK – COMPRAS SOLO POR AÑO
-    # PRIORIDAD ABSOLUTA – DESPUÉS DE FACTURA
-    # ==================================================
-    anios = _extraer_anios(texto_lower_original)
-
-    if contiene_compras(texto_lower_original) and anios:
-        return {
-            "tipo": "compras_anio",
-            "parametros": {
-                "anio": anios[0]
-            },
-            "debug": {
-                "origen": "ia_router",
-                "hard_block": "compras_anio"
-            }
-        }
 
     # ============================
     # SALUDOS
@@ -1128,22 +1068,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             },
             "debug": {"origen": "ia_router", "intentos": intentos}
         }
-
-    if "compras" in texto_lower_original:
-        anios = _extraer_anios(texto_lower_original)
-        if anios:
-            intentos.append("router: compras_anio_fastpath")
-
-            return {
-                "tipo": "compras_anio",
-                "parametros": {
-                    "anio": anios[0]
-                },
-                "debug": {
-                    "origen": "ia_router",
-                    "intentos": intentos
-                }
-            }
 
     # ==================================================
     # 🛒 DERIVACIÓN A INTÉRPRETE DE COMPRAS
