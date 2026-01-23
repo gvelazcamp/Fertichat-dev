@@ -2648,44 +2648,6 @@ Escribí lo que necesites 👇
 
             tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
 
-            if tipo_consulta == "Compras":
-                st.markdown("#### 🛒 Consultas de Compras")
-                
-                anio_compras = st.selectbox("Año", options=[2023, 2024, 2025, 2026], index=2, key="anio_compras")
-                mes_compras = st.selectbox("Mes", options=month_names + ["Todos"], index=len(month_names), key="mes_compras")
-                proveedor_compras = st.selectbox("Proveedor", options=["Todos"] + prov_options[:50], index=0, key="proveedor_compras")
-                
-                if "compras_resultado" in st.session_state:
-                    df_guardado = st.session_state["compras_resultado"]
-                    titulo_guardado = st.session_state.get("compras_titulo", "Compras")
-                    
-                    render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
-                    
-                    if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
-                        del st.session_state["compras_resultado"]
-                        del st.session_state["compras_titulo"]
-                        st.rerun()
-                
-                if st.button("🔍 Buscar Compras", key="btn_buscar_compras"):
-                    st.session_state["pause_autorefresh"] = True
-
-                    try:
-                        df = sqlq_compras.get_compras_por_mes_excel(
-                            anio=anio_compras,
-                            mes=None if mes_compras == "Todos" else mes_compras,
-                            proveedor=None if proveedor_compras == "Todos" else proveedor_compras,
-                            limite=5000
-                        )
-
-                        if df is not None and not df.empty:
-                            st.session_state["compras_resultado"] = df
-                            st.session_state["compras_titulo"] = "Compras"
-                            render_dashboard_compras_vendible(df, titulo="Compras")
-                        elif df is not None:
-                            st.warning("⚠️ No se encontraron resultados para esa búsqueda.")
-                    except Exception as e:
-                        st.error(f"❌ Error en búsqueda: {e}")
-
             elif tipo_consulta == "Comparativas":
                 st.session_state["pause_autorefresh"] = True
                 st.markdown("#### Comparativas")
@@ -2835,12 +2797,66 @@ Escribí lo que necesites 👇
             else:
                 st.info("🔬 Debug panel no disponible. Instala debug_panel.py")
                 
-    # =========================
+# =========================
     # TAB BUSCADOR FÁCIL (solo modo compras)
     # =========================
     if tab_buscador is not None:
         with tab_buscador:
-            st.info("🔍 Buscador fácil de compras (próximamente)")
+            st.markdown("#### 🛒 Buscador de Compras")
+
+            anio_compras = st.selectbox(
+                "Año",
+                options=[2023, 2024, 2025, 2026],
+                index=2,
+                key="anio_compras_buscador"
+            )
+
+            mes_compras = st.selectbox(
+                "Mes",
+                options=month_names + ["Todos"],
+                index=len(month_names),
+                key="mes_compras_buscador"
+            )
+
+            proveedor_compras = st.selectbox(
+                "Proveedor",
+                options=["Todos"] + prov_options[:50],
+                index=0,
+                key="proveedor_compras_buscador"
+            )
+
+            # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
+            if "compras_resultado" in st.session_state:
+                df_guardado = st.session_state["compras_resultado"]
+                titulo_guardado = st.session_state.get("compras_titulo", "Compras")
+                
+                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
+                
+                # Botón para limpiar
+                if st.button("🗑️ Limpiar resultados", key="btn_limpiar_compras_buscador"):
+                    del st.session_state["compras_resultado"]
+                    del st.session_state["compras_titulo"]
+                    st.rerun()
+
+            if st.button("🔍 Buscar Compras", key="btn_buscar_compras_buscador"):
+                st.session_state["pause_autorefresh"] = True
+
+                try:
+                    df = sqlq_compras.get_compras_por_mes_excel(
+                        anio=anio_compras,
+                        mes=None if mes_compras == "Todos" else mes_compras,
+                        proveedor=None if proveedor_compras == "Todos" else proveedor_compras,
+                        limite=5000
+                    )
+
+                    if df is not None and not df.empty:
+                        st.session_state["compras_resultado"] = df
+                        st.session_state["compras_titulo"] = "Compras"
+                        render_dashboard_compras_vendible(df, titulo="Compras")
+                    elif df is not None:
+                        st.warning("⚠️ No se encontraron resultados.")
+                except Exception as e:
+                    st.error(f"❌ Error en búsqueda: {e}")
     # ========================= 
 
     # ✅ AUTOREFRESH CONDICIONAL: SOLO SI NO ESTÁ PAUSADO
