@@ -610,34 +610,43 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
         }
         
         /* ========================================
-           TARJETAS MÉTRICAS MÁS CHICAS
+           TARJETAS MÉTRICAS - GRID 4 COLUMNAS
            ======================================== */
         .fc-metrics-grid,
         .metrics-grid {
-            gap: 16px !important;  /* Más pequeño para más tarjetas visibles */
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 16px !important;
             margin-bottom: 24px !important;
         }
         
         .fc-metric-card,
         .metric-card {
-            padding: 12px 16px !important;  /* Más pequeño */
+            background: white !important;
+            border: 1px solid #e5e7eb !important;
+            padding: 12px 16px !important;
             border-radius: 10px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
         }
         
         .fc-metric-label,
         .metric-label {
-            font-size: 0.75rem !important;  /* Más pequeño */
+            font-size: 0.75rem !important;
+            color: #6b7280 !important;
             margin-bottom: 4px !important;
+            font-weight: 500 !important;
         }
         
         .fc-metric-value,
         .metric-value {
-            font-size: 1.2rem !important;  /* Más pequeño pero legible */
+            font-size: 1.2rem !important;
             font-weight: 700 !important;
+            color: #111827 !important;
         }
         
         .fc-metric-help {
-            font-size: 0.65rem !important;  /* Más pequeño */
+            font-size: 0.65rem !important;
+            color: #9ca3af !important;
         }
         
         /* ========================================
@@ -3115,4 +3124,3 @@ def Compras_IA():
 # Ejecutar la función principal si se ejecuta directamente
 if __name__ == "__main__":
     Compras_IA()
-# Cache buster: 1769177109
