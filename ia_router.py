@@ -494,7 +494,7 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict[str, Any]]:
         response = client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[
-                {"role": "system", "content": _get_system_prompt()},
+                {"role": "system", "content": "_get_system_prompt()},
                 {"role": "user", "content": pregunta},
             ],
             temperature=0.1,
@@ -1077,6 +1077,22 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             },
             "debug": {"origen": "ia_router", "intentos": intentos}
         }
+
+    if "compras" in texto_lower_original:
+        anios = _extraer_anios(texto_lower_original)
+        if anios:
+            intentos.append("router: compras_anio_fastpath")
+
+            return {
+                "tipo": "compras_anio",
+                "parametros": {
+                    "anio": anios[0]
+                },
+                "debug": {
+                    "origen": "ia_router",
+                    "intentos": intentos
+                }
+            }
 
     # ==================================================
     # 🛒 DERIVACIÓN A INTÉRPRETE DE COMPRAS
