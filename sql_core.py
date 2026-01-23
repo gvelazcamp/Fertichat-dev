@@ -174,6 +174,7 @@ def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
     """
     Ejecuta una consulta SQL y retorna los resultados en un DataFrame.
     """
+    conn = None
     try:
         conn = get_db_connection()
         if not conn:
@@ -192,14 +193,11 @@ def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
             cur.execute(query, params)
             if cur.description is None:
                 conn.commit()
-                conn.close()
                 print("✅ Consulta sin retorno ejecutada.")
                 return pd.DataFrame()
 
             cols = [d[0] for d in cur.description]
             rows = cur.fetchall()
-
-        conn.close()
 
         df = pd.DataFrame(rows, columns=cols)
 
@@ -210,10 +208,19 @@ def ejecutar_consulta(query: str, params: tuple = None) -> pd.DataFrame:
         return df
 
     except Exception as e:
+        import traceback
         print(f"❌ Error ejecutando consulta SQL: {e}")
         print(f"SQL fallido:\n{query}")
         print(f"Parámetros:\n{params}")
+        print(f"Traceback completo:\n{traceback.format_exc()}")
         return pd.DataFrame()
+    
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except:
+                pass
 
 
 # =====================================================================
