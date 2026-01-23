@@ -2638,13 +2638,15 @@ Escribí lo que necesites 👇
 
                 st.rerun()
 
-# =========================
+                # =========================
                 # TAB COMPARATIVAS (solo modo comparar)
                 # =========================
                 if tab_comparativas is not None:
                     with tab_comparativas:
                         st.markdown("### Menú Comparativas Fáciles")
-                        st.markdown("Selecciona opciones y compara proveedores/meses/años directamente (sin chat).")
+                        st.markdown(
+                            "Selecciona opciones y compara proveedores/meses/años directamente (sin chat)."
+                        )
 
                         # Comparativas fijo (sin selectbox)
                         st.session_state["pause_autorefresh"] = True
@@ -2656,7 +2658,10 @@ Escribí lo que necesites 👇
                             options=proveedores_disponibles,
                             default=[],
                             key="comparativas_proveedores_multi",
-                            help="Dejá vacío para comparar TODOS. Escribí para filtrar y seleccioná con Enter."
+                            help=(
+                                "Dejá vacío para comparar TODOS. "
+                                "Escribí para filtrar y seleccioná con Enter."
+                            )
                         )
                         
                         proveedores = proveedores_sel if proveedores_sel else None
