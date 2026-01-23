@@ -2666,35 +2666,74 @@ Escribí lo que necesites 👇
                                 "Escribí para filtrar y seleccioná con Enter."
                             )
                         )
-                        
+
                         proveedores = proveedores_sel if proveedores_sel else None
-                        
-                        meses_sel = st.multiselect("Meses", options=month_names, default=[], key="meses_sel")
-                        anios = st.multiselect("Años", options=[2023, 2024, 2025, 2026], default=[2024, 2025], key="anios_sel")
-                        
+
+                        meses_sel = st.multiselect(
+                            "Meses",
+                            options=month_names,
+                            default=[],
+                            key="meses_sel"
+                        )
+
+                        anios = st.multiselect(
+                            "Años",
+                            options=[2023, 2024, 2025, 2026],
+                            default=[2024, 2025],
+                            key="anios_sel"
+                        )
+
                         meses = []
                         for a in anios:
                             for m in meses_sel:
                                 meses.append(f"{a}-{month_num[m]}")
                         st.session_state["meses_multi"] = meses
-                        
-                        articulos = st.multiselect("Artículos", options=art_options, default=[x for x in st.session_state.get("art_multi", []) if x in art_options], key="art_multi")
 
-                        st.markdown('<div style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 16px;"></div>', unsafe_allow_html=True)
+                        articulos = st.multiselect(
+                            "Artículos",
+                            options=art_options,
+                            default=[
+                                x for x in st.session_state.get("art_multi", [])
+                                if x in art_options
+                            ],
+                            key="art_multi"
+                        )
+
+                        st.markdown(
+                            '<div style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 16px;"></div>',
+                            unsafe_allow_html=True
+                        )
 
                         col_cmp, col_clr, col_csv, col_xls = st.columns(4)
-                        
+
                         with col_cmp:
-                            btn_compare = st.button("🔍 Comparar", key="btn_comparar_horizontal", use_container_width=True)
-                        
+                            btn_compare = st.button(
+                                "🔍 Comparar",
+                                key="btn_comparar_horizontal",
+                                use_container_width=True
+                            )
+
                         with col_clr:
-                            btn_clear = st.button("🗑️ Limpiar resultados", key="btn_limpiar_horizontal", use_container_width=True)
-                        
+                            btn_clear = st.button(
+                                "🗑️ Limpiar resultados",
+                                key="btn_limpiar_horizontal",
+                                use_container_width=True
+                            )
+
                         with col_csv:
-                            btn_csv = st.button("📊 CSV", key="btn_csv_horizontal", use_container_width=True)
-                        
+                            btn_csv = st.button(
+                                "📊 CSV",
+                                key="btn_csv_horizontal",
+                                use_container_width=True
+                            )
+
                         with col_xls:
-                            btn_excel = st.button("📥 Excel", key="btn_excel_horizontal", use_container_width=True)
+                            btn_excel = st.button(
+                                "📥 Excel",
+                                key="btn_excel_horizontal",
+                                use_container_width=True
+                            )
+
 
                         st.markdown("""
                         <style>
