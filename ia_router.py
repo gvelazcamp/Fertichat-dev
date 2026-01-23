@@ -566,6 +566,21 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
 
+    texto_q = texto_lower_original.strip()
+
+    m = re.fullmatch(r"(compras|compra)\s+(\d{4})", texto_q)
+    if m:
+        anio = int(m.group(2))
+
+        from sql_facturas import get_compras_totales_por_anio
+        resultado = get_compras_totales_por_anio(anio)
+
+        return {
+            "tipo": "compras_anio",
+            "parametros": {"anio": anio},
+            "resultado": resultado
+        }
+
     # ==================================================
     # COMPRAS POR AÑO (IA ROUTER NATURAL)
     # ==================================================
