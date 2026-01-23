@@ -2648,7 +2648,7 @@ Escribí lo que necesites 👇
 
             tipo_consulta = st.selectbox("Tipo de consulta", options=["Compras", "Comparativas"], index=0, key="tipo_consulta")
 
-            elif tipo_consulta == "Comparativas":
+            If tipo_consulta == "Comparativas":
                 st.session_state["pause_autorefresh"] = True
                 st.markdown("#### Comparativas")
                 
