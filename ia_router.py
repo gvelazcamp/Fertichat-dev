@@ -519,6 +519,27 @@ def _interpretar_con_openai(pregunta: str) -> Optional[Dict[str, Any]]:
             "debug": "openai error",
         }
 
+# ==================================================
+# DETALLE FACTURA POR NÚMERO (MATCH ROBUSTO)
+# ==================================================
+
+def get_detalle_factura_por_numero(nro_factura: str):
+    """
+    Devuelve el detalle de una factura buscando por coincidencia parcial
+    en 'Nro. Comprobante' (tolera prefijos tipo A000, ceros, etc.)
+    """
+
+    sql = """
+        SELECT
+            *
+        FROM chatbot_raw
+        WHERE
+            REPLACE(TRIM("Nro. Comprobante"), ' ', '') ILIKE '%' || %s || '%'
+        ORDER BY "Fecha"
+    """
+
+    return ejecutar_consulta(sql, (nro_factura,))
+
 # =====================================================================
 # INTERPRETADOR PRINCIPAL (AGENTIC AI = DECIDE, NO EJECUTA)
 # =====================================================================
@@ -529,14 +550,14 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     - Detecta intención y extrae parámetros sin inventar.
     - NO ejecuta SQL, solo devuelve {tipo, parametros}.
     """
+    # ----------------------------------
+    # 1️⃣ VALIDACIÓN BÁSICA
+    # ----------------------------------
     if not pregunta or not str(pregunta).strip():
         return {
             "tipo": "no_entendido",
             "parametros": {},
-            "debug": {
-                "origen": "ia_router",
-                "intentos": ["router: pregunta_vacia"]
-            }
+            "debug": {"origen": "ia_router", "intentos": ["router: pregunta_vacia"]}
         }
 
     intentos = []  # 🔄 Lista de intentos para trazabilidad
@@ -562,6 +583,9 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             }
         }
 
+    # ----------------------------------
+    # 2️⃣ NORMALIZACIÓN (DESPUÉS)
+    # ----------------------------------
     texto_norm = normalizar_texto(texto_original)
 
     # ==================================================
@@ -901,21 +925,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                         },
                         "debug": {"origen": "ia_router", "intentos": intentos}
                     }
-
-        # COMPRAS SOLO MES (SIN PROVEEDOR)
-        if (meses_yyyymm or (meses_nombre and anios)) and not provs:
-            if meses_yyyymm:
-                mes = meses_yyyymm[0]
-            else:
-                mes = _to_yyyymm(anios[0], meses_nombre[0])
-
-            return {
-                "tipo": "compras_mes",
-                "parametros": {
-                    "mes": mes
-                },
-                "debug": {"origen": "ia_router", "intentos": intentos}
-            }
 
         # COMPRAS PROVEEDOR + AÑO (SIN MES)
         if provs and anios:
