@@ -2413,16 +2413,16 @@ def Compras_IA(modo="compras"):
 
     art_options = get_unique_articulos()  # ✅ CAMBIO: TODOS LOS ARTÍCULOS (sin [:100])
 
-# =========================
-# TABS PRINCIPALES (según modo)
-# =========================
-if modo == "comparar":
-    tab_comparativas = st.tabs(["Comparativas"])[0]
-    tab_chat = None
-    tab_debug = None
-else:
-    tab_chat, tab_debug = st.tabs(["Compras", "Debug"])
-    tab_comparativas = None
+    # =========================
+    # TABS PRINCIPALES (según modo)
+    # =========================
+    if modo == "comparar":
+        tab_comparativas = st.tabs(["Comparativas"])[0]
+        tab_chat = None
+        tab_debug = None
+    else:
+        tab_chat, tab_debug = st.tabs(["Compras", "Debug"])
+        tab_comparativas = None
 
 # =========================
 # TAB COMPRAS (solo modo compras)
