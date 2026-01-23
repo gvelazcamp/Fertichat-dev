@@ -899,7 +899,7 @@ def render_dashboard_compras_vendible(df: pd.DataFrame, titulo: str = "Resultado
     # ==========================================
     st.markdown(f"""
     <div class="fc-header-modern">
-        <h2 class="fc-title-modern">📊 {titulo}</h2>
+        <h2 class="fc-title-modern">{titulo}</h2>
         <div class="fc-badge-modern">
             ✅ {filas_total} registros encontrados
         </div>
@@ -2397,7 +2397,7 @@ def Compras_IA(modo="compras"):
     if "pause_autorefresh" not in st.session_state:
         st.session_state["pause_autorefresh"] = False
 
-    st.markdown("### 🤖 Asistente de Compras y Facturas")
+    st.markdown("### Asistente de Compras y Facturas")
 
     # Persistencia de selecciones en Comparativas
     if "prov_multi" not in st.session_state:
@@ -2413,18 +2413,32 @@ def Compras_IA(modo="compras"):
 
     art_options = get_unique_articulos()  # ✅ CAMBIO: TODOS LOS ARTÍCULOS (sin [:100])
 
-    # TABS PRINCIPALES: Chat IA + Comparativas
-    # TABS PRINCIPALES: Chat IA + Comparativas + Debug
-    tab_chat, tab_comparativas, tab_debug = st.tabs(["💬Compras", "📊 Comparativas", "🔬 Debug"])
+    # =========================
+    # TABS PRINCIPALES
+    # =========================
+    if modo == "comparar":
+        # En modo comparar: SOLO Comparativas
+        tab_comparativas = st.tabs(["Comparativas"])[0]
 
-    with tab_chat:
-        # BOTÓN LIMPIAR (solo en chat)
-        if st.button("🗑️ Limpiar chat"):
-            st.session_state["historial_compras"] = []
-            _dbg_set_interpretacion({})
-            _dbg_set_sql(None, "", [], None)
-            st.session_state["pause_autorefresh"] = False  # ✅ REACTIVAR AUTOREFRESH
-            st.rerun()
+        with tab_comparativas:
+            # TODO el contenido que ya tenías dentro de `with tab_comparativas`
+            # va acá SIN MODIFICAR
+            pass
+
+    else:
+        # Modo normal: Compras + Comparativas + Debug
+        tab_chat, tab_comparativas, tab_debug = st.tabs(
+            ["Compras", "Comparativas", "Debug"]
+        )
+
+        with tab_chat:
+            # BOTÓN LIMPIAR (solo en chat)
+            if st.button("Limpiar chat"):
+                st.session_state["historial_compras"] = []
+                _dbg_set_interpretacion({})
+                _dbg_set_sql(None, "", [], None)
+                st.session_state["pause_autorefresh"] = False
+                st.rerun()
 
         # st.markdown("---")  # ← COMENTADA - ocupaba espacio al pedo
 
