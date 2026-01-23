@@ -2505,6 +2505,9 @@ def Compras_IA():
     pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
 
     if pregunta:
+        # 🔬 LOG: Input del usuario
+        debug.log("📝 Input Usuario", pregunta)
+        
         # ✅ PAUSAR AUTOREFRESH AL HACER UNA PREGUNTA
         st.session_state["pause_autorefresh"] = True
 
@@ -2520,18 +2523,26 @@ def Compras_IA():
 
         resultado = interpretar_pregunta(pregunta)
         _dbg_set_interpretacion(resultado)
+        
+        # 🔬 LOG: Resultado de interpretación
+        debug.log("🧠 Interpretación", resultado)
 
         tipo = resultado.get("tipo", "")
         parametros = resultado.get("parametros", {})
+        
+        # 🔬 LOG: Tipo y parámetros detectados
+        debug.log("🔀 Router", {"tipo": tipo, "parametros": parametros})
 
         respuesta_content = ""
         respuesta_df = None
 
         if tipo == "conversacion":
             respuesta_content = responder_con_openai(pregunta, tipo="conversacion")
+            debug.log("💬 Respuesta conversacional", respuesta_content[:200])
 
         elif tipo == "conocimiento":
             respuesta_content = responder_con_openai(pregunta, tipo="conocimiento")
+            debug.log("📚 Respuesta conocimiento", respuesta_content[:200])
 
         elif tipo == "saludo":
             nombre = st.session_state.get("nombre", "👋")
@@ -2548,6 +2559,7 @@ Puedo ayudarte con:
 
 Escribí lo que necesites 👇
 """)
+            debug.log("👋 Saludo", f"Saludado a {nombre}")
             return
 
         elif tipo == "no_entendido":
@@ -2555,9 +2567,12 @@ Escribí lo que necesites 👇
             sugerencia = resultado.get("sugerencia", "")
             if sugerencia:
                 respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
+            debug.log("❓ No entendido", {"sugerencia": sugerencia})
 
         else:
             try:
+                debug.log("⚙️ Ejecutando consulta SQL", {"tipo": tipo})
+                
                 resultado_sql = ejecutar_consulta_por_tipo(tipo, parametros)
 
                 # Convertir "Mes" a nombres antes de mostrar
@@ -2565,8 +2580,12 @@ Escribí lo que necesites 👇
                     resultado_sql['Mes'] = resultado_sql['Mes'].apply(convertir_mes_a_nombre)
 
                 if isinstance(resultado_sql, pd.DataFrame):
+                    # 🔬 LOG: DataFrame obtenido
+                    debug.log("📊 DataFrame obtenido", resultado_sql)
+                    
                     if len(resultado_sql) == 0:
                         respuesta_content = "⚠️ No se encontraron resultados"
+                        debug.log("⚠️ Sin resultados", "DataFrame vacío")
                     else:
                         if tipo == "detalle_factura":
                             nro = parametros.get("nro_factura", "")
