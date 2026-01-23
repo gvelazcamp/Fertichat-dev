@@ -575,7 +575,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         return {
             "tipo": "compras_anio",
             "parametros": {
-                "anios": anios
+                "anio": anios[0]
             },
             "debug": {
                 "origen": "ia_router",
