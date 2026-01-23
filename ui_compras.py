@@ -3115,3 +3115,4 @@ def Compras_IA():
 # Ejecutar la función principal si se ejecuta directamente
 if __name__ == "__main__":
     Compras_IA()
+# Cache buster: 1769177109
