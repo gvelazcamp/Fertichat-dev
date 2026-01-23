@@ -567,6 +567,19 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     texto_lower_original = texto_original.lower()
 
     # ==================================================
+    # ✅ FAST-PATH: DETALLE FACTURA POR NÚMERO
+    # Si hay número de factura/comprobante, NO debe caer en otras rutas.
+    # Ej: "detalle factura 60907" | "detalle factura A00060907"
+    # ==================================================
+    nro_factura = _extraer_nro_factura(texto_original)
+    if nro_factura:
+        return {
+            "tipo": "detalle_factura_numero",
+            "parametros": {"nro_factura": nro_factura},
+            "debug": {"origen": "ia_router", "regla": "detalle_factura_numero"}
+        }
+
+    # ==================================================
     # 🔒 COMPRAS SOLO POR AÑO (ESTRICTO)
     # Solo cuando la consulta sea exactamente: "compras 2025" o "compra 2025"
     # (No debe activarse si hay proveedor/artículo/mes junto al año)
