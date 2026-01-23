@@ -912,7 +912,7 @@ with st.sidebar:
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
     # =========================
-    # Menu agrupado (PRINCIPAL con submenú inline)
+    # Menu agrupado (PRINCIPAL con Compras IA como grupo)
     # =========================
     for group, options in groups.items():
         st.markdown(
@@ -922,34 +922,35 @@ with st.sidebar:
 
         # ===== PRINCIPAL =====
         if group == "PRINCIPAL":
-            # Radio principal (incluye Compras IA)
+            # Opciones SIN "Compras IA"
+            opciones_principal = [o for o in options if o != "Compras IA"]
+
+            # Grupo Compras IA (visual)
+            st.markdown(
+                "<div style='font-weight:600; padding:4px 12px; color:#475569;'>▶ Compras IA</div>",
+                unsafe_allow_html=True
+            )
+
+            # Submenú real
+            sub = st.radio(
+                "",
+                ["Compras", "Comparar"],
+                key="submenu_compras_ia",
+                label_visibility="collapsed",
+            )
+
+            # Página real (NO cambia lógica todavía)
+            st.session_state.pagina = "Compras IA"
+
+            # Resto de opciones normales
             st.radio(
                 "Opciones",
-                options,
+                opciones_principal,
                 key=f"radio_{group.lower()}",
                 label_visibility="collapsed",
                 on_change=update_pagina,
                 args=(group,),
             )
-
-            # Submenú SOLO si está seleccionado "Compras IA"
-            if st.session_state.get("radio_principal") == "Compras IA":
-                st.markdown(
-                    "<div style='margin-left:18px; margin-top:2px;'>",
-                    unsafe_allow_html=True
-                )
-
-                sub = st.radio(
-                    "",
-                    ["Compras", "Comparar"],
-                    key="submenu_compras_ia",
-                    label_visibility="collapsed",
-                )
-
-                # SOLO VISUAL: no cambia página real
-                st.session_state.pagina = "Compras IA"
-
-                st.markdown("</div>", unsafe_allow_html=True)
 
         # ===== RESTO DE LOS GRUPOS =====
         else:
