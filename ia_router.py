@@ -742,6 +742,23 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
         if articulo:
             arts = [articulo]
 
+    # ==================================================
+    # 🔒 CASO BASE: COMPRAS SOLO POR AÑO (SIN PROVEEDOR / ARTÍCULO)
+    # ==================================================
+    if (
+        contiene_compras(texto_lower)
+        and anios
+        and not provs
+        and not arts
+        and not meses_nombre
+        and not meses_yyyymm
+    ):
+        return {
+            "tipo": "compras_anio",
+            "parametros": {"anio": anios[0]},
+            "debug": "router → compras año (solo)"
+        }
+
     # RUTA ARTÍCULOS (CANÓNICA)
     if (
         contiene_compras(texto_lower_original)
