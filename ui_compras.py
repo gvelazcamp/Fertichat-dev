@@ -2876,13 +2876,6 @@ def Compras_IA():
             mes_compras = st.selectbox("Mes", options=month_names + ["Todos"], index=len(month_names), key="mes_compras")
             proveedor_compras = st.selectbox("Proveedor", options=["Todos"] + prov_options[:50], index=0, key="proveedor_compras")
             
-            # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
-            if "compras_resultado" in st.session_state:
-                df_guardado = st.session_state["compras_resultado"]
-                titulo_guardado = st.session_state.get("compras_titulo", "Compras")
-                
-                render_dashboard_compras_vendible(df_guardado, titulo=titulo_guardado)
-                
 # ✅ BOTÓN PARA LIMPIAR PRIMERO (antes de mostrar resultados)
             if st.button("🗑️ Limpiar resultados compras", key="btn_limpiar_compras"):
                 # ✅ MANTENER EN COMPRAS después del rerun
