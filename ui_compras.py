@@ -2797,7 +2797,7 @@ Escribí lo que necesites 👇
             else:
                 st.info("🔬 Debug panel no disponible. Instala debug_panel.py")
                 
-# =========================
+    # =========================
     # TAB BUSCADOR FÁCIL (solo modo compras)
     # =========================
     if tab_buscador is not None:
@@ -2825,7 +2825,12 @@ Escribí lo que necesites 👇
                 key="proveedor_compras_buscador"
             )
 
-            
+            articulo_compras = st.selectbox(
+                "Artículo",
+                options=["Todos"] + art_options,
+                index=0,
+                key="articulo_compras_buscador"
+            )            
 
             # ✅ MOSTRAR RESULTADO GUARDADO PARA COMPRAS
             if "compras_resultado" in st.session_state:
