@@ -1036,14 +1036,17 @@ with main_container:
     elif "Chat (Chainlit)" in st.session_state.pagina:
         mostrar_chat_chainlit()
 
-    elif st.session_state.pagina == "Compras IA":
+    # =========================
+    # COMPRAS - OPERATIVO
+    # =========================
+    elif st.session_state.pagina == "Compras":
         mostrar_resumen_compras_rotativo()
         Compras_IA()
 
         # Panel de debug general (última consulta)
         if st.session_state.get("DEBUG_SQL", False):
-            with st.expander("🛠 Debug (última consulta)", expanded=True):
-                st.subheader("Interpretación")
+            with st.expander("Debug (ultima consulta)", expanded=True):
+                st.subheader("Interpretacion")
                 st.json(st.session_state.get("DBG_INT_LAST", {}))
                 st.subheader("SQL ejecutado")
                 st.write("Origen:", st.session_state.get("DBG_SQL_LAST_TAG"))
@@ -1051,22 +1054,47 @@ with main_container:
                 st.write("Filas:", st.session_state.get("DBG_SQL_ROWS"))
                 st.write("Columnas:", st.session_state.get("DBG_SQL_COLS", []))
 
-    elif st.session_state.pagina == "🔍 Debug SQL factura":
+    # =========================
+    # COMPRAS - COMPARATIVAS
+    # =========================
+    elif st.session_state.pagina == "Comparar":
+        st.subheader("Comparativas de compras")
+        st.info("Modulo de comparativas en construccion.")
+
+    # =========================
+    # DEBUG FACTURAS
+    # =========================
+    elif st.session_state.pagina == "Debug SQL factura":
         mostrar_debug_sql_factura()
 
+    # =========================
+    # STOCK
+    # =========================
     elif st.session_state.pagina == "Stock IA":
-        mostrar_resumen_stock_rotativo(dias_vencer=30)  # Cambiado a 30 días
+        mostrar_resumen_stock_rotativo(dias_vencer=30)
         mostrar_stock_ia()
 
+    # =========================
+    # BUSCADOR
+    # =========================
     elif st.session_state.pagina == "Buscador IA":
         mostrar_buscador_ia()
 
+    # =========================
+    # INGRESO DE COMPROBANTES
+    # =========================
     elif st.session_state.pagina == "Ingreso de comprobantes":
         mostrar_ingreso_comprobantes()
 
+    # =========================
+    # DASHBOARD
+    # =========================
     elif st.session_state.pagina == "Dashboard":
         mostrar_dashboard()
 
+    # =========================
+    # GESTION
+    # =========================
     elif st.session_state.pagina == "Pedidos internos":
         mostrar_pedidos_internos()
 
@@ -1079,7 +1107,10 @@ with main_container:
     elif st.session_state.pagina == "Órdenes de compra":
         mostrar_ordenes_compra()
 
-    elif st.session_state.pagina == "📒 Ficha de stock":
+    # =========================
+    # CATALOGO
+    # =========================
+    elif st.session_state.pagina == "Ficha de stock":
         mostrar_ficha_stock()
 
     elif st.session_state.pagina == "Artículos":
@@ -1094,16 +1125,14 @@ with main_container:
     elif st.session_state.pagina == "Comprobantes":
         mostrar_menu_comprobantes()
 
-    # ← CONDICIÓN PARA SUGERENCIAS - CAMBIADO A "Sugerencia de pedidos"
+    # =========================
+    # SUGERENCIAS
+    # =========================
     elif st.session_state.pagina == "Sugerencia de pedidos":
         try:
-            import sugerencias  # ← CAMBIADO
-            sugerencias.main()  # ← CAMBIADO
+            import sugerencias
+            sugerencias.main()
         except ImportError:
-            st.error("Página 'Sugerencias' no encontrada. Verifica que sugerencias.py exista en la raíz.")
+            st.error("Pagina 'Sugerencias' no encontrada. Verifica que sugerencias.py exista.")
         except Exception as e:
             st.error(f"Error al cargar sugerencias: {str(e)}")
-
-# Marca visual para saber que el orquestador está cargado
-# st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
-# st.write("ORQUESTADOR_CARGADO = True")
