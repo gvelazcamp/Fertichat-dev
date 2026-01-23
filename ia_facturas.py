@@ -170,13 +170,13 @@ def interpretar_facturas(pregunta: str) -> Dict:
     # DETALLE DE FACTURA POR NÚMERO
     # =========================================================
     
-    nro_factura = _extraer_nro_factura(pregunta)
+    nro_factura = _extraer_nro_factura_raw(pregunta)
     
     if nro_factura and any(k in texto for k in ["detalle", "factura", "comprobante"]):
         return {
             "tipo": "detalle_factura_numero",  # ✅ CAMBIO AQUÍ: era "detalle_factura"
             "parametros": {"nro_factura": nro_factura},
-            "debug": f"detalle factura: {nro_factura}",
+            "debug": f"detalle factura (raw): {nro_factura}",
         }
     
     # =========================================================
@@ -333,3 +333,19 @@ def es_consulta_facturas(texto: str) -> bool:
     ]
     texto_lower = texto.lower()
     return any(k in texto_lower for k in keywords)
+
+
+
+def _extraer_nro_factura_raw(texto: str) -> Optional[str]:
+    """
+    Extrae el número de factura SIN normalizar.
+    Devuelve solo el token que escribió el usuario.
+    """
+    if not texto:
+        return None
+
+    m = re.search(r"\b([A-Za-z]?\d{3,})\b", texto)
+    if m:
+        return m.group(1).strip()
+
+    return None
