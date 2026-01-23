@@ -905,12 +905,6 @@ with st.sidebar:
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
-    # Debug SQL
-    st.session_state["DEBUG_SQL"] = st.checkbox(
-        "Debug SQL", value=False, key="debug_sql"
-    )
-    
-    st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
     # =========================
     # Menu agrupado (PRINCIPAL con submenú bien alineado)
