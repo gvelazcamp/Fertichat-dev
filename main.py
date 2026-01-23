@@ -911,19 +911,69 @@ with st.sidebar:
     
     st.markdown('<div class="fc-divider"></div>', unsafe_allow_html=True)
     
-    # Menu agrupado
+    # =========================
+    # Menu agrupado (PRINCIPAL con submenú Compras IA)
+    # =========================
     for group, options in groups.items():
-        st.markdown(f'<div class="fc-section-header">{group}</div>', unsafe_allow_html=True)
-        st.radio("Opciones", options, key=f"radio_{group.lower()}", label_visibility="collapsed", on_change=update_pagina, args=(group,))
-    
+        st.markdown(
+            f'<div class="fc-section-header">{group}</div>',
+            unsafe_allow_html=True
+        )
+
+        # ===== PRINCIPAL =====
+        if group == "PRINCIPAL":
+            # Radio principal SIN "Compras IA"
+            opciones_principal = [o for o in options if o != "Compras IA"]
+
+            st.radio(
+                "Opciones",
+                opciones_principal,
+                key=f"radio_{group.lower()}",
+                label_visibility="collapsed",
+                on_change=update_pagina,
+                args=(group,),
+            )
+
+            # Submenú visual para Compras IA (NO cambia lógica)
+            with st.expander(
+                "🛒 Compras IA",
+                expanded=(st.session_state.pagina == "Compras IA"),
+            ):
+                sub = st.radio(
+                    "",
+                    ["🛒 Compras", "🔄 Comparar"],
+                    key="submenu_compras_ia",
+                    label_visibility="collapsed",
+                )
+
+                # ⚠️ SOLO VISUAL
+                # Ambos sub-items siguen yendo a la MISMA página: "Compras IA"
+                if sub in ("🛒 Compras", "🔄 Comparar"):
+                    st.session_state.pagina = "Compras IA"
+
+        # ===== RESTO DE LOS GRUPOS (SIN CAMBIOS) =====
+        else:
+            st.radio(
+                "Opciones",
+                options,
+                key=f"radio_{group.lower()}",
+                label_visibility="collapsed",
+                on_change=update_pagina,
+                args=(group,),
+            )
+
     st.components.v1.html(r"""
     <script>
     (function() {
         const interval = setInterval(() => {
-            const labels = parent.document.querySelectorAll('section[data-testid="stSidebar"] .stRadio label p');
+            const labels = parent.document.querySelectorAll(
+                'section[data-testid="stSidebar"] .stRadio label p'
+            );
             if (labels.length > 0) {
                 labels.forEach(label => {
-                    label.textContent = label.textContent.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+                    label.textContent = label.textContent
+                        .replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+                        .trim();
                 });
                 clearInterval(interval);
             }
