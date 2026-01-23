@@ -588,23 +588,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     # ----------------------------------
     texto_norm = normalizar_texto(texto_original)
 
-    # ==================================================
-    # 🔒 BLOQUE DURO – COMPRAS SOLO POR AÑO
-    # PRIORIDAD ABSOLUTA – DESPUÉS DE FACTURA
-    # ==================================================
-    m = re.search(r"\b(compra|compras)\s+(\d{4})\b", texto_lower_original)
-    if m:
-        anio = int(m.group(2))
-        intentos.append("router: hard_block_compras_anio_match")
-
-        return {
-            "tipo": "compras_anio",
-            "parametros": {
-                "anio": anio
-            },
-            "debug": {"origen": "ia_router", "intentos": intentos}
-        }
-
     # ============================
     # SALUDOS
     # ============================
