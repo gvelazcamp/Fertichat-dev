@@ -103,9 +103,15 @@ def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
     """
     Devuelve el detalle de una factura (todas las líneas) dado un número,
     probando variantes del número (A + 8 dígitos, etc.).
+    
+    ESTRATEGIA:
+    1. Primero busca coincidencia EXACTA (más rápido)
+    2. Si falla, busca con ILIKE (más flexible, encuentra "A 60907", " 60907", etc.)
     """
     total_expr = _sql_total_num_expr_general()
-    sql = f"""
+    
+    # SQL con coincidencia EXACTA (primera prueba)
+    sql_exacta = f"""
         SELECT
             TRIM("Nro. Comprobante") AS nro_factura,
             TRIM("Cliente / Proveedor") AS Proveedor,
@@ -123,6 +129,26 @@ def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
           )
         ORDER BY TRIM("Articulo")
     """
+    
+    # SQL con ILIKE (búsqueda flexible - fallback)
+    sql_ilike = f"""
+        SELECT
+            TRIM("Nro. Comprobante") AS nro_factura,
+            TRIM("Cliente / Proveedor") AS Proveedor,
+            TRIM("Articulo") AS Articulo,
+            "Fecha",
+            "Cantidad",
+            "Moneda",
+            {total_expr} AS Total
+        FROM chatbot_raw
+        WHERE "Nro. Comprobante" ILIKE %s
+          AND TRIM("Nro. Comprobante") <> 'A0000000'
+          AND (
+            "Tipo Comprobante" ILIKE '%Compra%'
+            OR "Tipo Comprobante" ILIKE '%Factura%'
+          )
+        ORDER BY TRIM("Articulo")
+    """
 
     variantes = _factura_variantes(nro_factura)
     
@@ -132,26 +158,48 @@ def get_detalle_factura_por_numero(nro_factura: str) -> pd.DataFrame:
     
     if not variantes:
         print("❌ No se generaron variantes")
-        return ejecutar_consulta(sql, ("",))
+        return pd.DataFrame()
 
-    # Probar primera variante
-    print(f"🔍 Probando variante 1: '{variantes[0]}'")
-    df = ejecutar_consulta(sql, (variantes[0],))
-    if df is not None and not df.empty:
-        print(f"✅ Encontrada con '{variantes[0]}' ({len(df)} líneas)")
-        return df
+    # ===================================================
+    # FASE 1: BÚSQUEDA EXACTA
+    # ===================================================
+    for i, variante in enumerate(variantes, 1):
+        print(f"🔍 [EXACTA] Probando variante {i}: '{variante}'")
+        df = ejecutar_consulta(sql_exacta, (variante,))
+        if df is not None and not df.empty:
+            print(f"✅ [EXACTA] Encontrada con '{variante}' ({len(df)} líneas)")
+            return df
 
-    # Probar variantes alternativas
-    for i, alt in enumerate(variantes[1:], 2):
-        print(f"🔍 Probando variante {i}: '{alt}'")
-        df2 = ejecutar_consulta(sql, (alt,))
-        if df2 is not None and not df2.empty:
-            print(f"✅ Encontrada con '{alt}' ({len(df2)} líneas)")
-            df2.attrs["nro_factura_fallback"] = alt
-            return df2
+    # ===================================================
+    # FASE 2: BÚSQUEDA FLEXIBLE CON ILIKE
+    # ===================================================
+    print(f"⚠️ No encontrada con búsqueda exacta. Probando con ILIKE...")
+    
+    for i, variante in enumerate(variantes, 1):
+        patron = f"%{variante}%"
+        print(f"🔍 [ILIKE] Probando variante {i}: '{patron}'")
+        df = ejecutar_consulta(sql_ilike, (patron,))
+        if df is not None and not df.empty:
+            print(f"✅ [ILIKE] Encontrada con '{patron}' ({len(df)} líneas)")
+            df.attrs["nro_factura_fallback"] = variante
+            return df
 
-    print(f"❌ No encontrada con ninguna variante de {variantes}")
-    return df if df is not None else pd.DataFrame()
+    # ===================================================
+    # FASE 3: BÚSQUEDA ULTRA-FLEXIBLE (SOLO DÍGITOS)
+    # ===================================================
+    # Extraer solo dígitos del input
+    solo_digitos = ''.join(c for c in nro_factura if c.isdigit())
+    if solo_digitos and len(solo_digitos) >= 4:
+        patron_digitos = f"%{solo_digitos}%"
+        print(f"🔍 [ULTRA-FLEX] Probando solo dígitos: '{patron_digitos}'")
+        df = ejecutar_consulta(sql_ilike, (patron_digitos,))
+        if df is not None and not df.empty:
+            print(f"✅ [ULTRA-FLEX] Encontrada con '{patron_digitos}' ({len(df)} líneas)")
+            df.attrs["nro_factura_fallback"] = solo_digitos
+            return df
+
+    print(f"❌ No encontrada con ninguna estrategia")
+    return pd.DataFrame()
 
 
 def get_total_factura_por_numero(nro_factura: str) -> dict:
