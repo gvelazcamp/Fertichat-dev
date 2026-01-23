@@ -566,6 +566,25 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
 
+    # ==================================================
+    # 🔒 PRIORIDAD ABSOLUTA – COMPRAS SOLO POR AÑO
+    # ==================================================
+    texto_q = texto_lower_original.strip()
+
+    m = re.search(r"\b(compras?|compra)\s+(202[3-6])\b", texto_q)
+    if m:
+        anio = int(m.group(2))
+
+        from sql_compras import get_total_compras_anio
+
+        return {
+            "tipo": "compras_anio",
+            "parametros": {
+                "anio": anio
+            },
+            "debug": f"router → compras {anio}"
+        }
+
     texto_q = texto_lower_original.strip()
 
     m = re.fullmatch(r"(compras|compra)\s+(\d{4})", texto_q)
