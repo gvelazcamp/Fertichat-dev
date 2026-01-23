@@ -550,9 +550,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     - Detecta intención y extrae parámetros sin inventar.
     - NO ejecuta SQL, solo devuelve {tipo, parametros}.
     """
-    # ----------------------------------
-    # 1️⃣ VALIDACIÓN BÁSICA
-    # ----------------------------------
     if not pregunta or not str(pregunta).strip():
         return {
             "tipo": "no_entendido",
@@ -560,14 +557,36 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             "debug": {"origen": "ia_router", "intentos": ["router: pregunta_vacia"]}
         }
 
-    intentos = []  # 🔄 Lista de intentos para trazabilidad
+    intentos = []
 
     texto_original = str(pregunta).strip()
     texto_lower_original = texto_original.lower()
 
     # ==================================================
+    # COMPRAS POR AÑO (IA ROUTER NATURAL)
+    # ==================================================
+    anios = _extraer_anios(texto_lower_original)
+
+    if contiene_compras(texto_lower_original) and len(anios) == 1:
+        return {
+            "tipo": "compras_anio",
+            "parametros": {
+                "anio": anios[0]
+            },
+            "debug": {
+                "origen": "ia_router",
+                "regla": "compras + año"
+            }
+        }
+
+    # ----------------------------------
+    # 2️⃣ NORMALIZACIÓN (DESPUÉS)
+    # ----------------------------------
+    texto_norm = normalizar_texto(texto_original)
+
+    # ==================================================
     # 🔒 HARD BLOCK – COMPRAS SOLO POR AÑO
-    # PRIORIDAD ABSOLUTA (FAST-PATH)
+    # PRIORIDAD ABSOLUTA – DESPUÉS DE FACTURA
     # ==================================================
     anios = _extraer_anios(texto_lower_original)
 
@@ -582,11 +601,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 "hard_block": "compras_anio"
             }
         }
-
-    # ----------------------------------
-    # 2️⃣ NORMALIZACIÓN (DESPUÉS)
-    # ----------------------------------
-    texto_norm = normalizar_texto(texto_original)
 
     # ============================
     # SALUDOS
