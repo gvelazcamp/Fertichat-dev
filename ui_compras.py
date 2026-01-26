@@ -2682,19 +2682,11 @@ Escribí lo que necesites 👇
             st.session_state["pause_autorefresh"] = True
             
             # ====================================
-            # TÍTULO SIMPLE
-            # ====================================
-            st.markdown("### 📊 Comparador de Compras")
-            st.caption("Compará cuánto gastaste en diferentes años. Ej: ¿Cuánto gasté en AIWA en 2024 vs 2025?")
-            
-            st.markdown("---")
-            
-            # ====================================
-            # FORMULARIO SIMPLE
+            # FORMULARIO DIRECTO - SIN TÍTULOS
             # ====================================
             
             # Proveedor
-            st.markdown("**1. Proveedor** (opcional)")
+            st.markdown("**Proveedor** (opcional)")
             proveedores_disponibles = prov_options
             proveedores_sel = st.multiselect(
                 "Proveedor",
@@ -2707,7 +2699,7 @@ Escribí lo que necesites 👇
             proveedores = proveedores_sel if proveedores_sel else None
             
             # Años
-            st.markdown("**2. Años** ⭐ (elegí al menos 2)")
+            st.markdown("**Años** ⭐ (elegí al menos 2)")
             anios = st.multiselect(
                 "Años",
                 options=[2023, 2024, 2025],
@@ -2717,7 +2709,7 @@ Escribí lo que necesites 👇
             )
             
             # Meses
-            st.markdown("**3. Meses** (opcional - dejá vacío para año completo)")
+            st.markdown("**Meses** (opcional - dejá vacío para año completo)")
             meses_sel = st.multiselect(
                 "Meses",
                 options=month_names,
@@ -2733,15 +2725,16 @@ Escribí lo que necesites 👇
                     meses.append(f"{a}-{month_num[m]}")
             st.session_state["meses_multi"] = meses
             
-            # Artículos (colapsado)
-            with st.expander("🔍 Avanzado: Filtrar artículos", expanded=False):
-                articulos = st.multiselect(
-                    "Artículos",
-                    options=art_options,
-                    default=[x for x in st.session_state.get("art_multi", []) if x in art_options],
-                    key="art_multi",
-                    label_visibility="collapsed"
-                )
+            # Artículos (campo normal, NO oculto)
+            st.markdown("**Artículos** (opcional)")
+            articulos = st.multiselect(
+                "Artículos",
+                options=art_options,
+                default=[x for x in st.session_state.get("art_multi", []) if x in art_options],
+                key="art_multi",
+                placeholder="Todos los artículos",
+                label_visibility="collapsed"
+            )
             
             # ====================================
             # RESUMEN COMPACTO
