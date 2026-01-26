@@ -2644,7 +2644,6 @@ Escribí lo que necesites 👇
         with tab_comparativas:
             # Comparativas fijo (sin selectbox)
             st.session_state["pause_autorefresh"] = True
-            st.markdown("#### Comparativas")
 
             proveedores_disponibles = prov_options
             proveedores_sel = st.multiselect(
