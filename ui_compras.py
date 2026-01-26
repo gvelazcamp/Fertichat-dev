@@ -2642,11 +2642,6 @@ Escribí lo que necesites 👇
                 st.rerun()
     if tab_comparativas is not None:
         with tab_comparativas:
-            st.markdown("### Menú Comparativas Fáciles")
-            st.markdown(
-                "Selecciona opciones y compara proveedores/meses/años directamente (sin chat)."
-            )
-
             # Comparativas fijo (sin selectbox)
             st.session_state["pause_autorefresh"] = True
             st.markdown("#### Comparativas")
