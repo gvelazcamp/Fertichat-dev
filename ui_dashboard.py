@@ -205,10 +205,23 @@ def mostrar_dashboard():
             if alertas:
                 st.markdown("**⚠️ Alertas (stock=1 o vence <30 días):**")
                 for alerta in alertas[:3]:
+                    # ✅ FIX: Buscar columnas ignorando mayúsculas/minúsculas
+                    def get_valor(diccionario, *keys):
+                        """Busca una clave ignorando mayúsculas"""
+                        for key in keys:
+                            # Buscar la clave exacta
+                            if key in diccionario:
+                                return diccionario[key]
+                            # Buscar ignorando mayúsculas
+                            for k, v in diccionario.items():
+                                if k.lower() == key.lower():
+                                    return v
+                        return None
+                    
                     # Procesar días restantes
-                    dias = alerta.get('dias_restantes', alerta.get('Dias_Para_Vencer', None))
+                    dias = get_valor(alerta, 'dias_restantes', 'Dias_Para_Vencer', 'dias_para_vencer')
                     try:
-                        dias = int(dias) if dias is not None else 999999
+                        dias = int(dias) if dias not in (None, '', 'nan') and pd.notna(dias) else 999999
                     except:
                         dias = 999999
 
@@ -221,10 +234,11 @@ def mostrar_dashboard():
                         color = "🟡"
 
                     # Mostrar artículo, lote, stock
-                    articulo = str(alerta.get('articulo', alerta.get('ARTICULO', '')))[:30]
-                    lote = str(alerta.get('lote', alerta.get('LOTE', 'Sin lote')))
-                    stock = str(alerta.get('stock', alerta.get('STOCK', '0')))
-                    venc = str(alerta.get('vencimiento', alerta.get('VENCIMIENTO', 'Sin fecha')))
+                    articulo = str(get_valor(alerta, 'articulo', 'ARTICULO', 'Articulo') or 'Sin nombre')[:30]
+                    lote = str(get_valor(alerta, 'lote', 'LOTE', 'Lote') or 'Sin lote')
+                    stock_val = get_valor(alerta, 'stock', 'STOCK', 'Stock')
+                    stock = str(stock_val if stock_val not in (None, '', 'nan') and pd.notna(stock_val) else '0')
+                    venc = str(get_valor(alerta, 'vencimiento', 'VENCIMIENTO', 'Vencimiento') or 'Sin fecha')
 
                     if dias < 999999:  # Es vencimiento
                         st.markdown(f"{color} **{articulo}** (Lote: {lote}) - Vence: {venc} ({dias} días) - Stock: {stock}")
@@ -242,12 +256,36 @@ def mostrar_dashboard():
             st.markdown("**🛒 Últimos artículos comprados:**")
             df_ultimas = get_dashboard_ultimas_compras(anio, 10)
             if df_ultimas is not None and not df_ultimas.empty:
-                st.dataframe(df_ultimas[['articulo', 'proveedor', 'fecha', 'total']].head(10), use_container_width=True)
-                for _, row in df_ultimas.iterrows():
-                    total_fmt = f"${row['total']:,.0f}".replace(',', '.') if pd.notna(row['total']) else "$0"
-                    articulo = str(row['articulo'])[:25] + "..." if len(str(row['articulo'])) > 25 else str(row['articulo'])
-                    proveedor = str(row['proveedor'])[:15] if pd.notna(row['proveedor']) else ""
-                    st.markdown(f"• {row['fecha']} - **{articulo}** - {proveedor} - {total_fmt}")
+                # ✅ FIX: Normalizar nombres de columnas a minúsculas
+                df_ultimas_display = df_ultimas.copy()
+                df_ultimas_display.columns = df_ultimas_display.columns.str.lower()
+                
+                # Seleccionar columnas que existan
+                columnas_mostrar = []
+                for col in ['articulo', 'proveedor', 'fecha', 'total']:
+                    if col in df_ultimas_display.columns:
+                        columnas_mostrar.append(col)
+                
+                if columnas_mostrar:
+                    st.dataframe(df_ultimas_display[columnas_mostrar].head(10), use_container_width=True)
+                else:
+                    # Mostrar todas las columnas si no encontramos las esperadas
+                    st.dataframe(df_ultimas_display.head(10), use_container_width=True)
+                
+                # ✅ FIX: Usar DataFrame normalizado para el loop también
+                for _, row in df_ultimas_display.head(10).iterrows():
+                    # Obtener valores de forma segura
+                    total_val = row.get('total', 0)
+                    total_fmt = f"${total_val:,.0f}".replace(',', '.') if pd.notna(total_val) else "$0"
+                    
+                    articulo_val = row.get('articulo', 'Sin nombre')
+                    articulo = str(articulo_val)[:25] + "..." if len(str(articulo_val)) > 25 else str(articulo_val)
+                    
+                    proveedor_val = row.get('proveedor', '')
+                    proveedor = str(proveedor_val)[:15] if pd.notna(proveedor_val) else ""
+                    
+                    fecha_val = row.get('fecha', 'Sin fecha')
+                    st.markdown(f"• {fecha_val} - **{articulo}** - {proveedor} - {total_fmt}")
             else:
                 st.info("No hay compras recientes")
         except Exception as e:
