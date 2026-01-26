@@ -2682,24 +2682,27 @@ Escribí lo que necesites 👇
             st.session_state["pause_autorefresh"] = True
             
             # ====================================
-            # FORMULARIO DIRECTO - SIN TÍTULOS
+            # FORMULARIO CON ESPACIADO
             # ====================================
             
             # Proveedor
-            st.markdown("**Proveedor** (opcional)")
+            st.markdown("**Proveedor**")
             proveedores_disponibles = prov_options
             proveedores_sel = st.multiselect(
                 "Proveedor",
                 options=proveedores_disponibles,
                 default=[],
                 key="comparativas_proveedores_multi",
-                placeholder="Dejá vacío para ver TODOS",
+                placeholder="Ej: AIWA, ROCHE, BIOKEY... o dejá vacío para TODOS",
                 label_visibility="collapsed"
             )
             proveedores = proveedores_sel if proveedores_sel else None
             
+            st.markdown("<br>", unsafe_allow_html=True)  # Espacio
+            
             # Años
-            st.markdown("**Años** ⭐ (elegí al menos 2)")
+            st.markdown("**Años** ⭐")
+            st.caption("Elegí al menos 2 para comparar")
             anios = st.multiselect(
                 "Años",
                 options=[2023, 2024, 2025],
@@ -2708,14 +2711,17 @@ Escribí lo que necesites 👇
                 label_visibility="collapsed"
             )
             
+            st.markdown("<br>", unsafe_allow_html=True)  # Espacio
+            
             # Meses
-            st.markdown("**Meses** (opcional - dejá vacío para año completo)")
+            st.markdown("**Meses**")
+            st.caption("Opcional - dejá vacío para comparar el año completo")
             meses_sel = st.multiselect(
                 "Meses",
                 options=month_names,
                 default=[],
                 key="meses_sel",
-                placeholder="Año completo",
+                placeholder="Ej: Enero, Febrero... o dejá vacío",
                 label_visibility="collapsed"
             )
             
@@ -2725,37 +2731,32 @@ Escribí lo que necesites 👇
                     meses.append(f"{a}-{month_num[m]}")
             st.session_state["meses_multi"] = meses
             
-            # Artículos (campo normal, NO oculto)
-            st.markdown("**Artículos** (opcional)")
+            st.markdown("<br>", unsafe_allow_html=True)  # Espacio
+            
+            # Artículos
+            st.markdown("**Artículos**")
+            st.caption("Opcional - dejá vacío para ver todos")
             articulos = st.multiselect(
                 "Artículos",
                 options=art_options,
                 default=[x for x in st.session_state.get("art_multi", []) if x in art_options],
                 key="art_multi",
-                placeholder="Todos los artículos",
+                placeholder="Ej: KIT ELISA, REACTIVO...",
                 label_visibility="collapsed"
             )
             
             # ====================================
-            # RESUMEN COMPACTO
+            # VALIDACIÓN Y BOTONES
             # ====================================
-            st.markdown("---")
+            st.markdown("<br><br>", unsafe_allow_html=True)  # Más espacio antes de botones
             
             # Validación
             puede_comparar = len(anios) >= 2 or len(meses) >= 2
             
-            if puede_comparar:
-                resumen_proveedor = f"{', '.join(proveedores_sel[:2])}" if proveedores_sel else "TODOS"
-                if proveedores_sel and len(proveedores_sel) > 2:
-                    resumen_proveedor = f"{len(proveedores_sel)} proveedores"
-                
-                st.info(f"📝 Vas a comparar: **{resumen_proveedor}** en **{' vs '.join(map(str, anios))}**")
-            else:
+            if not puede_comparar:
                 st.warning("⚠️ Elegí al menos 2 años para comparar")
             
-            # ====================================
-            # BOTONES
-            # ====================================
+            # Botones
             col1, col2, col3 = st.columns([2, 1, 1])
             
             with col1:
