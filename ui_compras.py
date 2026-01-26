@@ -2679,81 +2679,35 @@ Escribí lo que necesites 👇
                 st.rerun()
     if tab_comparativas is not None:
         with tab_comparativas:
-            # Comparativas fijo (sin selectbox)
             st.session_state["pause_autorefresh"] = True
             
             # ====================================
-            # HEADER EXPLICATIVO
+            # TÍTULO SIMPLE
             # ====================================
-            st.markdown("""
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        padding: 24px; border-radius: 16px; margin-bottom: 24px; color: white;">
-                <h2 style="margin: 0 0 8px 0; font-size: 28px;">📊 Comparador de Compras</h2>
-                <p style="margin: 0; font-size: 16px; opacity: 0.95;">
-                    Compará cuánto gastaste en diferentes años o meses.<br>
-                    <strong>Ejemplo:</strong> "¿Cuánto gasté en AIWA en 2024 vs 2025?"
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown("### 📊 Comparador de Compras")
+            st.caption("Compará cuánto gastaste en diferentes años. Ej: ¿Cuánto gasté en AIWA en 2024 vs 2025?")
+            
+            st.markdown("---")
             
             # ====================================
-            # CAJA DE EJEMPLOS
+            # FORMULARIO SIMPLE
             # ====================================
-            st.markdown("""
-            <div style="background: #fffbeb; border: 2px solid #fbbf24; border-radius: 12px; 
-                        padding: 16px; margin-bottom: 24px;">
-                <div style="font-size: 18px; font-weight: 600; color: #92400e; margin-bottom: 8px;">
-                    💡 Ejemplos de comparaciones útiles:
-                </div>
-                <ul style="margin: 0; padding-left: 20px; color: #78350f;">
-                    <li>"¿Cuánto gasté en ROCHE en 2024 vs 2025?"</li>
-                    <li>"¿En qué mes de 2025 gasté más con BIOKEY?"</li>
-                    <li>"¿Qué proveedor aumentó más sus precios?"</li>
-                </ul>
-            </div>
-            """, unsafe_allow_html=True)
             
-            # ====================================
-            # PASO 1: PROVEEDOR
-            # ====================================
-            st.markdown("""
-            <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; 
-                        padding: 12px 16px; margin-bottom: 16px; border-radius: 8px;">
-                <div style="font-size: 18px; font-weight: 600; color: #1e40af; margin-bottom: 4px;">
-                    1️⃣ ¿Qué proveedor querés analizar?
-                </div>
-                <div style="font-size: 14px; color: #64748b;">
-                    ℹ️ Dejá vacío para ver TODOS los proveedores
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            # Proveedor
+            st.markdown("**1. Proveedor** (opcional)")
             proveedores_disponibles = prov_options
             proveedores_sel = st.multiselect(
                 "Proveedor",
                 options=proveedores_disponibles,
                 default=[],
                 key="comparativas_proveedores_multi",
-                help="Buscá escribiendo el nombre y presioná Enter para seleccionar",
+                placeholder="Dejá vacío para ver TODOS",
                 label_visibility="collapsed"
             )
             proveedores = proveedores_sel if proveedores_sel else None
             
-            # ====================================
-            # PASO 2: AÑOS (IMPORTANTE)
-            # ====================================
-            st.markdown("""
-            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; 
-                        padding: 12px 16px; margin: 24px 0 16px 0; border-radius: 8px;">
-                <div style="font-size: 18px; font-weight: 600; color: #92400e; margin-bottom: 4px;">
-                    2️⃣ ¿Qué años querés comparar? ⭐ IMPORTANTE
-                </div>
-                <div style="font-size: 14px; color: #78350f;">
-                    ⚠️ Necesitás elegir al menos 2 años diferentes para poder comparar
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            # Años
+            st.markdown("**2. Años** ⭐ (elegí al menos 2)")
             anios = st.multiselect(
                 "Años",
                 options=[2023, 2024, 2025],
@@ -2762,26 +2716,14 @@ Escribí lo que necesites 👇
                 label_visibility="collapsed"
             )
             
-            # ====================================
-            # PASO 3: MESES (OPCIONAL)
-            # ====================================
-            st.markdown("""
-            <div style="background: #f0fdf4; border-left: 4px solid #10b981; 
-                        padding: 12px 16px; margin: 24px 0 16px 0; border-radius: 8px;">
-                <div style="font-size: 18px; font-weight: 600; color: #065f46; margin-bottom: 4px;">
-                    3️⃣ (Opcional) ¿Qué meses específicos?
-                </div>
-                <div style="font-size: 14px; color: #047857;">
-                    ℹ️ Dejá vacío para comparar el año completo
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            # Meses
+            st.markdown("**3. Meses** (opcional - dejá vacío para año completo)")
             meses_sel = st.multiselect(
                 "Meses",
                 options=month_names,
                 default=[],
                 key="meses_sel",
+                placeholder="Año completo",
                 label_visibility="collapsed"
             )
             
@@ -2791,87 +2733,42 @@ Escribí lo que necesites 👇
                     meses.append(f"{a}-{month_num[m]}")
             st.session_state["meses_multi"] = meses
             
-            # ====================================
-            # PASO 4: ARTÍCULOS (OPCIONAL)
-            # ====================================
-            with st.expander("🔍 Avanzado: Filtrar por artículos específicos", expanded=False):
-                st.markdown("""
-                <div style="font-size: 14px; color: #64748b; margin-bottom: 12px;">
-                    Si querés ver solo ciertos productos, seleccionalos acá. 
-                    Sino, dejalo vacío para ver todos.
-                </div>
-                """, unsafe_allow_html=True)
-                
+            # Artículos (colapsado)
+            with st.expander("🔍 Avanzado: Filtrar artículos", expanded=False):
                 articulos = st.multiselect(
                     "Artículos",
                     options=art_options,
-                    default=[
-                        x for x in st.session_state.get("art_multi", [])
-                        if x in art_options
-                    ],
+                    default=[x for x in st.session_state.get("art_multi", []) if x in art_options],
                     key="art_multi",
                     label_visibility="collapsed"
                 )
             
             # ====================================
-            # RESUMEN DINÁMICO
+            # RESUMEN COMPACTO
             # ====================================
-            st.markdown('<div style="margin-top: 32px;"></div>', unsafe_allow_html=True)
-            
-            # Construir resumen
-            resumen_proveedor = f"→ Proveedor: **{', '.join(proveedores_sel[:3])}**" if proveedores_sel else "→ Proveedor: **TODOS**"
-            if proveedores_sel and len(proveedores_sel) > 3:
-                resumen_proveedor = f"→ Proveedores: **{len(proveedores_sel)} seleccionados**"
-            
-            resumen_periodo = "→ Período: "
-            if meses_sel:
-                resumen_periodo += f"**{', '.join(meses_sel[:3])}{'...' if len(meses_sel) > 3 else ''}** de "
-            resumen_periodo += f"**{' vs '.join(map(str, anios))}**" if anios else "**No seleccionado**"
+            st.markdown("---")
             
             # Validación
             puede_comparar = len(anios) >= 2 or len(meses) >= 2
             
             if puede_comparar:
-                st.markdown(f"""
-                <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-                            padding: 20px; border-radius: 12px; color: white; margin-bottom: 20px;">
-                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">
-                        📝 Resumen de tu comparación:
-                    </div>
-                    <div style="font-size: 15px; line-height: 1.8; opacity: 0.95;">
-                        {resumen_proveedor}<br>
-                        {resumen_periodo}<br>
-                        ✅ <strong>Todo listo para comparar!</strong>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                resumen_proveedor = f"{', '.join(proveedores_sel[:2])}" if proveedores_sel else "TODOS"
+                if proveedores_sel and len(proveedores_sel) > 2:
+                    resumen_proveedor = f"{len(proveedores_sel)} proveedores"
+                
+                st.info(f"📝 Vas a comparar: **{resumen_proveedor}** en **{' vs '.join(map(str, anios))}**")
             else:
-                st.markdown("""
-                <div style="background: #fef2f2; border: 2px solid #ef4444; 
-                            padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-                    <div style="font-size: 18px; font-weight: 600; color: #991b1b; margin-bottom: 12px;">
-                        ⚠️ Para comparar necesitás:
-                    </div>
-                    <div style="font-size: 15px; color: #7f1d1d; line-height: 1.8;">
-                        ☐ Al menos <strong>2 años diferentes</strong> (ej: 2024 y 2025)<br>
-                        <strong>O BIEN</strong><br>
-                        ☐ Al menos <strong>2 meses diferentes</strong>
-                    </div>
-                    <div style="margin-top: 12px; padding: 12px; background: white; border-radius: 8px; font-size: 14px; color: #64748b;">
-                        👉 Seleccioná al menos 2 años en el paso 2️⃣ para continuar
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.warning("⚠️ Elegí al menos 2 años para comparar")
             
             # ====================================
-            # BOTONES DE ACCIÓN
+            # BOTONES
             # ====================================
             col1, col2, col3 = st.columns([2, 1, 1])
             
             with col1:
                 btn_compare = st.button(
                     "🔍 VER RESULTADO",
-                    key="btn_comparar_mejorado",
+                    key="btn_comparar_simple",
                     use_container_width=True,
                     disabled=not puede_comparar,
                     type="primary"
@@ -2880,14 +2777,14 @@ Escribí lo que necesites 👇
             with col2:
                 btn_clear = st.button(
                     "🗑️ LIMPIAR",
-                    key="btn_limpiar_mejorado",
+                    key="btn_limpiar_simple",
                     use_container_width=True
                 )
             
             with col3:
                 btn_excel = st.button(
                     "📥 EXCEL",
-                    key="btn_excel_mejorado",
+                    key="btn_excel_simple",
                     use_container_width=True,
                     disabled="comparativa_resultado" not in st.session_state
                 )
