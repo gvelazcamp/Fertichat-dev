@@ -37,7 +37,7 @@ def mostrar_dashboard():
     anio_actual = datetime.now().year
     col_filtro, col_espacio = st.columns([1, 3])
     with col_filtro:
-        anio = st.selectbox("Año:", [anio_actual, anio_actual - 1, anio_actual - 2], index=0)
+        anio = st.selectbox("Año:", [2025, 2024, 2023], index=0)
 
     st.markdown("---")
 
@@ -202,26 +202,53 @@ def mostrar_dashboard():
         # ✅ CHANGED: Alertas combinadas (stock = 1 + vencimientos <30 días con stock > 0)
         try:
             alertas = get_alertas_combinadas(5, dias_filtro=30)
-            if alertas:
+            if alertas and len(alertas) > 0:
                 st.markdown("**⚠️ Alertas (stock=1 o vence <30 días):**")
-                for alerta in alertas[:3]:
+                
+                alertas_validas = []
+                for alerta in alertas:
                     # ✅ FIX: Buscar columnas ignorando mayúsculas/minúsculas
                     def get_valor(diccionario, *keys):
-                        """Busca una clave ignorando mayúsculas"""
+                        """Busca una clave ignorando mayúsculas y valida que no sea nan"""
                         for key in keys:
                             # Buscar la clave exacta
                             if key in diccionario:
-                                return diccionario[key]
+                                val = diccionario[key]
+                                # Validar que no sea nan/None
+                                if val is not None and val != '' and str(val).lower() != 'nan' and pd.notna(val):
+                                    return val
                             # Buscar ignorando mayúsculas
                             for k, v in diccionario.items():
                                 if k.lower() == key.lower():
-                                    return v
+                                    # Validar que no sea nan/None
+                                    if v is not None and v != '' and str(v).lower() != 'nan' and pd.notna(v):
+                                        return v
+                        return None
+                    
+                    # Solo agregar alertas con artículo válido
+                    articulo = get_valor(alerta, 'articulo', 'ARTICULO', 'Articulo')
+                    if articulo:
+                        alertas_validas.append(alerta)
+                
+                # Mostrar solo las 3 primeras alertas válidas
+                for alerta in alertas_validas[:3]:
+                    def get_valor(diccionario, *keys):
+                        """Busca una clave ignorando mayúsculas y valida que no sea nan"""
+                        for key in keys:
+                            if key in diccionario:
+                                val = diccionario[key]
+                                if val is not None and val != '' and str(val).lower() != 'nan' and pd.notna(val):
+                                    return val
+                            for k, v in diccionario.items():
+                                if k.lower() == key.lower():
+                                    if v is not None and v != '' and str(v).lower() != 'nan' and pd.notna(v):
+                                        return v
                         return None
                     
                     # Procesar días restantes
                     dias = get_valor(alerta, 'dias_restantes', 'Dias_Para_Vencer', 'dias_para_vencer')
                     try:
-                        dias = int(dias) if dias not in (None, '', 'nan') and pd.notna(dias) else 999999
+                        dias = int(float(dias)) if dias is not None else 999999
                     except:
                         dias = 999999
 
@@ -233,21 +260,26 @@ def mostrar_dashboard():
                     else:
                         color = "🟡"
 
-                    # Mostrar artículo, lote, stock
-                    articulo = str(get_valor(alerta, 'articulo', 'ARTICULO', 'Articulo') or 'Sin nombre')[:30]
+                    # Obtener valores
+                    articulo = str(get_valor(alerta, 'articulo', 'ARTICULO', 'Articulo') or 'Sin nombre')[:40]
                     lote = str(get_valor(alerta, 'lote', 'LOTE', 'Lote') or 'Sin lote')
                     stock_val = get_valor(alerta, 'stock', 'STOCK', 'Stock')
-                    stock = str(stock_val if stock_val not in (None, '', 'nan') and pd.notna(stock_val) else '0')
+                    stock = str(int(float(stock_val))) if stock_val else '0'
                     venc = str(get_valor(alerta, 'vencimiento', 'VENCIMIENTO', 'Vencimiento') or 'Sin fecha')
 
                     if dias < 999999:  # Es vencimiento
-                        st.markdown(f"{color} **{articulo}** (Lote: {lote}) - Vence: {venc} ({dias} días) - Stock: {stock}")
+                        st.markdown(f"{color} **{articulo}** (Lote: {lote}) - Stock: {stock} (bajo) - Vence: {venc} ({dias}d)")
                     else:  # Stock = 1
                         st.markdown(f"🟡 **{articulo}** (Lote: {lote}) - Stock: {stock} (bajo)")
+                
+                if len(alertas_validas) == 0:
+                    st.success("✅ No hay alertas activas")
             else:
                 st.success("✅ No hay alertas activas")
         except Exception as e:
             st.error(f"Error cargando alertas: {e}")
+            import traceback
+            st.code(traceback.format_exc())
 
         st.markdown("---")
 
@@ -271,21 +303,6 @@ def mostrar_dashboard():
                 else:
                     # Mostrar todas las columnas si no encontramos las esperadas
                     st.dataframe(df_ultimas_display.head(10), use_container_width=True)
-                
-                # ✅ FIX: Usar DataFrame normalizado para el loop también
-                for _, row in df_ultimas_display.head(10).iterrows():
-                    # Obtener valores de forma segura
-                    total_val = row.get('total', 0)
-                    total_fmt = f"${total_val:,.0f}".replace(',', '.') if pd.notna(total_val) else "$0"
-                    
-                    articulo_val = row.get('articulo', 'Sin nombre')
-                    articulo = str(articulo_val)[:25] + "..." if len(str(articulo_val)) > 25 else str(articulo_val)
-                    
-                    proveedor_val = row.get('proveedor', '')
-                    proveedor = str(proveedor_val)[:15] if pd.notna(proveedor_val) else ""
-                    
-                    fecha_val = row.get('fecha', 'Sin fecha')
-                    st.markdown(f"• {fecha_val} - **{articulo}** - {proveedor} - {total_fmt}")
             else:
                 st.info("No hay compras recientes")
         except Exception as e:
