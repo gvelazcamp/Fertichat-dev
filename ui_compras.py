@@ -295,6 +295,8 @@ def _dbg_set_result(df: Optional[pd.DataFrame]):
 def inicializar_historial():
     if "historial_compras" not in st.session_state:
         st.session_state["historial_compras"] = []
+    if "chat_input_compras" not in st.session_state:
+        st.session_state["chat_input_compras"] = ""
 
 
 # =========================
@@ -2439,6 +2441,17 @@ def Compras_IA(modo="compras"):
             for idx, msg in enumerate(st.session_state["historial_compras"]):
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])
+                    
+                    # ✅ NUEVO: Mostrar botones de sugerencias si existen
+                    if "sugerencias" in msg and msg["sugerencias"]:
+                        st.markdown("")  # Espacio
+                        cols = st.columns(len(msg["sugerencias"]))
+                        for i, sugerencia in enumerate(msg["sugerencias"]):
+                            with cols[i]:
+                                if st.button(f"🔍 {sugerencia}", key=f"sug_{idx}_{i}"):
+                                    # Simular que el usuario escribió esa sugerencia
+                                    st.session_state["chat_input_compras"] = sugerencia
+                                    st.rerun()
 
                     if "df" in msg and msg["df"] is not None:
                         df = msg["df"]
@@ -2520,6 +2533,11 @@ def Compras_IA(modo="compras"):
 
             # Input
             pregunta = st.chat_input("Escribí tu consulta sobre compras o facturas...")
+            
+            # ✅ NUEVO: Procesar también si hay una sugerencia clickeada
+            if "chat_input_compras" in st.session_state and st.session_state["chat_input_compras"]:
+                pregunta = st.session_state["chat_input_compras"]
+                st.session_state["chat_input_compras"] = ""  # Limpiar
 
             if pregunta:
                 debug.log("📝 Input Usuario", pregunta)
@@ -2572,9 +2590,30 @@ Escribí lo que necesites 👇
                 elif tipo == "no_entendido":
                     respuesta_content = "🤔 No entendí bien tu pregunta."
                     sugerencia = resultado.get("sugerencia", "")
+                    
                     if sugerencia:
-                        respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
+                        # Extraer ejemplos del formato "Ej: compras vitek 2025 | compras fb 2024 | ..."
+                        ejemplos = []
+                        if "Ej:" in sugerencia or "ej:" in sugerencia:
+                            # Extraer la parte después de "Ej:"
+                            texto_ejemplos = sugerencia.split("Ej:")[-1].split("ej:")[-1].strip()
+                            # Separar por "|" 
+                            ejemplos = [ej.strip() for ej in texto_ejemplos.split("|") if ej.strip()]
+                        
+                        if ejemplos:
+                            respuesta_content += "\n\n¿Querías decir alguna de estas?"
+                        else:
+                            respuesta_content += f"\n\n**Sugerencia:** {sugerencia}"
+                    
                     debug.log("❓ No entendido", {"sugerencia": sugerencia})
+                    
+                    # Agregar respuesta al historial para mostrar botones después
+                    st.session_state["historial_compras"].append({
+                        "role": "assistant",
+                        "content": respuesta_content,
+                        "sugerencias": ejemplos if sugerencia and ejemplos else []
+                    })
+                    st.rerun()
 
                 else:
                     try:
