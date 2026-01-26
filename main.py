@@ -881,12 +881,32 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     # Buscador
-    st.text_input(
+    search_term = st.text_input(
         "Buscar...",
         key="sidebar_search",
         label_visibility="collapsed",
-        placeholder="Buscar...",
+        placeholder="Buscar menú...",
     )
+    
+    # ✅ NUEVO: Filtrar grupos y opciones según búsqueda
+    if search_term and search_term.strip():
+        search_lower = search_term.strip().lower()
+        groups_filtered = {}
+        
+        for group, options in groups.items():
+            # Filtrar opciones que contengan el término de búsqueda
+            filtered_options = [opt for opt in options if search_lower in opt.lower()]
+            
+            # Solo agregar el grupo si tiene opciones que coinciden
+            if filtered_options:
+                groups_filtered[group] = filtered_options
+        
+        # Mostrar mensaje si no hay resultados
+        if not groups_filtered:
+            st.info(f"🔍 No se encontraron menús para '{search_term}'")
+    else:
+        # Sin búsqueda, mostrar todo
+        groups_filtered = groups
     
     # Info usuario
     st.markdown(f"👤 **{user.get('nombre', 'Usuario')}**")
@@ -909,7 +929,7 @@ with st.sidebar:
     # =========================
     # Menu agrupado (PRINCIPAL con submenú bien alineado)
     # =========================
-    for group, options in groups.items():
+    for group, options in groups_filtered.items():
         st.markdown(
             f'<div class="fc-section-header">{group}</div>',
             unsafe_allow_html=True
