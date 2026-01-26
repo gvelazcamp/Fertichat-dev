@@ -2693,7 +2693,7 @@ Escribí lo que necesites 👇
                 options=proveedores_disponibles,
                 default=[],
                 key="comparativas_proveedores_multi",
-                placeholder="Ej: AIWA, ROCHE, BIOKEY... o dejá vacío para TODOS",
+                placeholder="Seleccioná proveedores para comparar. Ej: ROCHE, TRESUL",
                 label_visibility="collapsed"
             )
             proveedores = proveedores_sel if proveedores_sel else None
@@ -2721,7 +2721,7 @@ Escribí lo que necesites 👇
                 options=month_names,
                 default=[],
                 key="meses_sel",
-                placeholder="Ej: Enero, Febrero... o dejá vacío",
+                placeholder="Seleccioná meses específicos. Ej: Enero, Febrero, Marzo",
                 label_visibility="collapsed"
             )
             
@@ -2741,7 +2741,7 @@ Escribí lo que necesites 👇
                 options=art_options,
                 default=[x for x in st.session_state.get("art_multi", []) if x in art_options],
                 key="art_multi",
-                placeholder="Ej: KIT ELISA, REACTIVO...",
+                placeholder="Seleccioná artículos específicos. Ej: KIT ELISA, REACTIVO",
                 label_visibility="collapsed"
             )
             
