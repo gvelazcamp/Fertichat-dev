@@ -2442,16 +2442,14 @@ def Compras_IA(modo="compras"):
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])
                     
-                    # ✅ NUEVO: Mostrar botones de sugerencias si existen
+                    # ✅ NUEVO: Mostrar botones de sugerencias en formato lista vertical
                     if "sugerencias" in msg and msg["sugerencias"]:
                         st.markdown("")  # Espacio
-                        cols = st.columns(len(msg["sugerencias"]))
                         for i, sugerencia in enumerate(msg["sugerencias"]):
-                            with cols[i]:
-                                if st.button(f"🔍 {sugerencia}", key=f"sug_{idx}_{i}"):
-                                    # Simular que el usuario escribió esa sugerencia
-                                    st.session_state["chat_input_compras"] = sugerencia
-                                    st.rerun()
+                            if st.button(sugerencia, key=f"sug_{idx}_{i}", use_container_width=True):
+                                # Simular que el usuario escribió esa sugerencia
+                                st.session_state["chat_input_compras"] = sugerencia
+                                st.rerun()
 
                     if "df" in msg and msg["df"] is not None:
                         df = msg["df"]
