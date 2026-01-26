@@ -530,7 +530,7 @@ groups = {
     "CONSULTAS": ["Compras", "Comparar", "Stock IA", "Buscador IA"],
     "GESTIÓN": ["Pedidos internos", "Baja de stock", "Órdenes de compra", "Ingreso de comprobantes", "Sugerencia de pedidos"],
     "CATÁLOGO": ["Artículos", "Familias", "Depósitos", "Comprobantes"],
-    "ANÁLISIS": ["Dashboard", "Indicadores (Power BI)"],
+    "ANÁLISIS": ["Dashboard"],
 }
 
 # Inicializar página
