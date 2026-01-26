@@ -500,9 +500,10 @@ def get_lotes_por_vencer(dias: int = 90) -> pd.DataFrame:
             FROM ({base}) s
             WHERE "VENCIMIENTO" IS NOT NULL
               AND "VENCIMIENTO" >= CURRENT_DATE
-              AND "VENCIMIENTO" <= (CURRENT_DATE + (%s || ' days')::interval)
+              AND "Dias_Para_Vencer" <= %s
+              AND "Dias_Para_Vencer" >= 0
               AND COALESCE("STOCK", 0) > 0
-            ORDER BY "VENCIMIENTO" ASC
+            ORDER BY "Dias_Para_Vencer" ASC
         """
         df = ejecutar_consulta(sql, (int(dias),))
         return df if df is not None else pd.DataFrame()
@@ -595,21 +596,43 @@ def get_alertas_stock_1(limite: int = 5) -> list:
 
 
 def get_alertas_combinadas(limite: int = 10, dias_filtro: int = 30) -> list:
-    """✅ NUEVA FUNCIÓN: Combina alertas de stock = 1 y vencimientos en <30 días con stock > 0."""
+    """✅ CORREGIDO: Combina alertas de stock = 1 y vencimientos en <dias_filtro días con stock > 0."""
     try:
         # Obtener alertas de stock = 1
         df_stock_1 = pd.DataFrame(get_alertas_stock_1(limite=limite))
         
-        # Obtener alertas de vencimiento
+        # Obtener alertas de vencimiento con el filtro correcto
         alertas_vto = get_alertas_vencimiento_multiple(limite=limite, dias_filtro=dias_filtro)
         df_vto = pd.DataFrame(alertas_vto)
         
-        # Combinar sin duplicados (basado en ARTICULO + LOTE)
-        df_combinado = pd.concat([df_stock_1, df_vto], ignore_index=True).drop_duplicates(subset=['ARTICULO', 'LOTE'])
+        # Combinar
+        if not df_stock_1.empty and not df_vto.empty:
+            # Normalizar columnas para merge
+            if 'ARTICULO' in df_stock_1.columns and 'LOTE' in df_stock_1.columns:
+                df_combinado = pd.concat([df_vto, df_stock_1], ignore_index=True)
+            else:
+                df_combinado = df_vto
+        elif not df_stock_1.empty:
+            df_combinado = df_stock_1
+        elif not df_vto.empty:
+            df_combinado = df_vto
+        else:
+            return []
+        
+        # Eliminar duplicados basado en ARTICULO + LOTE
+        if 'ARTICULO' in df_combinado.columns and 'LOTE' in df_combinado.columns:
+            df_combinado = df_combinado.drop_duplicates(subset=['ARTICULO', 'LOTE'])
+        
+        # Ordenar por urgencia (días restantes ascendente)
+        if 'Dias_Para_Vencer' in df_combinado.columns:
+            df_combinado['Dias_Para_Vencer'] = pd.to_numeric(df_combinado['Dias_Para_Vencer'], errors='coerce').fillna(999999)
+            df_combinado = df_combinado.sort_values('Dias_Para_Vencer', ascending=True)
         
         # Limitar y convertir a lista
         df_combinado = df_combinado.head(limite)
         return df_combinado.to_dict('records')
     except Exception as e:
         print(f"Error en get_alertas_combinadas: {e}")
+        import traceback
+        traceback.print_exc()
         return []
