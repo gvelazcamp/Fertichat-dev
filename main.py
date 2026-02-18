@@ -800,8 +800,14 @@ with st.sidebar:
         padding: 0 !important;
     }
     
-    /* Ocultar círculos del radio */
+    /* Ocultar círculos del radio - nativo y BaseUI */
     section[data-testid="stSidebar"] input[type="radio"] {
+        display: none !important;
+    }
+    section[data-testid="stSidebar"] [data-baseweb="radio"] {
+        display: none !important;
+    }
+    section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
     

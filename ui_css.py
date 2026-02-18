@@ -440,33 +440,40 @@ section[data-testid="stSidebar"] div[role="radiogroup"] span{
   color: var(--fc-sb-text) !important;
 }
 
-/* Ocultar círculo del radio */
+/* Ocultar círculo del radio - nativo y BaseUI */
 section[data-testid="stSidebar"] input[type="radio"]{
+  display: none !important;
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"] {
+  display: none !important;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
   display: none !important;
 }
 
 /* Flecha izquierda por defecto */
-section[data-testid="stSidebar"] div[role="radiogroup"] > div label::before{
+section[data-testid="stSidebar"] div[role="radiogroup"] label::before{
   content: "›" !important;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--fc-sb-text);
-  margin-right: 6px;
-  opacity: 0.4;
-  transition: opacity .15s, color .15s;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: var(--fc-sb-text) !important;
+  margin-right: 8px !important;
+  opacity: 0.35 !important;
+  transition: opacity .15s, color .15s !important;
+  flex-shrink: 0 !important;
 }
 
 /* Flecha resaltada en hover */
 section[data-testid="stSidebar"] div[role="radiogroup"] > div:hover label::before{
-  opacity: 0.8;
-  color: #0ea5e9;
+  opacity: 0.8 !important;
+  color: #0ea5e9 !important;
 }
 
 /* Flecha activa cuando seleccionado */
 section[data-testid="stSidebar"] div[role="radiogroup"] > div:has([aria-checked="true"]) label::before,
 section[data-testid="stSidebar"] div[role="radiogroup"] > div:has(input[type="radio"]:checked) label::before{
-  opacity: 1;
-  color: #0ea5e9;
+  opacity: 1 !important;
+  color: #0ea5e9 !important;
 }
 
 /* Opción seleccionada */
