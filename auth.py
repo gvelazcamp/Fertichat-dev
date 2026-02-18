@@ -18,7 +18,8 @@ from typing import Optional, Tuple
 # =====================================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "users.db")
+# En Streamlit Cloud el directorio del repo es read-only; /tmp siempre es escribible
+DB_PATH = os.path.join("/tmp", "fertichat_users.db")
 
 
 # =====================================================================
