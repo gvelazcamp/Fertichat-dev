@@ -800,14 +800,9 @@ with st.sidebar:
         padding: 0 !important;
     }
     
-    /* Hacer círculos MUCHO MÁS CHICOS */
+    /* Ocultar círculos del radio */
     section[data-testid="stSidebar"] input[type="radio"] {
-        width: 12px !important;
-        height: 12px !important;
-        min-width: 12px !important;
-        margin-right: 8px !important;
-        flex-shrink: 0 !important;
-        accent-color: #3b82f6 !important;
+        display: none !important;
     }
     
     /* Contenedor MÁS COMPACTO */
