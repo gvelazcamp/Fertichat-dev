@@ -747,9 +747,9 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
         return []
 
     toks_set = set(toks)
-    for orig, norm in index:
-        if norm in toks_set:
-            return [orig]
+    exact_matches = [orig for orig, norm in index if norm in toks_set]
+    if exact_matches:
+        return exact_matches[:max_items]
 
     candidatos: List[Tuple[int, str]] = []
     for orig, norm in index:
@@ -1376,13 +1376,16 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 proveedores_texto = " ".join(after_compras)
 
             if "," in proveedores_texto:
-                proveedores_multiples = [
-                    _alias_proveedor(p.strip())
-                    for p in proveedores_texto.split(",")
-                    if p.strip()
-                ]
-            elif proveedores_texto:
-                proveedores_multiples = [_alias_proveedor(proveedores_texto)]
+                partes = proveedores_texto.split(",")
+            elif re.search(r"\by\b", proveedores_texto):
+                partes = re.split(r"\by\b", proveedores_texto)
+            else:
+                partes = [proveedores_texto] if proveedores_texto else []
+            proveedores_multiples = [
+                _alias_proveedor(p.strip())
+                for p in partes
+                if p.strip()
+            ]
 
         if proveedores_multiples:
             provs = proveedores_multiples
@@ -2207,9 +2210,9 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
         return []
 
     toks_set = set(toks)
-    for orig, norm in index:
-        if norm in toks_set:
-            return [orig]
+    exact_matches = [orig for orig, norm in index if norm in toks_set]
+    if exact_matches:
+        return exact_matches[:max_items]
 
     candidatos: List[Tuple[int, str]] = []
     for orig, norm in index:
@@ -2632,6 +2635,23 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             arts = [articulo]
 
     # ============================
+    # COMPRAS SOLO POR AÑO (fast-path v2)
+    # ============================
+    _anios_check = _extraer_anios(texto_lower_original)
+    if (
+        contiene_compras(texto_lower_original)
+        and _anios_check
+        and not provs
+        and not _extraer_meses_nombre(texto_lower_original)
+        and not _extraer_meses_yyyymm(texto_lower_original)
+    ):
+        return {
+            "tipo": "compras_anio",
+            "parametros": {"anio": _anios_check[0]},
+            "debug": "compras año (fast-path v2)"
+        }
+
+    # ============================
     # RUTA ARTÍCULOS (CANÓNICA)
     # ============================
     if contiene_compras(texto_lower_original) and not provs:
@@ -2785,10 +2805,12 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                 proveedores_texto = " ".join(after_compras)
 
             if "," in proveedores_texto:
-                proveedores_multiples = [p.strip() for p in proveedores_texto.split(",") if p.strip()]
-                proveedores_multiples = [_alias_proveedor(p) for p in proveedores_multiples if p]
+                partes = proveedores_texto.split(",")
+            elif re.search(r"\by\b", proveedores_texto):
+                partes = re.split(r"\by\b", proveedores_texto)
             else:
-                proveedores_multiples = [_alias_proveedor(proveedores_texto)] if proveedores_texto else []
+                partes = [proveedores_texto] if proveedores_texto else []
+            proveedores_multiples = [_alias_proveedor(p.strip()) for p in partes if p.strip()]
 
         if proveedores_multiples:
             provs = proveedores_multiples  # Usar los múltiples
