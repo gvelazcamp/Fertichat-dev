@@ -440,9 +440,33 @@ section[data-testid="stSidebar"] div[role="radiogroup"] span{
   color: var(--fc-sb-text) !important;
 }
 
-/* “Check”/círculo del radio */
+/* Ocultar círculo del radio */
 section[data-testid="stSidebar"] input[type="radio"]{
-  accent-color: #0ea5e9 !important;
+  display: none !important;
+}
+
+/* Flecha izquierda por defecto */
+section[data-testid="stSidebar"] div[role="radiogroup"] > div label::before{
+  content: "›" !important;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--fc-sb-text);
+  margin-right: 6px;
+  opacity: 0.4;
+  transition: opacity .15s, color .15s;
+}
+
+/* Flecha resaltada en hover */
+section[data-testid="stSidebar"] div[role="radiogroup"] > div:hover label::before{
+  opacity: 0.8;
+  color: #0ea5e9;
+}
+
+/* Flecha activa cuando seleccionado */
+section[data-testid="stSidebar"] div[role="radiogroup"] > div:has([aria-checked="true"]) label::before,
+section[data-testid="stSidebar"] div[role="radiogroup"] > div:has(input[type="radio"]:checked) label::before{
+  opacity: 1;
+  color: #0ea5e9;
 }
 
 /* Opción seleccionada */
