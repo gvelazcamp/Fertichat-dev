@@ -464,9 +464,12 @@ def _match_best(texto: str, index: List[Tuple[str, str]], max_items: int = 1) ->
 
     # ======= PRIORIDAD 1: MATCH EXACTO =======
     toks_set = set(toks)
+    exact_matches: List[str] = []
     for orig, norm in index:
         if norm in toks_set:
-            return [orig]  # Retorna inmediatamente el match exacto
+            exact_matches.append(orig)
+    if exact_matches:
+        return exact_matches[:max_items]
 
     # ======= PRIORIDAD 2: SUBSTRING + SCORE =======
     candidatos: List[Tuple[int, str]] = []
@@ -748,7 +751,8 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
         if not provs:
             proveedor_libre = _extraer_proveedor_libre(texto_lower, meses_nombre, anios)
         
-        proveedor_final = provs[0] if provs else proveedor_libre
+        proveedores_final = provs if provs else ([proveedor_libre] if proveedor_libre else [])
+        proveedor_final = proveedores_final[0] if proveedores_final else None
         articulo_final = arts[0] if arts else None
 
         # =========================================================================================
@@ -757,6 +761,18 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
         if proveedor_final:
             # Mes en formato YYYY-MM explícito
             if len(meses_yyyymm) >= 1:
+                if len(proveedores_final) > 1:
+                    return {
+                        "tipo": "compras_multiples",
+                        "parametros": {
+                            "proveedores": proveedores_final,
+                            "meses": [meses_yyyymm[0]],
+                            "anios": anios,
+                            "limite": 5000,
+                        },
+                        "moneda": moneda,
+                        "debug": "compras múltiples proveedores mes (YYYY-MM)",
+                    }
                 return {
                     "tipo": "compras_proveedor_mes",
                     "parametros": {
@@ -770,6 +786,18 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
             # Mes nombre + año
             if len(meses_nombre) >= 1 and len(anios) >= 1:
                 mes_key = _to_yyyymm(anios[0], meses_nombre[0])
+                if len(proveedores_final) > 1:
+                    return {
+                        "tipo": "compras_multiples",
+                        "parametros": {
+                            "proveedores": proveedores_final,
+                            "meses": [mes_key],
+                            "anios": anios,
+                            "limite": 5000,
+                        },
+                        "moneda": moneda,
+                        "debug": "compras múltiples proveedores mes (nombre+anio)",
+                    }
                 return {
                     "tipo": "compras_proveedor_mes",
                     "parametros": {
@@ -779,10 +807,22 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
                     "moneda": moneda,
                     "debug": "compras proveedor mes (nombre+anio)",
                 }
-            
+
             # Solo mes nombre (asume año actual)
             if len(meses_nombre) >= 1:
                 mes_key = _to_yyyymm(ANIO_DEFAULT, meses_nombre[0])
+                if len(proveedores_final) > 1:
+                    return {
+                        "tipo": "compras_multiples",
+                        "parametros": {
+                            "proveedores": proveedores_final,
+                            "meses": [mes_key],
+                            "anios": [ANIO_DEFAULT],
+                            "limite": 5000,
+                        },
+                        "moneda": moneda,
+                        "debug": f"compras múltiples proveedores mes (nombre, asume año {ANIO_DEFAULT})",
+                    }
                 return {
                     "tipo": "compras_proveedor_mes",
                     "parametros": {
@@ -798,14 +838,15 @@ def interpretar_compras(pregunta: str, anios: List[int] = None) -> Dict:
         # =========================================================================================
             if len(anios) >= 1:
                 return {
-                    "tipo": "facturas_proveedor",
+                    "tipo": "compras_multiples",
                     "parametros": {
-                        "proveedores": [proveedor_final],
+                        "proveedores": proveedores_final,
+                        "meses": [],
                         "anios": anios,
                         "limite": 5000,
                     },
                     "moneda": moneda,
-                    "debug": "compras proveedor año",
+                    "debug": "compras proveedor(es) año",
                 }
 
    
