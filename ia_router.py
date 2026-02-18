@@ -809,7 +809,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
     if dispara_facturas_listado:
         proveedores_lista: List[str] = []
         if provs:
-            proveedores_lista = [provs[0]]
+            proveedores_lista = provs
         else:
             prov_libre = _extraer_proveedor_libre(texto_lower_original)
             if prov_libre:
@@ -960,7 +960,7 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             return {
                 "tipo": "facturas_proveedor",
                 "parametros": {
-                    "proveedores": [provs[0]],
+                    "proveedores": provs,
                     "meses": None,
                     "anios": anios,
                     "desde": None,
