@@ -815,14 +815,6 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
             if prov_libre:
                 proveedores_lista = [_alias_proveedor(prov_libre)]
 
-        if not proveedores_lista:
-            return {
-                "tipo": "no_entendido",
-                "parametros": {},
-                "sugerencia": "Indicá el proveedor. Ej: todas las facturas de Roche noviembre 2025.",
-                "debug": {"origen": "ia_router", "intentos": intentos}
-            }
-
         desde, hasta = _extraer_rango_fechas(texto_original)
 
         meses_out: List[str] = []
@@ -837,6 +829,15 @@ def interpretar_pregunta(pregunta: str) -> Dict[str, Any]:
                             break
                     if len(meses_out) >= MAX_MESES:
                         break
+
+        # Si no hay proveedor Y no hay filtros temporales, pedir proveedor
+        if not proveedores_lista and not meses_out and not anios and not desde:
+            return {
+                "tipo": "no_entendido",
+                "parametros": {},
+                "sugerencia": "Indicá el proveedor o mes/año. Ej: facturas de Roche noviembre 2025 | facturas noviembre 2025.",
+                "debug": {"origen": "ia_router", "intentos": intentos}
+            }
 
         moneda = _extraer_moneda(texto_lower_original)
 

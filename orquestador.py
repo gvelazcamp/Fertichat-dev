@@ -411,8 +411,11 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str):
                 proveedores = [proveedores]
 
             proveedores_raw = [str(p).strip() for p in proveedores if str(p).strip()]
-            if not proveedores_raw:
-                return "❌ Indicá el proveedor. Ej: todas las facturas roche 2025", None, None
+
+            # Si no hay proveedores Y no hay filtros temporales, pedir proveedor
+            tiene_filtro_temporal = params.get("meses") or params.get("anios") or params.get("desde")
+            if not proveedores_raw and not tiene_filtro_temporal:
+                return "❌ Indicá el proveedor o mes/año. Ej: facturas roche 2025 | facturas noviembre 2025", None, None
 
             st.session_state["DBG_SQL_LAST_TAG"] = "facturas_proveedor (sql_facturas)"
 
@@ -455,9 +458,18 @@ def _ejecutar_consulta(tipo: str, params: dict, pregunta_original: str):
                 debug_msg += "\nRevisá la consola del servidor para ver el SQL impreso."
                 return debug_msg, None, None
 
-            prov_lbl = ", ".join([p.upper() for p in proveedores_raw[:3]])
+            if proveedores_raw:
+                prov_lbl = ", ".join([p.upper() for p in proveedores_raw[:3]])
+                header = f"🧾 Facturas de **{prov_lbl}** ({len(df)} registros):"
+            else:
+                # Sin proveedor: mostrar filtro temporal en el header
+                meses_lbl = ", ".join(params.get("meses") or [])
+                anios_lbl = ", ".join(map(str, params.get("anios") or []))
+                filtro = f"{meses_lbl} {anios_lbl}".strip()
+                header = f"🧾 Facturas {filtro} ({len(df)} registros):"
+
             return (
-                f"🧾 Facturas de **{prov_lbl}** ({len(df)} registros):",
+                header,
                 formatear_dataframe(df),
                 None,
             )
