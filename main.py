@@ -653,30 +653,30 @@ def _clear_qp():
 _go = _get_qp_first("go")
 if _go == "compras":
     with st.spinner("⏳ Cargando Compras..."):
-        st.session_state["radio_principal"] = "Compras IA"
-        st.session_state.pagina = "Compras IA"
+        st.session_state["radio_consultas"] = "Compras"
+        st.session_state.pagina = "Compras"
         for g in groups:
-            if g != "PRINCIPAL":
+            if g != "CONSULTAS":
                 st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
 
 elif _go == "buscador":
     with st.spinner("🔍 Cargando Buscador..."):
-        st.session_state["radio_principal"] = "Buscador IA"
+        st.session_state["radio_consultas"] = "Buscador IA"
         st.session_state.pagina = "Buscador IA"
         for g in groups:
-            if g != "PRINCIPAL":
+            if g != "CONSULTAS":
                 st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
 
 elif _go == "stock":
     with st.spinner("📦 Cargando Stock..."):
-        st.session_state["radio_principal"] = "Stock IA"
+        st.session_state["radio_consultas"] = "Stock IA"
         st.session_state.pagina = "Stock IA"
         for g in groups:
-            if g != "PRINCIPAL":
+            if g != "CONSULTAS":
                 st.session_state[f"radio_{g.lower()}"] = None
     _clear_qp()
     st.rerun()
