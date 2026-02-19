@@ -298,9 +298,6 @@ def get_facturas_proveedor(
     DETALLE LÍNEA POR LÍNEA (no agrupado).
     """
 
-    if not proveedores:
-        return pd.DataFrame()
-
     limite = int(limite or 5000)
     if limite <= 0:
         limite = 5000
@@ -308,14 +305,15 @@ def get_facturas_proveedor(
     where_parts: List[str] = []
     params: List[Any] = []
 
-    # Proveedores
-    prov_clauses: List[str] = []
-    for p in [str(x).strip() for x in proveedores if str(x).strip()]:
-        p_clean = p.lower().strip()
-        prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
-        params.append(f"%{p_clean}%")
-    if prov_clauses:
-        where_parts.append("(" + " OR ".join(prov_clauses) + ")")
+    # Proveedores (opcional: si no hay, se listan todos los proveedores)
+    if proveedores:
+        prov_clauses: List[str] = []
+        for p in [str(x).strip() for x in proveedores if str(x).strip()]:
+            p_clean = p.lower().strip()
+            prov_clauses.append('LOWER(TRIM("Cliente / Proveedor")) LIKE %s')
+            params.append(f"%{p_clean}%")
+        if prov_clauses:
+            where_parts.append("(" + " OR ".join(prov_clauses) + ")")
 
     # Artículo (opcional)
     if articulo and str(articulo).strip():
